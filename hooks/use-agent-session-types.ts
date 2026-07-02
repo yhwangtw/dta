@@ -1,7 +1,6 @@
 "use client";
 
 import type { AgentMessage, SessionInfo, SessionTreeNode } from "@/lib/types";
-import type { ToolEntry } from "@/components/modals/ToolPanel";
 
 export interface SessionData {
   sessionId: string;

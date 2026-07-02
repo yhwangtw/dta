@@ -75,7 +75,7 @@ function diffLines(oldLines: string[], newLines: string[]): DiffLine[] {
   ];
 }
 
-export function DiffView({ oldContent, newContent, language }: { oldContent: string; newContent: string; language: string }) {
+export function DiffView({ oldContent, newContent, language: _language }: { oldContent: string; newContent: string; language: string }) {
   const oldLines = oldContent.split("\n");
   const newLines = newContent.split("\n");
   const diff = diffLines(oldLines, newLines);

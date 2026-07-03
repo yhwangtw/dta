@@ -50,3 +50,37 @@ export function Skeleton({
     </div>
   );
 }
+
+interface SessionItemSkeletonProps {
+  count?: number;
+  className?: string;
+  style?: React.CSSProperties;
+}
+
+/**
+ * Two-line skeleton that mimics a real session row:
+ *   - title bar (10px tall, 65% width)
+ *   - meta line (8px tall, 35% width)
+ *
+ * Replaces the 6 stacked gray lines that used to render here — now each
+ * placeholder is shaped like an actual session card so the eye gets a
+ * correct preview of the layout while data is loading.
+ */
+export function SessionItemSkeleton({ count = 6, className, style }: SessionItemSkeletonProps) {
+  return (
+    <div className={className ?? styles.sessionItemWrapper} style={style}>
+      {Array.from({ length: count }, (_, i) => (
+        // Slight per-item indent alternation — mirrors the staggered look of a
+        // real session list (some rows have tags, some don't).
+        <div
+          key={i}
+          className={styles.sessionItem}
+          style={{ marginLeft: i % 2 === 0 ? 0 : 14 }}
+        >
+          <div className={`skeleton-line ${styles.sessionItemTitle}`} style={{ width: "65%" }} />
+          <div className={`skeleton-line ${styles.sessionItemMeta}`} style={{ width: "35%" }} />
+        </div>
+      ))}
+    </div>
+  );
+}

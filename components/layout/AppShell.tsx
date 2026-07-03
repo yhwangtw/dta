@@ -9,7 +9,13 @@ import { BranchNavigator } from "../chat/BranchNavigator";
 import { useTheme } from "@/hooks/useTheme";
 import { useAppShellState } from "@/hooks/useAppShellState";
 import { useFileTabs } from "@/hooks/useFileTabs";
+import { useSessions } from "@/hooks/useSessions";
+import { useTags } from "@/hooks/useTags";
+import { useCommandPalette } from "@/hooks/useCommandPalette";
+import { useToast } from "@/hooks/useToast";
+import { encodeFilePathForApi } from "@/lib/file-paths";
 import { ErrorBoundary } from "./ErrorBoundary";
+import { CommandPalette } from "../ui/CommandPalette";
 import type { SessionTreeNode } from "@/lib/types";
 import type { ChatInputHandle } from "../chat/ChatInput";
 import s from "./AppShell.module.css";
@@ -29,7 +35,116 @@ export function AppShell() {
   const [skillsConfigOpen, setSkillsConfigOpen] = useState(false);
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
   const chatInputRef = useRef<ChatInputHandle | null>(null);
+
+  // ── ⌘K Command Palette wiring ──────────────────────────────────────────
+  const { allSessions } = useSessions(state.refreshKey);
+  const { tags } = useTags();
+  const { ToastContainer } = useToast();
+  const [paletteFiles, setPaletteFiles] = useState<{ name: string; path: string; isDir: boolean }[]>([]);
+  const effectiveCwdForPalette = state.activeCwd ?? state.selectedSession?.cwd ?? state.newSessionCwd;
+
+  // Fetch a flat file list from the active cwd whenever it changes. Capped at
+  // ~80 entries; the FileExplorer is a deeper tree but the palette is a quick
+  // launcher, not a full browser.
+  useEffect(() => {
+    let cancelled = false;
+    if (!effectiveCwdForPalette) {
+      setPaletteFiles([]);
+      return () => { cancelled = true; };
+    }
+    (async () => {
+      try {
+        const encoded = encodeFilePathForApi(effectiveCwdForPalette);
+        const res = await fetch(`/api/files/${encoded}?type=list`);
+        if (!res.ok) return;
+        const data = await res.json() as { entries?: { name: string; isDir: boolean }[] };
+        if (cancelled) return;
+        const out = (data.entries ?? []).slice(0, 80).map((e) => ({
+          name: e.name,
+          path: `${effectiveCwdForPalette.replace(/\/$/, "")}/${e.name}`,
+          isDir: e.isDir,
+        }));
+        setPaletteFiles(out);
+      } catch {
+        // best-effort
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [effectiveCwdForPalette, state.explorerRefreshKey]);
+
+  const palette = useCommandPalette({
+    sessions: allSessions,
+    tags,
+    files: paletteFiles,
+    activeTag: activeTagFilter,
+    onClearTag: () => setActiveTagFilter(null),
+  });
+
+  // ⌘K / Ctrl+K hotkey — only when not in an input/textarea/contenteditable.
+  useEffect(() => {
+    const isEditable = (el: EventTarget | null): boolean => {
+      if (!(el instanceof HTMLElement)) return false;
+      const tag = el.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
+      if (el.isContentEditable) return true;
+      return false;
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "k" && e.key !== "K") return;
+      if (!(e.metaKey || e.ctrlKey)) return;
+      if (e.shiftKey || e.altKey) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (isEditable(e.target)) return; // let normal typing happen
+      palette.toggle();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [palette]);
+
+  // Register the action callbacks the palette can fire.
+  useEffect(() => {
+    palette.register({
+      openModels: () => setModelsConfigOpen(true),
+      openSkills: () => setSkillsConfigOpen(true),
+      openAnalytics: () => setAnalyticsOpen(true),
+      toggleTheme: () => toggleTheme(),
+      toggleSidebar: () => setSidebarOpen((v) => !v),
+      toggleFilePanel: () => setRightPanelOpen((v) => !v),
+      newSession: () => {
+        if (!effectiveCwdForPalette) return;
+        const tempId = typeof crypto.randomUUID === "function"
+          ? crypto.randomUUID()
+          : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+        actions.handleNewSession(tempId, effectiveCwdForPalette);
+      },
+      openParallelForActive: () => {
+        if (state.selectedSession) actions.openParallel(state.selectedSession);
+      },
+      openHelp: () => {
+        // No dedicated help modal yet — surface via console for now.
+        // (Avoid adding a throwaway dialog; users can still use the footer hints.)
+        console.info("⌘K: open Models · ⌘/ Skills · ⇧⌘P Export/Analytics · ⌘B toggle sidebar · ⌘\\ toggle file panel · ⌘J toggle theme");
+      },
+    });
+  }, [palette, toggleTheme, actions, effectiveCwdForPalette, state.selectedSession, setRightPanelOpen]);
+
+  // Helper: turn a session id into the full SessionInfo record (palette only
+  // stores the id in its data when the user picked it via the palette).
+  const handlePaletteSelectSession = useCallback(
+    (sessionId: string) => {
+      const session = allSessions.find((s) => s.id === sessionId);
+      if (session) actions.handleSelectSession(session);
+    },
+    [allSessions, actions],
+  );
+
+  const handlePaletteSelectTag = useCallback(
+    (tag: string) => setActiveTagFilter(tag),
+    [],
+  );
 
   const handleBranchLeafChange = useCallback((leafId: string | null) => {
     refs.branchLeafChangeFnRef.current?.(leafId);
@@ -95,6 +210,8 @@ export function AppShell() {
         onAtMention={handleAtMention}
         onOpenParallel={actions.openParallel}
         parallelSessionIds={state.parallelSessions.map((s) => s.id)}
+        activeTagFilter={activeTagFilter}
+        onSelectTagFilter={setActiveTagFilter}
       />
       <div className={s.sidebarFooter}>
         {([
@@ -180,6 +297,19 @@ export function AppShell() {
                 <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
               </svg>
             )}
+          </button>
+          <button
+            onClick={() => palette.open()}
+            title="Search sessions, tags, files, or run a command (⌘K)"
+            aria-label="Open command palette"
+            className={s.commandPaletteTrigger}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <span>Search…</span>
+            <span className={s.commandPaletteKbd} aria-hidden>⌘K</span>
           </button>
           <button
             onClick={(e) => {
@@ -430,9 +560,9 @@ export function AppShell() {
                     onSessionForked={actions.handleSessionForked}
                     onSessionNamed={actions.bumpRefreshKey}
                     isParallel
-                    paneLabel={s.name ?? s.id.slice(0, 8)}
-                    onClosePane={state.parallelActiveId === s.id || state.parallelSessions.length > 1
-                      ? () => actions.closeParallel(s.id)
+                    paneLabel={session.name ?? session.id.slice(0, 8)}
+                    onClosePane={state.parallelActiveId === session.id || state.parallelSessions.length > 1
+                      ? () => actions.closeParallel(session.id)
                       : undefined}
                   />
                 </div>
@@ -551,6 +681,15 @@ export function AppShell() {
       <Suspense fallback={null}><SkillsConfig cwd={(state.activeCwd ?? state.selectedSession?.cwd ?? state.newSessionCwd)!} onClose={() => setSkillsConfigOpen(false)} /></Suspense>
     )}
     {analyticsOpen && <Suspense fallback={null}><AnalyticsModal open={analyticsOpen} onClose={() => setAnalyticsOpen(false)} /></Suspense>}
+    {/* ⌘K Command Palette — last so it sits on top of every modal */}
+    <CommandPalette
+      palette={palette}
+      onSelectSession={handlePaletteSelectSession}
+      onSelectTag={handlePaletteSelectTag}
+      onOpenFile={handleOpenFile}
+    />
+    {/* Toast notifications — mount once at app root */}
+    <ToastContainer />
     </>
   );
 }

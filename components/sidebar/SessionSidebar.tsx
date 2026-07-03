@@ -11,8 +11,10 @@ import { useSessions } from "@/hooks/useSessions";
 import { useCwd } from "@/hooks/useCwd";
 import { useExplorer } from "@/hooks/useExplorer";
 import { useTags } from "@/hooks/useTags";
+import { useToast } from "@/hooks/useToast";
 import { SearchResults } from "./SearchResults";
 import { TagFilter } from "./TagFilter";
+import { SessionItemSkeleton } from "@/components/ui/Skeleton";
 import styles from "./SessionSidebar.module.css";
 
 interface Props {
@@ -30,16 +32,22 @@ interface Props {
   onAtMention?: (relativePath: string) => void;
   onOpenParallel?: (session: SessionInfo) => void;
   parallelSessionIds?: string[];
+  activeTagFilter?: string | null;
+  onSelectTagFilter?: (tag: string | null) => void;
 }
 
-export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSession, initialSessionId, onInitialRestoreDone, refreshKey, onSessionDeleted, selectedCwd: selectedCwdProp, onCwdChange, onOpenFile, explorerRefreshKey, onAtMention, onOpenParallel, parallelSessionIds }: Props) {
+export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSession, initialSessionId, onInitialRestoreDone, refreshKey, onSessionDeleted, selectedCwd: selectedCwdProp, onCwdChange, onOpenFile, explorerRefreshKey, onAtMention, onOpenParallel, parallelSessionIds, activeTagFilter: activeTagFilterProp, onSelectTagFilter }: Props) {
   const { allSessions, loading, error, pinnedIds, sessionRefreshDone, loadSessions, handlePinToggle } = useSessions(refreshKey);
   const { state: cwdState, actions: cwdActions, refs: cwdRefs } = useCwd(onCwdChange);
   const { selectedCwd } = cwdState;
   const { setSelectedCwd } = cwdActions;
   const { explorerOpen, explorerKey, explorerRefreshDone, toggleExplorer, refreshExplorer } = useExplorer(explorerRefreshKey);
   const { tags, setTag, removeTag } = useTags();
-  const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
+  const { showToast } = useToast();
+  // Tag filter can be lifted to the parent (e.g. for ⌘K palette control).
+  const [localActiveTagFilter, setLocalActiveTagFilter] = useState<string | null>(null);
+  const activeTagFilter = activeTagFilterProp ?? localActiveTagFilter;
+  const setActiveTagFilter = onSelectTagFilter ?? setLocalActiveTagFilter;
 
   const restoredRef = useRef(false);
 
@@ -225,9 +233,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
       >
         {loading && (
           <div className={styles.loadingWrapper}>
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className={`skeleton-line ${styles.skeletonLine}`} style={{ width: `${55 + (i % 4) * 12}%` }} />
-            ))}
+            <SessionItemSkeleton count={6} />
           </div>
         )}
         {error && (
@@ -265,13 +271,14 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                   onSessionDeleted={(id) => {
                     onSessionDeleted?.(id);
                     loadSessions();
+                    showToast("Session deleted", { type: "success" });
                   }}
                   depth={0}
                   isPinned
                   onPinToggle={handlePinToggle}
                   tags={tags[node.session.id] ?? []}
-                  onSetTag={(tag) => setTag(node.session.id, tag)}
-                  onRemoveTag={(tag) => removeTag(node.session.id, tag)}
+                  onSetTag={(tag) => { setTag(node.session.id, tag); showToast(`Added #${tag}`, { type: "success" }); }}
+                  onRemoveTag={(tag) => { removeTag(node.session.id, tag); showToast(`Removed #${tag}`, { type: "info" }); }}
                   isParallelOpen={parallelSessionIds?.includes(node.session.id) ?? false}
                   onOpenParallel={onOpenParallel}
                 />
@@ -303,13 +310,14 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                 onSessionDeleted={(id) => {
                   onSessionDeleted?.(id);
                   loadSessions();
+                  showToast("Session deleted", { type: "success" });
                 }}
                 depth={0}
                 isPinned={false}
                 onPinToggle={handlePinToggle}
                 tags={tags[node.session.id] ?? []}
-                onSetTag={(tag) => setTag(node.session.id, tag)}
-                onRemoveTag={(tag) => removeTag(node.session.id, tag)}
+                onSetTag={(tag) => { setTag(node.session.id, tag); showToast(`Added #${tag}`, { type: "success" }); }}
+                onRemoveTag={(tag) => { removeTag(node.session.id, tag); showToast(`Removed #${tag}`, { type: "info" }); }}
                 isParallelOpen={parallelSessionIds?.includes(node.session.id) ?? false}
                 onOpenParallel={onOpenParallel}
               />

@@ -139,10 +139,6 @@
   padding: 12px 14px;
 }
 
-.skeletonLine {
-  margin-bottom: 8px;
-}
-
 .errorMessage {
   padding: 12px 14px;
   color: var(--color-error-text);

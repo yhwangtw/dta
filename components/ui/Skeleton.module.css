@@ -11,3 +11,33 @@
   border-radius: 4px;
   background: var(--bg-hover);
 }
+
+/* ── Session item skeleton (two-line layout) ──
+   Each placeholder = one fake session card.
+   First line is the title (taller), second is the meta row (shorter). */
+.sessionItemWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  padding: 6px 0;
+}
+
+.sessionItem {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.sessionItemTitle {
+  height: 10px !important;
+  border-radius: 4px;
+  /* override the default .skeleton-line 12px height in globals.css */
+}
+
+.sessionItemMeta {
+  height: 8px !important;
+  border-radius: 3px;
+  /* override the default .skeleton-line 12px height in globals.css */
+}

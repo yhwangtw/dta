@@ -1,0 +1,103 @@
+/* ── Right-click context menu ── */
+.menu {
+  position: fixed;
+  z-index: 800;
+  min-width: 184px;
+  background: var(--bg-elev-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: 12px;
+  user-select: none;
+  animation: contextMenuIn 0.1s ease-out;
+}
+
+@keyframes contextMenuIn {
+  from { opacity: 0; transform: translateY(-2px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 30px;
+  padding: 0 10px;
+  background: none;
+  border: none;
+  border-radius: 5px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.08s, color 0.08s;
+}
+
+.menuItem:hover:not(:disabled) {
+  background: var(--bg-hover);
+}
+
+.menuItemDisabled {
+  color: var(--text-dim);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.menuItemDanger {
+  color: var(--color-error);
+}
+
+.menuItemDanger:hover:not(:disabled) {
+  background: var(--color-error-bg);
+}
+
+.menuIcon {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.menuItemDanger .menuIcon {
+  color: var(--color-error);
+}
+
+.separator {
+  height: 1px;
+  background: var(--border);
+  margin: 3px 4px;
+}
+
+.tagForm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 30px;
+  padding: 0 10px;
+  background: var(--bg-hover);
+  border-radius: 5px;
+  color: var(--text-muted);
+}
+
+.tagInput {
+  flex: 1;
+  min-width: 0;
+  height: 22px;
+  padding: 0;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12px;
+}
+
+.tagInput::placeholder {
+  color: var(--text-dim);
+}

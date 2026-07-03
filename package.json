@@ -1,6 +1,6 @@
 {
   "name": "@agegr/pi-web",
-  "version": "2026.07.03",
+  "version": "2026.07.04",
   "description": "Web UI for the pi coding agent",
   "license": "MIT",
   "bin": {

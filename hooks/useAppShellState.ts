@@ -36,6 +36,10 @@ export interface AppShellState {
   // Stats
   sessionStats: SessionStats | null;
   contextUsage: ContextUsage | null;
+
+  // Multi-session parallel view
+  parallelSessions: SessionInfo[];
+  parallelActiveId: string | null;
 }
 
 export interface AppShellActions {
@@ -56,6 +60,11 @@ export interface AppShellActions {
   handleInitialRestoreDone: () => void;
   handleSessionDeleted: (sessionId: string) => void;
   bumpRefreshKey: () => void;
+
+  // Multi-session parallel view
+  openParallel: (session: SessionInfo) => void;
+  closeParallel: (sessionId: string) => void;
+  setActiveParallel: (sessionId: string) => void;
 }
 
 export interface AppShellRefs {
@@ -95,6 +104,13 @@ export function useAppShellState(): {
   const [sessionStats, setSessionStats] = useState<SessionStats | null>(null);
   const [contextUsage, setContextUsage] = useState<ContextUsage | null>(null);
   const branchLeafChangeFnRef = useRef<((leafId: string | null) => void) | null>(null);
+
+  // Multi-session parallel view: up to 3 sessions side-by-side. The "main"
+  // session is still `selectedSession` (drives URL/router state); the
+  // additional ones live here. `parallelActiveId` is the most-recently-focused
+  // session in the multi-pane view.
+  const [parallelSessions, setParallelSessions] = useState<SessionInfo[]>([]);
+  const [parallelActiveId, setParallelActiveId] = useState<string | null>(null);
 
   // Top panel position tracking
   useEffect(() => {
@@ -212,6 +228,24 @@ export function useAppShellState(): {
 
   const bumpRefreshKey = useCallback(() => setRefreshKey((k) => k + 1), []);
 
+  const openParallel = useCallback((session: SessionInfo) => {
+    setParallelSessions((prev) => {
+      if (prev.some((s) => s.id === session.id)) return prev;
+      // Cap at 2 parallel sessions; main + 2 = 3 total visible
+      return [...prev, session].slice(-2);
+    });
+    setParallelActiveId(session.id);
+  }, []);
+
+  const closeParallel = useCallback((sessionId: string) => {
+    setParallelSessions((prev) => prev.filter((s) => s.id !== sessionId));
+    setParallelActiveId((cur) => (cur === sessionId ? null : cur));
+  }, []);
+
+  const setActiveParallel = useCallback((sessionId: string) => {
+    setParallelActiveId(sessionId);
+  }, []);
+
   const toggleTopPanel = useCallback((panel: "branches" | "system") => {
     setActiveTopPanel((cur) => (cur === panel ? null : panel));
   }, []);
@@ -233,6 +267,8 @@ export function useAppShellState(): {
       topPanelPos,
       sessionStats,
       contextUsage,
+      parallelSessions,
+      parallelActiveId,
     },
     actions: {
       setBranchTree,
@@ -250,6 +286,9 @@ export function useAppShellState(): {
       handleInitialRestoreDone,
       handleSessionDeleted,
       bumpRefreshKey,
+      openParallel,
+      closeParallel,
+      setActiveParallel,
     },
     refs: { branchLeafChangeFnRef, suppressCwdBumpRef },
     topBarRef,

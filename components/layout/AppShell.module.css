@@ -101,6 +101,61 @@
   flex-shrink: 0;
 }
 
+/* ── Export menu dropdown ── */
+.exportMenuWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
+.exportMenu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  background: var(--bg-elev-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  min-width: 200px;
+  padding: 4px;
+  z-index: 600;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.exportMenuItem {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  padding: 8px 10px;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  text-align: left;
+  cursor: pointer;
+  color: var(--text);
+  font-family: inherit;
+  transition: background 0.1s;
+}
+
+.exportMenuItem:hover {
+  background: var(--bg-hover);
+}
+
+.exportMenuItem strong {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.exportMenuHint {
+  font-size: 10px;
+  color: var(--text-dim);
+}
+
 .systemButton {
   display: flex;
   align-items: center;
@@ -193,6 +248,25 @@
   flex: 1;
   overflow: hidden;
   position: relative;
+}
+
+/* ── Multi-session parallel view ── */
+.parallelContainer {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  height: 100%;
+  gap: 1px;
+  background: var(--border);
+}
+
+.parallelPane {
+  flex: 1 1 0;
+  min-width: 280px;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 /* ── Placeholder (session selected but no chat) ── */

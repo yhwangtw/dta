@@ -1,0 +1,230 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(2px);
+}
+
+.modal {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  width: min(720px, 92vw);
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.header h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.closeButton {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 5px;
+  display: flex;
+}
+
+.closeButton:hover {
+  color: var(--text);
+  background: var(--bg-hover);
+}
+
+.loading,
+.error {
+  padding: 40px;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+.error {
+  color: var(--color-error);
+}
+
+.body {
+  padding: 18px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.statRow {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.stat {
+  background: var(--bg-elev-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.statLabel {
+  font-size: 10px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.statValue {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.section h3 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+  margin: 0 0 10px 0;
+  font-weight: 600;
+}
+
+.bars {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.barRow {
+  display: grid;
+  grid-template-columns: 70px 1fr 70px 1fr;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+}
+
+.barLabel {
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.barTrack {
+  background: var(--bg-elev-1);
+  height: 14px;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.barFill {
+  background: var(--color-accent);
+  height: 100%;
+  transition: width 0.2s ease;
+  border-radius: 3px;
+}
+
+.barValue {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+.barMeta {
+  color: var(--text-dim);
+  font-size: 11px;
+  text-align: right;
+}
+
+.table {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.tableHeader,
+.tableRow {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1.4fr 0.7fr;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  font-size: 12px;
+}
+
+.tableHeader {
+  background: var(--bg-elev-1);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+  font-weight: 600;
+}
+
+.tableRow {
+  border-top: 1px solid var(--border);
+}
+
+.tableRow:hover {
+  background: var(--bg-hover);
+}
+
+.modelName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.tokenCol {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+}
+
+.providerRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.providerChip {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px;
+  background: var(--bg-elev-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 12px;
+}
+
+.providerChip strong {
+  font-size: 11px;
+  color: var(--text);
+}
+
+.providerChip .dim {
+  color: var(--text-dim);
+  font-size: 10px;
+}

@@ -14,6 +14,11 @@ interface SessionTreeItemProps {
   depth: number;
   isPinned?: boolean;
   onPinToggle?: (id: string) => void;
+  tags?: string[];
+  onSetTag?: (tag: string) => void;
+  onRemoveTag?: (tag: string) => void;
+  isParallelOpen?: boolean;
+  onOpenParallel?: (session: SessionInfo) => void;
 }
 
 export function SessionTreeItem({
@@ -25,6 +30,11 @@ export function SessionTreeItem({
   depth,
   isPinned = false,
   onPinToggle,
+  tags,
+  onSetTag,
+  onRemoveTag,
+  isParallelOpen = false,
+  onOpenParallel,
 }: SessionTreeItemProps) {
   const [collapsed, setCollapsed] = useState(false);
   const hasChildren = node.children.length > 0;
@@ -55,6 +65,11 @@ export function SessionTreeItem({
           onToggleCollapse={() => setCollapsed((v) => !v)}
           isPinned={isPinned}
           onPinToggle={onPinToggle}
+          tags={tags}
+          onSetTag={onSetTag}
+          onRemoveTag={onRemoveTag}
+          isParallelOpen={isParallelOpen}
+          onOpenParallel={onOpenParallel}
         />
       </div>
       {hasChildren && !collapsed && (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import type { SessionInfo } from "@/lib/types";
 import { FileExplorer } from "./FileExplorer";
 import { getRecentCwds, getSessionDateGroup, buildSessionTree } from "./session-utils";
@@ -10,6 +10,9 @@ import { CwdPicker } from "./CwdPicker";
 import { useSessions } from "@/hooks/useSessions";
 import { useCwd } from "@/hooks/useCwd";
 import { useExplorer } from "@/hooks/useExplorer";
+import { useTags } from "@/hooks/useTags";
+import { SearchResults } from "./SearchResults";
+import { TagFilter } from "./TagFilter";
 import styles from "./SessionSidebar.module.css";
 
 interface Props {
@@ -25,14 +28,18 @@ interface Props {
   onOpenFile?: (filePath: string, fileName: string) => void;
   explorerRefreshKey?: number;
   onAtMention?: (relativePath: string) => void;
+  onOpenParallel?: (session: SessionInfo) => void;
+  parallelSessionIds?: string[];
 }
 
-export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSession, initialSessionId, onInitialRestoreDone, refreshKey, onSessionDeleted, selectedCwd: selectedCwdProp, onCwdChange, onOpenFile, explorerRefreshKey, onAtMention }: Props) {
+export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSession, initialSessionId, onInitialRestoreDone, refreshKey, onSessionDeleted, selectedCwd: selectedCwdProp, onCwdChange, onOpenFile, explorerRefreshKey, onAtMention, onOpenParallel, parallelSessionIds }: Props) {
   const { allSessions, loading, error, pinnedIds, sessionRefreshDone, loadSessions, handlePinToggle } = useSessions(refreshKey);
   const { state: cwdState, actions: cwdActions, refs: cwdRefs } = useCwd(onCwdChange);
   const { selectedCwd } = cwdState;
   const { setSelectedCwd } = cwdActions;
   const { explorerOpen, explorerKey, explorerRefreshDone, toggleExplorer, refreshExplorer } = useExplorer(explorerRefreshKey);
+  const { tags, setTag, removeTag } = useTags();
+  const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
 
   const restoredRef = useRef(false);
 
@@ -72,19 +79,31 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  const filteredSessions = selectedCwd
-    ? allSessions.filter((s) => s.cwd === selectedCwd)
-    : allSessions;
+  // Deep search mode: triggers when query length >= 2 (since 1 char is too noisy)
+  const inSearchMode = searchQuery.trim().length >= 2;
 
-  // Apply search filter
-  const searchFilteredSessions = searchQuery.trim()
-    ? filteredSessions.filter((s) => {
-        const q = searchQuery.toLowerCase();
-        const name = s.name?.toLowerCase() ?? "";
-        const firstMsg = s.firstMessage?.toLowerCase() ?? "";
-        return name.includes(q) || firstMsg.includes(q);
-      })
-    : filteredSessions;
+  const filteredSessions = useMemo(() => {
+    let list = selectedCwd
+      ? allSessions.filter((s) => s.cwd === selectedCwd)
+      : allSessions;
+    if (activeTagFilter) {
+      const tagged = tags[activeTagFilter] ?? [];
+      list = list.filter((s) => tagged.includes(s.id));
+    }
+    return list;
+  }, [allSessions, selectedCwd, activeTagFilter, tags]);
+
+  // Local filter: name + firstMessage (cheap, runs in sidebar)
+  const searchFilteredSessions = useMemo(() => {
+    if (inSearchMode) return []; // deep search bypasses local filter
+    if (!searchQuery.trim()) return filteredSessions;
+    const q = searchQuery.toLowerCase();
+    return filteredSessions.filter((s) => {
+      const name = s.name?.toLowerCase() ?? "";
+      const firstMsg = s.firstMessage?.toLowerCase() ?? "";
+      return name.includes(q) || firstMsg.includes(q);
+    });
+  }, [filteredSessions, searchQuery, inSearchMode]);
 
   // Build parent-child tree within the filtered set
   const sessionTree = buildSessionTree(searchFilteredSessions);
@@ -157,7 +176,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
             <input
               ref={searchInputRef}
               type="text"
-              placeholder="Search sessions…"
+              placeholder={inSearchMode ? "Deep search… (scans all sessions)" : "Search sessions…"}
               aria-label="Search sessions"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -166,11 +185,38 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
               onFocus={(e) => { e.currentTarget.style.borderColor = "var(--color-accent-border-focus-strong)"; }}
               onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; }}
             />
+            {searchQuery && (
+              <button
+                onClick={() => { setSearchQuery(""); searchInputRef.current?.focus(); }}
+                className={styles.searchClear}
+                title="Clear"
+              >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            )}
           </div>
         </div>
       )}
 
-      {/* Session list */}
+      {/* Tag filter chips (visible when user has tagged any session) */}
+      {Object.keys(tags).length > 0 && (
+        <TagFilter
+          tags={tags}
+          activeTag={activeTagFilter}
+          onSelectTag={setActiveTagFilter}
+        />
+      )}
+
+      {inSearchMode ? (
+        <SearchResults
+          query={searchQuery}
+          onSelectSession={onSelectSession}
+          onClose={() => { setSearchQuery(""); searchInputRef.current?.focus(); }}
+        />
+      ) : (
+      /* Session list */
       <div
         role="listbox"
         aria-label="Sessions"
@@ -223,6 +269,11 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                   depth={0}
                   isPinned
                   onPinToggle={handlePinToggle}
+                  tags={tags[node.session.id] ?? []}
+                  onSetTag={(tag) => setTag(node.session.id, tag)}
+                  onRemoveTag={(tag) => removeTag(node.session.id, tag)}
+                  isParallelOpen={parallelSessionIds?.includes(node.session.id) ?? false}
+                  onOpenParallel={onOpenParallel}
                 />
               </div>
             ))}
@@ -256,11 +307,17 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                 depth={0}
                 isPinned={false}
                 onPinToggle={handlePinToggle}
+                tags={tags[node.session.id] ?? []}
+                onSetTag={(tag) => setTag(node.session.id, tag)}
+                onRemoveTag={(tag) => removeTag(node.session.id, tag)}
+                isParallelOpen={parallelSessionIds?.includes(node.session.id) ?? false}
+                onOpenParallel={onOpenParallel}
               />
             </div>
           );
         })}
       </div>
+      )}
 
       {/* File Explorer section */}
       {(selectedCwdProp || selectedCwd) && (

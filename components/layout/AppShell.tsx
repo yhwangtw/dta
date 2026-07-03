@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, lazy, Suspense } from "react";
+import { useState, useCallback, useRef, useEffect, lazy, Suspense } from "react";
 import { SessionSidebar } from "../sidebar/SessionSidebar";
 import { ChatWindow } from "../chat/ChatWindow";
 import { FileViewer } from "./FileViewer";
@@ -17,6 +17,7 @@ import s from "./AppShell.module.css";
 // Lazy-load heavy modals — they're ~1000 lines each and rarely opened
 const ModelsConfig = lazy(() => import("../modals/ModelsConfig").then((m) => ({ default: m.ModelsConfig })));
 const SkillsConfig = lazy(() => import("../modals/SkillsConfig").then((m) => ({ default: m.SkillsConfig })));
+const AnalyticsModal = lazy(() => import("../modals/AnalyticsModal").then((m) => ({ default: m.AnalyticsModal })));
 
 export function AppShell() {
   const { isDark, toggleTheme } = useTheme();
@@ -26,6 +27,7 @@ export function AppShell() {
   const [modelsConfigOpen, setModelsConfigOpen] = useState(false);
   const [modelsRefreshKey, setModelsRefreshKey] = useState(0);
   const [skillsConfigOpen, setSkillsConfigOpen] = useState(false);
+  const [analyticsOpen, setAnalyticsOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const chatInputRef = useRef<ChatInputHandle | null>(null);
 
@@ -52,6 +54,23 @@ export function AppShell() {
     window.location.href = `/api/sessions/${encodeURIComponent(state.selectedSession.id)}/export`;
   }, [state.selectedSession]);
 
+  const handleExportMarkdown = useCallback(() => {
+    if (!state.selectedSession) return;
+    window.location.href = `/api/sessions/${encodeURIComponent(state.selectedSession.id)}/export-md`;
+  }, [state.selectedSession]);
+
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!exportMenuOpen) return;
+    const close = (e: MouseEvent) => {
+      if (!exportMenuRef.current?.contains(e.target as Node)) setExportMenuOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [exportMenuOpen]);
+
   // Show chat area if a session is selected, or if we have a cwd to start a new session in
   const effectiveNewSessionCwd = state.newSessionCwd ?? (state.selectedSession === null && state.activeCwd ? state.activeCwd : null);
   const showChat = state.selectedSession !== null || effectiveNewSessionCwd !== null;
@@ -74,6 +93,8 @@ export function AppShell() {
         onOpenFile={handleOpenFile}
         explorerRefreshKey={state.explorerRefreshKey}
         onAtMention={handleAtMention}
+        onOpenParallel={actions.openParallel}
+        parallelSessionIds={state.parallelSessions.map((s) => s.id)}
       />
       <div className={s.sidebarFooter}>
         {([
@@ -186,25 +207,60 @@ export function AppShell() {
           </button>
           {showChat && (
             <div className={s.chatActions}>
-              <button
-                onClick={handleExportSession}
-                disabled={!state.selectedSession}
-                title={state.selectedSession ? "Export HTML" : "Export is available after the session is saved"}
-                aria-label="Export HTML"
-                className={`${s.exportButton} ${state.selectedSession ? s.exportButtonEnabled : s.exportButtonDisabled}`}
-              >
-                <span
-                  className={s.exportIcon}
-                  style={{ color: state.selectedSession ? "var(--text-muted)" : "var(--text-dim)" }}
+              <div className={s.exportMenuWrapper} ref={exportMenuRef}>
+                <button
+                  onClick={() => setExportMenuOpen((v) => !v)}
+                  disabled={!state.selectedSession}
+                  title={state.selectedSession ? "Export session" : "Export is available after the session is saved"}
+                  aria-label="Export session"
+                  aria-haspopup="menu"
+                  aria-expanded={exportMenuOpen}
+                  className={`${s.exportButton} ${state.selectedSession ? s.exportButtonEnabled : s.exportButtonDisabled}`}
                 >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                    <polyline points="7 10 12 15 17 10" />
-                    <line x1="12" y1="15" x2="12" y2="3" />
+                  <span
+                    className={s.exportIcon}
+                    style={{ color: state.selectedSession ? "var(--text-muted)" : "var(--text-dim)" }}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="7 10 12 15 17 10" />
+                      <line x1="12" y1="15" x2="12" y2="3" />
+                    </svg>
+                  </span>
+                  <span>Export</span>
+                  <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                    <polyline points="2 4 5 7 8 4" />
                   </svg>
-                </span>
-                <span>Export</span>
-              </button>
+                </button>
+                {exportMenuOpen && state.selectedSession && (
+                  <div className={s.exportMenu} role="menu">
+                    <button
+                      onClick={() => { handleExportSession(); setExportMenuOpen(false); }}
+                      className={s.exportMenuItem}
+                      role="menuitem"
+                    >
+                      <strong>HTML</strong>
+                      <span className={s.exportMenuHint}>Full render, open in browser</span>
+                    </button>
+                    <button
+                      onClick={() => { handleExportMarkdown(); setExportMenuOpen(false); }}
+                      className={s.exportMenuItem}
+                      role="menuitem"
+                    >
+                      <strong>Markdown</strong>
+                      <span className={s.exportMenuHint}>Plain .md, paste into any editor</span>
+                    </button>
+                    <button
+                      onClick={() => { setAnalyticsOpen(true); setExportMenuOpen(false); }}
+                      className={s.exportMenuItem}
+                      role="menuitem"
+                    >
+                      <strong>Analytics</strong>
+                      <span className={s.exportMenuHint}>Token / cost report</span>
+                    </button>
+                  </div>
+                )}
+              </div>
               <BranchNavigator
                 tree={state.branchTree}
                 activeLeafId={state.branchActiveLeafId}
@@ -339,7 +395,50 @@ export function AppShell() {
 
         {/* Chat content */}
         <div className={s.chatContent}>
-          {showChat ? (
+          {state.parallelSessions.length > 0 && (state.selectedSession || effectiveNewSessionCwd) ? (
+            <div className={s.parallelContainer}>
+              <div className={s.parallelPane}>
+                {showChat && (
+                  <ChatWindow
+                    key={`main-${state.sessionKey}`}
+                    session={state.selectedSession}
+                    newSessionCwd={effectiveNewSessionCwd}
+                    onAgentEnd={actions.handleAgentEnd}
+                    onSessionCreated={actions.handleSessionCreated}
+                    onSessionForked={actions.handleSessionForked}
+                    modelsRefreshKey={modelsRefreshKey}
+                    chatInputRef={chatInputRef}
+                    onBranchDataChange={handleBranchDataChange}
+                    onSystemPromptChange={actions.setSystemPrompt}
+                    onSessionStatsChange={actions.setSessionStats}
+                    onContextUsageChange={actions.setContextUsage}
+                    onSessionNamed={actions.bumpRefreshKey}
+                    isParallel
+                    paneLabel={state.selectedSession?.name ?? state.selectedSession?.id.slice(0, 8)}
+                  />
+                )}
+              </div>
+              {state.parallelSessions.map((session, idx) => (
+                <div key={session.id} className={s.parallelPane}>
+                  <ChatWindow
+                    key={`parallel-${session.id}-${idx}`}
+                    session={session}
+                    newSessionCwd={null}
+                    modelsRefreshKey={modelsRefreshKey}
+                    onAgentEnd={actions.handleAgentEnd}
+                    onSessionCreated={actions.handleSessionCreated}
+                    onSessionForked={actions.handleSessionForked}
+                    onSessionNamed={actions.bumpRefreshKey}
+                    isParallel
+                    paneLabel={s.name ?? s.id.slice(0, 8)}
+                    onClosePane={state.parallelActiveId === s.id || state.parallelSessions.length > 1
+                      ? () => actions.closeParallel(s.id)
+                      : undefined}
+                  />
+                </div>
+              ))}
+            </div>
+          ) : showChat ? (
             <ChatWindow
               key={state.sessionKey}
               session={state.selectedSession}
@@ -451,6 +550,7 @@ export function AppShell() {
     {skillsConfigOpen && (state.activeCwd ?? state.selectedSession?.cwd ?? state.newSessionCwd) && (
       <Suspense fallback={null}><SkillsConfig cwd={(state.activeCwd ?? state.selectedSession?.cwd ?? state.newSessionCwd)!} onClose={() => setSkillsConfigOpen(false)} /></Suspense>
     )}
+    {analyticsOpen && <Suspense fallback={null}><AnalyticsModal open={analyticsOpen} onClose={() => setAnalyticsOpen(false)} /></Suspense>}
     </>
   );
 }

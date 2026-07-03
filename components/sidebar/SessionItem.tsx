@@ -17,6 +17,11 @@ interface SessionItemProps {
   onToggleCollapse?: () => void;
   isPinned?: boolean;
   onPinToggle?: (id: string) => void;
+  tags?: string[];
+  onSetTag?: (tag: string) => void;
+  onRemoveTag?: (tag: string) => void;
+  isParallelOpen?: boolean;
+  onOpenParallel?: (session: SessionInfo) => void;
 }
 
 export function SessionItem({
@@ -31,12 +36,20 @@ export function SessionItem({
   onToggleCollapse,
   isPinned = false,
   onPinToggle,
+  tags = [],
+  onSetTag,
+  onRemoveTag,
+  isParallelOpen = false,
+  onOpenParallel,
 }: SessionItemProps) {
   const [renaming, setRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [tagInputOpen, setTagInputOpen] = useState(false);
+  const [tagInputValue, setTagInputValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const tagInputRef = useRef<HTMLInputElement>(null);
 
   const title = session.name || session.firstMessage.slice(0, 50) || session.id.slice(0, 12);
 
@@ -90,7 +103,32 @@ export function SessionItem({
     onPinToggle?.(session.id);
   }, [onPinToggle, session.id]);
 
-  // Fixed-height outer wrapper — content swaps in place so the list never reflows
+  const handleTagClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setTagInputOpen((v) => !v);
+    setTimeout(() => tagInputRef.current?.focus(), 0);
+  }, []);
+
+  const handleTagSubmit = useCallback((e: React.FormEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const v = tagInputValue.trim();
+    if (v && onSetTag) onSetTag(v);
+    setTagInputValue("");
+    setTagInputOpen(false);
+  }, [tagInputValue, onSetTag]);
+
+  const handleTagRemove = useCallback((e: React.MouseEvent, tag: string) => {
+    e.stopPropagation();
+    onRemoveTag?.(tag);
+  }, [onRemoveTag]);
+
+  const handleParallelClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    onOpenParallel?.(session);
+  }, [onOpenParallel, session]);
+
+  // Min height for normal view; auto-grows when tags are present
   const ITEM_HEIGHT = 54;
 
   return (
@@ -98,7 +136,7 @@ export function SessionItem({
       onClick={confirmDelete || renaming ? undefined : onClick}
       className={["hover-group", !confirmDelete && !isSelected ? "hover-bg" : "", styles.item].filter(Boolean).join(" ")}
       style={{
-        height: ITEM_HEIGHT,
+        minHeight: ITEM_HEIGHT,
         paddingLeft: depth > 0 ? depth * 12 + 14 : 14,
         cursor: confirmDelete || renaming ? "default" : "pointer",
         background: confirmDelete
@@ -108,6 +146,9 @@ export function SessionItem({
           ? "2px solid var(--color-error)"
           : isSelected ? "2px solid var(--accent)" : "2px solid transparent",
         opacity: deleting ? 0.5 : 1,
+        flexDirection: "column",
+        alignItems: "stretch",
+        height: "auto",
       }}
     >
       {confirmDelete ? (
@@ -173,6 +214,11 @@ export function SessionItem({
             <div className={styles.sessionMeta}>
               <span title={session.modified}>{formatRelativeTime(session.modified)}</span>
               <span>{session.messageCount} msgs</span>
+              {tags.slice(0, 3).map((t) => (
+                <span key={t} className={styles.tagInline}>
+                  #{t}
+                </span>
+              ))}
             </div>
           </div>
 
@@ -206,6 +252,28 @@ export function SessionItem({
                 </svg>
               </button>
               <button
+                onClick={handleTagClick}
+                title="Add tag"
+                aria-label="Add tag"
+                className={`hover-bg-selected-accent ${styles.actionButton} ${tagInputOpen ? styles.actionButtonActive : ""}`}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+                  <line x1="7" y1="7" x2="7.01" y2="7" />
+                </svg>
+              </button>
+              <button
+                onClick={handleParallelClick}
+                title={isParallelOpen ? "Already open in parallel view" : "Open in parallel view"}
+                aria-label="Open in parallel view"
+                className={`hover-bg-selected-accent ${styles.actionButton} ${isParallelOpen ? styles.actionButtonActive : ""}`}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <line x1="12" y1="3" x2="12" y2="21" />
+                </svg>
+              </button>
+              <button
                 onClick={startRename}
                 title="Rename"
                 className={`hover-bg-selected-accent ${styles.actionButton}`}
@@ -227,6 +295,41 @@ export function SessionItem({
                 </svg>
               </button>
             </div>
+            {(tagInputOpen || tags.length > 0) && (
+              <div className={styles.tagRow} onClick={(e) => e.stopPropagation()}>
+                {tags.map((t) => (
+                  <span key={t} className={styles.tagChip}>
+                    #{t}
+                    {onRemoveTag && (
+                      <button
+                        onClick={(e) => handleTagRemove(e, t)}
+                        className={styles.tagChipRemove}
+                        title={`Remove #${t}`}
+                      >×</button>
+                    )}
+                  </span>
+                ))}
+                {tagInputOpen && (
+                  <form onSubmit={handleTagSubmit} className={styles.tagForm}>
+                    <input
+                      ref={tagInputRef}
+                      value={tagInputValue}
+                      onChange={(e) => setTagInputValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Escape") {
+                          setTagInputOpen(false);
+                          setTagInputValue("");
+                        }
+                      }}
+                      onBlur={() => { if (!tagInputValue) setTagInputOpen(false); }}
+                      placeholder="add tag…"
+                      className={styles.tagInput}
+                      maxLength={32}
+                    />
+                  </form>
+                )}
+              </div>
+            )}
         </>
       )}
     </div>

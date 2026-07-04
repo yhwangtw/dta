@@ -70,7 +70,7 @@ const ACTIONS: PaletteResult[] = [
     title: "Open Models",
     subtitle: "Configure providers, API keys, model selection",
     keywords: "provider api key llm",
-    hint: "⌘M",
+    hint: "⇧⌘M",
     data: { action: "settings:models" } as { action: PaletteActionId },
   },
   {
@@ -103,6 +103,7 @@ const ACTIONS: PaletteResult[] = [
     kind: "action",
     title: "Toggle Sidebar",
     subtitle: "Show or hide the session sidebar",
+    hint: "⌘B",
     data: { action: "view:toggle-sidebar" } as { action: PaletteActionId },
   },
   {
@@ -110,6 +111,7 @@ const ACTIONS: PaletteResult[] = [
     kind: "action",
     title: "Toggle File Panel",
     subtitle: "Show or hide the file viewer panel",
+    hint: "⌘\\",
     data: { action: "view:toggle-file-panel" } as { action: PaletteActionId },
   },
   {

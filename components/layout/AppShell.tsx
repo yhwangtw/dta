@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect, lazy, Suspense } from "react";
+import { useState, useCallback, useRef, useEffect, useLayoutEffect, lazy, Suspense } from "react";
 import { SessionSidebar } from "../sidebar/SessionSidebar";
 import { ChatWindow } from "../chat/ChatWindow";
 import { FileViewer } from "./FileViewer";
@@ -16,7 +16,7 @@ import { useToast } from "@/hooks/useToast";
 import { encodeFilePathForApi } from "@/lib/file-paths";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { CommandPalette } from "../ui/CommandPalette";
-import type { SessionTreeNode } from "@/lib/types";
+import type { SessionInfo, SessionTreeNode } from "@/lib/types";
 import type { ChatInputHandle } from "../chat/ChatInput";
 import s from "./AppShell.module.css";
 
@@ -37,6 +37,28 @@ export function AppShell() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
   const chatInputRef = useRef<ChatInputHandle | null>(null);
+
+  // On narrow screens the sidebar is a full-width overlay — starting open
+  // would cover the whole app with the toggle button underneath it.
+  useLayoutEffect(() => {
+    if (window.matchMedia("(max-width: 1024px)").matches) setSidebarOpen(false);
+  }, []);
+
+  // On overlay-mode screens, picking or starting a session should reveal the
+  // chat it just opened instead of leaving the sidebar covering it.
+  const closeSidebarIfOverlay = useCallback(() => {
+    if (window.matchMedia("(max-width: 1024px)").matches) setSidebarOpen(false);
+  }, []);
+
+  const handleSelectSessionFromSidebar = useCallback((session: SessionInfo, isRestore?: boolean) => {
+    actions.handleSelectSession(session, isRestore);
+    if (!isRestore) closeSidebarIfOverlay();
+  }, [actions, closeSidebarIfOverlay]);
+
+  const handleNewSessionFromSidebar = useCallback((sessionId: string, cwd: string) => {
+    actions.handleNewSession(sessionId, cwd);
+    closeSidebarIfOverlay();
+  }, [actions, closeSidebarIfOverlay]);
 
   // ── ⌘K Command Palette wiring ──────────────────────────────────────────
   const { allSessions } = useSessions(state.refreshKey);
@@ -82,7 +104,19 @@ export function AppShell() {
     onClearTag: () => setActiveTagFilter(null),
   });
 
-  // ⌘K / Ctrl+K hotkey — only when not in an input/textarea/contenteditable.
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+
+  useEffect(() => {
+    if (!shortcutsOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShortcutsOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [shortcutsOpen]);
+
+  // Global hotkeys. Every hint shown in the ⌘K palette must be bound here —
+  // an advertised shortcut that does nothing reads as a broken app.
   useEffect(() => {
     const isEditable = (el: EventTarget | null): boolean => {
       if (!(el instanceof HTMLElement)) return false;
@@ -92,17 +126,39 @@ export function AppShell() {
       return false;
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "k" && e.key !== "K") return;
-      if (!(e.metaKey || e.ctrlKey)) return;
-      if (e.shiftKey || e.altKey) return;
-      e.preventDefault();
-      e.stopPropagation();
-      if (isEditable(e.target)) return; // let normal typing happen
-      palette.toggle();
+      if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
+      const key = e.key.toLowerCase();
+      if (key === "k" && !e.shiftKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (isEditable(e.target)) return; // let normal typing happen
+        palette.toggle();
+        return;
+      }
+      // ⇧⌘M — Models (plain ⌘M is the macOS minimize shortcut, unreachable)
+      if (key === "m" && e.shiftKey) {
+        e.preventDefault();
+        setModelsConfigOpen(true);
+        return;
+      }
+      if (key === "/" && !e.shiftKey) {
+        e.preventDefault();
+        if (effectiveCwdForPalette) setSkillsConfigOpen(true);
+        return;
+      }
+      if (key === "b" && !e.shiftKey) {
+        e.preventDefault();
+        setSidebarOpen((v) => !v);
+        return;
+      }
+      if (key === "\\" && !e.shiftKey) {
+        e.preventDefault();
+        setRightPanelOpen((v) => !v);
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [palette]);
+  }, [palette, effectiveCwdForPalette, setRightPanelOpen]);
 
   // Register the action callbacks the palette can fire.
   useEffect(() => {
@@ -118,27 +174,23 @@ export function AppShell() {
         const tempId = typeof crypto.randomUUID === "function"
           ? crypto.randomUUID()
           : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
-        actions.handleNewSession(tempId, effectiveCwdForPalette);
+        handleNewSessionFromSidebar(tempId, effectiveCwdForPalette);
       },
       openParallelForActive: () => {
         if (state.selectedSession) actions.openParallel(state.selectedSession);
       },
-      openHelp: () => {
-        // No dedicated help modal yet — surface via console for now.
-        // (Avoid adding a throwaway dialog; users can still use the footer hints.)
-        console.info("⌘K: open Models · ⌘/ Skills · ⇧⌘P Export/Analytics · ⌘B toggle sidebar · ⌘\\ toggle file panel · ⌘J toggle theme");
-      },
+      openHelp: () => setShortcutsOpen(true),
     });
-  }, [palette, toggleTheme, actions, effectiveCwdForPalette, state.selectedSession, setRightPanelOpen]);
+  }, [palette, toggleTheme, actions, effectiveCwdForPalette, state.selectedSession, setRightPanelOpen, handleNewSessionFromSidebar]);
 
   // Helper: turn a session id into the full SessionInfo record (palette only
   // stores the id in its data when the user picked it via the palette).
   const handlePaletteSelectSession = useCallback(
     (sessionId: string) => {
       const session = allSessions.find((s) => s.id === sessionId);
-      if (session) actions.handleSelectSession(session);
+      if (session) handleSelectSessionFromSidebar(session);
     },
-    [allSessions, actions],
+    [allSessions, handleSelectSessionFromSidebar],
   );
 
   const handlePaletteSelectTag = useCallback(
@@ -197,8 +249,8 @@ export function AppShell() {
     <ErrorBoundary>
       <SessionSidebar
         selectedSessionId={state.selectedSession?.id ?? null}
-        onSelectSession={actions.handleSelectSession}
-        onNewSession={actions.handleNewSession}
+        onSelectSession={handleSelectSessionFromSidebar}
+        onNewSession={handleNewSessionFromSidebar}
         initialSessionId={state.initialSessionId}
         onInitialRestoreDone={actions.handleInitialRestoreDone}
         refreshKey={state.refreshKey}
@@ -380,17 +432,22 @@ export function AppShell() {
                       <strong>Markdown</strong>
                       <span className={s.exportMenuHint}>Plain .md, paste into any editor</span>
                     </button>
-                    <button
-                      onClick={() => { setAnalyticsOpen(true); setExportMenuOpen(false); }}
-                      className={s.exportMenuItem}
-                      role="menuitem"
-                    >
-                      <strong>Analytics</strong>
-                      <span className={s.exportMenuHint}>Token / cost report</span>
-                    </button>
                   </div>
                 )}
               </div>
+              <button
+                onClick={() => setAnalyticsOpen(true)}
+                className={`${s.systemButton} ${s.systemButtonDefault} hover-text`}
+                title="Token usage and cost report"
+                aria-label="Open analytics"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--text-dim)", flexShrink: 0 }}>
+                  <line x1="18" y1="20" x2="18" y2="10" />
+                  <line x1="12" y1="20" x2="12" y2="4" />
+                  <line x1="6" y1="20" x2="6" y2="14" />
+                </svg>
+                <span>Analytics</span>
+              </button>
               <BranchNavigator
                 tree={state.branchTree}
                 activeLeafId={state.branchActiveLeafId}
@@ -681,6 +738,33 @@ export function AppShell() {
       <Suspense fallback={null}><SkillsConfig cwd={(state.activeCwd ?? state.selectedSession?.cwd ?? state.newSessionCwd)!} onClose={() => setSkillsConfigOpen(false)} /></Suspense>
     )}
     {analyticsOpen && <Suspense fallback={null}><AnalyticsModal open={analyticsOpen} onClose={() => setAnalyticsOpen(false)} /></Suspense>}
+    {shortcutsOpen && (
+      <div
+        className={s.shortcutsOverlay}
+        onClick={(e) => { if (e.target === e.currentTarget) setShortcutsOpen(false); }}
+        onKeyDown={(e) => { if (e.key === "Escape") setShortcutsOpen(false); }}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Keyboard shortcuts"
+      >
+        <div className={s.shortcutsDialog}>
+          <h3 className={s.shortcutsTitle}>Keyboard shortcuts</h3>
+          {([
+            ["⌘K", "Search & commands"],
+            ["⇧⌘M", "Models"],
+            ["⌘/", "Skills"],
+            ["⌘B", "Toggle sidebar"],
+            ["⌘\\", "Toggle file panel"],
+            ["Esc", "Close dialogs"],
+          ] as [string, string][]).map(([keys, label]) => (
+            <div key={keys} className={s.shortcutRow}>
+              <span>{label}</span>
+              <span className={s.shortcutKbd}>{keys}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
     {/* ⌘K Command Palette — last so it sits on top of every modal */}
     <CommandPalette
       palette={palette}

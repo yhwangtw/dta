@@ -51,6 +51,18 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
 
   const restoredRef = useRef(false);
 
+  // Follow the active session's cwd. Selecting a session from another project
+  // (e.g. via the ⌘K palette) must move the whole sidebar — project picker and
+  // session list included — otherwise they keep showing the previous project
+  // while the chat and file explorer have already switched.
+  useEffect(() => {
+    if (selectedCwdProp && selectedCwdProp !== selectedCwd) {
+      setSelectedCwd(selectedCwdProp);
+    }
+    // Only react to prop changes; internal picker changes flow the other way.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCwdProp]);
+
   // Auto-select cwd and restore session from URL on first load
   useEffect(() => {
     if (allSessions.length === 0) return;

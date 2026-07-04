@@ -73,7 +73,8 @@ export function CommandPalette({ palette, onSelectSession, onSelectTag, onOpenFi
     }
   }, [isOpen]);
 
-  // Dispatch the right host callback for the picked result.
+  // Dispatch the right host callback for the picked result, then close —
+  // no host callback closes the palette itself.
   const runResult = useCallback(
     (r: PaletteResult) => {
       if (r.kind === "session") {
@@ -89,10 +90,8 @@ export function CommandPalette({ palette, onSelectSession, onSelectTag, onOpenFi
         // Built-in actions are handled by the host via useCommandPalette's
         // runAction (wired through the registry in AppShell).
         runAction(r);
-        // Session / tag / file kinds above already close the palette via their
-        // host callback; for actions we need to close here too.
-        close();
       }
+      close();
     },
     [onSelectSession, onSelectTag, onOpenFile, runAction, close],
   );

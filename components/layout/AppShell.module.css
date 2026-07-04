@@ -84,7 +84,9 @@
 }
 
 .commandPaletteTrigger > span {
-  flex: 1;
+  /* basis:auto — with basis:0 the button collapses to icon width and the
+     label truncates to "Se…" even when the top bar has plenty of room */
+  flex: 1 1 auto;
   text-align: left;
   white-space: nowrap;
   overflow: hidden;
@@ -536,4 +538,50 @@
 .sidebarFooterButtonDisabled {
   cursor: default;
   opacity: 0.35;
+}
+
+/* ── Keyboard shortcuts dialog ── */
+.shortcutsOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-overlay, rgba(0, 0, 0, 0.4));
+}
+.shortcutsDialog {
+  width: 340px;
+  max-width: calc(100vw - 32px);
+  padding: 16px 18px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--color-shadow-modal);
+}
+.shortcutsTitle {
+  margin: 0 0 12px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+.shortcutRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 0;
+  color: var(--text-muted);
+  font-size: 12.5px;
+}
+.shortcutKbd {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 6px;
+  background: var(--bg-elev-2, var(--bg-hover));
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 11px;
 }

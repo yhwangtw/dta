@@ -52,7 +52,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const pendingScrollToUserRef = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
-  const hasSummarizedRef = useRef(false);
+  // Already-named sessions never need auto-naming — skip the summarize call
+  const hasSummarizedRef = useRef(Boolean(session?.name));
 
   const setNewSessionModel = opts.setNewSessionModel ?? setNewSessionModelState;
   const setToolPresetState = opts.setToolPreset ?? setToolPreset;
@@ -141,6 +142,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     }
   }, [setToolPresetState]);
 
+  const reconnectAttemptRef = useRef(0);
+
   const connectEvents = useCallback((sid: string) => {
     if (eventSourceRef.current) {
       eventSourceRef.current.close();
@@ -148,6 +151,9 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     }
     const es = new EventSource(`/api/agent/${encodeURIComponent(sid)}/events`);
     eventSourceRef.current = es;
+    es.onopen = () => {
+      reconnectAttemptRef.current = 0;
+    };
     es.onmessage = (e) => {
       try {
         const event = JSON.parse(e.data) as AgentEvent;
@@ -160,9 +166,13 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       if (eventSourceRef.current === es && agentRunningRef.current) {
         es.close();
         eventSourceRef.current = null;
+        // Exponential backoff: 1s, 2s, 4s, ... capped at 15s, so a downed
+        // server isn't hammered once per second.
+        const delay = Math.min(1000 * 2 ** reconnectAttemptRef.current, 15_000);
+        reconnectAttemptRef.current++;
         setTimeout(() => {
           if (agentRunningRef.current) connectEvents(sid);
-        }, 1000);
+        }, delay);
       }
     };
   }, []);
@@ -184,14 +194,14 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         setRetryInfo(null);
         dispatch({ type: "end" });
         if (sessionIdRef.current) {
-          loadSession(sessionIdRef.current);
-          fetch(`/api/agent/${encodeURIComponent(sessionIdRef.current)}`)
-            .then((r) => r.json())
-            .then((d: { state?: { contextUsage?: { percent: number | null; contextWindow: number; tokens: number | null } | null; systemPrompt?: string } }) => {
-              if (d.state?.contextUsage !== undefined) setContextUsage(d.state.contextUsage ?? null);
-              if (d.state?.systemPrompt !== undefined) setSystemPrompt(d.state.systemPrompt ?? null);
-            })
-            .catch(() => {});
+          // includeState piggybacks contextUsage/systemPrompt on the session
+          // reload — one request instead of two.
+          loadSession(sessionIdRef.current, false, true).then((agentState) => {
+            if (agentState?.state) {
+              if (agentState.state.contextUsage !== undefined) setContextUsage(agentState.state.contextUsage ?? null);
+              if (agentState.state.systemPrompt !== undefined) setSystemPrompt(agentState.state.systemPrompt ?? null);
+            }
+          });
           // Auto-name session after first turn (background, fire-and-forget)
           if (!hasSummarizedRef.current) {
             hasSummarizedRef.current = true;
@@ -267,6 +277,48 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   }, [loadSession, onAgentEnd, onSessionNamed]);
   handleAgentEventRef.current = handleAgentEvent;
 
+  // Shared by the tGD-command and plain-prompt paths of handleSend: create a
+  // new agent session with the current model/tool/thinking selections, wire up
+  // SSE, and notify the parent.
+  const createNewSession = useCallback(async (
+    message: string,
+    piImages?: Array<{ type: "image"; data: string; mimeType: string }>,
+  ): Promise<string> => {
+    if (!newSessionCwd) throw new Error("No cwd for new session");
+    const selectedModel = newSessionModel;
+    if (selectedModel) setPendingModel(selectedModel);
+    const { PRESET_NONE, PRESET_DEFAULT, PRESET_FULL } = await import("@/components/modals/ToolPanel");
+    const toolNames = toolPreset === "none" ? PRESET_NONE : toolPreset === "default" ? PRESET_DEFAULT : PRESET_FULL;
+    const res = await fetch("/api/agent/new", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        cwd: newSessionCwd,
+        type: "prompt",
+        message,
+        toolNames,
+        ...(piImages?.length ? { images: piImages } : {}),
+        ...(selectedModel ? { provider: selectedModel.provider, modelId: selectedModel.modelId } : {}),
+        ...(thinkingLevel !== "auto" ? { thinkingLevel } : {}),
+      }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const result = await res.json() as { sessionId: string };
+    sessionIdRef.current = result.sessionId;
+    connectEvents(result.sessionId);
+    onSessionCreated?.({
+      id: result.sessionId,
+      path: "",
+      cwd: newSessionCwd,
+      name: undefined,
+      created: new Date().toISOString(),
+      modified: new Date().toISOString(),
+      messageCount: 1,
+      firstMessage: message,
+    });
+    return result.sessionId;
+  }, [newSessionCwd, newSessionModel, toolPreset, thinkingLevel, connectEvents, onSessionCreated]);
+
   const handleSend = useCallback(async (message: string, images?: AttachedImage[]) => {
     if (!message.trim() && !images?.length) return;
     if (agentRunning) return;
@@ -288,49 +340,13 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       dispatch({ type: "start" });
       pendingScrollToUserRef.current = true;
       try {
-        let sid: string;
-        
         if (isNew && newSessionCwd) {
-          // New session - create it first, then execute command
-          const selectedModel = newSessionModel;
-          if (selectedModel) setPendingModel(selectedModel);
-          const { PRESET_NONE, PRESET_DEFAULT, PRESET_FULL } = await import("@/components/modals/ToolPanel");
-          const toolNames = toolPreset === "none" ? PRESET_NONE : toolPreset === "default" ? PRESET_DEFAULT : PRESET_FULL;
-          
-          // Create new session with the command as initial message
-          const createRes = await fetch("/api/agent/new", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              cwd: newSessionCwd,
-              type: "prompt",
-              message,  // Send the slash command as the initial message
-              toolNames,
-              ...(selectedModel ? { provider: selectedModel.provider, modelId: selectedModel.modelId } : {}),
-              ...(thinkingLevel !== "auto" ? { thinkingLevel } : {}),
-            }),
-          });
-          
-          if (!createRes.ok) throw new Error(`HTTP ${createRes.status}`);
-          const result = await createRes.json() as { sessionId: string };
-          sid = result.sessionId;
-          sessionIdRef.current = sid;
-          connectEvents(sid);
-          onSessionCreated?.({
-            id: sid,
-            path: "",
-            cwd: newSessionCwd,
-            name: undefined,
-            created: new Date().toISOString(),
-            modified: new Date().toISOString(),
-            messageCount: 1,
-            firstMessage: message,
-          });
+          // New session — create it with the slash command as initial message
+          await createNewSession(message);
         } else if (session) {
           // Existing session - execute command directly
-          sid = session.id;
-          connectEvents(sid);
-          const res = await fetch(`/api/agent/${sid}/command`, {
+          connectEvents(session.id);
+          const res = await fetch(`/api/agent/${session.id}/command`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ command, args: args.trim() }),
@@ -370,38 +386,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
 
     try {
       if (isNew && newSessionCwd) {
-        const selectedModel = newSessionModel;
-        if (selectedModel) setPendingModel(selectedModel);
-        const { PRESET_NONE, PRESET_DEFAULT, PRESET_FULL } = await import("@/components/modals/ToolPanel");
-        const toolNames = toolPreset === "none" ? PRESET_NONE : toolPreset === "default" ? PRESET_DEFAULT : PRESET_FULL;
-        const res = await fetch("/api/agent/new", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            cwd: newSessionCwd,
-            type: "prompt",
-            message,
-            toolNames,
-            ...(piImages?.length ? { images: piImages } : {}),
-            ...(selectedModel ? { provider: selectedModel.provider, modelId: selectedModel.modelId } : {}),
-            ...(thinkingLevel !== "auto" ? { thinkingLevel } : {}),
-          }),
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const result = await res.json() as { sessionId: string };
-        const realId = result.sessionId;
-        sessionIdRef.current = realId;
-        connectEvents(realId);
-        onSessionCreated?.({
-          id: realId,
-          path: "",
-          cwd: newSessionCwd,
-          name: undefined,
-          created: new Date().toISOString(),
-          modified: new Date().toISOString(),
-          messageCount: 1,
-          firstMessage: message,
-        });
+        await createNewSession(message, piImages);
       } else if (session) {
         connectEvents(session.id);
         await sendAgentCommand(session.id, {
@@ -416,7 +401,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       setAgentPhase(null);
       dispatch({ type: "end" });
     }
-  }, [isNew, newSessionCwd, newSessionModel, toolPreset, thinkingLevel, session, agentRunning, connectEvents, onSessionCreated]);
+  }, [isNew, newSessionCwd, session, agentRunning, connectEvents, createNewSession]);
 
   const handleAbort = useCallback(async () => {
     const sid = sessionIdRef.current;

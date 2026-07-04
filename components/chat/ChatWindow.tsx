@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { AgentMessage, SessionInfo, SessionTreeNode } from "@/lib/types";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { AgentMessage, SessionInfo, SessionTreeNode, ToolResultMessage } from "@/lib/types";
 import { MessageView } from "./MessageView";
 import { ChatInput, type ChatInputHandle } from "./ChatInput";
 import { ChatMinimap, useMessageRefs } from "./ChatMinimap";
@@ -30,7 +30,7 @@ interface Props {
   onClosePane?: () => void;
 }
 
-function phaseLabel(phase: AgentPhase): string {
+export function phaseLabel(phase: AgentPhase): string {
   if (phase?.kind === "running_tools") {
     const names = phase.tools.map((t) => t.name);
     if (names.length === 0) return "Running tool...";
@@ -163,6 +163,32 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
 
   const visibleMessages = messages.filter((m) => m.role === "user" || m.role === "assistant");
   const messageRefs = useMessageRefs(visibleMessages.length);
+
+  // Stable identities so the memoized MessageView actually skips re-renders
+  // during streaming (ChatWindow re-renders on every token event).
+  const toolResultsMap = useMemo(() => {
+    const map = new Map<string, ToolResultMessage>();
+    for (const msg of messages) {
+      if (msg.role === "toolResult") {
+        map.set((msg as ToolResultMessage).toolCallId, msg as ToolResultMessage);
+      }
+    }
+    return map;
+  }, [messages]);
+
+  const handleEditContent = useCallback((content: string) => {
+    chatInputRef?.current?.insertIfEmpty(content);
+  }, [chatInputRef]);
+
+  // Spacer below the last message while the agent runs, so the newest user
+  // message can be scrolled to the top. Measured in an effect — reading
+  // clientHeight during render forces synchronous layout.
+  const [spacerHeight, setSpacerHeight] = useState<number | null>(null);
+  useEffect(() => {
+    if (agentRunning && scrollContainerRef.current) {
+      setSpacerHeight(scrollContainerRef.current.clientHeight);
+    }
+  }, [agentRunning, scrollContainerRef]);
 
   const isEmptyNew = isNew && messages.length === 0 && !streamState.isStreaming && !agentRunning;
 
@@ -330,12 +356,6 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
           <div className="mx-auto max-w-[820px] px-4">
 
             {(() => {
-              const toolResultsMap = new Map<string, import("@/lib/types").ToolResultMessage>();
-              for (const msg of messages) {
-                if (msg.role === "toolResult") {
-                  toolResultsMap.set((msg as import("@/lib/types").ToolResultMessage).toolCallId, msg as import("@/lib/types").ToolResultMessage);
-                }
-              }
               let lastUserIdx = -1;
               for (let i = messages.length - 1; i >= 0; i--) {
                 if (messages[i].role === "user") { lastUserIdx = i; break; }
@@ -361,9 +381,13 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                     showTimestamp = false;
                   }
                 }
+                // entryIds is parallel to messages after a session load; freshly
+                // streamed messages have no entry id yet, so fall back to index
+                // (hex entry ids never collide with numeric keys).
+                const key = entryIds[idx] ?? idx;
                 const view = (
                   <MessageView
-                    key={idx}
+                    key={key}
                     message={msg}
                     toolResults={toolResultsMap}
                     modelNames={modelNames}
@@ -372,14 +396,14 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                     forking={forkingEntryId === entryIds[idx]}
                     onNavigate={agentRunning ? undefined : handleNavigate}
                     prevAssistantEntryId={agentRunning ? undefined : prevAssistantEntryId}
-                    onEditContent={(content) => chatInputRef?.current?.insertIfEmpty(content)}
+                    onEditContent={handleEditContent}
                     showTimestamp={showTimestamp}
                     prevTimestamp={idx > 0 ? (messages[idx - 1] as import("@/lib/types").AgentMessage & { timestamp?: number }).timestamp : undefined}
                   />
                 );
                 if (!isVisible) return view;
                 return (
-                  <div key={idx} ref={(el) => {
+                  <div key={key} ref={(el) => {
                     messageRefs.current[currentRefIdx] = el;
                     if (idx === lastUserIdx) { (lastUserMsgRef as { current: HTMLDivElement | null }).current = el; }
                   }}>
@@ -400,7 +424,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
             )}
 
             {agentRunning && (
-              <div style={{ height: scrollContainerRef.current ? scrollContainerRef.current.clientHeight : "80vh" }} />
+              <div style={{ height: spacerHeight ?? "80vh" }} />
             )}
 
             <div ref={messagesEndRef} />

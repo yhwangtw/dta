@@ -4,9 +4,10 @@ import type { Pluggable, PluggableList } from "unified";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { vs } from "react-syntax-highlighter/dist/cjs/styles/prism";
-import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism";
+// PrismAsync keeps the full language set but splits refractor + languages into
+// a lazily-loaded chunk, so the highlighter never blocks the initial bundle.
+import { PrismAsync as SyntaxHighlighter } from "react-syntax-highlighter";
+import { vs, vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { useTheme } from "@/hooks/useTheme";
 import styles from "./MarkdownBody.module.css";
 

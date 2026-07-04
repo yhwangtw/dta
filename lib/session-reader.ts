@@ -1,7 +1,9 @@
-import { SessionManager, buildSessionContext as piBuildSessionContext, getAgentDir } from "@earendil-works/pi-coding-agent";
+import { SessionManager, buildSessionContext as piBuildSessionContext, getAgentDir, parseSessionEntries } from "@earendil-works/pi-coding-agent";
 import type { SessionEntry, SessionInfo, SessionContext, SessionTreeNode, AssistantMessage } from "./types";
-import type { SessionEntry as PiSessionEntry, SessionInfo as PiSessionInfo } from "@earendil-works/pi-coding-agent";
+import type { SessionEntry as PiSessionEntry } from "@earendil-works/pi-coding-agent";
 import { normalizeToolCalls } from "./normalize";
+import { readdir, readFile, stat } from "fs/promises";
+import { join } from "path";
 
 export { getAgentDir };
 
@@ -9,25 +11,177 @@ export function getSessionsDir(): string {
   return `${getAgentDir()}/sessions`;
 }
 
-export async function listAllSessions(): Promise<SessionInfo[]> {
-  const piSessions: PiSessionInfo[] = await SessionManager.listAll();
-  const pathToId = new Map<string, string>();
-  for (const s of piSessions) pathToId.set(s.path, s.id);
+// ============================================================================
+// Incremental session listing
+//
+// pi's SessionManager.listAll() re-reads every line of every .jsonl file on
+// each call. The sidebar refreshes after every agent turn, and the file API
+// consults the session list for allowed-roots checks, so with hundreds of
+// sessions that becomes a full-disk rescan per request. Instead we stat each
+// file and only re-parse the ones whose mtime/size changed; unchanged files
+// are served from this cache. Stored on globalThis to survive hot-reload.
+// ============================================================================
 
-  const cache = getPathCache();
-  return piSessions.map((s) => {
+interface RawSessionInfo {
+  path: string;
+  id: string;
+  cwd: string;
+  name?: string;
+  created: string;
+  modifiedMs: number;
+  messageCount: number;
+  firstMessage: string;
+  parentSessionPath?: string;
+}
+
+interface SessionInfoCacheEntry {
+  mtimeMs: number;
+  size: number;
+  // null = file exists but is not a valid session (skip without re-parsing)
+  info: RawSessionInfo | null;
+}
+
+declare global {
+  var __piSessionInfoCache: Map<string, SessionInfoCacheEntry> | undefined;
+}
+
+function getInfoCache(): Map<string, SessionInfoCacheEntry> {
+  if (!globalThis.__piSessionInfoCache) globalThis.__piSessionInfoCache = new Map();
+  return globalThis.__piSessionInfoCache;
+}
+
+function extractText(content: unknown): string {
+  if (typeof content === "string") return content;
+  if (!Array.isArray(content)) return "";
+  return (content as Array<{ type?: string; text?: string }>)
+    .filter((block) => block?.type === "text")
+    .map((block) => block.text ?? "")
+    .join(" ");
+}
+
+// Mirrors the fields pi's buildSessionInfo() derives. Reads the file directly
+// and parses with pi's parseSessionEntries — deliberately NOT SessionManager.open,
+// which rewrites empty/corrupted files as a side effect.
+async function parseSessionFile(filePath: string, mtimeMs: number): Promise<RawSessionInfo | null> {
+  let entries: Array<Record<string, unknown>>;
+  try {
+    const content = await readFile(filePath, "utf8");
+    entries = parseSessionEntries(content) as unknown as Array<Record<string, unknown>>;
+  } catch {
+    return null;
+  }
+  const first = entries[0];
+  if (!first || first.type !== "session" || typeof first.id !== "string") return null;
+  const header = first as unknown as { id: string; timestamp?: string; cwd?: string; parentSession?: string };
+
+  let name: string | undefined;
+  let messageCount = 0;
+  let firstMessage = "";
+  let lastActivity = 0;
+
+  for (let i = 1; i < entries.length; i++) {
+    const entry = entries[i];
+    if (entry.type === "session_info") {
+      // Latest session_info wins, including explicit clears
+      name = (entry as { name?: string }).name?.trim() || undefined;
+      continue;
+    }
+    if (entry.type !== "message") continue;
+    messageCount++;
+    const message = entry.message as { role?: string; content?: unknown; timestamp?: unknown } | undefined;
+    if (!message || message.content == null) continue;
+    if (message.role !== "user" && message.role !== "assistant") continue;
+    const activity = typeof message.timestamp === "number"
+      ? message.timestamp
+      : new Date(entry.timestamp as string).getTime();
+    if (!Number.isNaN(activity)) lastActivity = Math.max(lastActivity, activity);
+    if (!firstMessage && message.role === "user") {
+      firstMessage = extractText(message.content);
+    }
+  }
+
+  const headerTime = header.timestamp ? new Date(header.timestamp).getTime() : NaN;
+  return {
+    path: filePath,
+    id: header.id,
+    cwd: header.cwd ?? "",
+    name,
+    created: new Date(Number.isNaN(headerTime) ? mtimeMs : headerTime).toISOString(),
+    modifiedMs: lastActivity > 0 ? lastActivity : Number.isNaN(headerTime) ? mtimeMs : headerTime,
+    messageCount,
+    firstMessage: firstMessage || "(no messages)",
+    parentSessionPath: header.parentSession,
+  };
+}
+
+export async function listAllSessions(): Promise<SessionInfo[]> {
+  const sessionsDir = getSessionsDir();
+  const cache = getInfoCache();
+
+  let topLevel;
+  try {
+    topLevel = await readdir(sessionsDir, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+
+  const files: string[] = [];
+  for (const d of topLevel) {
+    if (!d.isDirectory()) continue;
+    const dir = join(sessionsDir, d.name);
+    try {
+      for (const f of await readdir(dir)) {
+        if (f.endsWith(".jsonl")) files.push(join(dir, f));
+      }
+    } catch {
+      // unreadable cwd dir — skip
+    }
+  }
+
+  const seen = new Set<string>();
+  const infos: RawSessionInfo[] = [];
+  await Promise.all(files.map(async (filePath) => {
+    let st;
+    try {
+      st = await stat(filePath);
+    } catch {
+      return; // deleted between readdir and stat
+    }
+    seen.add(filePath);
+    const cached = cache.get(filePath);
+    if (cached && cached.mtimeMs === st.mtimeMs && cached.size === st.size) {
+      if (cached.info) infos.push(cached.info);
+      return;
+    }
+    const info = await parseSessionFile(filePath, st.mtimeMs);
+    cache.set(filePath, { mtimeMs: st.mtimeMs, size: st.size, info });
+    if (info) infos.push(info);
+  }));
+
+  // Evict cache entries for files that no longer exist
+  for (const key of cache.keys()) {
+    if (!seen.has(key)) cache.delete(key);
+  }
+
+  infos.sort((a, b) => b.modifiedMs - a.modifiedMs);
+
+  const pathToId = new Map<string, string>();
+  for (const info of infos) pathToId.set(info.path, info.id);
+
+  const pathCache = getPathCache();
+  return infos.map((info) => {
     // Populate path cache so resolveSessionPath works without a full scan
-    cache.set(s.id, s.path);
+    pathCache.set(info.id, info.path);
     return {
-      path: s.path,
-      id: s.id,
-      cwd: s.cwd,
-      name: s.name,
-      created: s.created instanceof Date ? s.created.toISOString() : String(s.created),
-      modified: s.modified instanceof Date ? s.modified.toISOString() : String(s.modified),
-      messageCount: s.messageCount,
-      firstMessage: s.firstMessage || "(no messages)",
-      parentSessionId: s.parentSessionPath ? pathToId.get(s.parentSessionPath) : undefined,
+      path: info.path,
+      id: info.id,
+      cwd: info.cwd,
+      name: info.name,
+      created: info.created,
+      modified: new Date(info.modifiedMs).toISOString(),
+      messageCount: info.messageCount,
+      firstMessage: info.firstMessage,
+      parentSessionId: info.parentSessionPath ? pathToId.get(info.parentSessionPath) : undefined,
     };
   });
 }

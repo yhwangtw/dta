@@ -47,6 +47,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const [agentPhase, setAgentPhase] = useState<AgentPhase>(null);
   const [agentStartedAt, setAgentStartedAt] = useState<number | null>(null);
   const [queuedFollowUps, setQueuedFollowUps] = useState<string[]>([]);
+  const [bashRun, setBashRun] = useState<{ command: string; output: string; running: boolean } | null>(null);
 
   const eventSourceRef = useRef<EventSource | null>(null);
   const sessionIdRef = useRef<string | null>(session?.id ?? null);
@@ -272,6 +273,15 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         });
         break;
       }
+      case "bash_start":
+        setBashRun({ command: event.command as string, output: "", running: true });
+        break;
+      case "bash_chunk":
+        setBashRun((prev) => prev ? { ...prev, output: prev.output + (event.chunk as string) } : prev);
+        break;
+      case "bash_end":
+        setBashRun((prev) => prev ? { ...prev, running: false } : prev);
+        break;
       case "auto_retry_start":
         setRetryInfo({ attempt: event.attempt as number, maxAttempts: event.maxAttempts as number, errorMessage: event.errorMessage as string | undefined });
         break;
@@ -342,6 +352,32 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     if (!message.trim() && !images?.length) return;
     if (agentRunning) return;
     requestNotifyPermission();
+
+    // Bash mode: `!cmd` runs the shell directly (streamed, recorded into the
+    // session so the agent sees the result); `!!cmd` keeps it out of context.
+    const trimmedForBash = message.trim();
+    if (trimmedForBash.startsWith("!") && trimmedForBash.length > 1) {
+      if (isNew || !session) {
+        showToast("Bash mode needs an active session — send a message first", { type: "warning" });
+        return;
+      }
+      const excludeFromContext = trimmedForBash.startsWith("!!");
+      const bashCommand = trimmedForBash.replace(/^!+/, "").trim();
+      if (!bashCommand) return;
+      connectEvents(session.id);
+      setBashRun({ command: bashCommand, output: "", running: true });
+      try {
+        await sendAgentCommand(session.id, { type: "bash", command: bashCommand, excludeFromContext });
+        // Reload so the persisted bashExecution entry replaces the live block
+        await loadSession(session.id);
+      } catch (e) {
+        console.error("Bash failed:", e);
+        showToast(`Bash failed: ${e instanceof Error ? e.message : e}`, { type: "error" });
+      } finally {
+        setBashRun(null);
+      }
+      return;
+    }
     // Check if this is a tGD slash command
     const tgdCommandMatch = message.trim().match(/^\/tgd-(\w+)(.*)$/);
     if (tgdCommandMatch) {
@@ -423,7 +459,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       setAgentPhase(null);
       dispatch({ type: "end" });
     }
-  }, [isNew, newSessionCwd, session, agentRunning, connectEvents, createNewSession]);
+  }, [isNew, newSessionCwd, session, agentRunning, connectEvents, createNewSession, loadSession]);
 
   const handleAbort = useCallback(async () => {
     const sid = sessionIdRef.current;
@@ -550,6 +586,16 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       setQueuedFollowUps([]);
     } catch (e) {
       console.error("Failed to clear queue:", e);
+    }
+  }, []);
+
+  const handleAbortBash = useCallback(async () => {
+    const sid = sessionIdRef.current;
+    if (!sid) return;
+    try {
+      await sendAgentCommand(sid, { type: "abort_bash" });
+    } catch (e) {
+      console.error("Failed to abort bash:", e);
     }
   }, []);
 
@@ -686,7 +732,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     agentRunning, modelNames, modelList, modelThinkingLevels, modelThinkingLevelMaps, newSessionModel, toolPreset, thinkingLevel,
     retryInfo, contextUsage, systemPrompt, forkingEntryId,
     isCompacting, compactError, currentModel, displayModel, sessionStats,
-    agentPhase, agentStartedAt, queuedFollowUps,
+    agentPhase, agentStartedAt, queuedFollowUps, bashRun,
     isNew,
     // Refs
     sessionIdRef, eventSourceRef, messagesEndRef, scrollContainerRef,
@@ -694,7 +740,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     // Actions
     handleSend, handleAbort, handleFork, handleNavigate, handleModelChange,
     handleCompact, handleSteer, handleFollowUp, handleAbortCompaction,
-    handleToolPresetChange, handleThinkingLevelChange, handleClearQueue, loadTools, setActiveLeafId, setData, setMessages,
+    handleToolPresetChange, handleThinkingLevelChange, handleClearQueue, handleAbortBash, loadTools, setActiveLeafId, setData, setMessages,
     dispatch, setAgentRunning, setForkingEntryId,
     // Subscriptions
     handleAgentEventRef,

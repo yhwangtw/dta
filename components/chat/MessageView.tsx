@@ -9,6 +9,8 @@ import type {
 } from "@/lib/types";
 import { UserMessageView } from "./UserMessageView";
 import { AssistantMessageView } from "./AssistantMessageView";
+import { BashBlock } from "./BashBlock";
+import type { BashExecutionMessage } from "@/lib/types";
 
 interface Props {
   message: AgentMessage;
@@ -33,6 +35,18 @@ export const MessageView = memo(function MessageView({ message, isStreaming, too
   }
   if (message.role === "assistant") {
     return <AssistantMessageView message={message as AssistantMessage} isStreaming={isStreaming} toolResults={toolResults} modelNames={modelNames} showTimestamp={showTimestamp} prevTimestamp={prevTimestamp} />;
+  }
+  if (message.role === "bashExecution") {
+    const bash = message as BashExecutionMessage;
+    return (
+      <BashBlock
+        command={bash.command}
+        output={bash.output}
+        exitCode={bash.exitCode}
+        cancelled={bash.cancelled}
+        truncated={bash.truncated}
+      />
+    );
   }
   if (message.role === "toolResult") {
     return null;

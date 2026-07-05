@@ -5,6 +5,7 @@ import type { AgentMessage, SessionInfo, SessionTreeNode, ToolResultMessage } fr
 import { MessageView } from "./MessageView";
 import { ChatInput, type ChatInputHandle } from "./ChatInput";
 import { ChatMinimap, useMessageRefs } from "./ChatMinimap";
+import { BashBlock } from "./BashBlock";
 import { useAgentSession, type AgentPhase } from "@/hooks/useAgentSession";
 import { useAudio } from "@/hooks/useAudio";
 import { useDragDrop } from "@/hooks/useDragDrop";
@@ -164,13 +165,13 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
     agentRunning, modelNames, modelList, modelThinkingLevels, modelThinkingLevelMaps, toolPreset, thinkingLevel,
     retryInfo, contextUsage, forkingEntryId,
     isCompacting, compactError, displayModel: displayModelValue, sessionStats,
-    agentPhase, agentStartedAt, queuedFollowUps,
+    agentPhase, agentStartedAt, queuedFollowUps, bashRun,
     isNew,
     messagesEndRef, scrollContainerRef,
     lastUserMsgRef,
     handleSend, handleAbort, handleFork, handleNavigate, handleModelChange,
     handleCompact, handleSteer, handleFollowUp, handleAbortCompaction,
-    handleToolPresetChange, handleThinkingLevelChange, handleClearQueue, handleAgentEventRef,
+    handleToolPresetChange, handleThinkingLevelChange, handleClearQueue, handleAbortBash, handleAgentEventRef,
   } = useAgentSession({
     session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked,
     modelsRefreshKey, onBranchDataChange, onSystemPromptChange, onSessionNamed,
@@ -593,6 +594,15 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                 );
               });
             })()}
+
+            {bashRun && (
+              <BashBlock
+                command={bashRun.command}
+                output={bashRun.output}
+                running={bashRun.running}
+                onAbort={bashRun.running ? handleAbortBash : undefined}
+              />
+            )}
 
             {streamState.isStreaming && streamState.streamingMessage && (
               <MessageView message={streamState.streamingMessage as AgentMessage} isStreaming modelNames={modelNames} />

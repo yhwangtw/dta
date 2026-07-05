@@ -1,0 +1,96 @@
+.container {
+  margin: 10px 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--tool-bg);
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-panel);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.prompt {
+  color: var(--accent);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.command {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+}
+
+.spinner {
+  color: var(--accent);
+  animation: bash-spin 0.9s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes bash-spin {
+  to { transform: rotate(360deg); }
+}
+
+.abortButton {
+  flex-shrink: 0;
+  padding: 1px 8px;
+  background: none;
+  border: 1px solid var(--color-error-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-error);
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.abortButton:hover {
+  background: var(--color-error-bg);
+}
+
+.badge {
+  flex-shrink: 0;
+  padding: 1px 7px;
+  border-radius: var(--radius-sm);
+  font-size: 10.5px;
+  line-height: 1.6;
+}
+.badgeOk {
+  color: var(--color-success);
+  background: var(--color-success-bg);
+}
+.badgeErr {
+  color: var(--color-error);
+  background: var(--color-error-bg);
+}
+.badgeWarn {
+  color: var(--color-warning-text);
+  background: var(--color-warning-bg);
+}
+
+.truncated {
+  flex-shrink: 0;
+  color: var(--text-dim);
+  font-size: 10.5px;
+}
+
+.output {
+  margin: 0;
+  padding: 10px 12px;
+  max-height: 320px;
+  overflow: auto;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--text-muted);
+  white-space: pre-wrap;
+  word-break: break-word;
+}

@@ -69,7 +69,7 @@ const ACTIONS: PaletteResult[] = [
     kind: "action",
     title: "Open Models",
     subtitle: "Configure providers, API keys, model selection",
-    keywords: "provider api key llm",
+    keywords: "provider api key llm 模型 設定",
     hint: "⇧⌘M",
     data: { action: "settings:models" } as { action: PaletteActionId },
   },
@@ -78,7 +78,7 @@ const ACTIONS: PaletteResult[] = [
     kind: "action",
     title: "Open Skills",
     subtitle: "Browse and toggle installed agent skills",
-    keywords: "skill plugin extension",
+    keywords: "skill plugin extension 技能",
     hint: "⌘/",
     data: { action: "settings:skills" } as { action: PaletteActionId },
   },
@@ -87,7 +87,7 @@ const ACTIONS: PaletteResult[] = [
     kind: "action",
     title: "Open Analytics",
     subtitle: "Token usage and cost report for the active session",
-    keywords: "stats tokens cost",
+    keywords: "stats tokens cost 分析 統計 成本",
     data: { action: "settings:analytics" } as { action: PaletteActionId },
   },
   {
@@ -95,7 +95,7 @@ const ACTIONS: PaletteResult[] = [
     kind: "action",
     title: "Toggle Theme",
     subtitle: "Switch between light and dark mode",
-    keywords: "dark light mode appearance",
+    keywords: "dark light mode appearance 主題 深色 淺色",
     data: { action: "view:toggle-theme" } as { action: PaletteActionId },
   },
   {
@@ -119,7 +119,7 @@ const ACTIONS: PaletteResult[] = [
     kind: "action",
     title: "New Session",
     subtitle: "Start a fresh session in the active project",
-    keywords: "create new chat",
+    keywords: "create new chat 新增",
     data: { action: "session:new" } as { action: PaletteActionId },
   },
   {
@@ -127,7 +127,7 @@ const ACTIONS: PaletteResult[] = [
     kind: "action",
     title: "Open Active Session in Parallel View",
     subtitle: "Side-by-side comparison with the current session",
-    keywords: "split compare",
+    keywords: "split compare 並排 比較",
     data: { action: "session:open-parallel" } as { action: PaletteActionId },
   },
   {
@@ -135,7 +135,7 @@ const ACTIONS: PaletteResult[] = [
     kind: "action",
     title: "Keyboard Shortcuts",
     subtitle: "Show all available hotkeys",
-    keywords: "hotkey help docs",
+    keywords: "hotkey help docs 快捷鍵 說明",
     data: { action: "help:shortcuts" } as { action: PaletteActionId },
   },
 ];

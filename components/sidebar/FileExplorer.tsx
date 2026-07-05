@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { getFileIcon, FolderIcon } from "./FileIcons";
 import { encodeFilePathForApi, getRelativeFilePath, joinFilePath } from "@/lib/file-paths";
 import styles from "./FileExplorer.module.css";
+import { useI18n } from "@/lib/i18n";
 
 const JUNK_DIRS = new Set([
   ".git", ".next", ".nuxt", "node_modules", "__pycache__", ".venv", "venv",
@@ -189,6 +190,7 @@ function TreeNode({
 }
 
 export function FileExplorer({ cwd, onOpenFile, refreshKey, onAtMention }: Props) {
+  const { t } = useI18n();
   const [roots, setRoots] = useState<FileNode[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -272,7 +274,7 @@ export function FileExplorer({ cwd, onOpenFile, refreshKey, onAtMention }: Props
         <input
           ref={filterInputRef}
           type="text"
-          placeholder="Filter files…"
+          placeholder={t("sidebar.filterFiles")}
           aria-label="Filter files"
           value={filterQuery}
           onChange={(e) => setFilterQuery(e.target.value)}

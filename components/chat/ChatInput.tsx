@@ -8,6 +8,7 @@ import { ThinkingSelector } from "./ThinkingSelector";
 import { ToolPresetSelector } from "./ToolPresetSelector";
 import { useChatInputControls } from "@/hooks/useChatInputControls";
 import styles from "./ChatInput.module.css";
+import { useI18n } from "@/lib/i18n";
 
 export interface AttachedImage {
   data: string;   // base64, no prefix
@@ -57,6 +58,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
   retryInfo,
   soundEnabled, onSoundToggle,
 }: Props, ref) {
+  const { t } = useI18n();
   const [value, setValue] = useState("");
   const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([]);
   const [showSlashMenu, setShowSlashMenu] = useState(false);
@@ -397,9 +399,9 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
             onPaste={handlePaste}
             placeholder={
               isStreaming && (onSteer || onFollowUp)
-                ? "Steer: interrupt & inject · Follow-up: queue after"
-                : isStreaming ? "Agent is running…"
-                : "Message…"
+                ? t("input.steerHint")
+                : isStreaming ? t("input.agentRunning")
+                : t("input.message")
             }
             rows={1}
             className={styles.textarea}
@@ -465,7 +467,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                 <line x1="2" y1="7" x2="11" y2="7" />
                 <polyline points="7.5 3 12 7 7.5 11" />
               </svg>
-              Send
+              {t("input.send")}
             </button>
           )}
         </div>

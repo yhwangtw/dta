@@ -9,6 +9,7 @@ import { useAgentSession, type AgentPhase } from "@/hooks/useAgentSession";
 import { useAudio } from "@/hooks/useAudio";
 import { useDragDrop } from "@/hooks/useDragDrop";
 import styles from "./ChatWindow.module.css";
+import { useI18n, type MsgKey } from "@/lib/i18n";
 
 interface Props {
   session: SessionInfo | null;
@@ -48,33 +49,33 @@ const phaseSvg = (paths: React.ReactNode) => (
   </svg>
 );
 
-const PHASE_ACTIONS: { cmd: string; label: string; desc: string; icon: React.ReactNode }[] = [
+const PHASE_ACTIONS: { cmd: string; label: string; descKey: MsgKey; icon: React.ReactNode }[] = [
   {
-    cmd: "/tgd-map", label: "Map", desc: "Understand codebase",
+    cmd: "/tgd-map", label: "Map", descKey: "phase.map" as MsgKey,
     icon: phaseSvg(<><polygon points="1 6 8 3 16 6 23 3 23 18 16 21 8 18 1 21" /><line x1="8" y1="3" x2="8" y2="18" /><line x1="16" y1="6" x2="16" y2="21" /></>),
   },
   {
-    cmd: "/tgd-define", label: "Define", desc: "Write PRD",
+    cmd: "/tgd-define", label: "Define", descKey: "phase.define" as MsgKey,
     icon: phaseSvg(<><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="8" y1="13" x2="16" y2="13" /><line x1="8" y1="17" x2="13" y2="17" /></>),
   },
   {
-    cmd: "/tgd-plan", label: "Plan", desc: "Break into tasks",
+    cmd: "/tgd-plan", label: "Plan", descKey: "phase.plan" as MsgKey,
     icon: phaseSvg(<><line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" /><line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" /></>),
   },
   {
-    cmd: "/tgd-develop", label: "Develop", desc: "Build features",
+    cmd: "/tgd-develop", label: "Develop", descKey: "phase.develop" as MsgKey,
     icon: phaseSvg(<><polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" /></>),
   },
   {
-    cmd: "/tgd-verify", label: "Verify", desc: "Run tests",
+    cmd: "/tgd-verify", label: "Verify", descKey: "phase.verify" as MsgKey,
     icon: phaseSvg(<><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></>),
   },
   {
-    cmd: "/tgd-review", label: "Review", desc: "Code review",
+    cmd: "/tgd-review", label: "Review", descKey: "phase.review" as MsgKey,
     icon: phaseSvg(<><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></>),
   },
   {
-    cmd: "/tgd-release", label: "Release", desc: "Deploy",
+    cmd: "/tgd-release", label: "Release", descKey: "phase.release" as MsgKey,
     icon: phaseSvg(<><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9" /></>),
   },
 ];
@@ -152,6 +153,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
     modelsRefreshKey, onBranchDataChange, onSystemPromptChange, onSessionNamed,
   });
 
+  const { t } = useI18n();
   const { soundEnabled, onSoundToggle, playDoneSound } = useAudio();
   const playDoneSoundRef = useRef(playDoneSound);
   playDoneSoundRef.current = playDoneSound;
@@ -368,7 +370,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                   key={phase.cmd}
                   onClick={() => chatInputRef?.current?.setText(phase.cmd + " ")}
                   className={styles.phaseButton}
-                  title={`${phase.cmd} — ${phase.desc}`}
+                  title={`${phase.cmd} — ${t(phase.descKey)}`}
                 >
                   <span className={styles.phaseIcon} aria-hidden>{phase.icon}</span>
                   <span className={styles.phaseLabel}>{phase.label}</span>

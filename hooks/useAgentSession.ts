@@ -5,6 +5,7 @@ import type { AgentMessage } from "@/lib/types";
 import { normalizeToolCalls } from "@/lib/normalize";
 import { sendAgentCommand } from "@/lib/agent-client";
 import { showToast } from "@/hooks/useToast";
+import { translate } from "@/lib/i18n";
 import type { ToolEntry } from "@/components/modals/ToolPanel";
 import type { SessionData, AgentEvent, AgentPhase, UseAgentSessionOptions, ThinkingLevelOption, ChatInputHandle, AttachedImage } from "./use-agent-session-types";
 import { streamReducer } from "./use-agent-session-types";
@@ -362,7 +363,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         }
       } catch (e) {
         console.error("Failed to execute command:", e);
-        showToast(`Command failed: ${e instanceof Error ? e.message : e}`, { type: "error" });
+        showToast(`${translate("toast.commandFailed")}: ${e instanceof Error ? e.message : e}`, { type: "error" });
         setAgentRunning(false);
         setAgentPhase(null);
         dispatch({ type: "end" });
@@ -399,7 +400,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       }
     } catch (e) {
       console.error("Failed to send message:", e);
-      showToast(`Message not sent: ${e instanceof Error ? e.message : e}`, { type: "error" });
+      showToast(`${translate("toast.messageNotSent")}: ${e instanceof Error ? e.message : e}`, { type: "error" });
       setAgentRunning(false);
       setAgentPhase(null);
       dispatch({ type: "end" });
@@ -431,7 +432,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       }
     } catch (e) {
       console.error("Fork failed:", e);
-      showToast(`Fork failed: ${e instanceof Error ? e.message : e}`, { type: "error" });
+      showToast(`${translate("toast.forkFailed")}: ${e instanceof Error ? e.message : e}`, { type: "error" });
     } finally {
       setForkingEntryId(null);
     }
@@ -498,7 +499,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       });
     } catch (e) {
       console.error("Failed to steer:", e);
-      showToast(`Steer failed: ${e instanceof Error ? e.message : e}`, { type: "error" });
+      showToast(`${translate("toast.steerFailed")}: ${e instanceof Error ? e.message : e}`, { type: "error" });
     }
   }, []);
 
@@ -515,7 +516,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       });
     } catch (e) {
       console.error("Failed to follow up:", e);
-      showToast(`Follow-up failed: ${e instanceof Error ? e.message : e}`, { type: "error" });
+      showToast(`${translate("toast.followUpFailed")}: ${e instanceof Error ? e.message : e}`, { type: "error" });
     }
   }, []);
 

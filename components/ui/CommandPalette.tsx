@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useCallback } from "react";
 import type { CommandPaletteApi, PaletteResult } from "@/hooks/useCommandPalette";
 import s from "./CommandPalette.module.css";
+import { useI18n, type MsgKey } from "@/lib/i18n";
 
 interface Props {
   palette: CommandPaletteApi;
@@ -42,11 +43,11 @@ const KIND_ICON: Record<PaletteResult["kind"], React.ReactNode> = {
   ),
 };
 
-const KIND_LABEL: Record<PaletteResult["kind"], string> = {
-  session: "Sessions",
-  tag: "Tags",
-  file: "Files",
-  action: "Actions",
+const KIND_LABEL_KEY: Record<PaletteResult["kind"], MsgKey> = {
+  session: "palette.sessions",
+  tag: "palette.tags",
+  file: "palette.files",
+  action: "palette.actions",
 };
 
 /**
@@ -61,6 +62,7 @@ const KIND_LABEL: Record<PaletteResult["kind"], string> = {
  */
 export function CommandPalette({ palette, onSelectSession, onSelectTag, onOpenFile }: Props) {
   const { isOpen, close, query, setQuery, results, selectedIndex, setSelectedIndex, runAction } = palette;
+  const { t } = useI18n();
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -176,7 +178,7 @@ export function CommandPalette({ palette, onSelectSession, onSelectTag, onOpenFi
               setQuery(e.target.value);
               setSelectedIndex(0);
             }}
-            placeholder="Search sessions, tags, files, or run a command…"
+            placeholder={t("palette.placeholder")}
             spellCheck={false}
             autoComplete="off"
             autoCorrect="off"
@@ -194,7 +196,7 @@ export function CommandPalette({ palette, onSelectSession, onSelectTag, onOpenFi
           ) : (
             grouped.map(({ kind, items }) => (
               <div key={kind}>
-                <div className={s.section}>{KIND_LABEL[kind]}</div>
+                <div className={s.section}>{t(KIND_LABEL_KEY[kind])}</div>
                 {items.map(({ r, globalIdx }) => {
                   const isActive = globalIdx === selectedIndex;
                   return (
@@ -228,18 +230,18 @@ export function CommandPalette({ palette, onSelectSession, onSelectTag, onOpenFi
         <div className={s.footer}>
           <div className={s.footerLeft}>
             <span className={s.footerHint}>
-              <span className={s.kbd}>↑</span><span className={s.kbd}>↓</span> navigate
+              <span className={s.kbd}>↑</span><span className={s.kbd}>↓</span> {t("palette.navigate")}
             </span>
             <span className={s.footerHint}>
-              <span className={s.kbd}>↵</span> select
+              <span className={s.kbd}>↵</span> {t("palette.select")}
             </span>
             <span className={s.footerHint}>
-              <span className={s.kbd}>esc</span> close
+              <span className={s.kbd}>esc</span> {t("palette.close")}
             </span>
           </div>
           <div className={s.footerLeft}>
             <span className={s.footerHint}>
-              <span className={s.kbd}>⌘K</span> toggle
+              <span className={s.kbd}>⌘K</span> {t("palette.toggle")}
             </span>
           </div>
         </div>

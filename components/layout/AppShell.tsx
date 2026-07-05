@@ -14,6 +14,7 @@ import { useTags } from "@/hooks/useTags";
 import { useCommandPalette } from "@/hooks/useCommandPalette";
 import { useToast } from "@/hooks/useToast";
 import { encodeFilePathForApi } from "@/lib/file-paths";
+import { useI18n } from "@/lib/i18n";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { CommandPalette } from "../ui/CommandPalette";
 import type { SessionInfo, SessionTreeNode } from "@/lib/types";
@@ -27,6 +28,7 @@ const AnalyticsModal = lazy(() => import("../modals/AnalyticsModal").then((m) =>
 
 export function AppShell() {
   const { isDark, toggleTheme } = useTheme();
+  const { locale, setLocale, t } = useI18n();
   const { state, actions, refs, topBarRef } = useAppShellState();
   const { fileTabs, activeFileTabId, rightPanelOpen, setRightPanelOpen, setActiveFileTabId, handleOpenFile, handleCloseFileTab } = useFileTabs();
 
@@ -37,6 +39,10 @@ export function AppShell() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
   const chatInputRef = useRef<ChatInputHandle | null>(null);
+
+  useEffect(() => {
+    document.documentElement.lang = locale === "zh" ? "zh-Hant-TW" : "en";
+  }, [locale]);
 
   // On narrow screens the sidebar is a full-width overlay — starting open
   // would cover the whole app with the toggle button underneath it.
@@ -268,7 +274,7 @@ export function AppShell() {
       <div className={s.sidebarFooter}>
         {([
           {
-            label: "Models",
+            label: t("sidebar.models"),
             onClick: () => setModelsConfigOpen(true),
             disabled: false,
             icon: (
@@ -282,7 +288,7 @@ export function AppShell() {
             ),
           },
           {
-            label: "Skills",
+            label: t("sidebar.skills"),
             onClick: () => setSkillsConfigOpen(true),
             disabled: !state.activeCwd && !state.selectedSession?.cwd && !state.newSessionCwd,
             icon: (
@@ -335,9 +341,9 @@ export function AppShell() {
         <div ref={topBarRef} className={s.topBar}>
           <button
             onClick={() => setSidebarOpen((v) => !v)}
-            title={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
+            title={sidebarOpen ? t("topbar.hideSidebar") : t("topbar.showSidebar")}
             aria-expanded={sidebarOpen}
-            aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
+            aria-label={sidebarOpen ? t("topbar.hideSidebar") : t("topbar.showSidebar")}
             className={s.topBarButton}
           >
             {sidebarOpen ? (
@@ -352,15 +358,15 @@ export function AppShell() {
           </button>
           <button
             onClick={() => palette.open()}
-            title="Search sessions, tags, files, or run a command (⌘K)"
-            aria-label="Open command palette"
+            title={t("topbar.searchTitle")}
+            aria-label={t("topbar.searchTitle")}
             className={s.commandPaletteTrigger}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <circle cx="11" cy="11" r="8" />
               <line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
-            <span>Search…</span>
+            <span>{t("topbar.search")}</span>
             <span className={s.commandPaletteKbd} aria-hidden>⌘K</span>
           </button>
           <button
@@ -368,8 +374,8 @@ export function AppShell() {
               const rect = e.currentTarget.getBoundingClientRect();
               toggleTheme({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
             }}
-            title={isDark ? "Switch to light mode" : "Switch to dark mode"}
-            aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+            title={isDark ? t("topbar.lightMode") : t("topbar.darkMode")}
+            aria-label={isDark ? t("topbar.lightMode") : t("topbar.darkMode")}
             aria-pressed={isDark}
             className={s.topBarButton}
           >
@@ -387,14 +393,26 @@ export function AppShell() {
               </svg>
             )}
           </button>
+          <button
+            onClick={() => setLocale(locale === "en" ? "zh" : "en")}
+            title={t("topbar.language")}
+            aria-label={t("topbar.language")}
+            className={s.topBarButton}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="2" y1="12" x2="22" y2="12" />
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+            </svg>
+          </button>
           {showChat && (
             <div className={s.chatActions}>
               <div className={s.exportMenuWrapper} ref={exportMenuRef}>
                 <button
                   onClick={() => setExportMenuOpen((v) => !v)}
                   disabled={!state.selectedSession}
-                  title={state.selectedSession ? "Export session" : "Export is available after the session is saved"}
-                  aria-label="Export session"
+                  title={state.selectedSession ? t("topbar.exportTitle") : t("topbar.exportDisabled")}
+                  aria-label={t("topbar.exportTitle")}
                   aria-haspopup="menu"
                   aria-expanded={exportMenuOpen}
                   className={`${s.exportButton} ${state.selectedSession ? s.exportButtonEnabled : s.exportButtonDisabled}`}
@@ -409,7 +427,7 @@ export function AppShell() {
                       <line x1="12" y1="15" x2="12" y2="3" />
                     </svg>
                   </span>
-                  <span>Export</span>
+                  <span>{t("topbar.export")}</span>
                   <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
                     <polyline points="2 4 5 7 8 4" />
                   </svg>
@@ -422,7 +440,7 @@ export function AppShell() {
                       role="menuitem"
                     >
                       <strong>HTML</strong>
-                      <span className={s.exportMenuHint}>Full render, open in browser</span>
+                      <span className={s.exportMenuHint}>{t("topbar.exportHtmlHint")}</span>
                     </button>
                     <button
                       onClick={() => { handleExportMarkdown(); setExportMenuOpen(false); }}
@@ -430,7 +448,7 @@ export function AppShell() {
                       role="menuitem"
                     >
                       <strong>Markdown</strong>
-                      <span className={s.exportMenuHint}>Plain .md, paste into any editor</span>
+                      <span className={s.exportMenuHint}>{t("topbar.exportMdHint")}</span>
                     </button>
                   </div>
                 )}
@@ -438,15 +456,15 @@ export function AppShell() {
               <button
                 onClick={() => setAnalyticsOpen(true)}
                 className={`${s.systemButton} ${s.systemButtonDefault} hover-text`}
-                title="Token usage and cost report"
-                aria-label="Open analytics"
+                title={t("topbar.analyticsTitle")}
+                aria-label={t("topbar.analyticsTitle")}
               >
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--text-dim)", flexShrink: 0 }}>
                   <line x1="18" y1="20" x2="18" y2="10" />
                   <line x1="12" y1="20" x2="12" y2="4" />
                   <line x1="6" y1="20" x2="6" y2="14" />
                 </svg>
-                <span>Analytics</span>
+                <span>{t("topbar.analytics")}</span>
               </button>
               <BranchNavigator
                 tree={state.branchTree}
@@ -468,7 +486,7 @@ export function AppShell() {
                   <line x1="8" y1="13" x2="16" y2="13" />
                   <line x1="8" y1="17" x2="13" y2="17" />
                 </svg>
-                <span>System</span>
+                <span>{t("topbar.system")}</span>
               </button>
             </div>
           )}
@@ -566,11 +584,11 @@ export function AppShell() {
                     </div>
                   ) : state.systemPrompt === "" ? (
                     <div className={s.systemPromptPlaceholder}>
-                      System prompt is empty (tools are disabled)
+                      {t("system.empty")}
                     </div>
                   ) : (
                     <div className={s.systemPromptPlaceholder}>
-                      Send a message to load the system prompt
+                      {t("system.notLoaded")}
                     </div>
                   )}
                 </div>
@@ -650,9 +668,9 @@ export function AppShell() {
                   </svg>
                 </div>
                 <div className={s.placeholderText}>
-                  <div className={s.placeholderTitle}>Select a session</div>
+                  <div className={s.placeholderTitle}>{t("welcome.selectSession")}</div>
                   <div className={s.placeholderSubtitle}>
-                    Choose from the sidebar or start a new one
+                    {t("welcome.chooseFromSidebar")}
                   </div>
                 </div>
               </div>
@@ -670,21 +688,21 @@ export function AppShell() {
                     <span className={s.titleText}>with tGD</span>
                   </div>
                   <div className={s.welcomeSubtitle}>
-                    Your AI coding assistant, powered by Pi
+                    {t("welcome.subtitle")}
                   </div>
                 </div>
                 <div className={s.welcomeSteps}>
                   <div className={s.welcomeStep}>
                     <span className={s.welcomeStepNumber}>1</span>
-                    <span className={s.welcomeStepText}>Select a project directory from the sidebar</span>
+                    <span className={s.welcomeStepText}>{t("welcome.step1")}</span>
                   </div>
                   <div className={s.welcomeStep}>
                     <span className={s.welcomeStepNumber}>2</span>
-                    <span className={s.welcomeStepText}>Click <strong style={{ color: "var(--text)" }}>+ New</strong> to start a session</span>
+                    <span className={s.welcomeStepText}>{t("welcome.step2pre")} <strong style={{ color: "var(--text)" }}>+ {t("sidebar.new")}</strong> {t("welcome.step2post")}</span>
                   </div>
                   <div className={s.welcomeStep}>
                     <span className={s.welcomeStepNumber}>3</span>
-                    <span className={s.welcomeStepText}>Configure models via <strong style={{ color: "var(--text)" }}>Models</strong> at the bottom</span>
+                    <span className={s.welcomeStepText}>{t("welcome.step3pre")} <strong style={{ color: "var(--text)" }}>{t("sidebar.models")}</strong> {t("welcome.step3post")}</span>
                   </div>
                 </div>
               </div>
@@ -720,9 +738,9 @@ export function AppShell() {
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                 <polyline points="14 2 14 8 20 8" />
               </svg>
-              <div className={s.rightPanelEmptyTitle}>No file open</div>
+              <div className={s.rightPanelEmptyTitle}>{t("rightPanel.noFile")}</div>
               <div className={s.rightPanelEmptyHint}>
-                Open one from the file explorer in the sidebar
+                {t("rightPanel.noFileHint")}
               </div>
             </div>
           )}
@@ -732,7 +750,7 @@ export function AppShell() {
     {/* File panel toggle — always visible at top-right */}
     <button
       onClick={() => setRightPanelOpen((v) => !v)}
-      title={rightPanelOpen ? "Hide file panel" : "Show file panel"}
+      title={rightPanelOpen ? t("topbar.hideFilePanel") : t("topbar.showFilePanel")}
       className={`${s.filePanelToggle} hover-text`}
       style={{ color: rightPanelOpen ? "var(--text)" : "var(--text-muted)" }}
     >
@@ -755,14 +773,14 @@ export function AppShell() {
         aria-label="Keyboard shortcuts"
       >
         <div className={s.shortcutsDialog}>
-          <h3 className={s.shortcutsTitle}>Keyboard shortcuts</h3>
+          <h3 className={s.shortcutsTitle}>{t("shortcuts.title")}</h3>
           {([
-            ["⌘K", "Search & commands"],
-            ["⇧⌘M", "Models"],
-            ["⌘/", "Skills"],
-            ["⌘B", "Toggle sidebar"],
-            ["⌘\\", "Toggle file panel"],
-            ["Esc", "Close dialogs"],
+            ["⌘K", t("shortcuts.palette")],
+            ["⇧⌘M", t("shortcuts.models")],
+            ["⌘/", t("shortcuts.skills")],
+            ["⌘B", t("shortcuts.sidebar")],
+            ["⌘\\", t("shortcuts.filePanel")],
+            ["Esc", t("shortcuts.close")],
           ] as [string, string][]).map(([keys, label]) => (
             <div key={keys} className={s.shortcutRow}>
               <span>{label}</span>

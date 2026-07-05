@@ -45,6 +45,24 @@ export interface AgentEvent {
   [key: string]: unknown;
 }
 
+/**
+ * If an agent_end event's final assistant message carries stopReason "error",
+ * return its error text — the run finished by failing, and every "done"
+ * signal (sound, ✅ title, notification) should say so instead.
+ */
+export function getRunError(event: AgentEvent): string | null {
+  if (event.type !== "agent_end") return null;
+  const messages = event.messages as Array<{ role?: string; stopReason?: string; errorMessage?: string }> | undefined;
+  if (!Array.isArray(messages)) return null;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i];
+    if (m?.role !== "assistant") continue;
+    if (m.stopReason === "error") return m.errorMessage || "Model call failed";
+    return null; // last assistant message ended normally
+  }
+  return null;
+}
+
 export type AgentPhase =
   | { kind: "waiting_model"; tools?: undefined }
   | { kind: "running_tools"; tools: { id: string; name: string }[] }

@@ -66,6 +66,13 @@ export function setDoneTitle(sessionName?: string | null): void {
   resetTimer = setTimeout(() => setIdleTitle(sessionName), 8000);
 }
 
+/** Flash a ⚠ title for a failed run. */
+export function setErrorTitle(sessionName?: string | null): void {
+  set(`⚠ ${sessionName ?? "Failed"} — ${BASE_TITLE}`);
+  if (resetTimer) clearTimeout(resetTimer);
+  resetTimer = setTimeout(() => setIdleTitle(sessionName), 12000);
+}
+
 /**
  * Ask for notification permission. Call from a user gesture (send click) —
  * requesting out of the blue gets auto-blocked by browsers.
@@ -78,14 +85,19 @@ export function requestNotifyPermission(): void {
 }
 
 /** Notify that the agent finished — only when the tab isn't being watched. */
-export function notifyDone(sessionName?: string | null): void {
+export function notifyDone(sessionName?: string | null, errorMessage?: string): void {
   if (typeof document === "undefined" || !document.hidden) return;
   if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
   try {
-    const n = new Notification(sessionName ? `Done — ${sessionName}` : "Agent finished", {
-      body: "The agent has finished responding.",
-      tag: "pi-agent-done", // collapse repeats instead of stacking
-    });
+    const n = new Notification(
+      errorMessage
+        ? (sessionName ? `Failed — ${sessionName}` : "Agent run failed")
+        : (sessionName ? `Done — ${sessionName}` : "Agent finished"),
+      {
+        body: errorMessage ?? "The agent has finished responding.",
+        tag: "pi-agent-done", // collapse repeats instead of stacking
+      },
+    );
     n.onclick = () => {
       window.focus();
       n.close();

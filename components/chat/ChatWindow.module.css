@@ -137,6 +137,13 @@
   min-height: 36px;
 }
 
+.phaseIcon {
+  display: inline-flex;
+  align-items: center;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
 .phaseLabel {
   font-weight: 500;
 }

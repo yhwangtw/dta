@@ -42,6 +42,43 @@ export function phaseLabel(phase: AgentPhase): string {
   return "Thinking...";
 }
 
+const phaseSvg = (paths: React.ReactNode) => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    {paths}
+  </svg>
+);
+
+const PHASE_ACTIONS: { cmd: string; label: string; desc: string; icon: React.ReactNode }[] = [
+  {
+    cmd: "/tgd-map", label: "Map", desc: "Understand codebase",
+    icon: phaseSvg(<><polygon points="1 6 8 3 16 6 23 3 23 18 16 21 8 18 1 21" /><line x1="8" y1="3" x2="8" y2="18" /><line x1="16" y1="6" x2="16" y2="21" /></>),
+  },
+  {
+    cmd: "/tgd-define", label: "Define", desc: "Write PRD",
+    icon: phaseSvg(<><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="8" y1="13" x2="16" y2="13" /><line x1="8" y1="17" x2="13" y2="17" /></>),
+  },
+  {
+    cmd: "/tgd-plan", label: "Plan", desc: "Break into tasks",
+    icon: phaseSvg(<><line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" /><line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" /></>),
+  },
+  {
+    cmd: "/tgd-develop", label: "Develop", desc: "Build features",
+    icon: phaseSvg(<><polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" /></>),
+  },
+  {
+    cmd: "/tgd-verify", label: "Verify", desc: "Run tests",
+    icon: phaseSvg(<><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></>),
+  },
+  {
+    cmd: "/tgd-review", label: "Review", desc: "Code review",
+    icon: phaseSvg(<><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></>),
+  },
+  {
+    cmd: "/tgd-release", label: "Release", desc: "Deploy",
+    icon: phaseSvg(<><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9" /></>),
+  },
+];
+
 const TYPEWRITER_PHRASES = [
   "ready when you are.",
   "ask me anything.",
@@ -324,24 +361,16 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                 </span>
               </div>
             </div>
-            {/* tGD Phase Quick Actions */}
+            {/* tGD Phase Quick Actions — stroke icons to match the app's icon system */}
             <div className={styles.quickActionsRow}>
-              {[
-                { cmd: "/tgd-map", label: "Map", icon: "🗺️", desc: "Understand codebase" },
-                { cmd: "/tgd-define", label: "Define", icon: "📝", desc: "Write PRD" },
-                { cmd: "/tgd-plan", label: "Plan", icon: "📋", desc: "Break into tasks" },
-                { cmd: "/tgd-develop", label: "Develop", icon: "⚙️", desc: "Build features" },
-                { cmd: "/tgd-verify", label: "Verify", icon: "✅", desc: "Run tests" },
-                { cmd: "/tgd-review", label: "Review", icon: "🔍", desc: "Code review" },
-                { cmd: "/tgd-release", label: "Release", icon: "🚀", desc: "Deploy" },
-              ].map((phase) => (
+              {PHASE_ACTIONS.map((phase) => (
                 <button
                   key={phase.cmd}
                   onClick={() => chatInputRef?.current?.setText(phase.cmd + " ")}
                   className={styles.phaseButton}
                   title={`${phase.cmd} — ${phase.desc}`}
                 >
-                  <span>{phase.icon}</span>
+                  <span className={styles.phaseIcon} aria-hidden>{phase.icon}</span>
                   <span className={styles.phaseLabel}>{phase.label}</span>
                 </button>
               ))}

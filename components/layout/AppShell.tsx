@@ -716,7 +716,14 @@ export function AppShell() {
             <FileViewer filePath={activeFileTab.filePath} cwd={state.activeCwd ?? undefined} />
           ) : (
             <div className={s.rightPanelEmpty}>
-              No file open
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+              </svg>
+              <div className={s.rightPanelEmptyTitle}>No file open</div>
+              <div className={s.rightPanelEmptyHint}>
+                Open one from the file explorer in the sidebar
+              </div>
             </div>
           )}
         </div>

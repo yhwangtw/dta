@@ -239,7 +239,7 @@ export function SessionItem({
                 {formatRelativeTime(session.modified)}
               </span>
               <span className={styles.metaDivider}>·</span>
-              <span className={styles.metaItem}>{session.messageCount} msgs</span>
+              <span className={styles.metaItem}>{session.messageCount} {session.messageCount === 1 ? "msg" : "msgs"}</span>
               {inlineTags.map((t) => {
                 const ts = getTagStyle(t, theme);
                 return (

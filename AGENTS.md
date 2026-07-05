@@ -7,8 +7,9 @@ npm run dev   # port 30141
 ```
 
 Typecheck: `node_modules/.bin/tsc --noEmit`  
-Lint: `npm run lint`  
-**Never run `next build` during dev** — pollutes `.next/` and breaks `npm run dev`.
+Lint: `npx eslint .`  
+Tests: `npm test` (vitest)  
+**Never run `next build` while the dev server is running** — pollutes `.next/` and breaks `npm run dev`.
 
 ---
 
@@ -17,20 +18,23 @@ Lint: `npm run lint`
 ```
 Browser                Next.js Server              AgentSession (in-process)
   │                        │                               │
-  ├─ GET /api/sessions ────▶ reads ~/.pi/agent/sessions/   │
-  ├─ GET /api/sessions/[id] reads .jsonl file directly     │
-  │                        │                               │
+  ├─ GET /api/sessions ────▶ incremental cache over        │
+  │                        │  ~/.pi/agent/sessions/        │
   ├─ send message ─────────▶ POST /api/agent/[id]          │
   │                        │   startRpcSession() ─────────▶│ createAgentSession()
-  │                        │   session.send(cmd) ─────────▶│ session.prompt()
-  │                        │                               │
+  │                        │   session.send(cmd) ─────────▶│ prompt/steer/bash/…
   ├─ SSE connect ──────────▶ GET /api/agent/[id]/events    │
-  │                        │   session.onEvent() ◀─────────│ session.subscribe()
-  │◀── data: {...} ─────────│                               │
+  │◀── data: {...} ─────────│   session.onEvent() ◀────────│ session.subscribe()
+  ├─ GET /api/git/changes ─▶ git status (allowed cwds)     │
+  └─ GET /api/git/file-diff▶ HEAD vs worktree contents     │
 ```
 
-**Session browsing** (read-only): reads `.jsonl` files directly via `lib/session-reader.ts` — no AgentSession created.  
+**Session browsing** (read-only): parses `.jsonl` files via `lib/session-reader.ts` — no AgentSession created.  
 **Sending a message**: `startRpcSession()` in `lib/rpc-manager.ts` creates an AgentSession in-process.
+
+### Layout (post-redesign)
+
+Icon rail (44px, `AppShell`) → contextual panel (Sessions | Files | Changes) → chat (session-scoped top bar + transcript + input) → right panel (file viewer / diff). Rail bottom: Models / Skills / Language / Theme. Global hotkeys live in one `AppShell` effect — **every hint shown in the ⌘K palette must be bound there**.
 
 ---
 
@@ -38,89 +42,141 @@ Browser                Next.js Server              AgentSession (in-process)
 
 ```
 app/api/
-  sessions/route.ts               GET  list all sessions
-  sessions/[id]/route.ts          GET/PATCH/DELETE session
-  sessions/[id]/context/route.ts  GET ?leafId= — context for a specific leaf
+  sessions/…                      list/read/patch/delete, context, export(+md),
+                                  search, tags, pins, analytics
   agent/new/route.ts              POST { cwd, message, toolNames?, provider?, modelId? }
-  agent/[id]/route.ts             GET state | POST any command
-  agent/[id]/events/route.ts      GET SSE stream
-  files/[...path]/route.ts        GET file contents for viewer
-  models/route.ts                 GET { models, modelList, defaultModel }
-  models-config/route.ts          GET/POST — read/write ~/.pi/agent/models.json
-  skills/route.ts                 GET/PATCH — list/toggle skills
-  skills/search/route.ts          POST — search skills.sh
-  skills/install/route.ts         POST — install skill package
-  auth/providers/route.ts         GET — OAuth providers
-  auth/login/[id]/route.ts        GET SSE / POST — OAuth login flow
-  auth/logout/[id]/route.ts       POST — disconnect OAuth
-  auth/api-key/[id]/route.ts      POST/DELETE — API key management
-  models-config/test/route.ts     POST — test model connection
+  agent/[id]/route.ts             GET state | POST any command (see rpc-manager)
+  agent/[id]/events/route.ts      GET SSE stream (30s comment heartbeats)
+  agent/[id]/summarize/route.ts   POST — auto-naming (skips named sessions)
+  git/changes/route.ts            GET ?cwd= — status --porcelain + numstat
+  git/file-diff/route.ts          GET ?cwd=&path= — HEAD vs worktree text
+  files/, models*, auth/, skills/, cwd/   unchanged surfaces
 
 lib/
-  rpc-manager.ts      AgentSessionWrapper + registry + startRpcSession
-  session-reader.ts   parse .jsonl; getModelNameMap/getModelList/getDefaultModel
-  types.ts            shared TypeScript types
-  normalize.ts        normalizeToolCalls() — field name mismatch between file format and our types
-  system-prompt-off.ts  minimal system prompt when all tools are disabled
+  rpc-manager.ts      AgentSessionWrapper + registry + command dispatch
+                      (prompt/steer/follow_up/fork/bash/clear_queue/…)
+  session-reader.ts   incremental listing (stat cache) + context building
+  i18n.tsx            en/zh-TW strings — module store, useI18n()/translate()
+  skin.ts             appearance skins — html[data-skin] token overrides
+  attention.ts        tab title store (React-rendered <title>) + notifications
+  file-security.ts / file-mime.ts / file-stream.ts / file-paths.ts
+  normalize.ts        toolCall field-name normalization
+  types.ts            shared types (incl. BashExecutionMessage)
 
 components/
-  layout/             AppShell, TabBar, FileViewer, ErrorBoundary
-  chat/               ChatWindow, ChatInput, MessageView, BranchNavigator, ChatMinimap, MarkdownBody
-  sidebar/            SessionSidebar, FileExplorer, FileIcons
-  modals/             ModelsConfig, SkillsConfig, ToolPanel
-    models-config-types.ts    — interfaces, types, constants
-    models-config-forms.tsx   — Field, TextInput, SecretTextInput, NumInput, Select, Check, SectionTitle
-    ProviderIcon.tsx          — provider icon with fallback initials
-    OAuthDetail.tsx           — OAuth login flow UI
-    ApiKeyDetail.tsx          — API key management UI
-    AddProviderPicker.tsx     — add provider search/dialog
-    skills-config-types.ts    — Skill interface, shortenPath, sourceLabel
-    SkillDetail.tsx           — skill detail view + toggle
-    AddSkillPanel.tsx         — search & install skills
+  layout/   AppShell (rail+panels+hotkeys), FilesPanel, ChangesPanel,
+            DiffPanel, FileViewer, TabBar, ErrorBoundary, text-viewer/
+  chat/     ChatWindow (find/⌘F, follow-mode scroll, status line),
+            ChatInput (history ↑, bash prefix), MessageView, BashBlock,
+            AssistantMessageView (error card), BranchNavigator, ChatMinimap,
+            MarkdownBody (lazy KaTeX/Mermaid/PrismAsync)
+  sidebar/  SessionSidebar (+embedded explorer, showExplorer prop),
+            SessionItem, FileExplorer, CwdPicker, TagFilter
+  modals/   ModelsConfig, SkillsConfig, AnalyticsModal, ToolPanel
+  ui/       CommandPalette, Toast, Skeleton
+
+hooks/    useAgentSession (SSE, scroll contract, stall watchdog, bash run),
+          useAppShellState, useCommandPalette, useSessions, useToast (global
+          store), useTheme, useExplorer (persisted), …
 ```
 
 ---
 
 ## Key Design Decisions & Traps
 
+### Module-level stores (theme / toast / i18n / skin / attention)
+Cross-cutting client state uses module-level stores + `useSyncExternalStore`
+— no context providers. **Do not** create per-instance state for these:
+`useToast` was once per-instance and SessionSidebar's toasts silently never
+rendered (its container wasn't mounted). One store, one `<ToastContainer />`
+at the app root.
+
+### React 19 owns `<title>` — never write `document.title`
+Layout metadata is hoisted by React; raw `document.title` writes get
+clobbered on the next render (root-caused via a setter trace). The tab title
+is a store in `lib/attention.ts` rendered as `<title>{useTabTitle()}</title>`
+in AppShell. Layout `metadata` deliberately has **no** `title`.
+
+### StrictMode double-invocation
+Never call a state setter inside another setter's updater — updaters run
+twice in dev and a toggle cancels itself (bit us in the rail view switch).
+Side effects (localStorage writes) inside updaters are tolerated only when
+idempotent.
+
+### Session listing is a stat-based incremental cache
+`lib/session-reader.ts` walks the sessions dir, `stat()`s each file, and
+re-parses only changed ones with pi's pure `parseSessionEntries`.
+**Do not use `SessionManager.open()` for read-only scanning** — it rewrites
+empty/corrupted files as a side effect. Cache lives on `globalThis`
+(hot-reload safe); entries for deleted files are evicted each pass.
+
 ### AgentSession lifecycle (`lib/rpc-manager.ts`)
 - One `AgentSessionWrapper` per session id, keyed in `globalThis.__piSessions`
-- `globalThis` survives Next.js hot-reload; plain module-level Map does not
-- Idle timeout: 10 minutes. Concurrent `startRpcSession()` calls share a single start Promise (`globalThis.__piStartLocks`)
+- Idle timeout 10 min; concurrent `startRpcSession()` share a start Promise
+- **Fork must destroy the wrapper immediately**: `AgentSession.fork()` mutates
+  inner state in place; `send("fork")` captures the new id then `destroy()`s.
+- `bash` command wraps `executeBash` and streams synthetic
+  `bash_start/bash_chunk/bash_end` events through the wrapper's listeners →
+  existing SSE channel. pi records the result itself (role `bashExecution`).
 
-### Fork must destroy the wrapper immediately
-`AgentSession.fork()` **mutates the wrapper's inner state in-place** — after fork, `inner.sessionId` is the *new* session's id. If the wrapper stays alive in the registry under the old id, the next request gets the already-forked state and subsequent forks produce a corrupt `parentSession` chain.
+### Scroll contract (ChatWindow + useAgentSession)
+- On send: user message anchors to the viewport top; a viewport-height spacer
+  below lets the answer stream in without jumps.
+- End of run: only auto-scroll to bottom when the reader is within 200px of
+  it (measured fresh — the spacer has already unmounted). Never yank.
+- Streaming follow: engaged only by user scrolls into the bottom zone (or the
+  jump button) — content growth never changes engagement. Instant scrolls,
+  not smooth (smooth queues jitter at token rate).
+- Jump-to-bottom uses `block:"end"` — `block:"start"` + spacer can scroll the
+  conversation out of the viewport.
 
-**Fix**: `send("fork")` captures `newSessionId`, then calls `this.destroy()` before returning. The next request for the original session reloads a clean AgentSession from the original file.
+### Run outcome signals
+`agent_end` events carry `messages`; `getRunError()`
+(hooks/use-agent-session-types.ts) reads the last assistant message's
+`stopReason`. Failures: red error card (AssistantMessageView), error toast,
+⚠ title, failure notification, **no** completion sound. Stall watchdog: 60s
+without an SSE event (120s during tool runs) shows a warning — SSE heartbeats
+are comments and don't reset the clock.
+
+### Appearance skins
+Base palette (terminal) lives in `:root`/`html.dark`; the other skins are
+`html[data-skin="…"]` token-override blocks in `globals.css` (~23 tokens ×
+skin × theme). Components read CSS variables only — **never hardcode colors**.
+Default skin: `editorial` (see `DEFAULT_SKIN` and the no-flash init script in
+`layout.tsx`).
+
+### cwd-follow must not reset the view
+The sidebar follows the open session's cwd (cross-project selection). That
+notification flows through `handleCwdChange`, whose reset path calls
+`router.replace("/")` — guarded by `selectedSessionRef`: when the new cwd
+matches the open session, skip the reset or the `?session=` URL param (and
+reload-restore) silently breaks.
 
 ### Two kinds of branching — don't confuse them
-- **Fork** (Fork button on user message): creates a new independent `.jsonl` file. Shown as a child in the sidebar tree via `parentSession` header field.
-- **In-session branch** (Continue button / BranchNavigator): calls `navigate_tree` within the same file. Multiple entries share the same `parentId`. Switching between them calls `/api/sessions/[id]/context?leafId=`.
-
-### Session files can be fully rewritten
-`parentSession` in the header is **display metadata only** — has zero effect on chat content. Safe to `writeFileSync` the entire file (pi does this itself during migrations). Used when cascade-reparenting children on delete.
+- **Fork**: new independent `.jsonl` file; shown as a child via
+  `parentSession` header (display metadata only — safe to rewrite files).
+- **In-session branch**: `navigate_tree` within one file; switching loads
+  `/api/sessions/[id]/context?leafId=`.
 
 ### ToolCall field normalization
-Pi stores toolCall blocks as `{type:"toolCall", id, name, arguments}` but `ToolCallContent` uses `{toolCallId, toolName, input}`. `normalizeToolCalls()` in `lib/normalize.ts` handles this — called in both `session-reader.ts` (file load) and `ChatWindow.handleAgentEvent()` (streaming).
+Pi stores `{type:"toolCall", id, name, arguments}` but `ToolCallContent` uses
+`{toolCallId, toolName, input}` — `normalizeToolCalls()` handles both file
+load and streaming paths.
 
-### New session tool preset
-Tool names are passed at session creation (`POST /api/agent/new` → `toolNames[]`). For existing sessions, the active preset is inferred on mount via `get_tools` → `getPresetFromTools()`. When tools are fully disabled (`toolNames = []`), `rpc-manager.ts` injects a minimal system prompt via `system-prompt-off.ts` + `DefaultResourceLoader`.
+### /api/git security
+Both routes gate `cwd` against the session allowed-roots set, use `execFile`
+(no shell), reject `-`-prefixed paths, and cap at 1 MB. Keep it that way.
 
-### Model defaults for new sessions
-`GET /api/models` returns `defaultModel` read from `~/.pi/agent/settings.json`. `ChatWindow` pre-selects this on mount for new sessions.
-
-### SSE reconnect on page refresh mid-stream
-On `ChatWindow` mount, `GET /api/agent/[id]` is called. If `state.isStreaming === true`, SSE is reconnected automatically. `thinkingLevel` and `isCompacting` are also synced from this response.
-
-### Compaction SSE events
-Newer pi emits `compaction_start` / `compaction_end`; older versions emitted `auto_compaction_start` / `auto_compaction_end`. `handleAgentEvent` accepts both sets to keep `isCompacting` in sync. Manual compact is a blocking POST — the button stays disabled until the response returns.
-
-### Orphaned sessions
-Sessions whose first line can't be parsed as a valid header are marked `orphaned: true` in the API response — displayed with an "incomplete" badge in the sidebar and not clickable.
+### i18n
+`lib/i18n.tsx`: add keys to `MESSAGES`, use `t()` in components /
+`translate()` in non-reactive code. English is the default locale; zh-TW is
+partial (config modals intentionally untranslated). Palette actions carry
+Chinese `keywords` so both languages can search them.
 
 ### CSS Design Tokens (`app/globals.css`)
-Semantic color system with light/dark mode variants. All components use CSS variables — never hardcoded hex/rgba.
-Categories: base (bg/text/border), semantic (error/success/warning/info), overlay, accent-tints, shadows, typography (font sizes), radius.
+Semantic tokens with light/dark + per-skin variants. `chrome-mono` class =
+JetBrains Mono for machine-y labels (group headers, stats, meta); message
+content stays Inter.
 
 ---
 
@@ -130,12 +186,15 @@ Location: `~/.pi/agent/sessions/<encoded-cwd>/<timestamp>_<uuid>.jsonl`
 
 ```jsonl
 {"type":"session","version":3,"id":"<uuid>","timestamp":"...","cwd":"/path","parentSession":"/abs/path/to/parent.jsonl"}
-{"type":"model_change","id":"<8hex>","parentId":null,"provider":"zenmux","modelId":"claude-sonnet-4-6","timestamp":"..."}
+{"type":"model_change","id":"<8hex>","parentId":null,"provider":"...","modelId":"...","timestamp":"..."}
 {"type":"message","id":"<8hex>","parentId":"<8hex>","message":{"role":"user","content":"..."}}
-{"type":"message","id":"<8hex>","parentId":"<8hex>","message":{"role":"assistant","content":[...],...}}
+{"type":"message","id":"<8hex>","parentId":"<8hex>","message":{"role":"assistant","content":[...],"stopReason":"stop|error|aborted","errorMessage":"..."}}
+{"type":"message","id":"<8hex>","parentId":"<8hex>","message":{"role":"bashExecution","command":"...","output":"...","exitCode":0}}
 {"type":"message","id":"<8hex>","parentId":"<8hex>","message":{"role":"toolResult","toolCallId":"...","content":[...]}}
 {"type":"compaction","id":"<8hex>","parentId":"<8hex>","summary":"...","firstKeptEntryId":"<8hex>","tokensBefore":N}
 {"type":"session_info","id":"...","parentId":"...","name":"user-defined name"}
 ```
 
-`entryIds[]` in `SessionContext` is a parallel array to `messages[]` — maps each displayed message back to its `.jsonl` entry id, used for fork and navigate_tree calls.
+`entryIds[]` in `SessionContext` is a parallel array to `messages[]` — maps
+each displayed message back to its `.jsonl` entry id, used for fork and
+navigate_tree calls.

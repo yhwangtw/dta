@@ -4,6 +4,30 @@ All notable changes to tGD-pi-web are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning: `YYYY.MM.DD` (date-based, aligned with upstream tGD).
 
+## [Unreleased] — PR #1 (92b2b14) + PR #2 (7c96d41)
+
+### Added
+- **Bash mode**: `!cmd` executes in the session cwd with output streamed over SSE (`bash_start/chunk/end` events); results recorded as `bashExecution` entries the agent can read; `!!cmd` excludes output from LLM context; Cancel for long runs; terminal-pane rendering with exit badges.
+- **Changes panel**: git working-tree view for the session cwd (branch, per-file M/A/D/R/U status, +/− stats), refreshed after each agent turn; click-through to a HEAD ↔ worktree diff in the right panel. New `/api/git/changes` and `/api/git/file-diff` routes (allowed-roots gated, `execFile`, 1 MB cap).
+- **Appearance skins**: four complete palettes — Editorial (warm paper, **default**), Terminal (emerald), Industrial (mono), Aurora (violet) — each with light+dark, switchable via ⌘K, persisted, no-flash init.
+- **Attention loop**: live tab title (⏳ running / ✅ done / ⚠ failed via a React-rendered `<title>` store), browser notification when a hidden tab finishes, status line with spinner + elapsed timer, stall watchdog (60s/120s no-event warning).
+- **Failure visibility**: assistant messages with `stopReason:"error"` render a red error card with the full `errorMessage`; failed runs fire an error toast, skip the completion sound, and notify as "Failed".
+- **i18n**: English-default UI with a Traditional-Chinese toggle (~90 strings, `lib/i18n.tsx` module store); palette actions searchable in both languages.
+- **⌘F in-conversation find**, jump-to-bottom button, input history (↑ recall), wide-chat toggle, follow-up queue banner with Cancel (`clear_queue` rpc), keyboard-shortcuts dialog with real bindings (⇧⌘M/⌘//⌘B/⌘\).
+- Tests: 58 → 82 (incremental session cache, stream reducer, phase labels, run-error extraction).
+
+### Changed
+- **Layout restructure**: 44px icon rail (Sessions/Files/Changes/Search/Analytics + Models/Skills/Language/Theme) with a single contextual panel; session-scoped top bar (title + Export/Branches/System/stats); embedded file tree coexists with the full-height Files view (persisted preference).
+- **Typography**: Traditional-Chinese-first font fallbacks, CJK-sized heading scale, bundled JetBrains Mono 700, antialiasing, 10.5px type floor; machine chrome set in mono (`chrome-mono`).
+- **Session listing** rewritten as a stat-based incremental cache over pi's `parseSessionEntries` (no more full-disk rescans; avoids `SessionManager.open`'s file-rewrite side effect).
+- `MessageView` memoized with stabilized props — streaming no longer re-renders every historical message; syntax highlighter moved to a lazy `PrismAsync` chunk.
+- Scroll behavior: end-of-run only follows when the reader is near the bottom; sticky follow while streaming engages/disengages on user scrolls only; jump button uses `block:"end"`.
+
+### Fixed
+- ⌘K palette not closing after selecting a session/tag/file; mobile sidebar trapping first-time visitors; advertised-but-unbound shortcuts; `useToast` per-instance state rendering sidebar toasts invisible; cross-project selection leaving the sidebar on the old project; cwd-follow wiping the `?session=` URL param (broke reload-restore); silent send/steer/follow-up failures; "1 msgs" pluralization; search trigger collapsing to "Se…".
+- CI: test job was missing entirely; lint ran the removed `next lint` under `continue-on-error` (never failed).
+- `npm audit` clean via next 16.2.10 + postcss override.
+
 ## [2026.07.02] — b3d107c9
 
 ### Refactored

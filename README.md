@@ -2,90 +2,105 @@
 
 [繁體中文](./README.zh-TW.md)
 
-A web interface for [Pi Coding Agent](https://github.com/earendil-works/pi). Browse conversations, chat with the agent in real time, fork threads, and switch between message branches — all in the browser.
+A web interface for [Pi Coding Agent](https://github.com/earendil-works/pi). Browse conversations, chat with the agent in real time, run shell commands, review what the agent changed, fork threads, and switch between message branches — all in the browser.
 
 ## Quick Start
 
-**One-command install:**
+**For users** — run the prebuilt package (no clone, no build):
+
+```bash
+npx @agegr/pi-web
+```
+
+The server starts on [http://localhost:30141](http://localhost:30141) and opens your browser. Custom port: `npx @agegr/pi-web -p 8080`.
+
+**For development** — clone and run from source:
 
 ```bash
 git clone https://github.com/openclawyhwang-hub/tGD-pi-web.git
 cd tGD-pi-web
-./setup.sh
+./setup.sh        # or: npm install && npm run dev
 ```
 
-`setup.sh` checks Node.js version, installs dependencies, verifies the build, and asks whether to start the dev server.
-
-**Manual install:**
-
-```bash
-git clone https://github.com/openclawyhwang-hub/tGD-pi-web.git
-cd tGD-pi-web
-npm install
-npm run dev
-```
-
-Open [http://localhost:30141](http://localhost:30141) after startup.
-
-**Custom port:**
-
-```bash
-npm run dev -- --port 8080               # via CLI flag
-PORT=8080 npm run dev                    # via env var
-```
+Requirements: Node.js ≥ 22 and a working [pi](https://github.com/earendil-works/pi) setup (`~/.pi/agent/`).
 
 ## Features
 
 ### Chat
 - **Live streaming** — SSE streaming, tokens appear as they're generated
-- **Steer / Follow-up** — Interrupt a running agent, or append a message after completion
+- **Steer / Follow-up** — Interrupt a running agent, or queue a message for after completion (queued follow-ups are visible and cancellable)
+- **Bash mode** — Type `!cmd` to run a shell command directly in the session cwd with streamed output; the result is recorded so the agent sees it. `!!cmd` keeps it out of the LLM context
 - **Model switching** — Change model and thinking level mid-conversation
 - **Tool panel** — Control which tools the agent can use (none / preset / all)
 - **Compact session** — Summarize long threads to save context window
+- **Honest status** — Live spinner + elapsed timer while running; stall warning when the model stops responding; failed runs show the full error in a red card (never a silent empty reply)
+
+### Stay informed while it works
+- **Tab title** — `⏳ session` while running, flashes `✅` on completion (`⚠` on failure)
+- **Browser notification** — When the agent finishes and the tab is in the background
+- **Completion sound** — Optional, skipped on failure
+
+### Navigation
+- **⌘K command palette** — Search sessions, tags, files, and run commands (bilingual search)
+- **⌘F in-conversation find** — Match counter, Enter/⇧Enter to cycle, flash highlight
+- **Icon rail** — Sessions / Files / Changes / Search / Analytics views; Models / Skills / Language / Theme at the bottom
+- **Jump to bottom** — Floating button when scrolled up; entering the tail engages sticky follow while streaming
+- **Input history** — ↑ in an empty input recalls previous messages
 
 ### Session Management
 - **Session browser** — Grouped by working directory, auto-detects recent projects
 - **Time grouping** — Today / Yesterday / This Week / Earlier
-- **Search** — Instant filter by session name or first message
+- **Search, tags, pins** — Instant filter, colored tag chips, pinned sessions float to top
 - **Auto-naming** — Generates a title after the first exchange
 - **Fork** — Branch off from any user message into an independent new session
-- **In-session branches** — Roll back to any node and continue; branches share one file
-- **Branch navigator** — Visual switching between branches within a session
-- **Export HTML** — Save a session as a standalone HTML file
+- **In-session branches** — Roll back to any node and continue; branch navigator in the top bar
+- **Export** — Standalone HTML or plain Markdown
+- **Analytics** — Token usage and cost report
 
-### File Browsing
-- **File explorer** — In-sidebar file tree with expand/collapse
-- **File search** — Instant filter; matched directories auto-expand
-- **Junk filtering** — Hides `.git`, `node_modules`, `__pycache__`, etc.
-- **File preview** — View file contents in a tab; Markdown rendered
-- **@-mention** — Click the button next to a file to insert its path into chat
+### Files & Changes
+- **Files view** — Full-height file tree in the rail panel; a collapsible tree also lives under the session list (your choice persists)
+- **Changes view** — Git working-tree status for the session cwd (branch, per-file status + stats), refreshed after every agent turn; click a file for a HEAD ↔ worktree diff
+- **File preview** — Source with highlighting, Markdown/HTML preview, images, diffs
+- **@-mention** — Insert a file path into the chat input from the tree
 
 ### Rendering
-- **Markdown** — GFM syntax, tables, task lists
-- **Code** — Syntax highlighting + line numbers
-- **Math** — KaTeX for inline and block formulas
-- **Diagrams** — Mermaid flowcharts, sequence diagrams, etc.
-- **Provider icons** — Anthropic, OpenAI, Google, ZAI, etc.
+- **Markdown** — GFM, tables, task lists; KaTeX math; Mermaid diagrams
+- **Code** — Syntax highlighting + line numbers (highlighter loads lazily off the critical bundle)
+- **Provider icons** — Anthropic, OpenAI, Google, etc.
 
-### Experience
-- **Dark mode** — Auto-detects system theme; manual toggle has a circular reveal animation
-- **Cross-platform fonts** — Bundled Inter + JetBrains Mono, zero network dependency
-- **Accessibility** — Keyboard focus indicators, respects `prefers-reduced-motion`, ARIA labels
-- **Responsive** — Adapts to desktop and touch devices (scrollbars, layout)
-- **IME support** — Correctly handles CJK input method composition
+### Appearance
+- **Four switchable skins** — Editorial (warm paper, default) / Terminal (emerald) / Industrial (mono) / Aurora (violet), each with light + dark themes. Switch via ⌘K → "Appearance"
+- **Interface language** — English (default) ⇄ Traditional Chinese, globe button in the rail
+- **Typography** — Bundled Inter + JetBrains Mono, Traditional-Chinese-first fallback chain, zero network dependency
 
-### tGD Integration
-- **Slash commands** — Run `/tgd-map`, `/tgd-define`, etc. (7-phase commands) directly in the web UI
-- **Skills management** — Search and install tGD skills
+## Keyboard Shortcuts
+
+| Keys | Action |
+|------|--------|
+| `⌘K` | Command palette (search & commands) |
+| `⌘F` | Find in conversation |
+| `⇧⌘M` | Models |
+| `⌘/` | Skills |
+| `⌘B` | Toggle panel |
+| `⌘\` | Toggle file panel |
+| `↑` | Recall previous message (empty input) |
+| `Esc` | Close dialogs |
 
 ## Configuration
 
 | Item | Description |
 |------|-------------|
 | Session directory | Defaults to `~/.pi/agent/sessions/`; set `PI_CODING_AGENT_DIR` to override |
-| Model config | Reads `models.json`; editable via the Models panel in the sidebar |
+| Model config | Reads `models.json`; editable via the Models panel (supports custom baseUrl — point it at an internal gateway or local model for offline networks) |
 | API keys | Per-provider keys stored in `auth.json` |
 | Default directory | Set or customize via the CWD picker |
+
+## Offline / air-gapped deployment
+
+The app itself makes **zero external requests at runtime** (fonts bundled, no CDNs). Only the LLM endpoint needs to be reachable — point `models.json` at an internal gateway or a local model.
+
+- **Internal npm registry (Nexus etc.)**: build once (`npm ci && npm run build`), `npm publish --registry=<internal>`; users run `npx @agegr/pi-web` with their registry pointed internally
+- **Portable folder**: on a networked machine of the *same OS/arch*, `npm ci && npm run build`, copy the whole folder, run `npm run start`
 
 ## Development
 
@@ -99,20 +114,21 @@ npm run dev    # port 30141
 ```bash
 node_modules/.bin/tsc --noEmit     # Typecheck
 npx eslint .                       # Lint
+npm test                           # Unit tests (vitest)
 ```
 
-> ⚠️ **Never** run `next build` during development — it pollutes `.next/` and breaks `npm run dev`.
+> ⚠️ **Never** run `next build` while the dev server is running — it pollutes `.next/` and breaks `npm run dev`.
 
 ## Tech Stack
 
 | Layer | Technology |
 |-------|------------|
 | Framework | Next.js 16 (App Router) |
-| UI | React 19 + CSS Variables (zero CSS-in-JS) |
+| UI | React 19 + CSS variables (design tokens; four skins are token-override blocks) |
 | Agent SDK | @earendil-works/pi-ai + pi-coding-agent |
 | Markdown | react-markdown + remark-gfm + rehype-katex |
-| Diagrams | Mermaid |
-| Code | react-syntax-highlighter |
+| Diagrams | Mermaid (lazy-loaded) |
+| Code | react-syntax-highlighter (PrismAsync, lazy chunk) |
 | Fonts | Inter + JetBrains Mono (bundled .woff2) |
 
 ## Architecture
@@ -120,41 +136,42 @@ npx eslint .                       # Lint
 ```
 Browser                Next.js Server              AgentSession (in-process)
   │                        │                               │
-  ├─ GET /api/sessions ────▶ reads ~/.pi/agent/sessions/   │
-  ├─ GET /api/sessions/[id] reads .jsonl file directly     │
-  │                        │                               │
+  ├─ GET /api/sessions ────▶ incremental cache over        │
+  │                        │  ~/.pi/agent/sessions/        │
   ├─ send message ─────────▶ POST /api/agent/[id]          │
   │                        │   startRpcSession() ─────────▶│ createAgentSession()
-  │                        │   session.send(cmd) ─────────▶│ session.prompt()
-  │                        │                               │
+  │                        │   session.send(cmd) ─────────▶│ prompt/steer/bash/…
   ├─ SSE connect ──────────▶ GET /api/agent/[id]/events    │
-  │                        │   session.onEvent() ◀─────────│ session.subscribe()
-  │◀── data: {...} ─────────│                               │
+  │◀── data: {...} ─────────│   session.onEvent() ◀────────│ session.subscribe()
+  ├─ GET /api/git/changes ─▶ git status (allowed cwds only)│
+  └─ GET /api/git/file-diff▶ HEAD vs worktree contents     │
 ```
 
 ## Project Structure
 
 ```
-app/
-  api/
-    agent/          # send commands, SSE event stream, auto-naming
-    sessions/       # read/write session files, export
-    files/          # file content read (stream, meta, preview, watch)
-    models/         # available models + default model
-    models-config/  # read/write models.json
-    auth/           # provider login/logout
-    skills/         # tGD skills search & install
-    cwd/            # working directory validation
-components/         # UI components
+app/api/
+  agent/            # send commands, SSE event stream, auto-naming, bash
+  sessions/         # read/write session files, export, search, tags, pins
+  files/            # file content read (stream, meta, preview, watch)
+  git/              # changes list + per-file diff for the session cwd
+  models*, auth/, skills/, cwd/   # config surfaces
+components/
+  layout/           # AppShell (rail + panels), FilesPanel, ChangesPanel,
+                    # DiffPanel, FileViewer, ErrorBoundary
+  chat/             # ChatWindow, ChatInput, MessageView, BashBlock,
+                    # BranchNavigator, ChatMinimap, MarkdownBody
+  sidebar/          # SessionSidebar, SessionItem, FileExplorer, CwdPicker
+  modals/           # ModelsConfig, SkillsConfig, AnalyticsModal, ToolPanel
+  ui/               # CommandPalette, Toast, Skeleton
 lib/
-  rpc-manager.ts    # AgentSession lifecycle management
-  session-reader.ts # parse .jsonl session files
-  file-security.ts  # path validation + allowed roots
-  file-mime.ts      # extension → MIME/language mapping
-  file-stream.ts    # streaming, Content-Disposition, HTML preview
-  normalize.ts      # normalize toolCall field names
-  types.ts          # shared TypeScript types
-hooks/              # extracted state logic (useSessions, useCwd, useFileWatch, …)
+  rpc-manager.ts    # AgentSession lifecycle + command dispatch (incl. bash)
+  session-reader.ts # incremental session listing + .jsonl parsing
+  i18n.tsx          # en/zh-TW string store
+  skin.ts           # appearance skin store
+  attention.ts      # tab title + notifications store
+  file-*.ts         # security / mime / streaming helpers
+hooks/              # useAgentSession, useAppShellState, useSessions, …
 ```
 
 ## License

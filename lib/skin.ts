@@ -11,6 +11,9 @@ import { useSyncExternalStore } from "react";
 export const SKINS = ["terminal", "industrial", "aurora", "editorial"] as const;
 export type Skin = (typeof SKINS)[number];
 
+/** Default when the user hasn't picked one. */
+export const DEFAULT_SKIN: Skin = "editorial";
+
 export const SKIN_LABELS: Record<Skin, string> = {
   terminal: "Terminal (emerald)",
   industrial: "Industrial (mono)",
@@ -19,7 +22,7 @@ export const SKIN_LABELS: Record<Skin, string> = {
 };
 
 const listeners = new Set<() => void>();
-let skin: Skin = "terminal";
+let skin: Skin = DEFAULT_SKIN;
 
 if (typeof window !== "undefined") {
   try {
@@ -42,7 +45,7 @@ function getSnapshot(): Skin {
 }
 
 function getServerSnapshot(): Skin {
-  return "terminal";
+  return DEFAULT_SKIN;
 }
 
 export function setSkin(next: Skin): void {

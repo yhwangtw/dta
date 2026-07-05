@@ -170,34 +170,35 @@
 .inlineContainer {
   height: 100%;
   display: flex;
-  align-items: stretch;
+  align-items: center;
 }
 
 .inlineButton {
   display: flex;
   align-items: center;
   gap: 6px;
-  height: 100%;
-  padding: 0 12px;
+  height: 28px;
+  padding: 0 10px;
   border: none;
-  border-right: 1px solid var(--border);
+  border-radius: 7px;
   cursor: pointer;
   font-size: 11px;
   white-space: nowrap;
   transition: color 0.1s, background 0.1s;
 }
+.inlineButton:hover {
+  background: var(--bg-hover);
+}
 
 .inlineButtonOpen {
   composes: inlineButton;
-  background: var(--bg-selected);
-  border-top: 2px solid var(--accent);
-  color: var(--text);
+  background: var(--color-accent-bg);
+  color: var(--accent);
 }
 
 .inlineButtonClosed {
   composes: inlineButton;
   background: none;
-  border-top: 2px solid transparent;
   color: var(--text-muted);
 }
 

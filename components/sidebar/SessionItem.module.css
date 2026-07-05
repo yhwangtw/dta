@@ -4,6 +4,8 @@
   padding-top: 7px;
   padding-bottom: 7px;
   padding-right: 6px;
+  margin: 1px 6px;
+  border-radius: 8px;
   transition: background 0.1s;
   overflow: hidden;
 }

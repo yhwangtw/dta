@@ -91,6 +91,10 @@
   composes: inputWrapper;
   border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
 }
+.inputWrapperNormal:focus-within {
+  border-color: var(--color-accent-border-focus);
+  box-shadow: var(--color-shadow-input), 0 0 0 3px var(--color-accent-bg-subtle);
+}
 
 .inputWrapperStreaming {
   composes: inputWrapper;

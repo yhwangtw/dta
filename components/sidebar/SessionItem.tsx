@@ -132,10 +132,7 @@ export function SessionItem({
           cursor: confirmDelete || renaming ? "default" : "pointer",
           background: confirmDelete
             ? "var(--color-error-bg)"
-            : isSelected ? "var(--bg-selected)" : undefined,
-          borderLeft: confirmDelete
-            ? "2px solid var(--color-error)"
-            : isSelected ? "2px solid var(--accent)" : "2px solid transparent",
+            : isSelected ? "var(--color-accent-bg)" : undefined,
           opacity: deleting ? 0.5 : 1,
         }}
       >

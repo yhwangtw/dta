@@ -61,7 +61,7 @@
 
 .truncated {
   padding: 6px 12px;
-  font-size: 10px;
+  font-size: 10.5px;
   color: var(--text-dim);
   font-style: italic;
   text-align: center;
@@ -106,14 +106,14 @@
 }
 
 .hitMeta {
-  font-size: 10px;
+  font-size: 10.5px;
   color: var(--text-dim);
   flex-shrink: 0;
   white-space: nowrap;
 }
 
 .matchedIn {
-  font-size: 10px;
+  font-size: 10.5px;
   color: var(--color-accent);
   font-style: italic;
 }
@@ -130,7 +130,7 @@
 }
 
 .role {
-  font-size: 10px;
+  font-size: 10.5px;
 }
 
 .mark {

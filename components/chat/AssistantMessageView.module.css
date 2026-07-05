@@ -57,6 +57,7 @@
 .usageText {
   font-size: 11px;
   color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
 }
 
 /* Copy button */
@@ -77,7 +78,7 @@
 }
 
 .timestamp {
-  font-size: 10px;
+  font-size: 10.5px;
   color: var(--text-dim);
   margin-left: auto;
 }

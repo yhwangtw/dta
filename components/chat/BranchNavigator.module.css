@@ -111,7 +111,7 @@
 
 /* Skipped indicator */
 .skippedIndicator {
-  font-size: 10px;
+  font-size: 10.5px;
   color: var(--text-dim);
   margin-right: 5px;
   flex-shrink: 0;

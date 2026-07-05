@@ -7,6 +7,7 @@ import { ChatInput, type ChatInputHandle } from "./ChatInput";
 import { ChatMinimap, useMessageRefs } from "./ChatMinimap";
 import { BashBlock } from "./BashBlock";
 import { useAgentSession, type AgentPhase } from "@/hooks/useAgentSession";
+import { getRunError } from "@/hooks/use-agent-session-types";
 import { useAudio } from "@/hooks/useAudio";
 import { useDragDrop } from "@/hooks/useDragDrop";
 import styles from "./ChatWindow.module.css";
@@ -165,7 +166,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
     agentRunning, modelNames, modelList, modelThinkingLevels, modelThinkingLevelMaps, toolPreset, thinkingLevel,
     retryInfo, contextUsage, forkingEntryId,
     isCompacting, compactError, displayModel: displayModelValue, sessionStats,
-    agentPhase, agentStartedAt, queuedFollowUps, bashRun,
+    agentPhase, agentStartedAt, queuedFollowUps, bashRun, stalledSecs,
     isNew,
     messagesEndRef, scrollContainerRef,
     lastUserMsgRef,
@@ -188,7 +189,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
   const origHandler = handleAgentEventRef.current;
   useEffect(() => {
     handleAgentEventRef.current = (event) => {
-      if (event.type === "agent_end" && soundEnabledRef.current) {
+      if (event.type === "agent_end" && soundEnabledRef.current && !getRunError(event)) {
         playDoneSoundRef.current();
       }
       origHandler?.(event);
@@ -641,11 +642,22 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
             )}
 
             {agentRunning && !streamState.streamingMessage && (
-              <div className="flex items-center gap-2 py-2 text-[13px] text-text-muted">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="animate-spin text-[var(--accent)]" aria-hidden>
-                  <path d="M21 12a9 9 0 1 1-6.2-8.56" />
-                </svg>
-                <span>{phaseLabel(agentPhase)}</span>
+              <div className={`flex items-center gap-2 py-2 text-[13px] ${stalledSecs > 0 ? "text-[var(--color-warning-text-strong)]" : "text-text-muted"}`}>
+                {stalledSecs > 0 ? (
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                    <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
+                  </svg>
+                ) : (
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="animate-spin text-[var(--accent)]" aria-hidden>
+                    <path d="M21 12a9 9 0 1 1-6.2-8.56" />
+                  </svg>
+                )}
+                <span>
+                  {stalledSecs > 0
+                    ? `No response for ${stalledSecs}s — the model or a tool may be stalled. Stop and retry if this persists.`
+                    : phaseLabel(agentPhase)}
+                </span>
                 {agentStartedAt && <Elapsed since={agentStartedAt} />}
               </div>
             )}

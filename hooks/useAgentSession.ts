@@ -6,10 +6,10 @@ import { normalizeToolCalls } from "@/lib/normalize";
 import { sendAgentCommand } from "@/lib/agent-client";
 import { showToast } from "@/hooks/useToast";
 import { translate } from "@/lib/i18n";
-import { setIdleTitle, setRunningTitle, setDoneTitle, notifyDone, requestNotifyPermission } from "@/lib/attention";
+import { setIdleTitle, setRunningTitle, setDoneTitle, setErrorTitle, notifyDone, requestNotifyPermission } from "@/lib/attention";
 import type { ToolEntry } from "@/components/modals/ToolPanel";
 import type { SessionData, AgentEvent, AgentPhase, UseAgentSessionOptions, ThinkingLevelOption, ChatInputHandle, AttachedImage } from "./use-agent-session-types";
-import { streamReducer } from "./use-agent-session-types";
+import { streamReducer, getRunError } from "./use-agent-session-types";
 
 export type { SessionData, AgentPhase, ThinkingLevelOption, ChatInputHandle, AttachedImage };
 
@@ -48,10 +48,14 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const [agentStartedAt, setAgentStartedAt] = useState<number | null>(null);
   const [queuedFollowUps, setQueuedFollowUps] = useState<string[]>([]);
   const [bashRun, setBashRun] = useState<{ command: string; output: string; running: boolean } | null>(null);
+  // Seconds since the last SSE event while a run is active; 0 = healthy.
+  const [stalledSecs, setStalledSecs] = useState(0);
+  const lastEventAtRef = useRef(Date.now());
 
   const eventSourceRef = useRef<EventSource | null>(null);
   const sessionIdRef = useRef<string | null>(session?.id ?? null);
   const agentRunningRef = useRef(false);
+  const agentPhaseRef = useRef<AgentPhase>(null);
   const handleAgentEventRef = useRef<((event: AgentEvent) => void) | null>(null);
   const initialScrollDoneRef = useRef(false);
   const lastUserMsgRef = useRef<HTMLDivElement | null>(null);
@@ -164,6 +168,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       reconnectAttemptRef.current = 0;
     };
     es.onmessage = (e) => {
+      lastEventAtRef.current = Date.now();
       try {
         const event = JSON.parse(e.data) as AgentEvent;
         handleAgentEventRef.current?.(event);
@@ -189,6 +194,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   useEffect(() => {
     agentRunningRef.current = agentRunning;
   }, [agentRunning]);
+  agentPhaseRef.current = agentPhase;
 
   const handleAgentEvent = useCallback((event: AgentEvent) => {
     switch (event.type) {
@@ -196,6 +202,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         setAgentRunning(true);
         setAgentPhase({ kind: "waiting_model" });
         setAgentStartedAt(Date.now());
+        lastEventAtRef.current = Date.now();
+        setStalledSecs(0);
         setRunningTitle(sessionNameRef.current);
         dispatch({ type: "start" });
         // Reload so user messages injected mid-stream (steer, queued
@@ -210,8 +218,18 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         // Queued follow-ups are consumed right after this event; the next
         // agent_start reload will surface them as real messages.
         setQueuedFollowUps([]);
-        setDoneTitle(sessionNameRef.current);
-        notifyDone(sessionNameRef.current);
+        setStalledSecs(0);
+        {
+          const runError = getRunError(event);
+          if (runError) {
+            showToast(`Model error: ${runError}`, { type: "error", duration: 8000 });
+            setErrorTitle(sessionNameRef.current);
+            notifyDone(sessionNameRef.current, runError);
+          } else {
+            setDoneTitle(sessionNameRef.current);
+            notifyDone(sessionNameRef.current);
+          }
+        }
         dispatch({ type: "end" });
         if (sessionIdRef.current) {
           // includeState piggybacks contextUsage/systemPrompt on the session
@@ -725,6 +743,23 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     }).catch(() => {});
   }, [isNew, modelsRefreshKey, setNewSessionModel]);
 
+  // Stall watchdog: while a run is active, warn when no SSE event has
+  // arrived for a while. Heartbeat comments don't fire onmessage, so this
+  // measures real progress. Tool runs are legitimately quiet for longer,
+  // hence the higher threshold there.
+  useEffect(() => {
+    if (!agentRunning) {
+      setStalledSecs(0);
+      return;
+    }
+    const id = setInterval(() => {
+      const idle = Math.floor((Date.now() - lastEventAtRef.current) / 1000);
+      const threshold = agentPhaseRef.current?.kind === "running_tools" ? 120 : 60;
+      setStalledSecs(idle >= threshold ? idle : 0);
+    }, 5000);
+    return () => clearInterval(id);
+  }, [agentRunning]);
+
   // Compact error auto-dismiss
   useEffect(() => {
     if (!compactError) return;
@@ -738,7 +773,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     agentRunning, modelNames, modelList, modelThinkingLevels, modelThinkingLevelMaps, newSessionModel, toolPreset, thinkingLevel,
     retryInfo, contextUsage, systemPrompt, forkingEntryId,
     isCompacting, compactError, currentModel, displayModel, sessionStats,
-    agentPhase, agentStartedAt, queuedFollowUps, bashRun,
+    agentPhase, agentStartedAt, queuedFollowUps, bashRun, stalledSecs,
     isNew,
     // Refs
     sessionIdRef, eventSourceRef, messagesEndRef, scrollContainerRef,

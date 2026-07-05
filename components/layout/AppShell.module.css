@@ -31,6 +31,53 @@
   min-width: 0;
 }
 
+/* ── Icon rail ── */
+.rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 44px;
+  flex-shrink: 0;
+  padding: 8px 0;
+  background: var(--bg-panel);
+  border-right: 1px solid var(--border);
+  z-index: 300;
+}
+.railButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: color 0.12s, background 0.12s;
+}
+.railButton:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+.railButton:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.railButtonActive {
+  background: var(--color-accent-bg);
+  color: var(--accent);
+}
+.railButtonActive:hover:not(:disabled) {
+  background: var(--color-accent-bg-strong);
+  color: var(--accent);
+}
+.railSpacer {
+  flex: 1;
+}
+
 /* ── Top bar ── */
 .topBar {
   display: flex;
@@ -38,9 +85,20 @@
   gap: 2px;
   flex-shrink: 0;
   border-bottom: 1px solid var(--border);
-  height: 44px;
-  padding: 0 8px;
+  height: 42px;
+  padding: 0 8px 0 14px;
   background: var(--bg-panel);
+}
+
+/* Session title — the top bar is session-scoped now */
+.chatTitle {
+  min-width: 0;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+  font-size: 12px;
 }
 
 .topBarButton {
@@ -246,6 +304,7 @@
 
 /* ── Session stats ── */
 .sessionStats {
+  font-family: var(--font-mono);
   margin-left: auto;
   display: flex;
   align-items: center;

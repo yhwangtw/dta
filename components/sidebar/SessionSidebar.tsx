@@ -35,9 +35,11 @@ interface Props {
   parallelSessionIds?: string[];
   activeTagFilter?: string | null;
   onSelectTagFilter?: (tag: string | null) => void;
+  /** The Files rail view owns the tree now; pass false to hide the embedded one. */
+  showExplorer?: boolean;
 }
 
-export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSession, initialSessionId, onInitialRestoreDone, refreshKey, onSessionDeleted, selectedCwd: selectedCwdProp, onCwdChange, onOpenFile, explorerRefreshKey, onAtMention, onOpenParallel, parallelSessionIds, activeTagFilter: activeTagFilterProp, onSelectTagFilter }: Props) {
+export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSession, initialSessionId, onInitialRestoreDone, refreshKey, onSessionDeleted, selectedCwd: selectedCwdProp, onCwdChange, onOpenFile, explorerRefreshKey, onAtMention, onOpenParallel, parallelSessionIds, activeTagFilter: activeTagFilterProp, onSelectTagFilter, showExplorer = true }: Props) {
   const { allSessions, loading, error, pinnedIds, sessionRefreshDone, loadSessions, handlePinToggle } = useSessions(refreshKey);
   const { state: cwdState, actions: cwdActions, refs: cwdRefs } = useCwd(onCwdChange);
   const { selectedCwd } = cwdState;
@@ -243,7 +245,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
         role="listbox"
         aria-label="Sessions"
         className={styles.sessionList}
-        style={{ flex: explorerOpen && (selectedCwdProp || selectedCwd) ? "1 1 0" : "1 1 auto" }}
+        style={{ flex: showExplorer && explorerOpen && (selectedCwdProp || selectedCwd) ? "1 1 0" : "1 1 auto" }}
       >
         {loading && (
           <div className={styles.loadingWrapper}>
@@ -342,7 +344,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
       )}
 
       {/* File Explorer section */}
-      {(selectedCwdProp || selectedCwd) && (
+      {showExplorer && (selectedCwdProp || selectedCwd) && (
         <div
           className={styles.explorerSection}
           style={{ flex: explorerOpen ? "1 1 0" : "0 0 auto" }}

@@ -134,6 +134,7 @@
 
 /* ── Row 2: meta — time · msg count · inline tag chips ── */
 .metaRow {
+  font-family: var(--font-mono);
   display: flex;
   align-items: center;
   gap: 5px;

@@ -15,6 +15,9 @@ try {
 } catch { /* package not found, use default */ }
 
 const nextConfig: NextConfig = {
+  // The dev-tools badge floats bottom-left, exactly over the icon rail's
+  // bottom buttons (Models/Theme) — disable it.
+  devIndicators: false,
   serverExternalPackages: ["@earendil-works/pi-coding-agent", "@earendil-works/pi-ai"],
   allowedDevOrigins: ['192.168.*.*'],
   env: {

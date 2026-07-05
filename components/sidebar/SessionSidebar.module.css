@@ -153,6 +153,9 @@
 
 /* ── Group header ── */
 .groupHeader {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
   padding: 8px 14px 4px;
   font-size: 10.5px;
   font-weight: 600;

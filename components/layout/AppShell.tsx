@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useEffect, useLayoutEffect, lazy, Suspen
 import { SessionSidebar } from "../sidebar/SessionSidebar";
 import { ChatWindow } from "../chat/ChatWindow";
 import { FileViewer } from "./FileViewer";
+import { FilesPanel } from "./FilesPanel";
 import { TabBar } from "./TabBar";
 import { BranchNavigator } from "../chat/BranchNavigator";
 import { useTheme } from "@/hooks/useTheme";
@@ -38,6 +39,7 @@ export function AppShell() {
   const [skillsConfigOpen, setSkillsConfigOpen] = useState(false);
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [panelView, setPanelView] = useState<"sessions" | "files">("sessions");
   const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
   const [wideChat, setWideChat] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -60,6 +62,17 @@ export function AppShell() {
   useLayoutEffect(() => {
     if (window.matchMedia("(max-width: 1024px)").matches) setSidebarOpen(false);
   }, []);
+
+  // Rail behavior: clicking the active view collapses the panel; clicking the
+  // other view switches to it (opening the panel if needed).
+  const handleRailView = useCallback((view: "sessions" | "files") => {
+    if (view === panelView) {
+      setSidebarOpen((open) => !open);
+    } else {
+      setPanelView(view);
+      setSidebarOpen(true);
+    }
+  }, [panelView]);
 
   // On overlay-mode screens, picking or starting a session should reveal the
   // chat it just opened instead of leaving the sidebar covering it.
@@ -263,67 +276,38 @@ export function AppShell() {
 
   const activeFileTab = fileTabs.find((t) => t.id === activeFileTabId) ?? null;
 
+  const panelCwd = state.activeCwd ?? state.selectedSession?.cwd ?? state.newSessionCwd ?? null;
+
   const sidebarContent = (
     <ErrorBoundary>
-      <SessionSidebar
-        selectedSessionId={state.selectedSession?.id ?? null}
-        onSelectSession={handleSelectSessionFromSidebar}
-        onNewSession={handleNewSessionFromSidebar}
-        initialSessionId={state.initialSessionId}
-        onInitialRestoreDone={actions.handleInitialRestoreDone}
-        refreshKey={state.refreshKey}
-        onSessionDeleted={actions.handleSessionDeleted}
-        selectedCwd={state.selectedSession?.cwd ?? state.newSessionCwd ?? null}
-        onCwdChange={actions.handleCwdChange}
-        onOpenFile={handleOpenFile}
-        explorerRefreshKey={state.explorerRefreshKey}
-        onAtMention={handleAtMention}
-        onOpenParallel={actions.openParallel}
-        parallelSessionIds={state.parallelSessions.map((s) => s.id)}
-        activeTagFilter={activeTagFilter}
-        onSelectTagFilter={setActiveTagFilter}
-      />
-      <div className={s.sidebarFooter}>
-        {([
-          {
-            label: t("sidebar.models"),
-            onClick: () => setModelsConfigOpen(true),
-            disabled: false,
-            icon: (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="4" y="4" width="16" height="16" rx="2" /><rect x="9" y="9" width="6" height="6" />
-                <line x1="9" y1="1" x2="9" y2="4" /><line x1="15" y1="1" x2="15" y2="4" />
-                <line x1="9" y1="20" x2="9" y2="23" /><line x1="15" y1="20" x2="15" y2="23" />
-                <line x1="20" y1="9" x2="23" y2="9" /><line x1="20" y1="14" x2="23" y2="14" />
-                <line x1="1" y1="9" x2="4" y2="9" /><line x1="1" y1="14" x2="4" y2="14" />
-              </svg>
-            ),
-          },
-          {
-            label: t("sidebar.skills"),
-            onClick: () => setSkillsConfigOpen(true),
-            disabled: !state.activeCwd && !state.selectedSession?.cwd && !state.newSessionCwd,
-            icon: (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                <path d="M2 17l10 5 10-5" />
-                <path d="M2 12l10 5 10-5" />
-              </svg>
-            ),
-          },
-        ] as { label: string; onClick: () => void; disabled: boolean; icon: React.ReactNode }[]).map(({ label, onClick, disabled, icon }) => (
-          <button
-            key={label}
-            onClick={onClick}
-            disabled={disabled}
-            title={label}
-            className={`${s.sidebarFooterButton} ${disabled ? s.sidebarFooterButtonDisabled : s.sidebarFooterButtonEnabled}`}
-          >
-            {icon}
-            {label}
-          </button>
-        ))}
-      </div>
+      {panelView === "sessions" ? (
+        <SessionSidebar
+          selectedSessionId={state.selectedSession?.id ?? null}
+          onSelectSession={handleSelectSessionFromSidebar}
+          onNewSession={handleNewSessionFromSidebar}
+          initialSessionId={state.initialSessionId}
+          onInitialRestoreDone={actions.handleInitialRestoreDone}
+          refreshKey={state.refreshKey}
+          onSessionDeleted={actions.handleSessionDeleted}
+          selectedCwd={state.selectedSession?.cwd ?? state.newSessionCwd ?? null}
+          onCwdChange={actions.handleCwdChange}
+          onOpenFile={handleOpenFile}
+          explorerRefreshKey={state.explorerRefreshKey}
+          onAtMention={handleAtMention}
+          onOpenParallel={actions.openParallel}
+          parallelSessionIds={state.parallelSessions.map((s) => s.id)}
+          activeTagFilter={activeTagFilter}
+          onSelectTagFilter={setActiveTagFilter}
+          showExplorer={false}
+        />
+      ) : (
+        <FilesPanel
+          cwd={panelCwd}
+          onOpenFile={handleOpenFile}
+          onAtMention={handleAtMention}
+          refreshKey={state.explorerRefreshKey}
+        />
+      )}
     </ErrorBoundary>
   );
 
@@ -333,6 +317,88 @@ export function AppShell() {
     <>
     <title>{tabTitle}</title>
     <div className={s.container}>
+      {/* Icon rail — global navigation, always visible */}
+      <nav className={s.rail} aria-label="Primary">
+        <button
+          onClick={() => handleRailView("sessions")}
+          title="Sessions"
+          aria-pressed={panelView === "sessions" && sidebarOpen}
+          className={`${s.railButton} ${panelView === "sessions" && sidebarOpen ? s.railButtonActive : ""}`}
+        >
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          </svg>
+        </button>
+        <button
+          onClick={() => handleRailView("files")}
+          title={t("sidebar.explorer")}
+          aria-pressed={panelView === "files" && sidebarOpen}
+          className={`${s.railButton} ${panelView === "files" && sidebarOpen ? s.railButtonActive : ""}`}
+        >
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+          </svg>
+        </button>
+        <button onClick={() => palette.open()} title={`${t("topbar.searchTitle")}`} className={s.railButton}>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+        </button>
+        <button onClick={() => setAnalyticsOpen(true)} title={t("topbar.analyticsTitle")} className={s.railButton}>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" />
+          </svg>
+        </button>
+        <div className={s.railSpacer} />
+        <button onClick={() => setModelsConfigOpen(true)} title={`${t("sidebar.models")} (⇧⌘M)`} className={s.railButton}>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="4" y="4" width="16" height="16" rx="2" /><rect x="9" y="9" width="6" height="6" />
+            <line x1="9" y1="1" x2="9" y2="4" /><line x1="15" y1="1" x2="15" y2="4" />
+            <line x1="9" y1="20" x2="9" y2="23" /><line x1="15" y1="20" x2="15" y2="23" />
+            <line x1="20" y1="9" x2="23" y2="9" /><line x1="20" y1="14" x2="23" y2="14" />
+            <line x1="1" y1="9" x2="4" y2="9" /><line x1="1" y1="14" x2="4" y2="14" />
+          </svg>
+        </button>
+        <button
+          onClick={() => setSkillsConfigOpen(true)}
+          disabled={!panelCwd}
+          title={`${t("sidebar.skills")} (⌘/)`}
+          className={s.railButton}
+        >
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />
+          </svg>
+        </button>
+        <button onClick={() => setLocale(locale === "en" ? "zh" : "en")} title={t("topbar.language")} className={s.railButton}>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" />
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+          </svg>
+        </button>
+        <button
+          onClick={(e) => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            toggleTheme({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
+          }}
+          title={isDark ? t("topbar.lightMode") : t("topbar.darkMode")}
+          aria-pressed={isDark}
+          className={s.railButton}
+        >
+          {isDark ? (
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="5" />
+              <line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" />
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+              <line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" />
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="5.64" />
+            </svg>
+          ) : (
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+            </svg>
+          )}
+        </button>
+      </nav>
       {/* Mobile overlay backdrop */}
       <div
         className="sidebar-overlay-backdrop"
@@ -354,72 +420,13 @@ export function AppShell() {
       <div className={s.centerPanel}>
         {/* Top bar with sidebar toggle */}
         <div ref={topBarRef} className={s.topBar}>
-          <button
-            onClick={() => setSidebarOpen((v) => !v)}
-            title={sidebarOpen ? t("topbar.hideSidebar") : t("topbar.showSidebar")}
-            aria-expanded={sidebarOpen}
-            aria-label={sidebarOpen ? t("topbar.hideSidebar") : t("topbar.showSidebar")}
-            className={s.topBarButton}
-          >
-            {sidebarOpen ? (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="3" width="18" height="18" rx="2" /><line x1="9" y1="3" x2="9" y2="21" />
-              </svg>
-            ) : (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
-              </svg>
-            )}
-          </button>
-          <button
-            onClick={() => palette.open()}
-            title={t("topbar.searchTitle")}
-            aria-label={t("topbar.searchTitle")}
-            className={s.commandPaletteTrigger}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-            <span>{t("topbar.search")}</span>
-            <span className={s.commandPaletteKbd} aria-hidden>⌘K</span>
-          </button>
-          <button
-            onClick={(e) => {
-              const rect = e.currentTarget.getBoundingClientRect();
-              toggleTheme({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
-            }}
-            title={isDark ? t("topbar.lightMode") : t("topbar.darkMode")}
-            aria-label={isDark ? t("topbar.lightMode") : t("topbar.darkMode")}
-            aria-pressed={isDark}
-            className={s.topBarButton}
-          >
-            {isDark ? (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="5" />
-                <line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" />
-                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-                <line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" />
-                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="5.64" />
-              </svg>
-            ) : (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-              </svg>
-            )}
-          </button>
-          <button
-            onClick={() => setLocale(locale === "en" ? "zh" : "en")}
-            title={t("topbar.language")}
-            aria-label={t("topbar.language")}
-            className={s.topBarButton}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="2" y1="12" x2="22" y2="12" />
-              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-            </svg>
-          </button>
+          <div className={`${s.chatTitle} chrome-mono`} title={state.selectedSession?.name ?? state.selectedSession?.id}>
+            {state.selectedSession
+              ? (state.selectedSession.name ?? state.selectedSession.id.slice(0, 8))
+              : effectiveNewSessionCwd
+                ? t("sidebar.new").toLowerCase() + " · " + (effectiveNewSessionCwd.split("/").pop() ?? "")
+                : "π"}
+          </div>
           {showChat && (
             <div className={s.chatActions}>
               <div className={s.exportMenuWrapper} ref={exportMenuRef}>

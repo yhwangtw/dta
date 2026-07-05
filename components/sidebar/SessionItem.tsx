@@ -5,6 +5,7 @@ import type { SessionInfo } from "@/lib/types";
 import { formatRelativeTime } from "./session-utils";
 import { getTagStyle } from "@/lib/tag-colors";
 import { useTheme } from "@/hooks/useTheme";
+import { useI18n } from "@/lib/i18n";
 import { SessionContextMenu, type SessionContextMenuPosition } from "./SessionContextMenu";
 import styles from "./SessionItem.module.css";
 
@@ -52,6 +53,7 @@ export function SessionItem({
   const [contextMenu, setContextMenu] = useState<SessionContextMenuPosition | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { theme } = useTheme();
+  const { t } = useI18n();
 
   const title = session.name || session.firstMessage.slice(0, 50) || session.id.slice(0, 12);
 
@@ -132,10 +134,7 @@ export function SessionItem({
           cursor: confirmDelete || renaming ? "default" : "pointer",
           background: confirmDelete
             ? "var(--color-error-bg)"
-            : isSelected ? "var(--bg-selected)" : undefined,
-          borderLeft: confirmDelete
-            ? "2px solid var(--color-error)"
-            : isSelected ? "2px solid var(--accent)" : "2px solid transparent",
+            : isSelected ? "var(--color-accent-bg)" : undefined,
           opacity: deleting ? 0.5 : 1,
         }}
       >
@@ -239,7 +238,7 @@ export function SessionItem({
                 {formatRelativeTime(session.modified)}
               </span>
               <span className={styles.metaDivider}>·</span>
-              <span className={styles.metaItem}>{session.messageCount} msgs</span>
+              <span className={styles.metaItem}>{session.messageCount} {session.messageCount === 1 ? t("sidebar.msg") : t("sidebar.msgs")}</span>
               {inlineTags.map((t) => {
                 const ts = getTagStyle(t, theme);
                 return (

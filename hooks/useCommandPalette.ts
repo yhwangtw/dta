@@ -28,6 +28,11 @@ export type PaletteActionId =
   | "view:toggle-theme"
   | "view:toggle-sidebar"
   | "view:toggle-file-panel"
+  | "view:toggle-chat-width"
+  | "skin:terminal"
+  | "skin:industrial"
+  | "skin:aurora"
+  | "skin:editorial"
   | "view:clear-tag"
   | "session:new"
   | "session:open-parallel"
@@ -56,6 +61,8 @@ export interface PaletteCallbacks {
   toggleTheme: () => void;
   toggleSidebar: () => void;
   toggleFilePanel: () => void;
+  toggleChatWidth: () => void;
+  setSkin: (skin: "terminal" | "industrial" | "aurora" | "editorial") => void;
   newSession: () => void;
   openParallelForActive: () => void;
   openHelp: () => void;
@@ -69,8 +76,8 @@ const ACTIONS: PaletteResult[] = [
     kind: "action",
     title: "Open Models",
     subtitle: "Configure providers, API keys, model selection",
-    keywords: "provider api key llm",
-    hint: "⌘M",
+    keywords: "provider api key llm 模型 設定",
+    hint: "⇧⌘M",
     data: { action: "settings:models" } as { action: PaletteActionId },
   },
   {
@@ -78,7 +85,7 @@ const ACTIONS: PaletteResult[] = [
     kind: "action",
     title: "Open Skills",
     subtitle: "Browse and toggle installed agent skills",
-    keywords: "skill plugin extension",
+    keywords: "skill plugin extension 技能",
     hint: "⌘/",
     data: { action: "settings:skills" } as { action: PaletteActionId },
   },
@@ -87,7 +94,7 @@ const ACTIONS: PaletteResult[] = [
     kind: "action",
     title: "Open Analytics",
     subtitle: "Token usage and cost report for the active session",
-    keywords: "stats tokens cost",
+    keywords: "stats tokens cost 分析 統計 成本",
     data: { action: "settings:analytics" } as { action: PaletteActionId },
   },
   {
@@ -95,7 +102,7 @@ const ACTIONS: PaletteResult[] = [
     kind: "action",
     title: "Toggle Theme",
     subtitle: "Switch between light and dark mode",
-    keywords: "dark light mode appearance",
+    keywords: "dark light mode appearance 主題 深色 淺色",
     data: { action: "view:toggle-theme" } as { action: PaletteActionId },
   },
   {
@@ -103,6 +110,7 @@ const ACTIONS: PaletteResult[] = [
     kind: "action",
     title: "Toggle Sidebar",
     subtitle: "Show or hide the session sidebar",
+    hint: "⌘B",
     data: { action: "view:toggle-sidebar" } as { action: PaletteActionId },
   },
   {
@@ -110,14 +118,55 @@ const ACTIONS: PaletteResult[] = [
     kind: "action",
     title: "Toggle File Panel",
     subtitle: "Show or hide the file viewer panel",
+    hint: "⌘\\",
     data: { action: "view:toggle-file-panel" } as { action: PaletteActionId },
+  },
+  {
+    id: "action:skin-terminal",
+    kind: "action",
+    title: "Appearance: Terminal",
+    subtitle: "Near-black with emerald",
+    keywords: "skin theme appearance emerald green 外觀 風格 綠",
+    data: { action: "skin:terminal" } as { action: PaletteActionId },
+  },
+  {
+    id: "action:skin-industrial",
+    kind: "action",
+    title: "Appearance: Industrial",
+    subtitle: "Pure monochrome, high contrast",
+    keywords: "skin theme appearance mono black white 外觀 風格 黑白",
+    data: { action: "skin:industrial" } as { action: PaletteActionId },
+  },
+  {
+    id: "action:skin-aurora",
+    kind: "action",
+    title: "Appearance: Aurora",
+    subtitle: "Deep violet with soft glow",
+    keywords: "skin theme appearance violet purple 外觀 風格 紫",
+    data: { action: "skin:aurora" } as { action: PaletteActionId },
+  },
+  {
+    id: "action:skin-editorial",
+    kind: "action",
+    title: "Appearance: Editorial",
+    subtitle: "Warm paper tones with burnt orange — the default",
+    keywords: "skin theme appearance warm paper orange 外觀 風格 紙 橙",
+    data: { action: "skin:editorial" } as { action: PaletteActionId },
+  },
+  {
+    id: "action:toggle-chat-width",
+    kind: "action",
+    title: "Toggle Wide Chat",
+    subtitle: "Switch the conversation between normal and wide width",
+    keywords: "width wide narrow layout 寬度",
+    data: { action: "view:toggle-chat-width" } as { action: PaletteActionId },
   },
   {
     id: "action:new-session",
     kind: "action",
     title: "New Session",
     subtitle: "Start a fresh session in the active project",
-    keywords: "create new chat",
+    keywords: "create new chat 新增",
     data: { action: "session:new" } as { action: PaletteActionId },
   },
   {
@@ -125,7 +174,7 @@ const ACTIONS: PaletteResult[] = [
     kind: "action",
     title: "Open Active Session in Parallel View",
     subtitle: "Side-by-side comparison with the current session",
-    keywords: "split compare",
+    keywords: "split compare 並排 比較",
     data: { action: "session:open-parallel" } as { action: PaletteActionId },
   },
   {
@@ -133,7 +182,7 @@ const ACTIONS: PaletteResult[] = [
     kind: "action",
     title: "Keyboard Shortcuts",
     subtitle: "Show all available hotkeys",
-    keywords: "hotkey help docs",
+    keywords: "hotkey help docs 快捷鍵 說明",
     data: { action: "help:shortcuts" } as { action: PaletteActionId },
   },
 ];
@@ -331,6 +380,11 @@ export function useCommandPalette({
         case "view:toggle-theme": cbs.toggleTheme(); break;
         case "view:toggle-sidebar": cbs.toggleSidebar(); break;
         case "view:toggle-file-panel": cbs.toggleFilePanel(); break;
+        case "view:toggle-chat-width": cbs.toggleChatWidth(); break;
+        case "skin:terminal": cbs.setSkin("terminal"); break;
+        case "skin:industrial": cbs.setSkin("industrial"); break;
+        case "skin:aurora": cbs.setSkin("aurora"); break;
+        case "skin:editorial": cbs.setSkin("editorial"); break;
         case "session:new": cbs.newSession(); break;
         case "session:open-parallel": cbs.openParallelForActive(); break;
         case "help:shortcuts": cbs.openHelp(); break;

@@ -212,6 +212,43 @@ export class AgentSessionWrapper {
         return null;
       }
 
+      case "bash": {
+        // Direct shell execution (the ! input prefix). Output chunks stream to
+        // the client over the existing SSE channel as synthetic events; pi
+        // records the result into the session so the agent sees it too.
+        const bashCommand = command.command as string;
+        const excludeFromContext = Boolean(command.excludeFromContext);
+        const emit = (event: AgentEvent) => {
+          for (const l of this.listeners) l(event);
+        };
+        emit({ type: "bash_start", command: bashCommand });
+        try {
+          const result = await this.inner.executeBash(
+            bashCommand,
+            (chunk: string) => {
+              this.resetIdleTimer();
+              emit({ type: "bash_chunk", chunk });
+            },
+            { excludeFromContext },
+          );
+          emit({ type: "bash_end", exitCode: result.exitCode ?? null, cancelled: result.cancelled, truncated: result.truncated });
+          return { output: result.output, exitCode: result.exitCode ?? null, cancelled: result.cancelled, truncated: result.truncated };
+        } catch (e) {
+          emit({ type: "bash_end", errorMessage: String(e) });
+          throw e;
+        }
+      }
+
+      case "abort_bash": {
+        this.inner.abortBash();
+        return null;
+      }
+
+      case "clear_queue": {
+        const cleared = (this.inner as unknown as { clearQueue?: () => unknown }).clearQueue?.();
+        return cleared ?? null;
+      }
+
       case "abort_compaction": {
         this.inner.abortCompaction();
         return null;

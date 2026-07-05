@@ -282,7 +282,7 @@
 }
 
 .helperText {
-  font-size: 10px;
+  font-size: 10.5px;
   color: var(--text-dim);
   margin-top: 2px;
 }
@@ -399,7 +399,7 @@
 }
 
 .clearAllButton {
-  font-size: 10px;
+  font-size: 10.5px;
   padding: 2px 7px;
   background: none;
   border: 1px solid var(--border);
@@ -464,7 +464,7 @@
 
 .thinkingBtn {
   padding: 4px 10px;
-  font-size: 10px;
+  font-size: 10.5px;
   border: none;
   cursor: pointer;
   font-weight: 400;

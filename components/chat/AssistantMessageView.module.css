@@ -52,11 +52,19 @@
   align-items: center;
   gap: 8px;
   margin-top: 4px;
+  /* Meta noise fades until the message is hovered */
+  opacity: 0.45;
+  transition: opacity 0.15s;
+}
+.messageContainer:hover .footer,
+.footer:focus-within {
+  opacity: 1;
 }
 
 .usageText {
   font-size: 11px;
   color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
 }
 
 /* Copy button */
@@ -77,7 +85,7 @@
 }
 
 .timestamp {
-  font-size: 10px;
+  font-size: 10.5px;
   color: var(--text-dim);
   margin-left: auto;
 }

@@ -36,6 +36,13 @@
   font-style: normal;
   font-display: swap;
 }
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/fonts/jetbrains-mono-bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
 
 @theme {
   --color-bg: var(--bg);
@@ -56,27 +63,27 @@
 }
 
 :root {
-  --bg: #ffffff;
-  --bg-panel: #f5f5f5;
-  --bg-hover: #eeeeee;
-  --bg-selected: #e8e8e8;
-  --border: #e0e0e0;
-  --text: #1a1a1a;
-  --text-muted: #6b7280;
-  --text-dim: #9ca3af;
-  --accent: #2563eb;
-  --accent-hover: #1d4ed8;
-  --user-bg: #eff6ff;
-  --assistant-bg: #ffffff;
-  --tool-bg: #f9fafb;
+  --bg: #fbfdfb;
+  --bg-panel: #f1f5f2;
+  --bg-hover: #e6ece8;
+  --bg-selected: #dde6e0;
+  --border: #dfe6e1;
+  --text: #17201b;
+  --text-muted: #5e6e66;
+  --text-dim: #94a39b;
+  --accent: #059669;
+  --accent-hover: #047857;
+  --user-bg: #e7f4ec;
+  --assistant-bg: #fbfdfb;
+  --tool-bg: #f3f7f4;
   --bg-subtle: rgba(0,0,0,0.03);
   --bg-elev-1: #ffffff;
   --bg-elev-2: #ffffff;
 
   /* Design Tokens - Border Radius */
   --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
   --radius-full: 9999px;
 
   /* Design Tokens - Font Sizes */
@@ -110,10 +117,10 @@
   /* Design Tokens - Overlay & Accent tints */
   --color-overlay: rgba(0,0,0,0.35);
   --color-overlay-heavy: rgba(0,0,0,0.4);
-  --color-accent-bg: rgba(37,99,235,0.08);
-  --color-accent-bg-strong: rgba(37,99,235,0.12);
-  --color-accent-border: rgba(37,99,235,0.2);
-  --color-accent-glow: rgba(37,99,235,0.25);
+  --color-accent-bg: rgba(5,150,105,0.08);
+  --color-accent-bg-strong: rgba(5,150,105,0.12);
+  --color-accent-border: rgba(5,150,105,0.2);
+  --color-accent-glow: rgba(5,150,105,0.25);
   --color-warning-bg: rgba(234,179,8,0.08);
   --color-warning-border: rgba(234,179,8,0.25);
   --color-warning-text: rgba(180,130,0,0.9);
@@ -122,14 +129,14 @@
   --color-warning-text-strong: rgba(180,130,0,1);
   --color-project-bg: rgba(99,102,241,0.12);
   --color-project-text: rgba(99,102,241,0.8);
-  --color-shadow-modal: 0 8px 32px rgba(0,0,0,0.18);
+  --color-shadow-modal: 0 16px 48px rgba(0,0,0,0.14);
   --color-shadow-popup: 0 -4px 16px rgba(0,0,0,0.10);
   --color-shadow-dropdown: 0 2px 8px rgba(0,0,0,0.2);
-  --color-shadow-input: 0 1px 2px rgba(15,23,42,0.04), 0 8px 24px -12px rgba(15,23,42,0.10);
-  --color-accent-border-focus: rgba(37,99,235,0.35);
-  --color-accent-border-focus-strong: rgba(37,99,235,0.4);
-  --color-accent-bg-subtle: rgba(37,99,235,0.04);
-  --color-accent-border-subtle: rgba(37,99,235,0.15);
+  --color-shadow-input: 0 1px 2px rgba(20,20,30,0.04), 0 12px 32px -12px rgba(20,20,30,0.12);
+  --color-accent-border-focus: rgba(5,150,105,0.35);
+  --color-accent-border-focus-strong: rgba(5,150,105,0.4);
+  --color-accent-bg-subtle: rgba(5,150,105,0.04);
+  --color-accent-border-subtle: rgba(5,150,105,0.15);
   --color-success-bg-strong: rgba(74,222,128,0.18);
   --color-success-border-strong: rgba(74,222,128,0.4);
   --color-diff-add-bg: rgba(0,200,80,0.12);
@@ -138,22 +145,22 @@
 }
 
 html.dark {
-  --bg: #1a1a1a;
-  --bg-panel: #242424;
-  --bg-hover: #2e2e2e;
-  --bg-selected: #383838;
-  --border: #3a3a3a;
-  --text: #e8e8e8;
-  --text-muted: #9ca3af;
-  --text-dim: #6b7280;
-  --accent: #60a5fa;
-  --accent-hover: #93c5fd;
-  --user-bg: #1e293b;
-  --assistant-bg: #1a1a1a;
-  --tool-bg: #1f2937;
+  --bg: #0c0e10;
+  --bg-panel: #111417;
+  --bg-hover: #1a1f24;
+  --bg-selected: #212930;
+  --border: #232b31;
+  --text: #d7e1de;
+  --text-muted: #8da39c;
+  --text-dim: #5d6f69;
+  --accent: #34d399;
+  --accent-hover: #6ee7b7;
+  --user-bg: #10241c;
+  --assistant-bg: #0c0e10;
+  --tool-bg: #141a1d;
   --bg-subtle: rgba(255,255,255,0.04);
-  --bg-elev-1: #2a2a2a;
-  --bg-elev-2: #2e2e2e;
+  --bg-elev-1: #161b1f;
+  --bg-elev-2: #1b2126;
 
   /* Dark mode semantic colors — lighter tints for dark bg */
   --color-error: #f87171;
@@ -164,7 +171,7 @@ html.dark {
   --color-success: #4ade80;
   --color-success-bg: rgba(74,222,128,0.12);
   --color-success-border: rgba(74,222,128,0.3);
-  --color-info-border: rgba(96,165,250,0.3);
+  --color-info-border: rgba(52,211,153,0.3);
   --color-diff-add: #4ade80;
   --color-diff-remove: #f87171;
   --color-thinking: #9ca3af;
@@ -176,10 +183,10 @@ html.dark {
   /* Dark mode - Overlay & Accent tints */
   --color-overlay: rgba(0,0,0,0.5);
   --color-overlay-heavy: rgba(0,0,0,0.6);
-  --color-accent-bg: rgba(96,165,250,0.12);
-  --color-accent-bg-strong: rgba(96,165,250,0.16);
-  --color-accent-border: rgba(96,165,250,0.3);
-  --color-accent-glow: rgba(96,165,250,0.3);
+  --color-accent-bg: rgba(52,211,153,0.12);
+  --color-accent-bg-strong: rgba(52,211,153,0.16);
+  --color-accent-border: rgba(52,211,153,0.3);
+  --color-accent-glow: rgba(52,211,153,0.3);
   --color-warning-bg: rgba(250,204,21,0.1);
   --color-warning-border: rgba(250,204,21,0.3);
   --color-warning-text: rgba(250,204,21,0.9);
@@ -192,15 +199,177 @@ html.dark {
   --color-shadow-popup: 0 -4px 16px rgba(0,0,0,0.2);
   --color-shadow-dropdown: 0 2px 8px rgba(0,0,0,0.4);
   --color-shadow-input: 0 1px 2px rgba(0,0,0,0.2), 0 8px 24px -12px rgba(0,0,0,0.3);
-  --color-accent-border-focus: rgba(96,165,250,0.4);
-  --color-accent-border-focus-strong: rgba(96,165,250,0.5);
-  --color-accent-bg-subtle: rgba(96,165,250,0.06);
-  --color-accent-border-subtle: rgba(96,165,250,0.2);
+  --color-accent-border-focus: rgba(52,211,153,0.4);
+  --color-accent-border-focus-strong: rgba(52,211,153,0.5);
+  --color-accent-bg-subtle: rgba(52,211,153,0.06);
+  --color-accent-border-subtle: rgba(52,211,153,0.2);
   --color-success-bg-strong: rgba(74,222,128,0.22);
   --color-success-border-strong: rgba(74,222,128,0.5);
   --color-diff-add-bg: rgba(0,200,80,0.15);
   --color-diff-remove-bg: rgba(240,60,60,0.18);
   --color-white: #fff;
+}
+
+
+/* ═══ Appearance skins ═══
+   Complete palettes selected via html[data-skin]; "terminal" is the base
+   palette above (no attribute). Switch with ⌘K → Appearance. */
+
+
+html[data-skin="industrial"] {
+  --bg: #ffffff;
+  --bg-panel: #fafafa;
+  --bg-hover: #f0f0f0;
+  --bg-selected: #e6e6e6;
+  --border: #d9d9d9;
+  --text: #0a0a0a;
+  --text-muted: #525252;
+  --text-dim: #a3a3a3;
+  --accent: #111111;
+  --accent-hover: #3f3f3f;
+  --user-bg: #f0f0f0;
+  --assistant-bg: #ffffff;
+  --tool-bg: #fafafa;
+  --bg-elev-1: #ffffff;
+  --bg-elev-2: #ffffff;
+  --color-accent-bg: rgba(17,17,17,0.08);
+  --color-accent-bg-strong: rgba(17,17,17,0.12);
+  --color-accent-border: rgba(17,17,17,0.2);
+  --color-accent-glow: rgba(17,17,17,0.25);
+  --color-accent-border-focus: rgba(17,17,17,0.35);
+  --color-accent-border-focus-strong: rgba(17,17,17,0.4);
+  --color-accent-bg-subtle: rgba(17,17,17,0.04);
+  --color-accent-border-subtle: rgba(17,17,17,0.15);
+}
+
+html.dark[data-skin="industrial"] {
+  --bg: #0a0a0a;
+  --bg-panel: #111111;
+  --bg-hover: #1a1a1a;
+  --bg-selected: #232323;
+  --border: #262626;
+  --text: #ededed;
+  --text-muted: #a3a3a3;
+  --text-dim: #666666;
+  --accent: #ededed;
+  --accent-hover: #ffffff;
+  --user-bg: #1c1c1c;
+  --assistant-bg: #0a0a0a;
+  --tool-bg: #141414;
+  --bg-elev-1: #161616;
+  --bg-elev-2: #1c1c1c;
+  --color-accent-bg: rgba(237,237,237,0.12);
+  --color-accent-bg-strong: rgba(237,237,237,0.16);
+  --color-accent-border: rgba(237,237,237,0.3);
+  --color-accent-glow: rgba(237,237,237,0.3);
+  --color-accent-border-focus: rgba(237,237,237,0.4);
+  --color-accent-border-focus-strong: rgba(237,237,237,0.5);
+  --color-accent-bg-subtle: rgba(237,237,237,0.06);
+  --color-accent-border-subtle: rgba(237,237,237,0.2);
+}
+
+html[data-skin="aurora"] {
+  --bg: #fbfaff;
+  --bg-panel: #f4f1fb;
+  --bg-hover: #ebe6f7;
+  --bg-selected: #e1daf3;
+  --border: #e4def2;
+  --text: #1f1a2e;
+  --text-muted: #6b6485;
+  --text-dim: #a29ac0;
+  --accent: #7c3aed;
+  --accent-hover: #6d28d9;
+  --user-bg: #efe9fd;
+  --assistant-bg: #fbfaff;
+  --tool-bg: #f6f3fc;
+  --bg-elev-1: #ffffff;
+  --bg-elev-2: #ffffff;
+  --color-accent-bg: rgba(124,58,237,0.08);
+  --color-accent-bg-strong: rgba(124,58,237,0.12);
+  --color-accent-border: rgba(124,58,237,0.2);
+  --color-accent-glow: rgba(124,58,237,0.25);
+  --color-accent-border-focus: rgba(124,58,237,0.35);
+  --color-accent-border-focus-strong: rgba(124,58,237,0.4);
+  --color-accent-bg-subtle: rgba(124,58,237,0.04);
+  --color-accent-border-subtle: rgba(124,58,237,0.15);
+}
+
+html.dark[data-skin="aurora"] {
+  --bg: #131020;
+  --bg-panel: #191430;
+  --bg-hover: #241d42;
+  --bg-selected: #2d2452;
+  --border: #2e2752;
+  --text: #edeaf8;
+  --text-muted: #a49cc8;
+  --text-dim: #6f689a;
+  --accent: #a78bfa;
+  --accent-hover: #c4b5fd;
+  --user-bg: #262052;
+  --assistant-bg: #131020;
+  --tool-bg: #1b1535;
+  --bg-elev-1: #201a3d;
+  --bg-elev-2: #251e47;
+  --color-accent-bg: rgba(167,139,250,0.12);
+  --color-accent-bg-strong: rgba(167,139,250,0.16);
+  --color-accent-border: rgba(167,139,250,0.3);
+  --color-accent-glow: rgba(167,139,250,0.3);
+  --color-accent-border-focus: rgba(167,139,250,0.4);
+  --color-accent-border-focus-strong: rgba(167,139,250,0.5);
+  --color-accent-bg-subtle: rgba(167,139,250,0.06);
+  --color-accent-border-subtle: rgba(167,139,250,0.2);
+}
+
+html[data-skin="editorial"] {
+  --bg: #faf6ee;
+  --bg-panel: #f3ecdd;
+  --bg-hover: #ece3d0;
+  --bg-selected: #e4d9c1;
+  --border: #e0d7c3;
+  --text: #2b2620;
+  --text-muted: #7a7060;
+  --text-dim: #a89d89;
+  --accent: #b45309;
+  --accent-hover: #92400e;
+  --user-bg: #f3e7d3;
+  --assistant-bg: #faf6ee;
+  --tool-bg: #f5efe3;
+  --bg-elev-1: #fffdf8;
+  --bg-elev-2: #fffdf8;
+  --color-accent-bg: rgba(180,83,9,0.08);
+  --color-accent-bg-strong: rgba(180,83,9,0.12);
+  --color-accent-border: rgba(180,83,9,0.2);
+  --color-accent-glow: rgba(180,83,9,0.25);
+  --color-accent-border-focus: rgba(180,83,9,0.35);
+  --color-accent-border-focus-strong: rgba(180,83,9,0.4);
+  --color-accent-bg-subtle: rgba(180,83,9,0.04);
+  --color-accent-border-subtle: rgba(180,83,9,0.15);
+}
+
+html.dark[data-skin="editorial"] {
+  --bg: #171310;
+  --bg-panel: #1e1915;
+  --bg-hover: #282219;
+  --bg-selected: #332a1e;
+  --border: #322b20;
+  --text: #e8e0d2;
+  --text-muted: #a3987f;
+  --text-dim: #6f6754;
+  --accent: #e8963e;
+  --accent-hover: #f5b569;
+  --user-bg: #2b2114;
+  --assistant-bg: #171310;
+  --tool-bg: #211b15;
+  --bg-elev-1: #251f18;
+  --bg-elev-2: #2a231b;
+  --color-accent-bg: rgba(232,150,62,0.12);
+  --color-accent-bg-strong: rgba(232,150,62,0.16);
+  --color-accent-border: rgba(232,150,62,0.3);
+  --color-accent-glow: rgba(232,150,62,0.3);
+  --color-accent-border-focus: rgba(232,150,62,0.4);
+  --color-accent-border-focus-strong: rgba(232,150,62,0.5);
+  --color-accent-bg-subtle: rgba(232,150,62,0.06);
+  --color-accent-border-subtle: rgba(232,150,62,0.2);
 }
 
 /* Theme toggle: circular wipe via View Transitions API.
@@ -228,8 +397,13 @@ html, body {
   padding: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans', 'PingFang TC', 'PingFang SC', 'Microsoft JhengHei', 'Microsoft YaHei', sans-serif;
+  /* Traditional Chinese is the primary content language: TC faces come
+     right after Inter (Latin-only) so Han glyphs always resolve to a TC
+     font, never to an SC-flavored system-ui default. */
+  font-family: 'Inter', 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', 'Noto Sans CJK TC', 'PingFang SC', 'Microsoft YaHei', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   overscroll-behavior: none;
 }
 
@@ -283,7 +457,7 @@ body {
 }
 
 :root {
-  --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', 'Consolas', ui-monospace, monospace;
+  --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', 'Consolas', ui-monospace, monospace, 'PingFang TC', 'Microsoft JhengHei';
 }
 
 pre, code {
@@ -297,17 +471,20 @@ pre, code {
   color: var(--text);
   word-break: break-word;
 }
-.markdown-body p { margin: 0 0 8px; }
+.markdown-body p { margin: 0 0 8px; text-wrap: pretty; }
 .markdown-body p:last-child { margin-bottom: 0; }
 .markdown-body h1, .markdown-body h2, .markdown-body h3,
 .markdown-body h4, .markdown-body h5, .markdown-body h6 {
   font-weight: 600;
-  margin: 10px 0 4px;
+  margin: 14px 0 6px;
   color: var(--text);
+  line-height: 1.4;
 }
-.markdown-body h1 { font-size: 1.15em; }
-.markdown-body h2 { font-size: 1.05em; }
-.markdown-body h3 { font-size: 0.95em; }
+.markdown-body h1 { font-size: 1.35em; letter-spacing: -0.01em; }
+.markdown-body h2 { font-size: 1.18em; letter-spacing: -0.01em; }
+.markdown-body h3 { font-size: 1.05em; }
+.markdown-body h4, .markdown-body h5, .markdown-body h6 { font-size: 1em; }
+.markdown-body > :first-child { margin-top: 0; }
 .markdown-body ul, .markdown-body ol {
   padding-left: 20px;
   margin: 4px 0 8px;
@@ -519,10 +696,10 @@ span.linenumber {
   .sidebar-container {
     position: fixed !important;
     top: 0;
-    left: 0;
+    left: 44px; /* clear the icon rail */
     bottom: 0;
     width: 280px;
-    max-width: 85vw;
+    max-width: calc(100vw - 44px);
     transition: transform 0.25s ease, box-shadow 0.25s ease;
   }
   .sidebar-container.sidebar-open {
@@ -530,7 +707,7 @@ span.linenumber {
     box-shadow: 4px 0 20px rgba(0,0,0,0.15);
   }
   .sidebar-container.sidebar-closed {
-    transform: translateX(-100%);
+    transform: translateX(calc(-100% - 44px));
     box-shadow: none;
   }
 
@@ -554,8 +731,8 @@ span.linenumber {
 /* Mobile (≤600px): sidebar takes the full width, hide top-bar command palette label */
 @media (max-width: 600px) {
   .sidebar-container {
-    width: 100vw !important;
-    max-width: 100vw !important;
+    width: calc(100vw - 44px) !important;
+    max-width: calc(100vw - 44px) !important;
   }
   .commandPaletteTrigger > span:not([class*="commandPaletteKbd"]) {
     display: none !important;
@@ -565,6 +742,26 @@ span.linenumber {
     padding: 0 8px;
     justify-content: center;
   }
+}
+
+/* Terminal chrome: UI labels set in the code face. Message content stays
+   in Inter — mono is for the machine parts, sans for the conversation. */
+.chrome-mono {
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+}
+
+/* Code blocks read as terminal panes: visible frame in both themes */
+.markdown-body pre {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+/* Long-transcript rendering: skip layout/paint for off-screen messages.
+   contain-intrinsic-size keeps scrollbar geometry stable. */
+.msg-item {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 120px;
 }
 
 /* ═══ Interactive hover utility classes ═══ */

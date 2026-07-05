@@ -4,6 +4,8 @@
   padding-top: 7px;
   padding-bottom: 7px;
   padding-right: 6px;
+  margin: 1px 6px;
+  border-radius: 8px;
   transition: background 0.1s;
   overflow: hidden;
 }
@@ -132,6 +134,7 @@
 
 /* ── Row 2: meta — time · msg count · inline tag chips ── */
 .metaRow {
+  font-family: var(--font-mono);
   display: flex;
   align-items: center;
   gap: 5px;
@@ -156,7 +159,7 @@
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  font-size: 10px;
+  font-size: 10.5px;
   line-height: 1.2;
   padding: 1px 6px;
   border-radius: 8px;
@@ -174,7 +177,7 @@
 .tagOverflow {
   display: inline-flex;
   align-items: center;
-  font-size: 10px;
+  font-size: 10.5px;
   line-height: 1.2;
   padding: 1px 5px;
   border-radius: 8px;

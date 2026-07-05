@@ -12,6 +12,7 @@ import { useCwd } from "@/hooks/useCwd";
 import { useExplorer } from "@/hooks/useExplorer";
 import { useTags } from "@/hooks/useTags";
 import { useToast } from "@/hooks/useToast";
+import { useI18n, translate, type MsgKey } from "@/lib/i18n";
 import { SearchResults } from "./SearchResults";
 import { TagFilter } from "./TagFilter";
 import { SessionItemSkeleton } from "@/components/ui/Skeleton";
@@ -34,9 +35,11 @@ interface Props {
   parallelSessionIds?: string[];
   activeTagFilter?: string | null;
   onSelectTagFilter?: (tag: string | null) => void;
+  /** The Files rail view owns the tree now; pass false to hide the embedded one. */
+  showExplorer?: boolean;
 }
 
-export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSession, initialSessionId, onInitialRestoreDone, refreshKey, onSessionDeleted, selectedCwd: selectedCwdProp, onCwdChange, onOpenFile, explorerRefreshKey, onAtMention, onOpenParallel, parallelSessionIds, activeTagFilter: activeTagFilterProp, onSelectTagFilter }: Props) {
+export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSession, initialSessionId, onInitialRestoreDone, refreshKey, onSessionDeleted, selectedCwd: selectedCwdProp, onCwdChange, onOpenFile, explorerRefreshKey, onAtMention, onOpenParallel, parallelSessionIds, activeTagFilter: activeTagFilterProp, onSelectTagFilter, showExplorer = true }: Props) {
   const { allSessions, loading, error, pinnedIds, sessionRefreshDone, loadSessions, handlePinToggle } = useSessions(refreshKey);
   const { state: cwdState, actions: cwdActions, refs: cwdRefs } = useCwd(onCwdChange);
   const { selectedCwd } = cwdState;
@@ -44,12 +47,25 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
   const { explorerOpen, explorerKey, explorerRefreshDone, toggleExplorer, refreshExplorer } = useExplorer(explorerRefreshKey);
   const { tags, setTag, removeTag } = useTags();
   const { showToast } = useToast();
+  const { t } = useI18n();
   // Tag filter can be lifted to the parent (e.g. for ⌘K palette control).
   const [localActiveTagFilter, setLocalActiveTagFilter] = useState<string | null>(null);
   const activeTagFilter = activeTagFilterProp ?? localActiveTagFilter;
   const setActiveTagFilter = onSelectTagFilter ?? setLocalActiveTagFilter;
 
   const restoredRef = useRef(false);
+
+  // Follow the active session's cwd. Selecting a session from another project
+  // (e.g. via the ⌘K palette) must move the whole sidebar — project picker and
+  // session list included — otherwise they keep showing the previous project
+  // while the chat and file explorer have already switched.
+  useEffect(() => {
+    if (selectedCwdProp && selectedCwdProp !== selectedCwd) {
+      setSelectedCwd(selectedCwdProp);
+    }
+    // Only react to prop changes; internal picker changes flow the other way.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCwdProp]);
 
   // Auto-select cwd and restore session from URL on first load
   useEffect(() => {
@@ -136,18 +152,18 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
               onClick={handleNewSession}
               disabled={!selectedCwd}
               className={`${styles.newSessionButton} ${selectedCwd ? styles.newSessionButtonEnabled : styles.newSessionButtonDisabled} hover-bg-selected-accent`}
-              title={selectedCwd ? `New session in ${selectedCwd}` : "Select a project first"}
+              title={selectedCwd ? `${t("sidebar.newIn")} ${selectedCwd}` : t("sidebar.selectProjectFirst")}
             >
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
                 <line x1="6" y1="1" x2="6" y2="11" />
                 <line x1="1" y1="6" x2="11" y2="6" />
               </svg>
-              New
+              {t("sidebar.new")}
             </button>
             <button
               onClick={() => loadSessions(false)}
               className={`${styles.refreshButton} ${sessionRefreshDone ? styles.refreshButtonDone : styles.refreshButtonDefault} ${sessionRefreshDone ? "" : "hover-bg-selected-accent"}`}
-              title="Refresh"
+              title={t("sidebar.refresh")}
             >
               {sessionRefreshDone ? (
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--color-success)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -229,7 +245,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
         role="listbox"
         aria-label="Sessions"
         className={styles.sessionList}
-        style={{ flex: explorerOpen && (selectedCwdProp || selectedCwd) ? "1 1 0" : "1 1 auto" }}
+        style={{ flex: showExplorer && explorerOpen && (selectedCwdProp || selectedCwd) ? "1 1 0" : "1 1 auto" }}
       >
         {loading && (
           <div className={styles.loadingWrapper}>
@@ -271,14 +287,14 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                   onSessionDeleted={(id) => {
                     onSessionDeleted?.(id);
                     loadSessions();
-                    showToast("Session deleted", { type: "success" });
+                    showToast(translate("toast.sessionDeleted"), { type: "success" });
                   }}
                   depth={0}
                   isPinned
                   onPinToggle={handlePinToggle}
                   tags={tags[node.session.id] ?? []}
-                  onSetTag={(tag) => { setTag(node.session.id, tag); showToast(`Added #${tag}`, { type: "success" }); }}
-                  onRemoveTag={(tag) => { removeTag(node.session.id, tag); showToast(`Removed #${tag}`, { type: "info" }); }}
+                  onSetTag={(tag) => { setTag(node.session.id, tag); showToast(`${translate("toast.tagAdded")} #${tag}`, { type: "success" }); }}
+                  onRemoveTag={(tag) => { removeTag(node.session.id, tag); showToast(`${translate("toast.tagRemoved")} #${tag}`, { type: "info" }); }}
                   isParallelOpen={parallelSessionIds?.includes(node.session.id) ?? false}
                   onOpenParallel={onOpenParallel}
                 />
@@ -299,7 +315,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
             <div key={node.session.id}>
               {showHeader && (
                 <div className={headerClass}>
-                  {group}
+                  {t(`group.${group}` as MsgKey)}
                 </div>
               )}
               <SessionTreeItem
@@ -310,14 +326,14 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                 onSessionDeleted={(id) => {
                   onSessionDeleted?.(id);
                   loadSessions();
-                  showToast("Session deleted", { type: "success" });
+                  showToast(translate("toast.sessionDeleted"), { type: "success" });
                 }}
                 depth={0}
                 isPinned={false}
                 onPinToggle={handlePinToggle}
                 tags={tags[node.session.id] ?? []}
-                onSetTag={(tag) => { setTag(node.session.id, tag); showToast(`Added #${tag}`, { type: "success" }); }}
-                onRemoveTag={(tag) => { removeTag(node.session.id, tag); showToast(`Removed #${tag}`, { type: "info" }); }}
+                onSetTag={(tag) => { setTag(node.session.id, tag); showToast(`${translate("toast.tagAdded")} #${tag}`, { type: "success" }); }}
+                onRemoveTag={(tag) => { removeTag(node.session.id, tag); showToast(`${translate("toast.tagRemoved")} #${tag}`, { type: "info" }); }}
                 isParallelOpen={parallelSessionIds?.includes(node.session.id) ?? false}
                 onOpenParallel={onOpenParallel}
               />
@@ -328,7 +344,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
       )}
 
       {/* File Explorer section */}
-      {(selectedCwdProp || selectedCwd) && (
+      {showExplorer && (selectedCwdProp || selectedCwd) && (
         <div
           className={styles.explorerSection}
           style={{ flex: explorerOpen ? "1 1 0" : "0 0 auto" }}
@@ -346,11 +362,11 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
               >
                 <polyline points="3 2 7 5 3 8" />
               </svg>
-              Explorer
+              {t("sidebar.explorer")}
             </button>
             <button
               onClick={refreshExplorer}
-              title="Refresh explorer"
+              title={t("sidebar.refreshExplorer")}
               className={`${styles.explorerRefreshButton} ${explorerRefreshDone ? styles.explorerRefreshButtonDone : styles.explorerRefreshButtonDefault} ${explorerRefreshDone ? "" : "hover-bg-selected-accent"}`}
             >
               {explorerRefreshDone ? (

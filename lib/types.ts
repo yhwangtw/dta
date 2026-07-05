@@ -92,7 +92,17 @@ export interface CustomMessage {
   timestamp?: number;
 }
 
-export type AgentMessage = UserMessage | AssistantMessage | ToolResultMessage | CustomMessage;
+export interface BashExecutionMessage {
+  role: "bashExecution";
+  command: string;
+  output: string;
+  exitCode?: number | null;
+  cancelled?: boolean;
+  truncated?: boolean;
+  timestamp?: number;
+}
+
+export type AgentMessage = UserMessage | AssistantMessage | ToolResultMessage | CustomMessage | BashExecutionMessage;
 
 export interface SessionMessageEntry extends SessionEntryBase {
   type: "message";

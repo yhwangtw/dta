@@ -22,6 +22,15 @@ export function SkillsConfig({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [addMode, setAddMode] = useState(false);
 
+  // Esc closes the modal — consistent with AnalyticsModal and the palette.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   const loadSkills = useCallback(() => {
     setLoading(true);
     setError(null);

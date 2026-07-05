@@ -1,9 +1,12 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect, lazy, Suspense } from "react";
+import { useState, useCallback, useRef, useEffect, useLayoutEffect, lazy, Suspense } from "react";
 import { SessionSidebar } from "../sidebar/SessionSidebar";
 import { ChatWindow } from "../chat/ChatWindow";
 import { FileViewer } from "./FileViewer";
+import { FilesPanel } from "./FilesPanel";
+import { ChangesPanel } from "./ChangesPanel";
+import { DiffPanel } from "./DiffPanel";
 import { TabBar } from "./TabBar";
 import { BranchNavigator } from "../chat/BranchNavigator";
 import { useTheme } from "@/hooks/useTheme";
@@ -14,9 +17,12 @@ import { useTags } from "@/hooks/useTags";
 import { useCommandPalette } from "@/hooks/useCommandPalette";
 import { useToast } from "@/hooks/useToast";
 import { encodeFilePathForApi } from "@/lib/file-paths";
+import { useI18n } from "@/lib/i18n";
+import { useTabTitle } from "@/lib/attention";
+import { setSkin } from "@/lib/skin";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { CommandPalette } from "../ui/CommandPalette";
-import type { SessionTreeNode } from "@/lib/types";
+import type { SessionInfo, SessionTreeNode } from "@/lib/types";
 import type { ChatInputHandle } from "../chat/ChatInput";
 import s from "./AppShell.module.css";
 
@@ -27,6 +33,7 @@ const AnalyticsModal = lazy(() => import("../modals/AnalyticsModal").then((m) =>
 
 export function AppShell() {
   const { isDark, toggleTheme } = useTheme();
+  const { locale, setLocale, t } = useI18n();
   const { state, actions, refs, topBarRef } = useAppShellState();
   const { fileTabs, activeFileTabId, rightPanelOpen, setRightPanelOpen, setActiveFileTabId, handleOpenFile, handleCloseFileTab } = useFileTabs();
 
@@ -35,8 +42,62 @@ export function AppShell() {
   const [skillsConfigOpen, setSkillsConfigOpen] = useState(false);
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [panelView, setPanelView] = useState<"sessions" | "files" | "changes">("sessions");
+  const [diffFile, setDiffFile] = useState<string | null>(null);
   const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
+  const [wideChat, setWideChat] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try { return localStorage.getItem("pi-chat-width") === "wide"; } catch { return false; }
+  });
+  const toggleChatWidth = useCallback(() => {
+    setWideChat((v) => {
+      try { localStorage.setItem("pi-chat-width", v ? "normal" : "wide"); } catch { /* ignore */ }
+      return !v;
+    });
+  }, []);
   const chatInputRef = useRef<ChatInputHandle | null>(null);
+
+  useEffect(() => {
+    document.documentElement.lang = locale === "zh" ? "zh-Hant-TW" : "en";
+  }, [locale]);
+
+  // On narrow screens the sidebar is a full-width overlay — starting open
+  // would cover the whole app with the toggle button underneath it.
+  useLayoutEffect(() => {
+    if (window.matchMedia("(max-width: 1024px)").matches) setSidebarOpen(false);
+  }, []);
+
+  // Rail behavior: clicking the active view collapses the panel; clicking the
+  // other view switches to it (opening the panel if needed).
+  const handleRailView = useCallback((view: "sessions" | "files" | "changes") => {
+    if (view === panelView) {
+      setSidebarOpen((open) => !open);
+    } else {
+      setPanelView(view);
+      setSidebarOpen(true);
+    }
+  }, [panelView]);
+
+  const handleOpenDiff = useCallback((filePath: string) => {
+    setDiffFile(filePath);
+    setRightPanelOpen(true);
+  }, [setRightPanelOpen]);
+
+  // On overlay-mode screens, picking or starting a session should reveal the
+  // chat it just opened instead of leaving the sidebar covering it.
+  const closeSidebarIfOverlay = useCallback(() => {
+    if (window.matchMedia("(max-width: 1024px)").matches) setSidebarOpen(false);
+  }, []);
+
+  const handleSelectSessionFromSidebar = useCallback((session: SessionInfo, isRestore?: boolean) => {
+    actions.handleSelectSession(session, isRestore);
+    if (!isRestore) closeSidebarIfOverlay();
+  }, [actions, closeSidebarIfOverlay]);
+
+  const handleNewSessionFromSidebar = useCallback((sessionId: string, cwd: string) => {
+    actions.handleNewSession(sessionId, cwd);
+    closeSidebarIfOverlay();
+  }, [actions, closeSidebarIfOverlay]);
 
   // ── ⌘K Command Palette wiring ──────────────────────────────────────────
   const { allSessions } = useSessions(state.refreshKey);
@@ -82,7 +143,19 @@ export function AppShell() {
     onClearTag: () => setActiveTagFilter(null),
   });
 
-  // ⌘K / Ctrl+K hotkey — only when not in an input/textarea/contenteditable.
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+
+  useEffect(() => {
+    if (!shortcutsOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShortcutsOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [shortcutsOpen]);
+
+  // Global hotkeys. Every hint shown in the ⌘K palette must be bound here —
+  // an advertised shortcut that does nothing reads as a broken app.
   useEffect(() => {
     const isEditable = (el: EventTarget | null): boolean => {
       if (!(el instanceof HTMLElement)) return false;
@@ -92,17 +165,39 @@ export function AppShell() {
       return false;
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "k" && e.key !== "K") return;
-      if (!(e.metaKey || e.ctrlKey)) return;
-      if (e.shiftKey || e.altKey) return;
-      e.preventDefault();
-      e.stopPropagation();
-      if (isEditable(e.target)) return; // let normal typing happen
-      palette.toggle();
+      if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
+      const key = e.key.toLowerCase();
+      if (key === "k" && !e.shiftKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (isEditable(e.target)) return; // let normal typing happen
+        palette.toggle();
+        return;
+      }
+      // ⇧⌘M — Models (plain ⌘M is the macOS minimize shortcut, unreachable)
+      if (key === "m" && e.shiftKey) {
+        e.preventDefault();
+        setModelsConfigOpen(true);
+        return;
+      }
+      if (key === "/" && !e.shiftKey) {
+        e.preventDefault();
+        if (effectiveCwdForPalette) setSkillsConfigOpen(true);
+        return;
+      }
+      if (key === "b" && !e.shiftKey) {
+        e.preventDefault();
+        setSidebarOpen((v) => !v);
+        return;
+      }
+      if (key === "\\" && !e.shiftKey) {
+        e.preventDefault();
+        setRightPanelOpen((v) => !v);
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [palette]);
+  }, [palette, effectiveCwdForPalette, setRightPanelOpen]);
 
   // Register the action callbacks the palette can fire.
   useEffect(() => {
@@ -113,32 +208,30 @@ export function AppShell() {
       toggleTheme: () => toggleTheme(),
       toggleSidebar: () => setSidebarOpen((v) => !v),
       toggleFilePanel: () => setRightPanelOpen((v) => !v),
+      toggleChatWidth,
+      setSkin,
       newSession: () => {
         if (!effectiveCwdForPalette) return;
         const tempId = typeof crypto.randomUUID === "function"
           ? crypto.randomUUID()
           : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
-        actions.handleNewSession(tempId, effectiveCwdForPalette);
+        handleNewSessionFromSidebar(tempId, effectiveCwdForPalette);
       },
       openParallelForActive: () => {
         if (state.selectedSession) actions.openParallel(state.selectedSession);
       },
-      openHelp: () => {
-        // No dedicated help modal yet — surface via console for now.
-        // (Avoid adding a throwaway dialog; users can still use the footer hints.)
-        console.info("⌘K: open Models · ⌘/ Skills · ⇧⌘P Export/Analytics · ⌘B toggle sidebar · ⌘\\ toggle file panel · ⌘J toggle theme");
-      },
+      openHelp: () => setShortcutsOpen(true),
     });
-  }, [palette, toggleTheme, actions, effectiveCwdForPalette, state.selectedSession, setRightPanelOpen]);
+  }, [palette, toggleTheme, actions, effectiveCwdForPalette, state.selectedSession, setRightPanelOpen, handleNewSessionFromSidebar, toggleChatWidth]);
 
   // Helper: turn a session id into the full SessionInfo record (palette only
   // stores the id in its data when the user picked it via the palette).
   const handlePaletteSelectSession = useCallback(
     (sessionId: string) => {
       const session = allSessions.find((s) => s.id === sessionId);
-      if (session) actions.handleSelectSession(session);
+      if (session) handleSelectSessionFromSidebar(session);
     },
-    [allSessions, actions],
+    [allSessions, handleSelectSessionFromSidebar],
   );
 
   const handlePaletteSelectTag = useCallback(
@@ -193,73 +286,146 @@ export function AppShell() {
 
   const activeFileTab = fileTabs.find((t) => t.id === activeFileTabId) ?? null;
 
+  const panelCwd = state.activeCwd ?? state.selectedSession?.cwd ?? state.newSessionCwd ?? null;
+
   const sidebarContent = (
     <ErrorBoundary>
-      <SessionSidebar
-        selectedSessionId={state.selectedSession?.id ?? null}
-        onSelectSession={actions.handleSelectSession}
-        onNewSession={actions.handleNewSession}
-        initialSessionId={state.initialSessionId}
-        onInitialRestoreDone={actions.handleInitialRestoreDone}
-        refreshKey={state.refreshKey}
-        onSessionDeleted={actions.handleSessionDeleted}
-        selectedCwd={state.selectedSession?.cwd ?? state.newSessionCwd ?? null}
-        onCwdChange={actions.handleCwdChange}
-        onOpenFile={handleOpenFile}
-        explorerRefreshKey={state.explorerRefreshKey}
-        onAtMention={handleAtMention}
-        onOpenParallel={actions.openParallel}
-        parallelSessionIds={state.parallelSessions.map((s) => s.id)}
-        activeTagFilter={activeTagFilter}
-        onSelectTagFilter={setActiveTagFilter}
-      />
-      <div className={s.sidebarFooter}>
-        {([
-          {
-            label: "Models",
-            onClick: () => setModelsConfigOpen(true),
-            disabled: false,
-            icon: (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="4" y="4" width="16" height="16" rx="2" /><rect x="9" y="9" width="6" height="6" />
-                <line x1="9" y1="1" x2="9" y2="4" /><line x1="15" y1="1" x2="15" y2="4" />
-                <line x1="9" y1="20" x2="9" y2="23" /><line x1="15" y1="20" x2="15" y2="23" />
-                <line x1="20" y1="9" x2="23" y2="9" /><line x1="20" y1="14" x2="23" y2="14" />
-                <line x1="1" y1="9" x2="4" y2="9" /><line x1="1" y1="14" x2="4" y2="14" />
-              </svg>
-            ),
-          },
-          {
-            label: "Skills",
-            onClick: () => setSkillsConfigOpen(true),
-            disabled: !state.activeCwd && !state.selectedSession?.cwd && !state.newSessionCwd,
-            icon: (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                <path d="M2 17l10 5 10-5" />
-                <path d="M2 12l10 5 10-5" />
-              </svg>
-            ),
-          },
-        ] as { label: string; onClick: () => void; disabled: boolean; icon: React.ReactNode }[]).map(({ label, onClick, disabled, icon }) => (
-          <button
-            key={label}
-            onClick={onClick}
-            disabled={disabled}
-            title={label}
-            className={`${s.sidebarFooterButton} ${disabled ? s.sidebarFooterButtonDisabled : s.sidebarFooterButtonEnabled}`}
-          >
-            {icon}
-            {label}
-          </button>
-        ))}
-      </div>
+      {panelView === "sessions" ? (
+        <SessionSidebar
+          selectedSessionId={state.selectedSession?.id ?? null}
+          onSelectSession={handleSelectSessionFromSidebar}
+          onNewSession={handleNewSessionFromSidebar}
+          initialSessionId={state.initialSessionId}
+          onInitialRestoreDone={actions.handleInitialRestoreDone}
+          refreshKey={state.refreshKey}
+          onSessionDeleted={actions.handleSessionDeleted}
+          selectedCwd={state.selectedSession?.cwd ?? state.newSessionCwd ?? null}
+          onCwdChange={actions.handleCwdChange}
+          onOpenFile={handleOpenFile}
+          explorerRefreshKey={state.explorerRefreshKey}
+          onAtMention={handleAtMention}
+          onOpenParallel={actions.openParallel}
+          parallelSessionIds={state.parallelSessions.map((s) => s.id)}
+          activeTagFilter={activeTagFilter}
+          onSelectTagFilter={setActiveTagFilter}
+        />
+      ) : panelView === "files" ? (
+        <FilesPanel
+          cwd={panelCwd}
+          onOpenFile={handleOpenFile}
+          onAtMention={handleAtMention}
+          refreshKey={state.explorerRefreshKey}
+        />
+      ) : (
+        <ChangesPanel
+          cwd={panelCwd}
+          refreshKey={state.refreshKey}
+          onOpenDiff={handleOpenDiff}
+          selectedPath={diffFile}
+        />
+      )}
     </ErrorBoundary>
   );
 
+  const tabTitle = useTabTitle();
+
   return (
     <>
+    <title>{tabTitle}</title>
     <div className={s.container}>
+      {/* Icon rail — global navigation, always visible */}
+      <nav className={s.rail} aria-label="Primary">
+        <button
+          onClick={() => handleRailView("sessions")}
+          title="Sessions"
+          aria-pressed={panelView === "sessions" && sidebarOpen}
+          className={`${s.railButton} ${panelView === "sessions" && sidebarOpen ? s.railButtonActive : ""}`}
+        >
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          </svg>
+        </button>
+        <button
+          onClick={() => handleRailView("files")}
+          title={t("sidebar.explorer")}
+          aria-pressed={panelView === "files" && sidebarOpen}
+          className={`${s.railButton} ${panelView === "files" && sidebarOpen ? s.railButtonActive : ""}`}
+        >
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+          </svg>
+        </button>
+        <button
+          onClick={() => handleRailView("changes")}
+          title="Changes"
+          aria-pressed={panelView === "changes" && sidebarOpen}
+          className={`${s.railButton} ${panelView === "changes" && sidebarOpen ? s.railButtonActive : ""}`}
+        >
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="6" y1="3" x2="6" y2="15" /><circle cx="18" cy="6" r="3" /><circle cx="6" cy="18" r="3" />
+            <path d="M18 9a9 9 0 0 1-9 9" />
+          </svg>
+        </button>
+        <button onClick={() => palette.open()} title={`${t("topbar.searchTitle")}`} className={s.railButton}>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+        </button>
+        <button onClick={() => setAnalyticsOpen(true)} title={t("topbar.analyticsTitle")} className={s.railButton}>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" />
+          </svg>
+        </button>
+        <div className={s.railSpacer} />
+        <button onClick={() => setModelsConfigOpen(true)} title={`${t("sidebar.models")} (⇧⌘M)`} className={s.railButton}>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="4" y="4" width="16" height="16" rx="2" /><rect x="9" y="9" width="6" height="6" />
+            <line x1="9" y1="1" x2="9" y2="4" /><line x1="15" y1="1" x2="15" y2="4" />
+            <line x1="9" y1="20" x2="9" y2="23" /><line x1="15" y1="20" x2="15" y2="23" />
+            <line x1="20" y1="9" x2="23" y2="9" /><line x1="20" y1="14" x2="23" y2="14" />
+            <line x1="1" y1="9" x2="4" y2="9" /><line x1="1" y1="14" x2="4" y2="14" />
+          </svg>
+        </button>
+        <button
+          onClick={() => setSkillsConfigOpen(true)}
+          disabled={!panelCwd}
+          title={`${t("sidebar.skills")} (⌘/)`}
+          className={s.railButton}
+        >
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />
+          </svg>
+        </button>
+        <button onClick={() => setLocale(locale === "en" ? "zh" : "en")} title={t("topbar.language")} className={s.railButton}>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" />
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+          </svg>
+        </button>
+        <button
+          onClick={(e) => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            toggleTheme({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
+          }}
+          title={isDark ? t("topbar.lightMode") : t("topbar.darkMode")}
+          aria-pressed={isDark}
+          className={s.railButton}
+        >
+          {isDark ? (
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="5" />
+              <line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" />
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+              <line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" />
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="5.64" />
+            </svg>
+          ) : (
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+            </svg>
+          )}
+        </button>
+      </nav>
       {/* Mobile overlay backdrop */}
       <div
         className="sidebar-overlay-backdrop"
@@ -281,68 +447,21 @@ export function AppShell() {
       <div className={s.centerPanel}>
         {/* Top bar with sidebar toggle */}
         <div ref={topBarRef} className={s.topBar}>
-          <button
-            onClick={() => setSidebarOpen((v) => !v)}
-            title={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
-            aria-expanded={sidebarOpen}
-            aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
-            className={s.topBarButton}
-          >
-            {sidebarOpen ? (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="3" width="18" height="18" rx="2" /><line x1="9" y1="3" x2="9" y2="21" />
-              </svg>
-            ) : (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
-              </svg>
-            )}
-          </button>
-          <button
-            onClick={() => palette.open()}
-            title="Search sessions, tags, files, or run a command (⌘K)"
-            aria-label="Open command palette"
-            className={s.commandPaletteTrigger}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-            <span>Search…</span>
-            <span className={s.commandPaletteKbd} aria-hidden>⌘K</span>
-          </button>
-          <button
-            onClick={(e) => {
-              const rect = e.currentTarget.getBoundingClientRect();
-              toggleTheme({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
-            }}
-            title={isDark ? "Switch to light mode" : "Switch to dark mode"}
-            aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
-            aria-pressed={isDark}
-            className={s.topBarButton}
-          >
-            {isDark ? (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="5" />
-                <line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" />
-                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-                <line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" />
-                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="5.64" />
-              </svg>
-            ) : (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-              </svg>
-            )}
-          </button>
+          <div className={`${s.chatTitle} chrome-mono`} title={state.selectedSession?.name ?? state.selectedSession?.id}>
+            {state.selectedSession
+              ? (state.selectedSession.name ?? state.selectedSession.id.slice(0, 8))
+              : effectiveNewSessionCwd
+                ? t("sidebar.new").toLowerCase() + " · " + (effectiveNewSessionCwd.split("/").pop() ?? "")
+                : "π"}
+          </div>
           {showChat && (
             <div className={s.chatActions}>
               <div className={s.exportMenuWrapper} ref={exportMenuRef}>
                 <button
                   onClick={() => setExportMenuOpen((v) => !v)}
                   disabled={!state.selectedSession}
-                  title={state.selectedSession ? "Export session" : "Export is available after the session is saved"}
-                  aria-label="Export session"
+                  title={state.selectedSession ? t("topbar.exportTitle") : t("topbar.exportDisabled")}
+                  aria-label={t("topbar.exportTitle")}
                   aria-haspopup="menu"
                   aria-expanded={exportMenuOpen}
                   className={`${s.exportButton} ${state.selectedSession ? s.exportButtonEnabled : s.exportButtonDisabled}`}
@@ -357,7 +476,7 @@ export function AppShell() {
                       <line x1="12" y1="15" x2="12" y2="3" />
                     </svg>
                   </span>
-                  <span>Export</span>
+                  <span>{t("topbar.export")}</span>
                   <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
                     <polyline points="2 4 5 7 8 4" />
                   </svg>
@@ -370,7 +489,7 @@ export function AppShell() {
                       role="menuitem"
                     >
                       <strong>HTML</strong>
-                      <span className={s.exportMenuHint}>Full render, open in browser</span>
+                      <span className={s.exportMenuHint}>{t("topbar.exportHtmlHint")}</span>
                     </button>
                     <button
                       onClick={() => { handleExportMarkdown(); setExportMenuOpen(false); }}
@@ -378,19 +497,24 @@ export function AppShell() {
                       role="menuitem"
                     >
                       <strong>Markdown</strong>
-                      <span className={s.exportMenuHint}>Plain .md, paste into any editor</span>
-                    </button>
-                    <button
-                      onClick={() => { setAnalyticsOpen(true); setExportMenuOpen(false); }}
-                      className={s.exportMenuItem}
-                      role="menuitem"
-                    >
-                      <strong>Analytics</strong>
-                      <span className={s.exportMenuHint}>Token / cost report</span>
+                      <span className={s.exportMenuHint}>{t("topbar.exportMdHint")}</span>
                     </button>
                   </div>
                 )}
               </div>
+              <button
+                onClick={() => setAnalyticsOpen(true)}
+                className={`${s.systemButton} ${s.systemButtonDefault} hover-text`}
+                title={t("topbar.analyticsTitle")}
+                aria-label={t("topbar.analyticsTitle")}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--text-dim)", flexShrink: 0 }}>
+                  <line x1="18" y1="20" x2="18" y2="10" />
+                  <line x1="12" y1="20" x2="12" y2="4" />
+                  <line x1="6" y1="20" x2="6" y2="14" />
+                </svg>
+                <span>{t("topbar.analytics")}</span>
+              </button>
               <BranchNavigator
                 tree={state.branchTree}
                 activeLeafId={state.branchActiveLeafId}
@@ -411,7 +535,7 @@ export function AppShell() {
                   <line x1="8" y1="13" x2="16" y2="13" />
                   <line x1="8" y1="17" x2="13" y2="17" />
                 </svg>
-                <span>System</span>
+                <span>{t("topbar.system")}</span>
               </button>
             </div>
           )}
@@ -453,25 +577,19 @@ export function AppShell() {
               >
                 {t && t.input > 0 && (
                   <span className={s.tokenStat}>
-                    <svg width="12" height="12" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="5" y1="8.5" x2="5" y2="1.5" /><polyline points="2 4 5 1.5 8 4" />
-                    </svg>
+                    <span className={s.tokenStatLabel}>in</span>
                     {fmt(t.input)}
                   </span>
                 )}
                 {t && t.output > 0 && (
                   <span className={s.tokenStat}>
-                    <svg width="12" height="12" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="5" y1="1.5" x2="5" y2="8.5" /><polyline points="2 6 5 8.5 8 6" />
-                    </svg>
+                    <span className={s.tokenStatLabel}>out</span>
                     {fmt(t.output)}
                   </span>
                 )}
                 {t && t.cacheRead > 0 && (
                   <span className={s.tokenStat}>
-                    <svg width="12" height="12" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M8.5 5a3.5 3.5 0 1 1-1-2.45" /><polyline points="6.5 1.5 8.5 2.5 7.5 4.5" />
-                    </svg>
+                    <span className={s.tokenStatLabel}>cache</span>
                     {fmt(t.cacheRead)}
                   </span>
                 )}
@@ -509,11 +627,11 @@ export function AppShell() {
                     </div>
                   ) : state.systemPrompt === "" ? (
                     <div className={s.systemPromptPlaceholder}>
-                      System prompt is empty (tools are disabled)
+                      {t("system.empty")}
                     </div>
                   ) : (
                     <div className={s.systemPromptPlaceholder}>
-                      Send a message to load the system prompt
+                      {t("system.notLoaded")}
                     </div>
                   )}
                 </div>
@@ -531,6 +649,7 @@ export function AppShell() {
                 {showChat && (
                   <ChatWindow
                     key={`main-${state.sessionKey}`}
+                    wideChat={wideChat}
                     session={state.selectedSession}
                     newSessionCwd={effectiveNewSessionCwd}
                     onAgentEnd={actions.handleAgentEnd}
@@ -552,6 +671,7 @@ export function AppShell() {
                 <div key={session.id} className={s.parallelPane}>
                   <ChatWindow
                     key={`parallel-${session.id}-${idx}`}
+                    wideChat={wideChat}
                     session={session}
                     newSessionCwd={null}
                     modelsRefreshKey={modelsRefreshKey}
@@ -571,6 +691,7 @@ export function AppShell() {
           ) : showChat ? (
             <ChatWindow
               key={state.sessionKey}
+              wideChat={wideChat}
               session={state.selectedSession}
               newSessionCwd={effectiveNewSessionCwd}
               onAgentEnd={actions.handleAgentEnd}
@@ -593,9 +714,9 @@ export function AppShell() {
                   </svg>
                 </div>
                 <div className={s.placeholderText}>
-                  <div className={s.placeholderTitle}>Select a session</div>
+                  <div className={s.placeholderTitle}>{t("welcome.selectSession")}</div>
                   <div className={s.placeholderSubtitle}>
-                    Choose from the sidebar or start a new one
+                    {t("welcome.chooseFromSidebar")}
                   </div>
                 </div>
               </div>
@@ -613,21 +734,21 @@ export function AppShell() {
                     <span className={s.titleText}>with tGD</span>
                   </div>
                   <div className={s.welcomeSubtitle}>
-                    Your AI coding assistant, powered by Pi
+                    {t("welcome.subtitle")}
                   </div>
                 </div>
                 <div className={s.welcomeSteps}>
                   <div className={s.welcomeStep}>
                     <span className={s.welcomeStepNumber}>1</span>
-                    <span className={s.welcomeStepText}>Select a project directory from the sidebar</span>
+                    <span className={s.welcomeStepText}>{t("welcome.step1")}</span>
                   </div>
                   <div className={s.welcomeStep}>
                     <span className={s.welcomeStepNumber}>2</span>
-                    <span className={s.welcomeStepText}>Click <strong style={{ color: "var(--text)" }}>+ New</strong> to start a session</span>
+                    <span className={s.welcomeStepText}>{t("welcome.step2pre")} <strong style={{ color: "var(--text)" }}>+ {t("sidebar.new")}</strong> {t("welcome.step2post")}</span>
                   </div>
                   <div className={s.welcomeStep}>
                     <span className={s.welcomeStepNumber}>3</span>
-                    <span className={s.welcomeStepText}>Configure models via <strong style={{ color: "var(--text)" }}>Models</strong> at the bottom</span>
+                    <span className={s.welcomeStepText}>{t("welcome.step3pre")} <strong style={{ color: "var(--text)" }}>{t("sidebar.models")}</strong> {t("welcome.step3post")}</span>
                   </div>
                 </div>
               </div>
@@ -655,11 +776,20 @@ export function AppShell() {
 
         {/* File content */}
         <div className={s.rightPanelContent}>
-          {activeFileTab?.filePath ? (
+          {diffFile && panelCwd ? (
+            <DiffPanel cwd={panelCwd} path={diffFile} onClose={() => setDiffFile(null)} />
+          ) : activeFileTab?.filePath ? (
             <FileViewer filePath={activeFileTab.filePath} cwd={state.activeCwd ?? undefined} />
           ) : (
             <div className={s.rightPanelEmpty}>
-              No file open
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+              </svg>
+              <div className={s.rightPanelEmptyTitle}>{t("rightPanel.noFile")}</div>
+              <div className={s.rightPanelEmptyHint}>
+                {t("rightPanel.noFileHint")}
+              </div>
             </div>
           )}
         </div>
@@ -668,7 +798,7 @@ export function AppShell() {
     {/* File panel toggle — always visible at top-right */}
     <button
       onClick={() => setRightPanelOpen((v) => !v)}
-      title={rightPanelOpen ? "Hide file panel" : "Show file panel"}
+      title={rightPanelOpen ? t("topbar.hideFilePanel") : t("topbar.showFilePanel")}
       className={`${s.filePanelToggle} hover-text`}
       style={{ color: rightPanelOpen ? "var(--text)" : "var(--text-muted)" }}
     >
@@ -681,6 +811,33 @@ export function AppShell() {
       <Suspense fallback={null}><SkillsConfig cwd={(state.activeCwd ?? state.selectedSession?.cwd ?? state.newSessionCwd)!} onClose={() => setSkillsConfigOpen(false)} /></Suspense>
     )}
     {analyticsOpen && <Suspense fallback={null}><AnalyticsModal open={analyticsOpen} onClose={() => setAnalyticsOpen(false)} /></Suspense>}
+    {shortcutsOpen && (
+      <div
+        className={s.shortcutsOverlay}
+        onClick={(e) => { if (e.target === e.currentTarget) setShortcutsOpen(false); }}
+        onKeyDown={(e) => { if (e.key === "Escape") setShortcutsOpen(false); }}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Keyboard shortcuts"
+      >
+        <div className={s.shortcutsDialog}>
+          <h3 className={s.shortcutsTitle}>{t("shortcuts.title")}</h3>
+          {([
+            ["⌘K", t("shortcuts.palette")],
+            ["⇧⌘M", t("shortcuts.models")],
+            ["⌘/", t("shortcuts.skills")],
+            ["⌘B", t("shortcuts.sidebar")],
+            ["⌘\\", t("shortcuts.filePanel")],
+            ["Esc", t("shortcuts.close")],
+          ] as [string, string][]).map(([keys, label]) => (
+            <div key={keys} className={s.shortcutRow}>
+              <span>{label}</span>
+              <span className={s.shortcutKbd}>{keys}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
     {/* ⌘K Command Palette — last so it sits on top of every modal */}
     <CommandPalette
       palette={palette}

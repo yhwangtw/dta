@@ -4,6 +4,9 @@ import { useState, useCallback, useRef, useEffect, useReducer } from "react";
 import type { AgentMessage } from "@/lib/types";
 import { normalizeToolCalls } from "@/lib/normalize";
 import { sendAgentCommand } from "@/lib/agent-client";
+import { showToast } from "@/hooks/useToast";
+import { translate } from "@/lib/i18n";
+import { setIdleTitle, setRunningTitle, setDoneTitle, notifyDone, requestNotifyPermission } from "@/lib/attention";
 import type { ToolEntry } from "@/components/modals/ToolPanel";
 import type { SessionData, AgentEvent, AgentPhase, UseAgentSessionOptions, ThinkingLevelOption, ChatInputHandle, AttachedImage } from "./use-agent-session-types";
 import { streamReducer } from "./use-agent-session-types";
@@ -42,6 +45,9 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const [isCompacting, setIsCompacting] = useState(false);
   const [compactError, setCompactError] = useState<string | null>(null);
   const [agentPhase, setAgentPhase] = useState<AgentPhase>(null);
+  const [agentStartedAt, setAgentStartedAt] = useState<number | null>(null);
+  const [queuedFollowUps, setQueuedFollowUps] = useState<string[]>([]);
+  const [bashRun, setBashRun] = useState<{ command: string; output: string; running: boolean } | null>(null);
 
   const eventSourceRef = useRef<EventSource | null>(null);
   const sessionIdRef = useRef<string | null>(session?.id ?? null);
@@ -52,7 +58,9 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const pendingScrollToUserRef = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
-  const hasSummarizedRef = useRef(false);
+  // Already-named sessions never need auto-naming — skip the summarize call
+  const hasSummarizedRef = useRef(Boolean(session?.name));
+  const sessionNameRef = useRef<string | undefined>(session?.name);
 
   const setNewSessionModel = opts.setNewSessionModel ?? setNewSessionModelState;
   const setToolPresetState = opts.setToolPreset ?? setToolPreset;
@@ -96,6 +104,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const d = await res.json() as SessionData & { agentState?: { running: boolean; state?: { isStreaming?: boolean; isCompacting?: boolean; contextUsage?: { percent: number | null; contextWindow: number; tokens: number | null } | null; systemPrompt?: string; thinkingLevel?: string } } };
       setData(d);
+      const info = (d as { info?: { name?: string } }).info;
+      if (info?.name) sessionNameRef.current = info.name;
       setActiveLeafId(d.leafId);
       setMessages(d.context.messages);
       setEntryIds(d.context.entryIds ?? []);
@@ -141,6 +151,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     }
   }, [setToolPresetState]);
 
+  const reconnectAttemptRef = useRef(0);
+
   const connectEvents = useCallback((sid: string) => {
     if (eventSourceRef.current) {
       eventSourceRef.current.close();
@@ -148,6 +160,9 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     }
     const es = new EventSource(`/api/agent/${encodeURIComponent(sid)}/events`);
     eventSourceRef.current = es;
+    es.onopen = () => {
+      reconnectAttemptRef.current = 0;
+    };
     es.onmessage = (e) => {
       try {
         const event = JSON.parse(e.data) as AgentEvent;
@@ -160,9 +175,13 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       if (eventSourceRef.current === es && agentRunningRef.current) {
         es.close();
         eventSourceRef.current = null;
+        // Exponential backoff: 1s, 2s, 4s, ... capped at 15s, so a downed
+        // server isn't hammered once per second.
+        const delay = Math.min(1000 * 2 ** reconnectAttemptRef.current, 15_000);
+        reconnectAttemptRef.current++;
         setTimeout(() => {
           if (agentRunningRef.current) connectEvents(sid);
-        }, 1000);
+        }, delay);
       }
     };
   }, []);
@@ -176,22 +195,33 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       case "agent_start":
         setAgentRunning(true);
         setAgentPhase({ kind: "waiting_model" });
+        setAgentStartedAt(Date.now());
+        setRunningTitle(sessionNameRef.current);
         dispatch({ type: "start" });
+        // Reload so user messages injected mid-stream (steer, queued
+        // follow-ups) show up in the transcript from the session file.
+        if (sessionIdRef.current) loadSession(sessionIdRef.current);
         break;
       case "agent_end":
         setAgentRunning(false);
         setAgentPhase(null);
         setRetryInfo(null);
+        setAgentStartedAt(null);
+        // Queued follow-ups are consumed right after this event; the next
+        // agent_start reload will surface them as real messages.
+        setQueuedFollowUps([]);
+        setDoneTitle(sessionNameRef.current);
+        notifyDone(sessionNameRef.current);
         dispatch({ type: "end" });
         if (sessionIdRef.current) {
-          loadSession(sessionIdRef.current);
-          fetch(`/api/agent/${encodeURIComponent(sessionIdRef.current)}`)
-            .then((r) => r.json())
-            .then((d: { state?: { contextUsage?: { percent: number | null; contextWindow: number; tokens: number | null } | null; systemPrompt?: string } }) => {
-              if (d.state?.contextUsage !== undefined) setContextUsage(d.state.contextUsage ?? null);
-              if (d.state?.systemPrompt !== undefined) setSystemPrompt(d.state.systemPrompt ?? null);
-            })
-            .catch(() => {});
+          // includeState piggybacks contextUsage/systemPrompt on the session
+          // reload — one request instead of two.
+          loadSession(sessionIdRef.current, false, true).then((agentState) => {
+            if (agentState?.state) {
+              if (agentState.state.contextUsage !== undefined) setContextUsage(agentState.state.contextUsage ?? null);
+              if (agentState.state.systemPrompt !== undefined) setSystemPrompt(agentState.state.systemPrompt ?? null);
+            }
+          });
           // Auto-name session after first turn (background, fire-and-forget)
           if (!hasSummarizedRef.current) {
             hasSummarizedRef.current = true;
@@ -243,6 +273,15 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         });
         break;
       }
+      case "bash_start":
+        setBashRun({ command: event.command as string, output: "", running: true });
+        break;
+      case "bash_chunk":
+        setBashRun((prev) => prev ? { ...prev, output: prev.output + (event.chunk as string) } : prev);
+        break;
+      case "bash_end":
+        setBashRun((prev) => prev ? { ...prev, running: false } : prev);
+        break;
       case "auto_retry_start":
         setRetryInfo({ attempt: event.attempt as number, maxAttempts: event.maxAttempts as number, errorMessage: event.errorMessage as string | undefined });
         break;
@@ -267,9 +306,78 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   }, [loadSession, onAgentEnd, onSessionNamed]);
   handleAgentEventRef.current = handleAgentEvent;
 
+  // Shared by the tGD-command and plain-prompt paths of handleSend: create a
+  // new agent session with the current model/tool/thinking selections, wire up
+  // SSE, and notify the parent.
+  const createNewSession = useCallback(async (
+    message: string,
+    piImages?: Array<{ type: "image"; data: string; mimeType: string }>,
+  ): Promise<string> => {
+    if (!newSessionCwd) throw new Error("No cwd for new session");
+    const selectedModel = newSessionModel;
+    if (selectedModel) setPendingModel(selectedModel);
+    const { PRESET_NONE, PRESET_DEFAULT, PRESET_FULL } = await import("@/components/modals/ToolPanel");
+    const toolNames = toolPreset === "none" ? PRESET_NONE : toolPreset === "default" ? PRESET_DEFAULT : PRESET_FULL;
+    const res = await fetch("/api/agent/new", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        cwd: newSessionCwd,
+        type: "prompt",
+        message,
+        toolNames,
+        ...(piImages?.length ? { images: piImages } : {}),
+        ...(selectedModel ? { provider: selectedModel.provider, modelId: selectedModel.modelId } : {}),
+        ...(thinkingLevel !== "auto" ? { thinkingLevel } : {}),
+      }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const result = await res.json() as { sessionId: string };
+    sessionIdRef.current = result.sessionId;
+    connectEvents(result.sessionId);
+    onSessionCreated?.({
+      id: result.sessionId,
+      path: "",
+      cwd: newSessionCwd,
+      name: undefined,
+      created: new Date().toISOString(),
+      modified: new Date().toISOString(),
+      messageCount: 1,
+      firstMessage: message,
+    });
+    return result.sessionId;
+  }, [newSessionCwd, newSessionModel, toolPreset, thinkingLevel, connectEvents, onSessionCreated]);
+
   const handleSend = useCallback(async (message: string, images?: AttachedImage[]) => {
     if (!message.trim() && !images?.length) return;
     if (agentRunning) return;
+    requestNotifyPermission();
+
+    // Bash mode: `!cmd` runs the shell directly (streamed, recorded into the
+    // session so the agent sees the result); `!!cmd` keeps it out of context.
+    const trimmedForBash = message.trim();
+    if (trimmedForBash.startsWith("!") && trimmedForBash.length > 1) {
+      if (isNew || !session) {
+        showToast("Bash mode needs an active session — send a message first", { type: "warning" });
+        return;
+      }
+      const excludeFromContext = trimmedForBash.startsWith("!!");
+      const bashCommand = trimmedForBash.replace(/^!+/, "").trim();
+      if (!bashCommand) return;
+      connectEvents(session.id);
+      setBashRun({ command: bashCommand, output: "", running: true });
+      try {
+        await sendAgentCommand(session.id, { type: "bash", command: bashCommand, excludeFromContext });
+        // Reload so the persisted bashExecution entry replaces the live block
+        await loadSession(session.id);
+      } catch (e) {
+        console.error("Bash failed:", e);
+        showToast(`Bash failed: ${e instanceof Error ? e.message : e}`, { type: "error" });
+      } finally {
+        setBashRun(null);
+      }
+      return;
+    }
     // Check if this is a tGD slash command
     const tgdCommandMatch = message.trim().match(/^\/tgd-(\w+)(.*)$/);
     if (tgdCommandMatch) {
@@ -288,49 +396,13 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       dispatch({ type: "start" });
       pendingScrollToUserRef.current = true;
       try {
-        let sid: string;
-        
         if (isNew && newSessionCwd) {
-          // New session - create it first, then execute command
-          const selectedModel = newSessionModel;
-          if (selectedModel) setPendingModel(selectedModel);
-          const { PRESET_NONE, PRESET_DEFAULT, PRESET_FULL } = await import("@/components/modals/ToolPanel");
-          const toolNames = toolPreset === "none" ? PRESET_NONE : toolPreset === "default" ? PRESET_DEFAULT : PRESET_FULL;
-          
-          // Create new session with the command as initial message
-          const createRes = await fetch("/api/agent/new", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              cwd: newSessionCwd,
-              type: "prompt",
-              message,  // Send the slash command as the initial message
-              toolNames,
-              ...(selectedModel ? { provider: selectedModel.provider, modelId: selectedModel.modelId } : {}),
-              ...(thinkingLevel !== "auto" ? { thinkingLevel } : {}),
-            }),
-          });
-          
-          if (!createRes.ok) throw new Error(`HTTP ${createRes.status}`);
-          const result = await createRes.json() as { sessionId: string };
-          sid = result.sessionId;
-          sessionIdRef.current = sid;
-          connectEvents(sid);
-          onSessionCreated?.({
-            id: sid,
-            path: "",
-            cwd: newSessionCwd,
-            name: undefined,
-            created: new Date().toISOString(),
-            modified: new Date().toISOString(),
-            messageCount: 1,
-            firstMessage: message,
-          });
+          // New session — create it with the slash command as initial message
+          await createNewSession(message);
         } else if (session) {
           // Existing session - execute command directly
-          sid = session.id;
-          connectEvents(sid);
-          const res = await fetch(`/api/agent/${sid}/command`, {
+          connectEvents(session.id);
+          const res = await fetch(`/api/agent/${session.id}/command`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ command, args: args.trim() }),
@@ -345,6 +417,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         }
       } catch (e) {
         console.error("Failed to execute command:", e);
+        showToast(`${translate("toast.commandFailed")}: ${e instanceof Error ? e.message : e}`, { type: "error" });
         setAgentRunning(false);
         setAgentPhase(null);
         dispatch({ type: "end" });
@@ -370,38 +443,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
 
     try {
       if (isNew && newSessionCwd) {
-        const selectedModel = newSessionModel;
-        if (selectedModel) setPendingModel(selectedModel);
-        const { PRESET_NONE, PRESET_DEFAULT, PRESET_FULL } = await import("@/components/modals/ToolPanel");
-        const toolNames = toolPreset === "none" ? PRESET_NONE : toolPreset === "default" ? PRESET_DEFAULT : PRESET_FULL;
-        const res = await fetch("/api/agent/new", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            cwd: newSessionCwd,
-            type: "prompt",
-            message,
-            toolNames,
-            ...(piImages?.length ? { images: piImages } : {}),
-            ...(selectedModel ? { provider: selectedModel.provider, modelId: selectedModel.modelId } : {}),
-            ...(thinkingLevel !== "auto" ? { thinkingLevel } : {}),
-          }),
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const result = await res.json() as { sessionId: string };
-        const realId = result.sessionId;
-        sessionIdRef.current = realId;
-        connectEvents(realId);
-        onSessionCreated?.({
-          id: realId,
-          path: "",
-          cwd: newSessionCwd,
-          name: undefined,
-          created: new Date().toISOString(),
-          modified: new Date().toISOString(),
-          messageCount: 1,
-          firstMessage: message,
-        });
+        await createNewSession(message, piImages);
       } else if (session) {
         connectEvents(session.id);
         await sendAgentCommand(session.id, {
@@ -412,11 +454,12 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       }
     } catch (e) {
       console.error("Failed to send message:", e);
+      showToast(`${translate("toast.messageNotSent")}: ${e instanceof Error ? e.message : e}`, { type: "error" });
       setAgentRunning(false);
       setAgentPhase(null);
       dispatch({ type: "end" });
     }
-  }, [isNew, newSessionCwd, newSessionModel, toolPreset, thinkingLevel, session, agentRunning, connectEvents, onSessionCreated]);
+  }, [isNew, newSessionCwd, session, agentRunning, connectEvents, createNewSession, loadSession]);
 
   const handleAbort = useCallback(async () => {
     const sid = sessionIdRef.current;
@@ -443,6 +486,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       }
     } catch (e) {
       console.error("Fork failed:", e);
+      showToast(`${translate("toast.forkFailed")}: ${e instanceof Error ? e.message : e}`, { type: "error" });
     } finally {
       setForkingEntryId(null);
     }
@@ -509,13 +553,17 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       });
     } catch (e) {
       console.error("Failed to steer:", e);
+      showToast(`${translate("toast.steerFailed")}: ${e instanceof Error ? e.message : e}`, { type: "error" });
     }
   }, []);
 
   const handleFollowUp = useCallback(async (message: string, images?: AttachedImage[]) => {
     const sid = sessionIdRef.current;
     if (!sid) return;
-    setMessages((prev) => [...prev, { role: "user", content: message, timestamp: Date.now() } as AgentMessage]);
+    // Don't append to the transcript — the message hasn't been delivered yet.
+    // It sits in a visible queue until the current run ends, then shows up as
+    // a real user message via the agent_start reload.
+    setQueuedFollowUps((prev) => [...prev, message]);
     const piImages = images?.map((img) => ({ type: "image" as const, data: img.data, mimeType: img.mimeType }));
     try {
       await sendAgentCommand(sid, {
@@ -525,6 +573,29 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       });
     } catch (e) {
       console.error("Failed to follow up:", e);
+      setQueuedFollowUps((prev) => prev.filter((m) => m !== message));
+      showToast(`${translate("toast.followUpFailed")}: ${e instanceof Error ? e.message : e}`, { type: "error" });
+    }
+  }, []);
+
+  const handleClearQueue = useCallback(async () => {
+    const sid = sessionIdRef.current;
+    if (!sid) return;
+    try {
+      await sendAgentCommand(sid, { type: "clear_queue" });
+      setQueuedFollowUps([]);
+    } catch (e) {
+      console.error("Failed to clear queue:", e);
+    }
+  }, []);
+
+  const handleAbortBash = useCallback(async () => {
+    const sid = sessionIdRef.current;
+    if (!sid) return;
+    try {
+      await sendAgentCommand(sid, { type: "abort_bash" });
+    } catch (e) {
+      console.error("Failed to abort bash:", e);
     }
   }, []);
 
@@ -579,6 +650,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   useEffect(() => {
     if (session) {
       sessionIdRef.current = session.id;
+      setIdleTitle(session.name);
       loadSession(session.id, true, true).then((agentState) => {
         if (agentState?.running) {
           loadTools(session.id);
@@ -660,7 +732,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     agentRunning, modelNames, modelList, modelThinkingLevels, modelThinkingLevelMaps, newSessionModel, toolPreset, thinkingLevel,
     retryInfo, contextUsage, systemPrompt, forkingEntryId,
     isCompacting, compactError, currentModel, displayModel, sessionStats,
-    agentPhase,
+    agentPhase, agentStartedAt, queuedFollowUps, bashRun,
     isNew,
     // Refs
     sessionIdRef, eventSourceRef, messagesEndRef, scrollContainerRef,
@@ -668,7 +740,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     // Actions
     handleSend, handleAbort, handleFork, handleNavigate, handleModelChange,
     handleCompact, handleSteer, handleFollowUp, handleAbortCompaction,
-    handleToolPresetChange, handleThinkingLevelChange, loadTools, setActiveLeafId, setData, setMessages,
+    handleToolPresetChange, handleThinkingLevelChange, handleClearQueue, handleAbortBash, loadTools, setActiveLeafId, setData, setMessages,
     dispatch, setAgentRunning, setForkingEntryId,
     // Subscriptions
     handleAgentEventRef,

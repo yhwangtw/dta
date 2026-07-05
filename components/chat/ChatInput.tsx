@@ -8,6 +8,7 @@ import { ThinkingSelector } from "./ThinkingSelector";
 import { ToolPresetSelector } from "./ToolPresetSelector";
 import { useChatInputControls } from "@/hooks/useChatInputControls";
 import styles from "./ChatInput.module.css";
+import { useI18n } from "@/lib/i18n";
 
 export interface AttachedImage {
   data: string;   // base64, no prefix
@@ -57,6 +58,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
   retryInfo,
   soundEnabled, onSoundToggle,
 }: Props, ref) {
+  const { t } = useI18n();
   const [value, setValue] = useState("");
   const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([]);
   const [showSlashMenu, setShowSlashMenu] = useState(false);
@@ -163,17 +165,30 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
     });
   }, []);
 
+  // Sent-message history — ArrowUp in an empty input recalls previous
+  // messages, ArrowDown walks back toward the blank prompt (CLI muscle memory).
+  const historyRef = useRef<string[]>([]);
+  const historyPosRef = useRef(-1); // -1 = not navigating
+  const pushHistory = useCallback((msg: string) => {
+    if (!msg) return;
+    const h = historyRef.current;
+    if (h[h.length - 1] !== msg) h.push(msg);
+    if (h.length > 50) h.shift();
+    historyPosRef.current = -1;
+  }, []);
+
   const handleSend = useCallback(() => {
     const msg = value.trim();
     if (!msg && !attachedImages.length) return;
     if (isStreaming) return;
     onSend(msg, attachedImages.length ? attachedImages : undefined);
+    pushHistory(msg);
     setValue("");
     clearImages();
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
     }
-  }, [value, attachedImages, isStreaming, onSend, clearImages]);
+  }, [value, attachedImages, isStreaming, onSend, clearImages, pushHistory]);
 
   const sendQueued = useCallback((mode: "steer" | "followup") => {
     const msg = value.trim();
@@ -183,10 +198,11 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
     } else if (mode === "followup" && onFollowUp) {
       onFollowUp(msg, attachedImages.length ? attachedImages : undefined);
     }
+    pushHistory(msg);
     setValue("");
     clearImages();
     if (textareaRef.current) textareaRef.current.style.height = "auto";
-  }, [value, attachedImages, onSteer, onFollowUp, clearImages]);
+  }, [value, attachedImages, onSteer, onFollowUp, clearImages, pushHistory]);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -234,6 +250,32 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
         }
       }
 
+      // History recall: only when not composing and the input is empty or
+      // already mid-recall, so normal multi-line cursor movement is untouched.
+      if (!isComposing && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
+        const h = historyRef.current;
+        const navigating = historyPosRef.current !== -1;
+        if (e.key === "ArrowUp" && h.length > 0 && (value === "" || navigating)) {
+          e.preventDefault();
+          const pos = navigating ? Math.max(0, historyPosRef.current - 1) : h.length - 1;
+          historyPosRef.current = pos;
+          setValue(h[pos]);
+          return;
+        }
+        if (e.key === "ArrowDown" && navigating) {
+          e.preventDefault();
+          const pos = historyPosRef.current + 1;
+          if (pos >= h.length) {
+            historyPosRef.current = -1;
+            setValue("");
+          } else {
+            historyPosRef.current = pos;
+            setValue(h[pos]);
+          }
+          return;
+        }
+      }
+
       if (e.key === "Enter" && !e.shiftKey && (isComposing || recentlyComposed)) {
         if (recentlyComposed) e.preventDefault();
         return;
@@ -249,7 +291,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
         }
       }
     },
-    [isStreaming, onSteer, onFollowUp, sendQueued, handleSend, showSlashMenu, slashFilter, slashSelectedIndex]
+    [isStreaming, onSteer, onFollowUp, sendQueued, handleSend, showSlashMenu, slashFilter, slashSelectedIndex, value]
   );
 
   const handleInput = useCallback(() => {
@@ -397,9 +439,9 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
             onPaste={handlePaste}
             placeholder={
               isStreaming && (onSteer || onFollowUp)
-                ? "Steer: interrupt & inject · Follow-up: queue after"
-                : isStreaming ? "Agent is running…"
-                : "Message…"
+                ? t("input.steerHint")
+                : isStreaming ? t("input.agentRunning")
+                : t("input.message")
             }
             rows={1}
             className={styles.textarea}
@@ -465,7 +507,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                 <line x1="2" y1="7" x2="11" y2="7" />
                 <polyline points="7.5 3 12 7 7.5 11" />
               </svg>
-              Send
+              {t("input.send")}
             </button>
           )}
         </div>

@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import type { SessionEntry, SessionTreeNode } from "@/lib/types";
 import styles from "./BranchNavigator.module.css";
+import { useI18n } from "@/lib/i18n";
 
 interface Props {
   tree: SessionTreeNode[];
@@ -160,6 +161,7 @@ function TreeNodeView({ node, activePathIds, depth, isLast, parentLines, onSelec
 }
 
 export function BranchNavigator({ tree, activeLeafId, onLeafChange, inline, containerRef, open: openProp, onToggle, hasSession }: Props) {
+  const { t } = useI18n();
   const [openInternal, setOpenInternal] = useState(false);
   const open = openProp !== undefined ? openProp : openInternal;
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -224,7 +226,7 @@ export function BranchNavigator({ tree, activeLeafId, onLeafChange, inline, cont
           className={open ? styles.inlineButtonOpen : styles.inlineButtonClosed}
         >
           {branchIcon}
-          <span>Branches</span>
+          <span>{t("topbar.branches")}</span>
         </button>
         {open && dropdownPos && (
           <div className={styles.inlineDropdown} style={{ top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width }}>
@@ -261,7 +263,7 @@ export function BranchNavigator({ tree, activeLeafId, onLeafChange, inline, cont
         className={styles.standaloneHeaderButton}
       >
         {branchIcon}
-        <span className={styles.branchesLabel}>Branches</span>
+        <span className={styles.branchesLabel}>{t("topbar.branches")}</span>
         {chevron}
       </button>
 

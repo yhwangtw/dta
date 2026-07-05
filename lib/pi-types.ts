@@ -51,6 +51,12 @@ export interface AgentSessionLike {
   getActiveToolNames(): string[];
   setActiveToolsByName(names: string[]): void;
   abortCompaction(): void;
+  executeBash(
+    command: string,
+    onChunk?: (chunk: string) => void,
+    options?: { excludeFromContext?: boolean },
+  ): Promise<{ output: string; exitCode: number | undefined; cancelled: boolean; truncated: boolean }>;
+  abortBash(): void;
   getContextUsage(): ContextUsage | undefined;
   readonly extensionRunner: ExtensionRunner | undefined;
 }

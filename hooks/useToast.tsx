@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, type ReactElement } from "react";
+import { useCallback, useSyncExternalStore, type ReactElement } from "react";
 import { ToastContainer } from "@/components/ui/Toast";
 
 export type ToastType = "success" | "error" | "warning" | "info";
@@ -25,44 +25,70 @@ export interface UseToastApi {
   ToastContainer: () => ReactElement;
 }
 
+// ============================================================================
+// Module-level store. useToast() used to keep per-instance state, which meant
+// showToast from a component without its own mounted <ToastContainer /> (e.g.
+// SessionSidebar) silently displayed nothing. One global store + the single
+// container mounted in AppShell makes every caller's toasts visible.
+// ============================================================================
+
+let toasts: ToastItem[] = [];
+let nextId = 0;
+const timers = new Map<number, ReturnType<typeof setTimeout>>();
+const listeners = new Set<() => void>();
+
+function emit() {
+  listeners.forEach((cb) => cb());
+}
+
+function subscribe(cb: () => void): () => void {
+  listeners.add(cb);
+  return () => {
+    listeners.delete(cb);
+  };
+}
+
+function getSnapshot(): ToastItem[] {
+  return toasts;
+}
+
+const EMPTY: ToastItem[] = [];
+function getServerSnapshot(): ToastItem[] {
+  return EMPTY;
+}
+
+export function dismissToast(id: number): void {
+  toasts = toasts.filter((t) => t.id !== id);
+  const timer = timers.get(id);
+  if (timer) {
+    clearTimeout(timer);
+    timers.delete(id);
+  }
+  emit();
+}
+
+/** Standalone imperative API — usable from hooks and non-component code. */
+export function showToast(message: string, opts: ToastOptions = {}): number {
+  const id = ++nextId;
+  const type: ToastType = opts.type ?? "info";
+  const duration = opts.duration ?? 3000;
+  // Cap at 6 visible toasts — drop oldest.
+  toasts = [...toasts, { id, message, type, duration }];
+  if (toasts.length > 6) toasts = toasts.slice(1);
+  if (duration > 0) {
+    timers.set(id, setTimeout(() => dismissToast(id), duration));
+  }
+  emit();
+  return id;
+}
+
 export function useToast(): UseToastApi {
-  const [toasts, setToasts] = useState<ToastItem[]>([]);
-  const idRef = useRef(0);
-  const timersRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
-
-  const dismiss = useCallback((id: number) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
-    const timer = timersRef.current.get(id);
-    if (timer) {
-      clearTimeout(timer);
-      timersRef.current.delete(id);
-    }
-  }, []);
-
-  const showToast = useCallback(
-    (message: string, opts: ToastOptions = {}): number => {
-      const id = ++idRef.current;
-      const type: ToastType = opts.type ?? "info";
-      const duration = opts.duration ?? 3000;
-      setToasts((prev) => {
-        // Cap at 6 visible toasts — drop oldest.
-        const next = [...prev, { id, message, type, duration }];
-        if (next.length > 6) next.shift();
-        return next;
-      });
-      if (duration > 0) {
-        const timer = setTimeout(() => dismiss(id), duration);
-        timersRef.current.set(id, timer);
-      }
-      return id;
-    },
-    [dismiss],
-  );
+  const items = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
   const Container = useCallback(
-    () => <ToastContainer toasts={toasts} onDismiss={dismiss} />,
-    [toasts, dismiss],
+    () => <ToastContainer toasts={items} onDismiss={dismissToast} />,
+    [items],
   );
 
-  return { showToast, dismiss, ToastContainer: Container };
+  return { showToast, dismiss: dismissToast, ToastContainer: Container };
 }

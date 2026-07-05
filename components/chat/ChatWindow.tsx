@@ -1,14 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { AgentMessage, SessionInfo, SessionTreeNode } from "@/lib/types";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { AgentMessage, SessionInfo, SessionTreeNode, ToolResultMessage } from "@/lib/types";
 import { MessageView } from "./MessageView";
 import { ChatInput, type ChatInputHandle } from "./ChatInput";
 import { ChatMinimap, useMessageRefs } from "./ChatMinimap";
+import { BashBlock } from "./BashBlock";
 import { useAgentSession, type AgentPhase } from "@/hooks/useAgentSession";
 import { useAudio } from "@/hooks/useAudio";
 import { useDragDrop } from "@/hooks/useDragDrop";
 import styles from "./ChatWindow.module.css";
+import { useI18n, type MsgKey } from "@/lib/i18n";
 
 interface Props {
   session: SessionInfo | null;
@@ -28,9 +30,11 @@ interface Props {
   isParallel?: boolean;
   paneLabel?: string;
   onClosePane?: () => void;
+  /** Wide-layout preference (⌘K → Toggle Wide Chat). */
+  wideChat?: boolean;
 }
 
-function phaseLabel(phase: AgentPhase): string {
+export function phaseLabel(phase: AgentPhase): string {
   if (phase?.kind === "running_tools") {
     const names = phase.tools.map((t) => t.name);
     if (names.length === 0) return "Running tool...";
@@ -41,6 +45,43 @@ function phaseLabel(phase: AgentPhase): string {
   if (phase?.kind === "waiting_model") return "Waiting for model...";
   return "Thinking...";
 }
+
+const phaseSvg = (paths: React.ReactNode) => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    {paths}
+  </svg>
+);
+
+const PHASE_ACTIONS: { cmd: string; label: string; descKey: MsgKey; icon: React.ReactNode }[] = [
+  {
+    cmd: "/tgd-map", label: "Map", descKey: "phase.map" as MsgKey,
+    icon: phaseSvg(<><polygon points="1 6 8 3 16 6 23 3 23 18 16 21 8 18 1 21" /><line x1="8" y1="3" x2="8" y2="18" /><line x1="16" y1="6" x2="16" y2="21" /></>),
+  },
+  {
+    cmd: "/tgd-define", label: "Define", descKey: "phase.define" as MsgKey,
+    icon: phaseSvg(<><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="8" y1="13" x2="16" y2="13" /><line x1="8" y1="17" x2="13" y2="17" /></>),
+  },
+  {
+    cmd: "/tgd-plan", label: "Plan", descKey: "phase.plan" as MsgKey,
+    icon: phaseSvg(<><line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" /><line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" /></>),
+  },
+  {
+    cmd: "/tgd-develop", label: "Develop", descKey: "phase.develop" as MsgKey,
+    icon: phaseSvg(<><polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" /></>),
+  },
+  {
+    cmd: "/tgd-verify", label: "Verify", descKey: "phase.verify" as MsgKey,
+    icon: phaseSvg(<><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></>),
+  },
+  {
+    cmd: "/tgd-review", label: "Review", descKey: "phase.review" as MsgKey,
+    icon: phaseSvg(<><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></>),
+  },
+  {
+    cmd: "/tgd-release", label: "Release", descKey: "phase.release" as MsgKey,
+    icon: phaseSvg(<><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9" /></>),
+  },
+];
 
 const TYPEWRITER_PHRASES = [
   "ready when you are.",
@@ -97,24 +138,46 @@ function Typewriter({ phrases }: { phrases: string[] }) {
   );
 }
 
-export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked, modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionStatsChange, onContextUsageChange, onSessionNamed, isParallel, paneLabel, onClosePane }: Props) {
+function Elapsed({ since }: { since: number }) {
+  const [now, setNow] = useState(since);
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const secs = Math.max(0, Math.floor((now - since) / 1000));
+  const label = secs >= 60 ? `${Math.floor(secs / 60)}m ${secs % 60}s` : `${secs}s`;
+  return <span className="tabular-nums text-[var(--text-dim)]">· {label}</span>;
+}
+
+/** Plain-text view of a message for in-conversation search. */
+function messageText(msg: AgentMessage): string {
+  const content = (msg as { content?: unknown }).content;
+  if (typeof content === "string") return content;
+  if (!Array.isArray(content)) return "";
+  return (content as Array<{ type?: string; text?: string; thinking?: string }>)
+    .map((b) => b.text ?? b.thinking ?? "")
+    .join(" ");
+}
+
+export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked, modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionStatsChange, onContextUsageChange, onSessionNamed, isParallel, paneLabel, onClosePane, wideChat }: Props) {
   const {
     loading, error, messages, entryIds, streamState,
     agentRunning, modelNames, modelList, modelThinkingLevels, modelThinkingLevelMaps, toolPreset, thinkingLevel,
     retryInfo, contextUsage, forkingEntryId,
     isCompacting, compactError, displayModel: displayModelValue, sessionStats,
-    agentPhase,
+    agentPhase, agentStartedAt, queuedFollowUps, bashRun,
     isNew,
     messagesEndRef, scrollContainerRef,
     lastUserMsgRef,
     handleSend, handleAbort, handleFork, handleNavigate, handleModelChange,
     handleCompact, handleSteer, handleFollowUp, handleAbortCompaction,
-    handleToolPresetChange, handleThinkingLevelChange, handleAgentEventRef,
+    handleToolPresetChange, handleThinkingLevelChange, handleClearQueue, handleAbortBash, handleAgentEventRef,
   } = useAgentSession({
     session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked,
     modelsRefreshKey, onBranchDataChange, onSystemPromptChange, onSessionNamed,
   });
 
+  const { t } = useI18n();
   const { soundEnabled, onSoundToggle, playDoneSound } = useAudio();
   const playDoneSoundRef = useRef(playDoneSound);
   playDoneSoundRef.current = playDoneSound;
@@ -163,6 +226,102 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
 
   const visibleMessages = messages.filter((m) => m.role === "user" || m.role === "assistant");
   const messageRefs = useMessageRefs(visibleMessages.length);
+
+  // Stable identities so the memoized MessageView actually skips re-renders
+  // during streaming (ChatWindow re-renders on every token event).
+  const toolResultsMap = useMemo(() => {
+    const map = new Map<string, ToolResultMessage>();
+    for (const msg of messages) {
+      if (msg.role === "toolResult") {
+        map.set((msg as ToolResultMessage).toolCallId, msg as ToolResultMessage);
+      }
+    }
+    return map;
+  }, [messages]);
+
+  const handleEditContent = useCallback((content: string) => {
+    chatInputRef?.current?.insertIfEmpty(content);
+  }, [chatInputRef]);
+
+  // Spacer below the last message while the agent runs, so the newest user
+  // message can be scrolled to the top. Measured in an effect — reading
+  // clientHeight during render forces synchronous layout.
+  const [spacerHeight, setSpacerHeight] = useState<number | null>(null);
+  useEffect(() => {
+    if (agentRunning && scrollContainerRef.current) {
+      setSpacerHeight(scrollContainerRef.current.clientHeight);
+    }
+  }, [agentRunning, scrollContainerRef]);
+
+  // ── Scroll-to-bottom affordance ──────────────────────────────────────────
+  const [showJumpToBottom, setShowJumpToBottom] = useState(false);
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      const dist = el.scrollHeight - el.scrollTop - el.clientHeight;
+      setShowJumpToBottom(dist > 300);
+    };
+    onScroll();
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [scrollContainerRef, messages.length]);
+
+  const jumpToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messagesEndRef]);
+
+  // ── ⌘F in-conversation search ────────────────────────────────────────────
+  const [findOpen, setFindOpen] = useState(false);
+  const [findQuery, setFindQuery] = useState("");
+  const [findPos, setFindPos] = useState(0);
+  const findInputRef = useRef<HTMLInputElement | null>(null);
+
+  const findMatches = useMemo(() => {
+    const q = findQuery.trim().toLowerCase();
+    if (!q) return [];
+    const hits: number[] = [];
+    let visIdx = 0;
+    for (const msg of messages) {
+      if (msg.role !== "user" && msg.role !== "assistant") continue;
+      if (messageText(msg).toLowerCase().includes(q)) hits.push(visIdx);
+      visIdx++;
+    }
+    return hits;
+  }, [messages, findQuery]);
+
+  const gotoMatch = useCallback((pos: number) => {
+    const target = findMatches[pos];
+    if (target === undefined) return;
+    const el = messageRefs.current[target];
+    if (!el) return;
+    el.scrollIntoView({ block: "center", behavior: "smooth" });
+    el.animate(
+      [
+        { boxShadow: "0 0 0 3px var(--color-accent-border)", borderRadius: "8px" },
+        { boxShadow: "0 0 0 3px transparent", borderRadius: "8px" },
+      ],
+      { duration: 1400, easing: "ease-out" },
+    );
+  }, [findMatches, messageRefs]);
+
+  useEffect(() => {
+    if (isParallel) return; // one handler per app — main pane owns ⌘F
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "f") {
+        if (messages.length === 0) return; // nothing to search — let the browser have it
+        e.preventDefault();
+        setFindOpen(true);
+        requestAnimationFrame(() => findInputRef.current?.focus());
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isParallel, messages.length]);
+
+  useEffect(() => {
+    setFindPos(0);
+  }, [findQuery]);
 
   const isEmptyNew = isNew && messages.length === 0 && !streamState.isStreaming && !agentRunning;
 
@@ -278,7 +437,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
 
       {isEmptyNew ? (
         <div className="flex flex-1 flex-col items-center justify-center overflow-y-auto px-4 py-8">
-          <div className="w-full max-w-[820px]">
+          <div className={`w-full ${wideChat ? "max-w-[1180px]" : "max-w-[820px]"}`}>
             <div
               className={styles.welcomeHeader}
             >
@@ -298,24 +457,16 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                 </span>
               </div>
             </div>
-            {/* tGD Phase Quick Actions */}
+            {/* tGD Phase Quick Actions — stroke icons to match the app's icon system */}
             <div className={styles.quickActionsRow}>
-              {[
-                { cmd: "/tgd-map", label: "Map", icon: "🗺️", desc: "Understand codebase" },
-                { cmd: "/tgd-define", label: "Define", icon: "📝", desc: "Write PRD" },
-                { cmd: "/tgd-plan", label: "Plan", icon: "📋", desc: "Break into tasks" },
-                { cmd: "/tgd-develop", label: "Develop", icon: "⚙️", desc: "Build features" },
-                { cmd: "/tgd-verify", label: "Verify", icon: "✅", desc: "Run tests" },
-                { cmd: "/tgd-review", label: "Review", icon: "🔍", desc: "Code review" },
-                { cmd: "/tgd-release", label: "Release", icon: "🚀", desc: "Deploy" },
-              ].map((phase) => (
+              {PHASE_ACTIONS.map((phase) => (
                 <button
                   key={phase.cmd}
                   onClick={() => chatInputRef?.current?.setText(phase.cmd + " ")}
                   className={styles.phaseButton}
-                  title={`${phase.cmd} — ${phase.desc}`}
+                  title={`${phase.cmd} — ${t(phase.descKey)}`}
                 >
-                  <span>{phase.icon}</span>
+                  <span className={styles.phaseIcon} aria-hidden>{phase.icon}</span>
                   <span className={styles.phaseLabel}>{phase.label}</span>
                 </button>
               ))}
@@ -326,16 +477,67 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
       ) : (
       <>
       <div className="relative flex flex-1 overflow-hidden">
+        {findOpen && (
+          <div className="absolute right-4 top-2 z-20 flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--bg-elev-2)] px-2 py-1 shadow-[var(--color-shadow-dropdown)]">
+            <input
+              ref={findInputRef}
+              value={findQuery}
+              onChange={(e) => setFindQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  e.preventDefault();
+                  setFindOpen(false);
+                  setFindQuery("");
+                } else if (e.key === "Enter") {
+                  e.preventDefault();
+                  if (findMatches.length === 0) return;
+                  const next = e.shiftKey
+                    ? (findPos - 1 + findMatches.length) % findMatches.length
+                    : (findPos + 1) % findMatches.length;
+                  setFindPos(next);
+                  gotoMatch(next);
+                }
+              }}
+              placeholder="Find in conversation…"
+              className="w-44 bg-transparent text-[12px] text-[var(--text)] outline-none placeholder:text-[var(--text-dim)]"
+              spellCheck={false}
+            />
+            <span className="min-w-[34px] text-right text-[11px] tabular-nums text-[var(--text-dim)]">
+              {findMatches.length > 0 ? `${findPos + 1}/${findMatches.length}` : findQuery ? "0/0" : ""}
+            </span>
+            <button
+              onClick={() => { if (findMatches.length) { const p = (findPos - 1 + findMatches.length) % findMatches.length; setFindPos(p); gotoMatch(p); } }}
+              className="rounded p-0.5 text-[var(--text-muted)] hover:bg-[var(--bg-hover)]" aria-label="Previous match"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15" /></svg>
+            </button>
+            <button
+              onClick={() => { if (findMatches.length) { const p = (findPos + 1) % findMatches.length; setFindPos(p); gotoMatch(p); } }}
+              className="rounded p-0.5 text-[var(--text-muted)] hover:bg-[var(--bg-hover)]" aria-label="Next match"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+            </button>
+            <button
+              onClick={() => { setFindOpen(false); setFindQuery(""); }}
+              className="rounded p-0.5 text-[var(--text-muted)] hover:bg-[var(--bg-hover)]" aria-label="Close find"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+            </button>
+          </div>
+        )}
+        {showJumpToBottom && (
+          <button
+            onClick={jumpToBottom}
+            aria-label="Jump to bottom"
+            className={`absolute bottom-4 left-1/2 z-10 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--bg-elev-2)] text-[var(--text-muted)] shadow-[var(--color-shadow-dropdown)] transition hover:text-[var(--text)] ${agentRunning ? "border-[var(--color-accent-border)] text-[var(--accent)]" : ""}`}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><polyline points="19 12 12 19 5 12" /></svg>
+          </button>
+        )}
         <div ref={scrollContainerRef} className="flex-1 overflow-y-auto pt-4 [scrollbar-width:none]">
-          <div className="mx-auto max-w-[820px] px-4">
+          <div className={`mx-auto px-4 ${wideChat ? "max-w-[1180px]" : "max-w-[820px]"}`}>
 
             {(() => {
-              const toolResultsMap = new Map<string, import("@/lib/types").ToolResultMessage>();
-              for (const msg of messages) {
-                if (msg.role === "toolResult") {
-                  toolResultsMap.set((msg as import("@/lib/types").ToolResultMessage).toolCallId, msg as import("@/lib/types").ToolResultMessage);
-                }
-              }
               let lastUserIdx = -1;
               for (let i = messages.length - 1; i >= 0; i--) {
                 if (messages[i].role === "user") { lastUserIdx = i; break; }
@@ -361,9 +563,13 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                     showTimestamp = false;
                   }
                 }
+                // entryIds is parallel to messages after a session load; freshly
+                // streamed messages have no entry id yet, so fall back to index
+                // (hex entry ids never collide with numeric keys).
+                const key = entryIds[idx] ?? idx;
                 const view = (
                   <MessageView
-                    key={idx}
+                    key={key}
                     message={msg}
                     toolResults={toolResultsMap}
                     modelNames={modelNames}
@@ -372,14 +578,14 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                     forking={forkingEntryId === entryIds[idx]}
                     onNavigate={agentRunning ? undefined : handleNavigate}
                     prevAssistantEntryId={agentRunning ? undefined : prevAssistantEntryId}
-                    onEditContent={(content) => chatInputRef?.current?.insertIfEmpty(content)}
+                    onEditContent={handleEditContent}
                     showTimestamp={showTimestamp}
                     prevTimestamp={idx > 0 ? (messages[idx - 1] as import("@/lib/types").AgentMessage & { timestamp?: number }).timestamp : undefined}
                   />
                 );
                 if (!isVisible) return view;
                 return (
-                  <div key={idx} ref={(el) => {
+                  <div key={key} className="msg-item" ref={(el) => {
                     messageRefs.current[currentRefIdx] = el;
                     if (idx === lastUserIdx) { (lastUserMsgRef as { current: HTMLDivElement | null }).current = el; }
                   }}>
@@ -389,18 +595,31 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
               });
             })()}
 
+            {bashRun && (
+              <BashBlock
+                command={bashRun.command}
+                output={bashRun.output}
+                running={bashRun.running}
+                onAbort={bashRun.running ? handleAbortBash : undefined}
+              />
+            )}
+
             {streamState.isStreaming && streamState.streamingMessage && (
               <MessageView message={streamState.streamingMessage as AgentMessage} isStreaming modelNames={modelNames} />
             )}
 
             {agentRunning && !streamState.streamingMessage && (
-              <div className="py-2 text-[13px] text-text-muted">
-                <span className="animate-[pulse_1.5s_infinite]">{phaseLabel(agentPhase)}</span>
+              <div className="flex items-center gap-2 py-2 text-[13px] text-text-muted">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="animate-spin text-[var(--accent)]" aria-hidden>
+                  <path d="M21 12a9 9 0 1 1-6.2-8.56" />
+                </svg>
+                <span>{phaseLabel(agentPhase)}</span>
+                {agentStartedAt && <Elapsed since={agentStartedAt} />}
               </div>
             )}
 
             {agentRunning && (
-              <div style={{ height: scrollContainerRef.current ? scrollContainerRef.current.clientHeight : "80vh" }} />
+              <div style={{ height: spacerHeight ?? "80vh" }} />
             )}
 
             <div ref={messagesEndRef} />
@@ -415,6 +634,25 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
       </div>
 
       <div className="relative">
+        {queuedFollowUps.length > 0 && (
+          <div className={`mx-auto flex items-center gap-2 px-4 pb-1 ${wideChat ? "max-w-[1180px]" : "max-w-[820px]"}`}>
+            <div className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-[var(--color-warning-border)] bg-[var(--color-warning-bg)] px-3 py-1.5 text-[12px] text-[var(--color-warning-text)]">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+              <span className="truncate">
+                {queuedFollowUps.length === 1
+                  ? `Queued: ${queuedFollowUps[0]}`
+                  : `${queuedFollowUps.length} follow-ups queued`}
+              </span>
+              <button
+                onClick={handleClearQueue}
+                className="ml-auto shrink-0 rounded px-1.5 py-0.5 text-[11px] hover:bg-[var(--color-warning-bg-strong)]"
+                title="Cancel queued follow-ups"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
         {chatInputElement}
       </div>
       </>

@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import type {
   AgentMessage,
   UserMessage,
@@ -8,6 +9,8 @@ import type {
 } from "@/lib/types";
 import { UserMessageView } from "./UserMessageView";
 import { AssistantMessageView } from "./AssistantMessageView";
+import { BashBlock } from "./BashBlock";
+import type { BashExecutionMessage } from "@/lib/types";
 
 interface Props {
   message: AgentMessage;
@@ -24,15 +27,29 @@ interface Props {
   prevTimestamp?: number;
 }
 
-export function MessageView({ message, isStreaming, toolResults, modelNames, entryId, onFork, forking, onNavigate, prevAssistantEntryId, onEditContent, showTimestamp, prevTimestamp }: Props) {
+// Memoized: streaming updates re-render ChatWindow on every token, and without
+// memo every historical message would re-run its full markdown/highlight pass.
+export const MessageView = memo(function MessageView({ message, isStreaming, toolResults, modelNames, entryId, onFork, forking, onNavigate, prevAssistantEntryId, onEditContent, showTimestamp, prevTimestamp }: Props) {
   if (message.role === "user") {
     return <UserMessageView message={message as UserMessage} entryId={entryId} onFork={onFork} forking={forking} onNavigate={onNavigate} prevAssistantEntryId={prevAssistantEntryId} onEditContent={onEditContent} />;
   }
   if (message.role === "assistant") {
     return <AssistantMessageView message={message as AssistantMessage} isStreaming={isStreaming} toolResults={toolResults} modelNames={modelNames} showTimestamp={showTimestamp} prevTimestamp={prevTimestamp} />;
   }
+  if (message.role === "bashExecution") {
+    const bash = message as BashExecutionMessage;
+    return (
+      <BashBlock
+        command={bash.command}
+        output={bash.output}
+        exitCode={bash.exitCode}
+        cancelled={bash.cancelled}
+        truncated={bash.truncated}
+      />
+    );
+  }
   if (message.role === "toolResult") {
     return null;
   }
   return null;
-}
+});

@@ -694,7 +694,13 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         initialScrollDoneRef.current = true;
         scrollToBottom("instant");
       } else if (!agentRunningRef.current) {
-        scrollToBottom("smooth");
+        // Only follow to the bottom if the reader is already near it —
+        // yanking someone who scrolled up (or is reading the answer from the
+        // top anchor) loses their place. Distance is measured fresh here:
+        // the run spacer has already unmounted by the time this effect runs.
+        const el = scrollContainerRef.current;
+        const dist = el ? el.scrollHeight - el.scrollTop - el.clientHeight : 0;
+        if (dist < 200) scrollToBottom("smooth");
       }
     }
   }, [messages.length, agentRunning, scrollToBottom, scrollUserMsgToTop]);

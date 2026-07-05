@@ -253,23 +253,55 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
     }
   }, [agentRunning, scrollContainerRef]);
 
-  // ── Scroll-to-bottom affordance ──────────────────────────────────────────
+  // ── Scroll-to-bottom affordance + streaming follow mode ─────────────────
+  // followStreamRef: whether the reader is "at the tail" and wants the view
+  // to track incoming tokens. Engaged/disengaged only by user scrolls (and
+  // the jump button) — content growth alone never changes intent, so the
+  // top-anchored reading position is never captured against the user's will.
   const [showJumpToBottom, setShowJumpToBottom] = useState(false);
+  const followStreamRef = useRef(false);
   useEffect(() => {
     const el = scrollContainerRef.current;
     if (!el) return;
     const onScroll = () => {
       const dist = el.scrollHeight - el.scrollTop - el.clientHeight;
       setShowJumpToBottom(dist > 300);
+      const end = messagesEndRef.current;
+      if (end) {
+        const containerBottom = el.getBoundingClientRect().bottom;
+        const markerTop = end.getBoundingClientRect().top;
+        // At the tail = end marker sits in the bottom zone of the viewport.
+        // Scrolling up pushes it below the fold → disengage.
+        followStreamRef.current = markerTop <= containerBottom + 80 && markerTop >= containerBottom - 250;
+      }
     };
     onScroll();
     el.addEventListener("scroll", onScroll, { passive: true });
     return () => el.removeEventListener("scroll", onScroll);
-  }, [scrollContainerRef, messages.length]);
+  }, [scrollContainerRef, messagesEndRef, messages.length]);
 
   const jumpToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    // block:"end" — with the run spacer mounted below the marker, the default
+    // block:"start" could scroll the content clean out of the viewport.
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    followStreamRef.current = true;
   }, [messagesEndRef]);
+
+  // Streaming follow: while engaged, keep the tail pinned to the viewport
+  // bottom as tokens arrive. Instant (not smooth) — smooth animations queue
+  // and jitter at token rate. Only scrolls once the tail escapes the fold,
+  // so short content under the top anchor never moves.
+  useEffect(() => {
+    if (!streamState.streamingMessage || !followStreamRef.current) return;
+    const el = scrollContainerRef.current;
+    const end = messagesEndRef.current;
+    if (!el || !end) return;
+    const containerBottom = el.getBoundingClientRect().bottom;
+    const markerTop = end.getBoundingClientRect().top;
+    if (markerTop > containerBottom) {
+      end.scrollIntoView({ behavior: "auto", block: "end" });
+    }
+  }, [streamState.streamingMessage, scrollContainerRef, messagesEndRef]);
 
   // ── ⌘F in-conversation search ────────────────────────────────────────────
   const [findOpen, setFindOpen] = useState(false);

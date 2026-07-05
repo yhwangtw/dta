@@ -5,6 +5,8 @@ import { SessionSidebar } from "../sidebar/SessionSidebar";
 import { ChatWindow } from "../chat/ChatWindow";
 import { FileViewer } from "./FileViewer";
 import { FilesPanel } from "./FilesPanel";
+import { ChangesPanel } from "./ChangesPanel";
+import { DiffPanel } from "./DiffPanel";
 import { TabBar } from "./TabBar";
 import { BranchNavigator } from "../chat/BranchNavigator";
 import { useTheme } from "@/hooks/useTheme";
@@ -39,7 +41,8 @@ export function AppShell() {
   const [skillsConfigOpen, setSkillsConfigOpen] = useState(false);
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [panelView, setPanelView] = useState<"sessions" | "files">("sessions");
+  const [panelView, setPanelView] = useState<"sessions" | "files" | "changes">("sessions");
+  const [diffFile, setDiffFile] = useState<string | null>(null);
   const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
   const [wideChat, setWideChat] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -65,7 +68,7 @@ export function AppShell() {
 
   // Rail behavior: clicking the active view collapses the panel; clicking the
   // other view switches to it (opening the panel if needed).
-  const handleRailView = useCallback((view: "sessions" | "files") => {
+  const handleRailView = useCallback((view: "sessions" | "files" | "changes") => {
     if (view === panelView) {
       setSidebarOpen((open) => !open);
     } else {
@@ -73,6 +76,11 @@ export function AppShell() {
       setSidebarOpen(true);
     }
   }, [panelView]);
+
+  const handleOpenDiff = useCallback((filePath: string) => {
+    setDiffFile(filePath);
+    setRightPanelOpen(true);
+  }, [setRightPanelOpen]);
 
   // On overlay-mode screens, picking or starting a session should reveal the
   // chat it just opened instead of leaving the sidebar covering it.
@@ -299,12 +307,19 @@ export function AppShell() {
           activeTagFilter={activeTagFilter}
           onSelectTagFilter={setActiveTagFilter}
         />
-      ) : (
+      ) : panelView === "files" ? (
         <FilesPanel
           cwd={panelCwd}
           onOpenFile={handleOpenFile}
           onAtMention={handleAtMention}
           refreshKey={state.explorerRefreshKey}
+        />
+      ) : (
+        <ChangesPanel
+          cwd={panelCwd}
+          refreshKey={state.refreshKey}
+          onOpenDiff={handleOpenDiff}
+          selectedPath={diffFile}
         />
       )}
     </ErrorBoundary>
@@ -336,6 +351,17 @@ export function AppShell() {
         >
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+          </svg>
+        </button>
+        <button
+          onClick={() => handleRailView("changes")}
+          title="Changes"
+          aria-pressed={panelView === "changes" && sidebarOpen}
+          className={`${s.railButton} ${panelView === "changes" && sidebarOpen ? s.railButtonActive : ""}`}
+        >
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="6" y1="3" x2="6" y2="15" /><circle cx="18" cy="6" r="3" /><circle cx="6" cy="18" r="3" />
+            <path d="M18 9a9 9 0 0 1-9 9" />
           </svg>
         </button>
         <button onClick={() => palette.open()} title={`${t("topbar.searchTitle")}`} className={s.railButton}>
@@ -748,7 +774,9 @@ export function AppShell() {
 
         {/* File content */}
         <div className={s.rightPanelContent}>
-          {activeFileTab?.filePath ? (
+          {diffFile && panelCwd ? (
+            <DiffPanel cwd={panelCwd} path={diffFile} onClose={() => setDiffFile(null)} />
+          ) : activeFileTab?.filePath ? (
             <FileViewer filePath={activeFileTab.filePath} cwd={state.activeCwd ?? undefined} />
           ) : (
             <div className={s.rightPanelEmpty}>

@@ -8,7 +8,16 @@ import { useState, useCallback, useEffect, useRef } from "react";
  * @param explorerRefreshKey - When this changes, explorer content is remounted via key bump.
  */
 export function useExplorer(explorerRefreshKey?: number) {
-  const [explorerOpen, setExplorerOpen] = useState(true);
+  // Persisted: whether the embedded tree in the sessions panel is expanded is
+  // a real preference (some people want sessions-only, some want both).
+  const [explorerOpen, setExplorerOpen] = useState(() => {
+    if (typeof window === "undefined") return true;
+    try {
+      return localStorage.getItem("pi-explorer-open") !== "closed";
+    } catch {
+      return true;
+    }
+  });
   const [explorerKey, setExplorerKey] = useState(0);
   const [explorerRefreshDone, setExplorerRefreshDone] = useState(false);
   const explorerRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -18,7 +27,14 @@ export function useExplorer(explorerRefreshKey?: number) {
   }, [explorerRefreshKey]);
 
   const toggleExplorer = useCallback(() => {
-    setExplorerOpen((v) => !v);
+    setExplorerOpen((v) => {
+      try {
+        localStorage.setItem("pi-explorer-open", v ? "closed" : "open");
+      } catch {
+        // ignore
+      }
+      return !v;
+    });
   }, []);
 
   const refreshExplorer = useCallback(() => {

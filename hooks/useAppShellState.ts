@@ -94,6 +94,8 @@ export function useAppShellState(): {
     () => !searchParams.get("session"),
   );
   const suppressCwdBumpRef = useRef(false);
+  const selectedSessionRef = useRef<SessionInfo | null>(null);
+  selectedSessionRef.current = selectedSession;
 
   // Top panel state
   const [branchTree, setBranchTree] = useState<SessionTreeNode[]>([]);
@@ -130,6 +132,11 @@ export function useAppShellState(): {
     (cwd: string | null) => {
       setActiveCwd(cwd);
       if (!cwd || suppressCwdBumpRef.current) return;
+      // The sidebar follows the open session's cwd (cross-project selection
+      // syncs the picker). That follow-up notification must not reset the
+      // view — and especially must not wipe the ?session= URL param that
+      // handleSelectSession just wrote.
+      if (selectedSessionRef.current?.cwd === cwd) return;
       setSelectedSession((prev) => (prev && prev.cwd !== cwd ? null : prev));
       setNewSessionCwd((prev) => (prev && prev !== cwd ? null : prev));
       setSessionKey((k) => k + 1);

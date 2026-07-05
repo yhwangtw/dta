@@ -19,6 +19,7 @@ import { useToast } from "@/hooks/useToast";
 import { encodeFilePathForApi } from "@/lib/file-paths";
 import { useI18n } from "@/lib/i18n";
 import { useTabTitle } from "@/lib/attention";
+import { setSkin } from "@/lib/skin";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { CommandPalette } from "../ui/CommandPalette";
 import type { SessionInfo, SessionTreeNode } from "@/lib/types";
@@ -208,6 +209,7 @@ export function AppShell() {
       toggleSidebar: () => setSidebarOpen((v) => !v),
       toggleFilePanel: () => setRightPanelOpen((v) => !v),
       toggleChatWidth,
+      setSkin,
       newSession: () => {
         if (!effectiveCwdForPalette) return;
         const tempId = typeof crypto.randomUUID === "function"

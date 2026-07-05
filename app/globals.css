@@ -210,6 +210,168 @@ html.dark {
   --color-white: #fff;
 }
 
+
+/* ═══ Appearance skins ═══
+   Complete palettes selected via html[data-skin]; "terminal" is the base
+   palette above (no attribute). Switch with ⌘K → Appearance. */
+
+
+html[data-skin="industrial"] {
+  --bg: #ffffff;
+  --bg-panel: #fafafa;
+  --bg-hover: #f0f0f0;
+  --bg-selected: #e6e6e6;
+  --border: #d9d9d9;
+  --text: #0a0a0a;
+  --text-muted: #525252;
+  --text-dim: #a3a3a3;
+  --accent: #111111;
+  --accent-hover: #3f3f3f;
+  --user-bg: #f0f0f0;
+  --assistant-bg: #ffffff;
+  --tool-bg: #fafafa;
+  --bg-elev-1: #ffffff;
+  --bg-elev-2: #ffffff;
+  --color-accent-bg: rgba(17,17,17,0.08);
+  --color-accent-bg-strong: rgba(17,17,17,0.12);
+  --color-accent-border: rgba(17,17,17,0.2);
+  --color-accent-glow: rgba(17,17,17,0.25);
+  --color-accent-border-focus: rgba(17,17,17,0.35);
+  --color-accent-border-focus-strong: rgba(17,17,17,0.4);
+  --color-accent-bg-subtle: rgba(17,17,17,0.04);
+  --color-accent-border-subtle: rgba(17,17,17,0.15);
+}
+
+html.dark[data-skin="industrial"] {
+  --bg: #0a0a0a;
+  --bg-panel: #111111;
+  --bg-hover: #1a1a1a;
+  --bg-selected: #232323;
+  --border: #262626;
+  --text: #ededed;
+  --text-muted: #a3a3a3;
+  --text-dim: #666666;
+  --accent: #ededed;
+  --accent-hover: #ffffff;
+  --user-bg: #1c1c1c;
+  --assistant-bg: #0a0a0a;
+  --tool-bg: #141414;
+  --bg-elev-1: #161616;
+  --bg-elev-2: #1c1c1c;
+  --color-accent-bg: rgba(237,237,237,0.12);
+  --color-accent-bg-strong: rgba(237,237,237,0.16);
+  --color-accent-border: rgba(237,237,237,0.3);
+  --color-accent-glow: rgba(237,237,237,0.3);
+  --color-accent-border-focus: rgba(237,237,237,0.4);
+  --color-accent-border-focus-strong: rgba(237,237,237,0.5);
+  --color-accent-bg-subtle: rgba(237,237,237,0.06);
+  --color-accent-border-subtle: rgba(237,237,237,0.2);
+}
+
+html[data-skin="aurora"] {
+  --bg: #fbfaff;
+  --bg-panel: #f4f1fb;
+  --bg-hover: #ebe6f7;
+  --bg-selected: #e1daf3;
+  --border: #e4def2;
+  --text: #1f1a2e;
+  --text-muted: #6b6485;
+  --text-dim: #a29ac0;
+  --accent: #7c3aed;
+  --accent-hover: #6d28d9;
+  --user-bg: #efe9fd;
+  --assistant-bg: #fbfaff;
+  --tool-bg: #f6f3fc;
+  --bg-elev-1: #ffffff;
+  --bg-elev-2: #ffffff;
+  --color-accent-bg: rgba(124,58,237,0.08);
+  --color-accent-bg-strong: rgba(124,58,237,0.12);
+  --color-accent-border: rgba(124,58,237,0.2);
+  --color-accent-glow: rgba(124,58,237,0.25);
+  --color-accent-border-focus: rgba(124,58,237,0.35);
+  --color-accent-border-focus-strong: rgba(124,58,237,0.4);
+  --color-accent-bg-subtle: rgba(124,58,237,0.04);
+  --color-accent-border-subtle: rgba(124,58,237,0.15);
+}
+
+html.dark[data-skin="aurora"] {
+  --bg: #131020;
+  --bg-panel: #191430;
+  --bg-hover: #241d42;
+  --bg-selected: #2d2452;
+  --border: #2e2752;
+  --text: #edeaf8;
+  --text-muted: #a49cc8;
+  --text-dim: #6f689a;
+  --accent: #a78bfa;
+  --accent-hover: #c4b5fd;
+  --user-bg: #262052;
+  --assistant-bg: #131020;
+  --tool-bg: #1b1535;
+  --bg-elev-1: #201a3d;
+  --bg-elev-2: #251e47;
+  --color-accent-bg: rgba(167,139,250,0.12);
+  --color-accent-bg-strong: rgba(167,139,250,0.16);
+  --color-accent-border: rgba(167,139,250,0.3);
+  --color-accent-glow: rgba(167,139,250,0.3);
+  --color-accent-border-focus: rgba(167,139,250,0.4);
+  --color-accent-border-focus-strong: rgba(167,139,250,0.5);
+  --color-accent-bg-subtle: rgba(167,139,250,0.06);
+  --color-accent-border-subtle: rgba(167,139,250,0.2);
+}
+
+html[data-skin="editorial"] {
+  --bg: #faf6ee;
+  --bg-panel: #f3ecdd;
+  --bg-hover: #ece3d0;
+  --bg-selected: #e4d9c1;
+  --border: #e0d7c3;
+  --text: #2b2620;
+  --text-muted: #7a7060;
+  --text-dim: #a89d89;
+  --accent: #b45309;
+  --accent-hover: #92400e;
+  --user-bg: #f3e7d3;
+  --assistant-bg: #faf6ee;
+  --tool-bg: #f5efe3;
+  --bg-elev-1: #fffdf8;
+  --bg-elev-2: #fffdf8;
+  --color-accent-bg: rgba(180,83,9,0.08);
+  --color-accent-bg-strong: rgba(180,83,9,0.12);
+  --color-accent-border: rgba(180,83,9,0.2);
+  --color-accent-glow: rgba(180,83,9,0.25);
+  --color-accent-border-focus: rgba(180,83,9,0.35);
+  --color-accent-border-focus-strong: rgba(180,83,9,0.4);
+  --color-accent-bg-subtle: rgba(180,83,9,0.04);
+  --color-accent-border-subtle: rgba(180,83,9,0.15);
+}
+
+html.dark[data-skin="editorial"] {
+  --bg: #171310;
+  --bg-panel: #1e1915;
+  --bg-hover: #282219;
+  --bg-selected: #332a1e;
+  --border: #322b20;
+  --text: #e8e0d2;
+  --text-muted: #a3987f;
+  --text-dim: #6f6754;
+  --accent: #e8963e;
+  --accent-hover: #f5b569;
+  --user-bg: #2b2114;
+  --assistant-bg: #171310;
+  --tool-bg: #211b15;
+  --bg-elev-1: #251f18;
+  --bg-elev-2: #2a231b;
+  --color-accent-bg: rgba(232,150,62,0.12);
+  --color-accent-bg-strong: rgba(232,150,62,0.16);
+  --color-accent-border: rgba(232,150,62,0.3);
+  --color-accent-glow: rgba(232,150,62,0.3);
+  --color-accent-border-focus: rgba(232,150,62,0.4);
+  --color-accent-border-focus-strong: rgba(232,150,62,0.5);
+  --color-accent-bg-subtle: rgba(232,150,62,0.06);
+  --color-accent-border-subtle: rgba(232,150,62,0.2);
+}
+
 /* Theme toggle: circular wipe via View Transitions API.
    Disable the UA cross-fade; the actual clip-path animation is driven by
    Element.animate() in hooks/useTheme.ts after transition.ready resolves. */

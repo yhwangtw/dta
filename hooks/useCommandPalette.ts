@@ -29,6 +29,10 @@ export type PaletteActionId =
   | "view:toggle-sidebar"
   | "view:toggle-file-panel"
   | "view:toggle-chat-width"
+  | "skin:terminal"
+  | "skin:industrial"
+  | "skin:aurora"
+  | "skin:editorial"
   | "view:clear-tag"
   | "session:new"
   | "session:open-parallel"
@@ -58,6 +62,7 @@ export interface PaletteCallbacks {
   toggleSidebar: () => void;
   toggleFilePanel: () => void;
   toggleChatWidth: () => void;
+  setSkin: (skin: "terminal" | "industrial" | "aurora" | "editorial") => void;
   newSession: () => void;
   openParallelForActive: () => void;
   openHelp: () => void;
@@ -115,6 +120,38 @@ const ACTIONS: PaletteResult[] = [
     subtitle: "Show or hide the file viewer panel",
     hint: "⌘\\",
     data: { action: "view:toggle-file-panel" } as { action: PaletteActionId },
+  },
+  {
+    id: "action:skin-terminal",
+    kind: "action",
+    title: "Appearance: Terminal",
+    subtitle: "Near-black with emerald — the default",
+    keywords: "skin theme appearance emerald green 外觀 風格 綠",
+    data: { action: "skin:terminal" } as { action: PaletteActionId },
+  },
+  {
+    id: "action:skin-industrial",
+    kind: "action",
+    title: "Appearance: Industrial",
+    subtitle: "Pure monochrome, high contrast",
+    keywords: "skin theme appearance mono black white 外觀 風格 黑白",
+    data: { action: "skin:industrial" } as { action: PaletteActionId },
+  },
+  {
+    id: "action:skin-aurora",
+    kind: "action",
+    title: "Appearance: Aurora",
+    subtitle: "Deep violet with soft glow",
+    keywords: "skin theme appearance violet purple 外觀 風格 紫",
+    data: { action: "skin:aurora" } as { action: PaletteActionId },
+  },
+  {
+    id: "action:skin-editorial",
+    kind: "action",
+    title: "Appearance: Editorial",
+    subtitle: "Warm paper tones with burnt orange",
+    keywords: "skin theme appearance warm paper orange 外觀 風格 紙 橙",
+    data: { action: "skin:editorial" } as { action: PaletteActionId },
   },
   {
     id: "action:toggle-chat-width",
@@ -344,6 +381,10 @@ export function useCommandPalette({
         case "view:toggle-sidebar": cbs.toggleSidebar(); break;
         case "view:toggle-file-panel": cbs.toggleFilePanel(); break;
         case "view:toggle-chat-width": cbs.toggleChatWidth(); break;
+        case "skin:terminal": cbs.setSkin("terminal"); break;
+        case "skin:industrial": cbs.setSkin("industrial"); break;
+        case "skin:aurora": cbs.setSkin("aurora"); break;
+        case "skin:editorial": cbs.setSkin("editorial"); break;
         case "session:new": cbs.newSession(); break;
         case "session:open-parallel": cbs.openParallelForActive(); break;
         case "help:shortcuts": cbs.openHelp(); break;

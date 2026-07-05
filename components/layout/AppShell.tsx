@@ -15,6 +15,7 @@ import { useCommandPalette } from "@/hooks/useCommandPalette";
 import { useToast } from "@/hooks/useToast";
 import { encodeFilePathForApi } from "@/lib/file-paths";
 import { useI18n } from "@/lib/i18n";
+import { useTabTitle } from "@/lib/attention";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { CommandPalette } from "../ui/CommandPalette";
 import type { SessionInfo, SessionTreeNode } from "@/lib/types";
@@ -38,6 +39,16 @@ export function AppShell() {
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
+  const [wideChat, setWideChat] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try { return localStorage.getItem("pi-chat-width") === "wide"; } catch { return false; }
+  });
+  const toggleChatWidth = useCallback(() => {
+    setWideChat((v) => {
+      try { localStorage.setItem("pi-chat-width", v ? "normal" : "wide"); } catch { /* ignore */ }
+      return !v;
+    });
+  }, []);
   const chatInputRef = useRef<ChatInputHandle | null>(null);
 
   useEffect(() => {
@@ -175,6 +186,7 @@ export function AppShell() {
       toggleTheme: () => toggleTheme(),
       toggleSidebar: () => setSidebarOpen((v) => !v),
       toggleFilePanel: () => setRightPanelOpen((v) => !v),
+      toggleChatWidth,
       newSession: () => {
         if (!effectiveCwdForPalette) return;
         const tempId = typeof crypto.randomUUID === "function"
@@ -187,7 +199,7 @@ export function AppShell() {
       },
       openHelp: () => setShortcutsOpen(true),
     });
-  }, [palette, toggleTheme, actions, effectiveCwdForPalette, state.selectedSession, setRightPanelOpen, handleNewSessionFromSidebar]);
+  }, [palette, toggleTheme, actions, effectiveCwdForPalette, state.selectedSession, setRightPanelOpen, handleNewSessionFromSidebar, toggleChatWidth]);
 
   // Helper: turn a session id into the full SessionInfo record (palette only
   // stores the id in its data when the user picked it via the palette).
@@ -315,8 +327,11 @@ export function AppShell() {
     </ErrorBoundary>
   );
 
+  const tabTitle = useTabTitle();
+
   return (
     <>
+    <title>{tabTitle}</title>
     <div className={s.container}>
       {/* Mobile overlay backdrop */}
       <div
@@ -528,25 +543,19 @@ export function AppShell() {
               >
                 {t && t.input > 0 && (
                   <span className={s.tokenStat}>
-                    <svg width="12" height="12" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="5" y1="8.5" x2="5" y2="1.5" /><polyline points="2 4 5 1.5 8 4" />
-                    </svg>
+                    <span className={s.tokenStatLabel}>in</span>
                     {fmt(t.input)}
                   </span>
                 )}
                 {t && t.output > 0 && (
                   <span className={s.tokenStat}>
-                    <svg width="12" height="12" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="5" y1="1.5" x2="5" y2="8.5" /><polyline points="2 6 5 8.5 8 6" />
-                    </svg>
+                    <span className={s.tokenStatLabel}>out</span>
                     {fmt(t.output)}
                   </span>
                 )}
                 {t && t.cacheRead > 0 && (
                   <span className={s.tokenStat}>
-                    <svg width="12" height="12" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M8.5 5a3.5 3.5 0 1 1-1-2.45" /><polyline points="6.5 1.5 8.5 2.5 7.5 4.5" />
-                    </svg>
+                    <span className={s.tokenStatLabel}>cache</span>
                     {fmt(t.cacheRead)}
                   </span>
                 )}
@@ -606,6 +615,7 @@ export function AppShell() {
                 {showChat && (
                   <ChatWindow
                     key={`main-${state.sessionKey}`}
+                    wideChat={wideChat}
                     session={state.selectedSession}
                     newSessionCwd={effectiveNewSessionCwd}
                     onAgentEnd={actions.handleAgentEnd}
@@ -627,6 +637,7 @@ export function AppShell() {
                 <div key={session.id} className={s.parallelPane}>
                   <ChatWindow
                     key={`parallel-${session.id}-${idx}`}
+                    wideChat={wideChat}
                     session={session}
                     newSessionCwd={null}
                     modelsRefreshKey={modelsRefreshKey}
@@ -646,6 +657,7 @@ export function AppShell() {
           ) : showChat ? (
             <ChatWindow
               key={state.sessionKey}
+              wideChat={wideChat}
               session={state.selectedSession}
               newSessionCwd={effectiveNewSessionCwd}
               onAgentEnd={actions.handleAgentEnd}

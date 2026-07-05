@@ -212,6 +212,11 @@ export class AgentSessionWrapper {
         return null;
       }
 
+      case "clear_queue": {
+        const cleared = (this.inner as unknown as { clearQueue?: () => unknown }).clearQueue?.();
+        return cleared ?? null;
+      }
+
       case "abort_compaction": {
         this.inner.abortCompaction();
         return null;

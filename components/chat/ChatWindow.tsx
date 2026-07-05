@@ -29,6 +29,8 @@ interface Props {
   isParallel?: boolean;
   paneLabel?: string;
   onClosePane?: () => void;
+  /** Wide-layout preference (⌘K → Toggle Wide Chat). */
+  wideChat?: boolean;
 }
 
 export function phaseLabel(phase: AgentPhase): string {
@@ -135,19 +137,40 @@ function Typewriter({ phrases }: { phrases: string[] }) {
   );
 }
 
-export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked, modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionStatsChange, onContextUsageChange, onSessionNamed, isParallel, paneLabel, onClosePane }: Props) {
+function Elapsed({ since }: { since: number }) {
+  const [now, setNow] = useState(since);
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const secs = Math.max(0, Math.floor((now - since) / 1000));
+  const label = secs >= 60 ? `${Math.floor(secs / 60)}m ${secs % 60}s` : `${secs}s`;
+  return <span className="tabular-nums text-[var(--text-dim)]">· {label}</span>;
+}
+
+/** Plain-text view of a message for in-conversation search. */
+function messageText(msg: AgentMessage): string {
+  const content = (msg as { content?: unknown }).content;
+  if (typeof content === "string") return content;
+  if (!Array.isArray(content)) return "";
+  return (content as Array<{ type?: string; text?: string; thinking?: string }>)
+    .map((b) => b.text ?? b.thinking ?? "")
+    .join(" ");
+}
+
+export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked, modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionStatsChange, onContextUsageChange, onSessionNamed, isParallel, paneLabel, onClosePane, wideChat }: Props) {
   const {
     loading, error, messages, entryIds, streamState,
     agentRunning, modelNames, modelList, modelThinkingLevels, modelThinkingLevelMaps, toolPreset, thinkingLevel,
     retryInfo, contextUsage, forkingEntryId,
     isCompacting, compactError, displayModel: displayModelValue, sessionStats,
-    agentPhase,
+    agentPhase, agentStartedAt, queuedFollowUps,
     isNew,
     messagesEndRef, scrollContainerRef,
     lastUserMsgRef,
     handleSend, handleAbort, handleFork, handleNavigate, handleModelChange,
     handleCompact, handleSteer, handleFollowUp, handleAbortCompaction,
-    handleToolPresetChange, handleThinkingLevelChange, handleAgentEventRef,
+    handleToolPresetChange, handleThinkingLevelChange, handleClearQueue, handleAgentEventRef,
   } = useAgentSession({
     session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked,
     modelsRefreshKey, onBranchDataChange, onSystemPromptChange, onSessionNamed,
@@ -228,6 +251,76 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
       setSpacerHeight(scrollContainerRef.current.clientHeight);
     }
   }, [agentRunning, scrollContainerRef]);
+
+  // ── Scroll-to-bottom affordance ──────────────────────────────────────────
+  const [showJumpToBottom, setShowJumpToBottom] = useState(false);
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      const dist = el.scrollHeight - el.scrollTop - el.clientHeight;
+      setShowJumpToBottom(dist > 300);
+    };
+    onScroll();
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [scrollContainerRef, messages.length]);
+
+  const jumpToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messagesEndRef]);
+
+  // ── ⌘F in-conversation search ────────────────────────────────────────────
+  const [findOpen, setFindOpen] = useState(false);
+  const [findQuery, setFindQuery] = useState("");
+  const [findPos, setFindPos] = useState(0);
+  const findInputRef = useRef<HTMLInputElement | null>(null);
+
+  const findMatches = useMemo(() => {
+    const q = findQuery.trim().toLowerCase();
+    if (!q) return [];
+    const hits: number[] = [];
+    let visIdx = 0;
+    for (const msg of messages) {
+      if (msg.role !== "user" && msg.role !== "assistant") continue;
+      if (messageText(msg).toLowerCase().includes(q)) hits.push(visIdx);
+      visIdx++;
+    }
+    return hits;
+  }, [messages, findQuery]);
+
+  const gotoMatch = useCallback((pos: number) => {
+    const target = findMatches[pos];
+    if (target === undefined) return;
+    const el = messageRefs.current[target];
+    if (!el) return;
+    el.scrollIntoView({ block: "center", behavior: "smooth" });
+    el.animate(
+      [
+        { boxShadow: "0 0 0 3px var(--color-accent-border)", borderRadius: "8px" },
+        { boxShadow: "0 0 0 3px transparent", borderRadius: "8px" },
+      ],
+      { duration: 1400, easing: "ease-out" },
+    );
+  }, [findMatches, messageRefs]);
+
+  useEffect(() => {
+    if (isParallel) return; // one handler per app — main pane owns ⌘F
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "f") {
+        if (messages.length === 0) return; // nothing to search — let the browser have it
+        e.preventDefault();
+        setFindOpen(true);
+        requestAnimationFrame(() => findInputRef.current?.focus());
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isParallel, messages.length]);
+
+  useEffect(() => {
+    setFindPos(0);
+  }, [findQuery]);
 
   const isEmptyNew = isNew && messages.length === 0 && !streamState.isStreaming && !agentRunning;
 
@@ -343,7 +436,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
 
       {isEmptyNew ? (
         <div className="flex flex-1 flex-col items-center justify-center overflow-y-auto px-4 py-8">
-          <div className="w-full max-w-[820px]">
+          <div className={`w-full ${wideChat ? "max-w-[1180px]" : "max-w-[820px]"}`}>
             <div
               className={styles.welcomeHeader}
             >
@@ -383,8 +476,65 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
       ) : (
       <>
       <div className="relative flex flex-1 overflow-hidden">
+        {findOpen && (
+          <div className="absolute right-4 top-2 z-20 flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--bg-elev-2)] px-2 py-1 shadow-[var(--color-shadow-dropdown)]">
+            <input
+              ref={findInputRef}
+              value={findQuery}
+              onChange={(e) => setFindQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  e.preventDefault();
+                  setFindOpen(false);
+                  setFindQuery("");
+                } else if (e.key === "Enter") {
+                  e.preventDefault();
+                  if (findMatches.length === 0) return;
+                  const next = e.shiftKey
+                    ? (findPos - 1 + findMatches.length) % findMatches.length
+                    : (findPos + 1) % findMatches.length;
+                  setFindPos(next);
+                  gotoMatch(next);
+                }
+              }}
+              placeholder="Find in conversation…"
+              className="w-44 bg-transparent text-[12px] text-[var(--text)] outline-none placeholder:text-[var(--text-dim)]"
+              spellCheck={false}
+            />
+            <span className="min-w-[34px] text-right text-[11px] tabular-nums text-[var(--text-dim)]">
+              {findMatches.length > 0 ? `${findPos + 1}/${findMatches.length}` : findQuery ? "0/0" : ""}
+            </span>
+            <button
+              onClick={() => { if (findMatches.length) { const p = (findPos - 1 + findMatches.length) % findMatches.length; setFindPos(p); gotoMatch(p); } }}
+              className="rounded p-0.5 text-[var(--text-muted)] hover:bg-[var(--bg-hover)]" aria-label="Previous match"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15" /></svg>
+            </button>
+            <button
+              onClick={() => { if (findMatches.length) { const p = (findPos + 1) % findMatches.length; setFindPos(p); gotoMatch(p); } }}
+              className="rounded p-0.5 text-[var(--text-muted)] hover:bg-[var(--bg-hover)]" aria-label="Next match"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+            </button>
+            <button
+              onClick={() => { setFindOpen(false); setFindQuery(""); }}
+              className="rounded p-0.5 text-[var(--text-muted)] hover:bg-[var(--bg-hover)]" aria-label="Close find"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+            </button>
+          </div>
+        )}
+        {showJumpToBottom && (
+          <button
+            onClick={jumpToBottom}
+            aria-label="Jump to bottom"
+            className={`absolute bottom-4 left-1/2 z-10 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--bg-elev-2)] text-[var(--text-muted)] shadow-[var(--color-shadow-dropdown)] transition hover:text-[var(--text)] ${agentRunning ? "border-[var(--color-accent-border)] text-[var(--accent)]" : ""}`}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><polyline points="19 12 12 19 5 12" /></svg>
+          </button>
+        )}
         <div ref={scrollContainerRef} className="flex-1 overflow-y-auto pt-4 [scrollbar-width:none]">
-          <div className="mx-auto max-w-[820px] px-4">
+          <div className={`mx-auto px-4 ${wideChat ? "max-w-[1180px]" : "max-w-[820px]"}`}>
 
             {(() => {
               let lastUserIdx = -1;
@@ -434,7 +584,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                 );
                 if (!isVisible) return view;
                 return (
-                  <div key={key} ref={(el) => {
+                  <div key={key} className="msg-item" ref={(el) => {
                     messageRefs.current[currentRefIdx] = el;
                     if (idx === lastUserIdx) { (lastUserMsgRef as { current: HTMLDivElement | null }).current = el; }
                   }}>
@@ -449,8 +599,12 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
             )}
 
             {agentRunning && !streamState.streamingMessage && (
-              <div className="py-2 text-[13px] text-text-muted">
-                <span className="animate-[pulse_1.5s_infinite]">{phaseLabel(agentPhase)}</span>
+              <div className="flex items-center gap-2 py-2 text-[13px] text-text-muted">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="animate-spin text-[var(--accent)]" aria-hidden>
+                  <path d="M21 12a9 9 0 1 1-6.2-8.56" />
+                </svg>
+                <span>{phaseLabel(agentPhase)}</span>
+                {agentStartedAt && <Elapsed since={agentStartedAt} />}
               </div>
             )}
 
@@ -470,6 +624,25 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
       </div>
 
       <div className="relative">
+        {queuedFollowUps.length > 0 && (
+          <div className={`mx-auto flex items-center gap-2 px-4 pb-1 ${wideChat ? "max-w-[1180px]" : "max-w-[820px]"}`}>
+            <div className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-[var(--color-warning-border)] bg-[var(--color-warning-bg)] px-3 py-1.5 text-[12px] text-[var(--color-warning-text)]">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+              <span className="truncate">
+                {queuedFollowUps.length === 1
+                  ? `Queued: ${queuedFollowUps[0]}`
+                  : `${queuedFollowUps.length} follow-ups queued`}
+              </span>
+              <button
+                onClick={handleClearQueue}
+                className="ml-auto shrink-0 rounded px-1.5 py-0.5 text-[11px] hover:bg-[var(--color-warning-bg-strong)]"
+                title="Cancel queued follow-ups"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
         {chatInputElement}
       </div>
       </>

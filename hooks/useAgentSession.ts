@@ -6,6 +6,7 @@ import { normalizeToolCalls } from "@/lib/normalize";
 import { sendAgentCommand } from "@/lib/agent-client";
 import { showToast } from "@/hooks/useToast";
 import { translate } from "@/lib/i18n";
+import { setIdleTitle, setRunningTitle, setDoneTitle, notifyDone, requestNotifyPermission } from "@/lib/attention";
 import type { ToolEntry } from "@/components/modals/ToolPanel";
 import type { SessionData, AgentEvent, AgentPhase, UseAgentSessionOptions, ThinkingLevelOption, ChatInputHandle, AttachedImage } from "./use-agent-session-types";
 import { streamReducer } from "./use-agent-session-types";
@@ -44,6 +45,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const [isCompacting, setIsCompacting] = useState(false);
   const [compactError, setCompactError] = useState<string | null>(null);
   const [agentPhase, setAgentPhase] = useState<AgentPhase>(null);
+  const [agentStartedAt, setAgentStartedAt] = useState<number | null>(null);
+  const [queuedFollowUps, setQueuedFollowUps] = useState<string[]>([]);
 
   const eventSourceRef = useRef<EventSource | null>(null);
   const sessionIdRef = useRef<string | null>(session?.id ?? null);
@@ -56,6 +59,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   // Already-named sessions never need auto-naming — skip the summarize call
   const hasSummarizedRef = useRef(Boolean(session?.name));
+  const sessionNameRef = useRef<string | undefined>(session?.name);
 
   const setNewSessionModel = opts.setNewSessionModel ?? setNewSessionModelState;
   const setToolPresetState = opts.setToolPreset ?? setToolPreset;
@@ -99,6 +103,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const d = await res.json() as SessionData & { agentState?: { running: boolean; state?: { isStreaming?: boolean; isCompacting?: boolean; contextUsage?: { percent: number | null; contextWindow: number; tokens: number | null } | null; systemPrompt?: string; thinkingLevel?: string } } };
       setData(d);
+      const info = (d as { info?: { name?: string } }).info;
+      if (info?.name) sessionNameRef.current = info.name;
       setActiveLeafId(d.leafId);
       setMessages(d.context.messages);
       setEntryIds(d.context.entryIds ?? []);
@@ -188,12 +194,23 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       case "agent_start":
         setAgentRunning(true);
         setAgentPhase({ kind: "waiting_model" });
+        setAgentStartedAt(Date.now());
+        setRunningTitle(sessionNameRef.current);
         dispatch({ type: "start" });
+        // Reload so user messages injected mid-stream (steer, queued
+        // follow-ups) show up in the transcript from the session file.
+        if (sessionIdRef.current) loadSession(sessionIdRef.current);
         break;
       case "agent_end":
         setAgentRunning(false);
         setAgentPhase(null);
         setRetryInfo(null);
+        setAgentStartedAt(null);
+        // Queued follow-ups are consumed right after this event; the next
+        // agent_start reload will surface them as real messages.
+        setQueuedFollowUps([]);
+        setDoneTitle(sessionNameRef.current);
+        notifyDone(sessionNameRef.current);
         dispatch({ type: "end" });
         if (sessionIdRef.current) {
           // includeState piggybacks contextUsage/systemPrompt on the session
@@ -324,6 +341,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const handleSend = useCallback(async (message: string, images?: AttachedImage[]) => {
     if (!message.trim() && !images?.length) return;
     if (agentRunning) return;
+    requestNotifyPermission();
     // Check if this is a tGD slash command
     const tgdCommandMatch = message.trim().match(/^\/tgd-(\w+)(.*)$/);
     if (tgdCommandMatch) {
@@ -506,7 +524,10 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const handleFollowUp = useCallback(async (message: string, images?: AttachedImage[]) => {
     const sid = sessionIdRef.current;
     if (!sid) return;
-    setMessages((prev) => [...prev, { role: "user", content: message, timestamp: Date.now() } as AgentMessage]);
+    // Don't append to the transcript — the message hasn't been delivered yet.
+    // It sits in a visible queue until the current run ends, then shows up as
+    // a real user message via the agent_start reload.
+    setQueuedFollowUps((prev) => [...prev, message]);
     const piImages = images?.map((img) => ({ type: "image" as const, data: img.data, mimeType: img.mimeType }));
     try {
       await sendAgentCommand(sid, {
@@ -516,7 +537,19 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       });
     } catch (e) {
       console.error("Failed to follow up:", e);
+      setQueuedFollowUps((prev) => prev.filter((m) => m !== message));
       showToast(`${translate("toast.followUpFailed")}: ${e instanceof Error ? e.message : e}`, { type: "error" });
+    }
+  }, []);
+
+  const handleClearQueue = useCallback(async () => {
+    const sid = sessionIdRef.current;
+    if (!sid) return;
+    try {
+      await sendAgentCommand(sid, { type: "clear_queue" });
+      setQueuedFollowUps([]);
+    } catch (e) {
+      console.error("Failed to clear queue:", e);
     }
   }, []);
 
@@ -571,6 +604,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   useEffect(() => {
     if (session) {
       sessionIdRef.current = session.id;
+      setIdleTitle(session.name);
       loadSession(session.id, true, true).then((agentState) => {
         if (agentState?.running) {
           loadTools(session.id);
@@ -652,7 +686,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     agentRunning, modelNames, modelList, modelThinkingLevels, modelThinkingLevelMaps, newSessionModel, toolPreset, thinkingLevel,
     retryInfo, contextUsage, systemPrompt, forkingEntryId,
     isCompacting, compactError, currentModel, displayModel, sessionStats,
-    agentPhase,
+    agentPhase, agentStartedAt, queuedFollowUps,
     isNew,
     // Refs
     sessionIdRef, eventSourceRef, messagesEndRef, scrollContainerRef,
@@ -660,7 +694,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     // Actions
     handleSend, handleAbort, handleFork, handleNavigate, handleModelChange,
     handleCompact, handleSteer, handleFollowUp, handleAbortCompaction,
-    handleToolPresetChange, handleThinkingLevelChange, loadTools, setActiveLeafId, setData, setMessages,
+    handleToolPresetChange, handleThinkingLevelChange, handleClearQueue, loadTools, setActiveLeafId, setData, setMessages,
     dispatch, setAgentRunning, setForkingEntryId,
     // Subscriptions
     handleAgentEventRef,

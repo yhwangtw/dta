@@ -264,6 +264,12 @@
   align-items: center;
   gap: 4px;
 }
+.tokenStatLabel {
+  color: var(--text-dim);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
 
 .costStat {
   display: flex;

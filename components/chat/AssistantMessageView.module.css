@@ -52,6 +52,13 @@
   align-items: center;
   gap: 8px;
   margin-top: 4px;
+  /* Meta noise fades until the message is hovered */
+  opacity: 0.45;
+  transition: opacity 0.15s;
+}
+.messageContainer:hover .footer,
+.footer:focus-within {
+  opacity: 1;
 }
 
 .usageText {

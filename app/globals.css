@@ -582,6 +582,13 @@ span.linenumber {
   }
 }
 
+/* Long-transcript rendering: skip layout/paint for off-screen messages.
+   contain-intrinsic-size keeps scrollbar geometry stable. */
+.msg-item {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 120px;
+}
+
 /* ═══ Interactive hover utility classes ═══ */
 .hover-bg:hover:not(:disabled):not([aria-disabled="true"]) {
   background: var(--bg-hover);

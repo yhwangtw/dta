@@ -3,7 +3,9 @@ import "katex/dist/katex.min.css";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "π with tGD",
+  // Title is owned by the client-side <TabTitle /> (lib/attention.ts store) so
+  // it can reflect session name + agent running state. Declaring it here too
+  // would make React's metadata hoisting overwrite every dynamic update.
   description: "Pi Coding Agent Web Interface",
 };
 

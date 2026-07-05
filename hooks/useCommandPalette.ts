@@ -28,6 +28,7 @@ export type PaletteActionId =
   | "view:toggle-theme"
   | "view:toggle-sidebar"
   | "view:toggle-file-panel"
+  | "view:toggle-chat-width"
   | "view:clear-tag"
   | "session:new"
   | "session:open-parallel"
@@ -56,6 +57,7 @@ export interface PaletteCallbacks {
   toggleTheme: () => void;
   toggleSidebar: () => void;
   toggleFilePanel: () => void;
+  toggleChatWidth: () => void;
   newSession: () => void;
   openParallelForActive: () => void;
   openHelp: () => void;
@@ -113,6 +115,14 @@ const ACTIONS: PaletteResult[] = [
     subtitle: "Show or hide the file viewer panel",
     hint: "⌘\\",
     data: { action: "view:toggle-file-panel" } as { action: PaletteActionId },
+  },
+  {
+    id: "action:toggle-chat-width",
+    kind: "action",
+    title: "Toggle Wide Chat",
+    subtitle: "Switch the conversation between normal and wide width",
+    keywords: "width wide narrow layout 寬度",
+    data: { action: "view:toggle-chat-width" } as { action: PaletteActionId },
   },
   {
     id: "action:new-session",
@@ -333,6 +343,7 @@ export function useCommandPalette({
         case "view:toggle-theme": cbs.toggleTheme(); break;
         case "view:toggle-sidebar": cbs.toggleSidebar(); break;
         case "view:toggle-file-panel": cbs.toggleFilePanel(); break;
+        case "view:toggle-chat-width": cbs.toggleChatWidth(); break;
         case "session:new": cbs.newSession(); break;
         case "session:open-parallel": cbs.openParallelForActive(); break;
         case "help:shortcuts": cbs.openHelp(); break;

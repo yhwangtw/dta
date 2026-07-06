@@ -2,7 +2,7 @@
 
 All notable changes to tGD-pi-web are documented here.
 
-## [Unreleased]
+## [2026.07.07-3] — be38dd6 (PR #12, #13, #14)
 
 ### Performance
 - **Large files render instantly**: files over 1500 lines / 150KB skip syntax highlighting by default (plain view with line numbers in content-visibility chunks — ~0.7s open vs 60s+ for forced Prism on a 3000-line file); a toolbar toggle forces highlighting when wanted. Find/go-to-line stay exact in plain mode.

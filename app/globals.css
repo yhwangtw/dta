@@ -591,12 +591,37 @@ pre, code {
 .markdown-body ul > li { list-style-type: disc; }
 .markdown-body ol > li { list-style-type: decimal; }
 .markdown-body li > p { margin: 0; }
-.markdown-body a { color: var(--accent); text-decoration: underline; }
+/* Nested lists sit tight against their parent item */
+.markdown-body li > ul, .markdown-body li > ol { margin: 2px 0; }
+/* GFM task lists: the checkbox replaces the bullet */
+.markdown-body li.task-list-item { list-style: none; }
+.markdown-body ul:has(> li.task-list-item) { padding-left: 6px; }
+.markdown-body li.task-list-item > input[type="checkbox"] {
+  accent-color: var(--accent);
+  width: 13px;
+  height: 13px;
+  margin-right: 7px;
+  vertical-align: -1.5px;
+}
+.markdown-body a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+.markdown-body a[target="_blank"]::after {
+  content: "↗";
+  font-size: 0.72em;
+  margin-left: 1px;
+  opacity: 0.65;
+  text-decoration: none;
+  display: inline-block;
+}
 .markdown-body blockquote {
-  border-left: 3px solid var(--border);
-  margin: 4px 0;
-  padding: 2px 10px;
+  border-left: 3px solid var(--color-accent-border);
+  margin: 6px 0 10px;
+  padding: 2px 12px;
   color: var(--text-muted);
+}
+/* Wide tables scroll inside their own wrapper instead of squishing */
+.markdown-body .md-table-wrap {
+  overflow-x: auto;
+  margin: 8px 0;
 }
 .markdown-body table {
   border-collapse: collapse;
@@ -604,13 +629,21 @@ pre, code {
   margin: 8px 0;
   font-size: 13px;
 }
+.markdown-body .md-table-wrap > table { margin: 0; }
 .markdown-body th, .markdown-body td {
   border: 1px solid var(--border);
   padding: 5px 10px;
   text-align: left;
+  white-space: normal;
+  min-width: 60px;
 }
 .markdown-body th { background: var(--bg-panel); font-weight: 600; }
-.markdown-body hr { border: none; border-top: 1px solid var(--border); margin: 10px 0; }
+.markdown-body tbody tr:nth-child(even) { background: var(--bg-subtle); }
+.markdown-body hr {
+  border: none;
+  border-top: 1px solid color-mix(in srgb, var(--text-dim) 45%, transparent);
+  margin: 18px 0;
+}
 .markdown-body .katex-display {
   margin: 0.6em 0;
   overflow-x: auto;

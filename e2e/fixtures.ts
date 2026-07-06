@@ -31,6 +31,12 @@ export function createFixtures(root: string): { cwd: string } {
   writeFileSync(path.join(cwd, "src/index.ts"), "export const answer = 43; // modified\n");
   writeFileSync(path.join(cwd, "from-bash.txt"), "bash-made\n");
   writeFileSync(path.join(cwd, "newfile.txt"), "hello\n");
+  // Large file (>1500 lines) — drives the viewer's plain-mode fallback
+  const bigLines = ["// big generated file"];
+  for (let i = 0; i < 2000; i++) {
+    bigLines.push(`export const item${i} = { id: ${i}, value: ${(i * 7) % 997} };`);
+  }
+  writeFileSync(path.join(cwd, "big-file.ts"), bigLines.join("\n") + "\n");
 
   // ── Session fixtures ──────────────────────────────────────────────────
   const sessionsDir = path.join(root, "agent", "sessions", "-demo");

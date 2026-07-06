@@ -4,7 +4,7 @@ import { PrismAsync as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vs, vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { useTheme } from "@/hooks/useTheme";
 
-import { useEffect } from "react";
+import { useEffect, memo } from "react";
 
 interface Props {
   content: string;
@@ -14,7 +14,9 @@ interface Props {
   activeLine?: number | null;
 }
 
-export function SourceView({ content, language, wrapLines, activeLine }: Props) {
+// Memoized: highlighting a big file is the most expensive render in the app,
+// and the parent re-renders on every toolbar keystroke.
+export const SourceView = memo(function SourceView({ content, language, wrapLines, activeLine }: Props) {
   const { isDark } = useTheme();
 
   useEffect(() => {
@@ -47,7 +49,7 @@ export function SourceView({ content, language, wrapLines, activeLine }: Props) 
       {content}
     </SyntaxHighlighter>
   );
-}
+});
 
 const LINE_NUMBER_STYLE: React.CSSProperties = {
   color: "var(--text-dim)",

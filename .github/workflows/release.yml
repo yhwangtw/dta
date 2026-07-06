@@ -4,6 +4,11 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to create and release (e.g. v2026.07.06)'
+        required: true
 
 permissions:
   contents: write
@@ -20,7 +25,14 @@ jobs:
       - name: Read version from tag
         id: version
         run: |
-          TAG="${GITHUB_REF#refs/tags/}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.tag }}"
+            # Tag doesn't exist yet — create it locally so the changelog
+            # range resolves; `gh release create` publishes it remotely.
+            git tag "$TAG"
+          else
+            TAG="${GITHUB_REF#refs/tags/}"
+          fi
           echo "tag=$TAG" >> $GITHUB_OUTPUT
           # Strip leading 'v' for npm version
           VERSION="${TAG#v}"
@@ -85,7 +97,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          TARGET=""
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TARGET="--target ${{ github.sha }}"
+          fi
           gh release create "${{ steps.version.outputs.tag }}" \
+            $TARGET \
             --title "tGD-pi-web ${{ steps.version.outputs.tag }}" \
             --notes-file /tmp/release-notes.md \
             --latest

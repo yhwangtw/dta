@@ -285,7 +285,12 @@ function CodeBlock({ code, lang, headerAction }: { code: string; lang: string; h
           fontSize: 12.5,
           lineHeight: 1.6,
           borderRadius: 0,
+          // Both forms: the highlighter themes mix `background` (vscDarkPlus)
+          // and `backgroundColor` (vs); pinning both keeps the merged style
+          // stable across theme switches (React warns when one form is
+          // removed while the other is set).
           background: "var(--bg)",
+          backgroundColor: "var(--bg)",
         }}
         codeTagProps={{ style: { fontFamily: "var(--font-mono)" } }}
       >

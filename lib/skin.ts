@@ -8,7 +8,7 @@ import { useSyncExternalStore } from "react";
 // "terminal" is the base palette in globals.css (no attribute needed).
 // ============================================================================
 
-export const SKINS = ["terminal", "industrial", "aurora", "editorial"] as const;
+export const SKINS = ["terminal", "industrial", "aurora", "editorial", "glass"] as const;
 export type Skin = (typeof SKINS)[number];
 
 /** Default when the user hasn't picked one. */
@@ -19,6 +19,7 @@ export const SKIN_LABELS: Record<Skin, string> = {
   industrial: "Industrial (mono)",
   aurora: "Aurora (violet)",
   editorial: "Editorial (warm)",
+  glass: "Glass (frost)",
 };
 
 const listeners = new Set<() => void>();

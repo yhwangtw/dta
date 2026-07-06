@@ -72,7 +72,8 @@ Requirements: Node.js ≥ 22 and a working [pi](https://github.com/earendil-work
 - **Provider icons** — Anthropic, OpenAI, Google, etc.
 
 ### Appearance
-- **Four switchable skins** — Editorial (warm paper, default) / Terminal (emerald) / Industrial (mono) / Aurora (violet), each with light + dark themes. Switch via ⌘K → "Appearance"
+- **Five switchable skins** — Editorial (warm paper, default) / Terminal (emerald) / Industrial (mono) / Aurora (violet) / Glass (frosted panels over an aurora gradient), each with light + dark themes. Switch via ⌘K → "Appearance"
+- **Frosted floating chrome** — the command palette, dialogs, toasts, find bar, and jump button use backdrop-blur glass matched to every skin's palette
 - **Interface language** — English (default) ⇄ Traditional Chinese, globe button in the rail
 - **Typography** — Bundled Inter + JetBrains Mono, Traditional-Chinese-first fallback chain, zero network dependency
 

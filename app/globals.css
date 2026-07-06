@@ -142,6 +142,21 @@
   --color-diff-add-bg: rgba(0,200,80,0.12);
   --color-diff-remove-bg: rgba(240,60,60,0.14);
   --color-white: #fff;
+
+  /* Frosted-glass tokens for floating chrome (palette, dialogs, toasts,
+     find bar, jump button, top bar). Derived from each skin's own surfaces
+     via color-mix so every skin gets matching glass for free; the "glass"
+     skin overrides them with stronger values. */
+  --glass-bg: color-mix(in srgb, var(--bg-elev-2) 80%, transparent);
+  --glass-border: color-mix(in srgb, var(--border) 75%, transparent);
+}
+
+/* Frosted-glass surface for elements that float above content. */
+.glass {
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(16px) saturate(1.5);
+  backdrop-filter: blur(16px) saturate(1.5);
+  border-color: var(--glass-border);
 }
 
 html.dark {
@@ -370,6 +385,88 @@ html.dark[data-skin="editorial"] {
   --color-accent-border-focus-strong: rgba(232,150,62,0.5);
   --color-accent-bg-subtle: rgba(232,150,62,0.06);
   --color-accent-border-subtle: rgba(232,150,62,0.2);
+}
+
+/* ── Glass — frosted panels over an aurora gradient backdrop ──
+   Surfaces are translucent so the fixed body gradient shows through
+   everywhere; --bg-elev-* stay near-opaque so dropdowns/menus (which have no
+   backdrop blur) remain readable over arbitrary content. */
+html[data-skin="glass"] {
+  background: #e9edfb;
+  --bg: rgba(255,255,255,0.42);
+  --bg-panel: rgba(255,255,255,0.38);
+  --bg-hover: rgba(255,255,255,0.58);
+  --bg-selected: rgba(255,255,255,0.75);
+  --border: rgba(96,108,166,0.24);
+  --text: #1d2033;
+  --text-muted: #565e7e;
+  --text-dim: #9aa1bd;
+  --accent: #5b5bd6;
+  --accent-hover: #4a4ac4;
+  --user-bg: rgba(255,255,255,0.62);
+  --assistant-bg: transparent;
+  --tool-bg: rgba(255,255,255,0.4);
+  --bg-elev-1: rgba(255,255,255,0.88);
+  --bg-elev-2: rgba(255,255,255,0.92);
+  --glass-bg: rgba(255,255,255,0.55);
+  --glass-border: rgba(255,255,255,0.8);
+  --color-accent-bg: rgba(91,91,214,0.1);
+  --color-accent-bg-strong: rgba(91,91,214,0.16);
+  --color-accent-border: rgba(91,91,214,0.28);
+  --color-accent-glow: rgba(91,91,214,0.3);
+  --color-accent-border-focus: rgba(91,91,214,0.4);
+  --color-accent-border-focus-strong: rgba(91,91,214,0.5);
+  --color-accent-bg-subtle: rgba(91,91,214,0.05);
+  --color-accent-border-subtle: rgba(91,91,214,0.18);
+}
+
+html[data-skin="glass"] body {
+  background:
+    radial-gradient(1100px 700px at 12% -10%, rgba(99,102,241,0.4), transparent 62%),
+    radial-gradient(900px 620px at 88% 4%, rgba(236,72,153,0.3), transparent 58%),
+    radial-gradient(760px 560px at 55% 38%, rgba(167,139,250,0.22), transparent 60%),
+    radial-gradient(1000px 800px at 42% 115%, rgba(34,211,238,0.34), transparent 62%),
+    #e9edfb;
+  background-attachment: fixed;
+}
+
+html.dark[data-skin="glass"] {
+  background: #0b0e1e;
+  --bg: rgba(16,19,38,0.5);
+  --bg-panel: rgba(22,26,50,0.45);
+  --bg-hover: rgba(255,255,255,0.07);
+  --bg-selected: rgba(255,255,255,0.12);
+  --border: rgba(160,170,255,0.17);
+  --text: #edeffc;
+  --text-muted: #a6adcf;
+  --text-dim: #676e96;
+  --accent: #a5b4fc;
+  --accent-hover: #c7d2fe;
+  --user-bg: rgba(129,140,248,0.14);
+  --assistant-bg: transparent;
+  --tool-bg: rgba(255,255,255,0.05);
+  --bg-elev-1: rgba(30,35,66,0.92);
+  --bg-elev-2: rgba(34,40,74,0.94);
+  --glass-bg: rgba(22,26,52,0.5);
+  --glass-border: rgba(165,180,252,0.22);
+  --color-accent-bg: rgba(165,180,252,0.12);
+  --color-accent-bg-strong: rgba(165,180,252,0.18);
+  --color-accent-border: rgba(165,180,252,0.3);
+  --color-accent-glow: rgba(165,180,252,0.32);
+  --color-accent-border-focus: rgba(165,180,252,0.42);
+  --color-accent-border-focus-strong: rgba(165,180,252,0.52);
+  --color-accent-bg-subtle: rgba(165,180,252,0.06);
+  --color-accent-border-subtle: rgba(165,180,252,0.2);
+}
+
+html.dark[data-skin="glass"] body {
+  background:
+    radial-gradient(1100px 700px at 12% -10%, rgba(124,58,237,0.55), transparent 62%),
+    radial-gradient(900px 620px at 88% 4%, rgba(34,211,238,0.32), transparent 58%),
+    radial-gradient(760px 560px at 58% 42%, rgba(99,102,241,0.28), transparent 60%),
+    radial-gradient(1000px 800px at 42% 115%, rgba(236,72,153,0.36), transparent 62%),
+    #0b0e1e;
+  background-attachment: fixed;
 }
 
 /* Theme toggle: circular wipe via View Transitions API.

@@ -87,7 +87,9 @@
   border-bottom: 1px solid var(--border);
   height: 42px;
   padding: 0 8px 0 14px;
-  background: var(--bg-panel);
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  backdrop-filter: blur(14px) saturate(1.4);
 }
 
 /* Session title — the top bar is session-scoped now */
@@ -644,8 +646,10 @@
   width: 340px;
   max-width: calc(100vw - 32px);
   padding: 16px 18px;
-  background: var(--bg-panel);
-  border: 1px solid var(--border);
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(20px) saturate(1.5);
+  backdrop-filter: blur(20px) saturate(1.5);
+  border: 1px solid var(--glass-border);
   border-radius: 10px;
   box-shadow: var(--color-shadow-modal);
 }

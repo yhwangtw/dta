@@ -2,12 +2,15 @@
 
 All notable changes to tGD-pi-web are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
-Versioning: `YYYY.MM.DD` (date-based, aligned with upstream tGD).
+Versioning: `YYYY.MM.DD` (date-based, aligned with upstream tGD); same-day
+re-releases append `-N`. Safe for the npx flow (npm's `latest` dist-tag =
+most recently published), but note `-N` counts as a semver prerelease if
+anything ever depends on this package with a `^`/`~` range.
 
-## [Unreleased]
+## [2026.07.07-2] — 9928c27 (PR #10)
 
 ### Added
-- **In-repo E2E suite**: 15 Playwright specs (chat, appearance, navigation) run against a production server with generated fixtures (`e2e/fixtures.ts` builds a real git demo project + pi session files); new CI `E2E` job with report artifact on failure. `npm run test:e2e`.
+- **In-repo E2E suite** (GitHub-only tooling: `@playwright/test` is *not* in package.json so offline/Nexus `npm ci` never tries to download browser binaries; CI installs it `--no-save`): 15 Playwright specs (chat, appearance, navigation) run against a production server with generated fixtures (`e2e/fixtures.ts` builds a real git demo project + pi session files); new CI `E2E` job with report artifact on failure. `npm run test:e2e`.
 - **One-click Retry** after a failed run: rolls back to before the failed exchange (via `navigate_tree`) and re-sends the same prompt.
 - **Context-pressure nudge**: at ≥80% context usage a warning banner above the input offers one-click compaction.
 - **Individual queue cancel**: queued follow-ups render as separate rows, each cancellable (pi's queue clears wholesale, so removal re-queues the survivors).

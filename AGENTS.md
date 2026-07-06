@@ -12,7 +12,12 @@ Tests: `npm test` (vitest)
 E2E: `npm run test:e2e` (Playwright — builds and boots a production server on
 :30177 with generated fixtures; **stop `npm run dev` first**, the build step
 corrupts a running dev server's `.next/`. Local containers with a
-preinstalled browser: `PW_CHROMIUM_PATH=/opt/pw-browsers/chromium npm run test:e2e`.)  
+preinstalled browser: `PW_CHROMIUM_PATH=/opt/pw-browsers/chromium npm run test:e2e`.)
+**@playwright/test is deliberately NOT in package.json** — its transitive
+postinstall downloads browser binaries and would break offline/Nexus
+`npm ci`. Install it ad hoc first: `npm i -D --no-save @playwright/test`
+(CI does exactly this). `e2e/` + `playwright.config.ts` are excluded from
+tsconfig/eslint for the same reason.  
 **Never run `next build` while the dev server is running** — pollutes `.next/` and breaks `npm run dev`.
 
 E2E traps: transcript text offscreen is `content-visibility`-skipped and

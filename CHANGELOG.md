@@ -2,7 +2,7 @@
 
 All notable changes to tGD-pi-web are documented here.
 
-## [Unreleased]
+## [2026.07.07-4] — 185bbf1 (PR #16)
 
 ### Added
 - **Tool-call diff view**: expanding an `edit` tool call in the transcript renders a real red/green diff of oldText → newText (path shown above it); `write` calls render the written content as all-added lines. Other tools keep the pretty-printed JSON fallback.

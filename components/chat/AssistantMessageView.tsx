@@ -10,6 +10,8 @@ import type {
   ToolCallContent,
   ThinkingContent,
 } from "@/lib/types";
+import { DiffViewMode } from "@/components/layout/text-viewer/DiffViewMode";
+import { getLanguage } from "@/lib/file-mime";
 import styles from "./AssistantMessageView.module.css";
 
 function formatTime(ts?: number): string | null {
@@ -299,6 +301,15 @@ function ToolCallBlock({ block, result, duration }: { block: ToolCallContent; re
   const [expanded, setExpanded] = useState(false);
   const inputStr = JSON.stringify(block.input, null, 2);
 
+  // pi's file tools get structured rendering instead of raw JSON:
+  // edit {path, oldText, newText} → a real diff; write {path, content} → the
+  // written content. Anything else falls back to pretty-printed args.
+  const input = (block.input ?? {}) as Record<string, unknown>;
+  const isEditTool = block.toolName === "edit"
+    && typeof input.oldText === "string" && typeof input.newText === "string";
+  const isWriteTool = block.toolName === "write" && typeof input.content === "string";
+  const toolPath = typeof input.path === "string" ? input.path : "";
+
   // Result display
   const resultText = result
     ? result.content.filter((b): b is { type: "text"; text: string } => b.type === "text").map((b) => b.text).join("\n")
@@ -329,8 +340,28 @@ function ToolCallBlock({ block, result, duration }: { block: ToolCallContent; re
         </svg>
       </button>
 
-      {/* ── Expanded: input args ── */}
-      {expanded && (
+      {/* ── Expanded: structured view for file tools, JSON otherwise ── */}
+      {expanded && isEditTool && (
+        <div className={styles.toolDiffWrap}>
+          {toolPath && <div className={`${styles.toolDiffPath} chrome-mono`}>{toolPath}</div>}
+          <DiffViewMode
+            oldContent={input.oldText as string}
+            newContent={input.newText as string}
+            language={getLanguage(toolPath)}
+          />
+        </div>
+      )}
+      {expanded && isWriteTool && (
+        <div className={styles.toolDiffWrap}>
+          {toolPath && <div className={`${styles.toolDiffPath} chrome-mono`}>{toolPath}</div>}
+          <DiffViewMode
+            oldContent=""
+            newContent={input.content as string}
+            language={getLanguage(toolPath)}
+          />
+        </div>
+      )}
+      {expanded && !isEditTool && !isWriteTool && (
         <pre
           className={`${styles.toolInputPre} ${isError ? styles.toolInputPreError : styles.toolInputPreSuccess}`}
         >

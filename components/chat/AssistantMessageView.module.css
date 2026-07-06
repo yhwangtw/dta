@@ -282,3 +282,18 @@
 .pairedResultPreError {
   color: var(--color-error-text);
 }
+
+/* Structured tool-call rendering (edit/write diffs) */
+.toolDiffWrap {
+  border-top: 1px solid var(--border);
+  max-height: 420px;
+  overflow: auto;
+}
+
+.toolDiffPath {
+  padding: 4px 10px;
+  font-size: 10.5px;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-subtle);
+}

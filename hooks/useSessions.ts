@@ -73,13 +73,50 @@ export function useSessions(refreshKey?: number) {
     }
   }, [pinnedIds]);
 
+  // Archived ids mirror the pins flow (server file + optimistic toggle).
+  const [archivedIds, setArchivedIds] = useState<string[]>([]);
+  const loadArchive = useCallback(async () => {
+    try {
+      const res = await fetch("/api/sessions/archive");
+      if (!res.ok) return;
+      const data = await res.json() as { archived?: string[] };
+      setArchivedIds(Array.isArray(data.archived) ? data.archived : []);
+    } catch {
+      // best-effort
+    }
+  }, []);
+
+  const handleArchiveToggle = useCallback(async (id: string) => {
+    const isArchived = archivedIds.includes(id);
+    setArchivedIds((prev) =>
+      isArchived ? prev.filter((x) => x !== id) : [id, ...prev.filter((x) => x !== id)],
+    );
+    try {
+      const res = await fetch("/api/sessions/archive", {
+        method: isArchived ? "DELETE" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      if (!res.ok) {
+        setArchivedIds((prev) =>
+          isArchived ? [id, ...prev.filter((x) => x !== id)] : prev.filter((x) => x !== id),
+        );
+      }
+    } catch {
+      setArchivedIds((prev) =>
+        isArchived ? [id, ...prev.filter((x) => x !== id)] : prev.filter((x) => x !== id),
+      );
+    }
+  }, [archivedIds]);
+
   const initialLoadDone = useRef(false);
   useEffect(() => {
     const isFirst = !initialLoadDone.current;
     initialLoadDone.current = true;
     loadSessions(isFirst);
     loadPins();
-  }, [loadSessions, loadPins, refreshKey]);
+    loadArchive();
+  }, [loadSessions, loadPins, loadArchive, refreshKey]);
 
-  return { allSessions, loading, error, pinnedIds, sessionRefreshDone, loadSessions, handlePinToggle };
+  return { allSessions, loading, error, pinnedIds, sessionRefreshDone, loadSessions, handlePinToggle, archivedIds, handleArchiveToggle };
 }

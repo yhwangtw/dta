@@ -68,6 +68,29 @@ export type AgentPhase =
   | { kind: "running_tools"; tools: { id: string; name: string }[] }
   | null;
 
+export interface SessionStats {
+  tokens: { input: number; output: number; cacheRead: number; cacheWrite: number };
+  cost: number;
+}
+
+/** Sum token usage and cost across all assistant messages; null when empty. */
+export function computeSessionStats(messages: AgentMessage[]): SessionStats | null {
+  const tokens = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
+  let cost = 0;
+  for (const msg of messages) {
+    if (msg.role !== "assistant") continue;
+    const u = (msg as import("@/lib/types").AssistantMessage).usage;
+    if (!u) continue;
+    tokens.input += u.input ?? 0;
+    tokens.output += u.output ?? 0;
+    tokens.cacheRead += u.cacheRead ?? 0;
+    tokens.cacheWrite += u.cacheWrite ?? 0;
+    cost += u.cost?.total ?? 0;
+  }
+  const total = tokens.input + tokens.output + tokens.cacheRead + tokens.cacheWrite;
+  return total > 0 ? { tokens, cost } : null;
+}
+
 export interface UseAgentSessionOptions {
   session: SessionInfo | null;
   newSessionCwd: string | null;

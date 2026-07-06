@@ -231,6 +231,46 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
   const visibleMessages = messages.filter((m) => m.role === "user" || m.role === "assistant");
   const messageRefs = useMessageRefs(visibleMessages.length);
 
+  // ── Message bookmarks (per session, persisted) ──────────────────────────
+  const bookmarkStorageKey = session?.id ? `pi-bookmarks:${session.id}` : null;
+  const [bookmarks, setBookmarks] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (!bookmarkStorageKey) {
+      setBookmarks(new Set());
+      return;
+    }
+    try {
+      const parsed: unknown = JSON.parse(localStorage.getItem(bookmarkStorageKey) ?? "[]");
+      setBookmarks(new Set(Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === "string") : []));
+    } catch {
+      setBookmarks(new Set());
+    }
+  }, [bookmarkStorageKey]);
+  const toggleBookmark = useCallback((entryId: string) => {
+    setBookmarks((prev) => {
+      const next = new Set(prev);
+      if (next.has(entryId)) next.delete(entryId);
+      else next.add(entryId);
+      if (bookmarkStorageKey) {
+        try { localStorage.setItem(bookmarkStorageKey, JSON.stringify([...next])); } catch { /* ignore */ }
+      }
+      return next;
+    });
+  }, [bookmarkStorageKey]);
+
+  // Visible-message indices that are bookmarked — the minimap marks them.
+  const bookmarkedIndices = useMemo(() => {
+    const set = new Set<number>();
+    let visIdx = 0;
+    messages.forEach((m, idx) => {
+      if (m.role !== "user" && m.role !== "assistant") return;
+      const id = entryIds[idx];
+      if (id && bookmarks.has(id)) set.add(visIdx);
+      visIdx++;
+    });
+    return set;
+  }, [messages, entryIds, bookmarks]);
+
   // ── Long-message collapse ────────────────────────────────────────────────
   // Historical messages taller than a threshold clamp to a preview; the
   // current turn (last user message onward) always renders in full. Keys are
@@ -726,11 +766,26 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                 if (!isVisible) return view;
                 // The current turn (last user message onward) never collapses.
                 const collapsible = lastUserIdx === -1 ? idx < messages.length - 1 : idx < lastUserIdx;
+                const entryId = entryIds[idx];
+                const isBookmarked = !!entryId && bookmarks.has(entryId);
                 return (
-                  <div key={key} className="msg-item" ref={(el) => {
+                  <div key={key} className="msg-item hover-group relative" ref={(el) => {
                     messageRefs.current[currentRefIdx] = el;
                     if (idx === lastUserIdx) { (lastUserMsgRef as { current: HTMLDivElement | null }).current = el; }
                   }}>
+                    {entryId && (
+                      <button
+                        onClick={() => toggleBookmark(entryId)}
+                        className={`${isBookmarked ? "" : "hover-reveal "}${styles.bookmarkStar} ${isBookmarked ? styles.bookmarkStarOn : ""}`}
+                        title={isBookmarked ? t("chat.unbookmark") : t("chat.bookmark")}
+                        aria-label={isBookmarked ? t("chat.unbookmark") : t("chat.bookmark")}
+                        aria-pressed={isBookmarked}
+                      >
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill={isBookmarked ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                        </svg>
+                      </button>
+                    )}
                     <CollapsibleMessage
                       collapsible={collapsible}
                       expanded={expandedKeys.has(key)}
@@ -808,6 +863,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
           streamingMessage={streamState.streamingMessage}
           scrollContainer={scrollContainerRef}
           messageRefs={messageRefs}
+          bookmarkedIndices={bookmarkedIndices}
         />
       </div>
 

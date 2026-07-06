@@ -2,6 +2,19 @@
 
 All notable changes to tGD-pi-web are documented here.
 
+## [Unreleased]
+
+### Added
+- **Tool-call diff view**: expanding an `edit` tool call in the transcript renders a real red/green diff of oldText → newText (path shown above it); `write` calls render the written content as all-added lines. Other tools keep the pretty-printed JSON fallback.
+- **Message bookmarks**: hover any message → ☆ to bookmark it. Bookmarks persist per session (localStorage) and appear as amber markers on the conversation minimap.
+- **Session archive**: right-click a session → Archive hides it from the list without touching its file (stored in `archive.json` next to pins). A "Show archived (N)" toggle under the list reveals them; Unarchive restores. New API: `GET/POST/DELETE /api/sessions/archive`.
+
+### Changed
+- **Structural split** (no behavior change): `AppShell` (~1050 → ~770 lines) extracted `IconRail`, `ShortcutsDialog`, and `useRightPanelWidth`; `useAgentSession` (~870 → ~750 lines) extracted `use-agent-connection` (SSE wiring + stall watchdog), `use-transcript-scroll`, `use-model-catalog`, and `computeSessionStats`.
+
+### Testing
+- 3 new E2E specs (bookmarks persist across reload; archive/unarchive flow; edit/write tool diff rendering) + a tool-call session fixture — suite now 25 specs.
+
 ## [2026.07.07-3] — be38dd6 (PR #12, #13, #14)
 
 ### Performance

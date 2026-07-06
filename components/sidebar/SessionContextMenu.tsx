@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import type { SessionInfo } from "@/lib/types";
 import { getTagStyle } from "@/lib/tag-colors";
 import { useTheme } from "@/hooks/useTheme";
+import { useI18n } from "@/lib/i18n";
 import styles from "./SessionContextMenu.module.css";
 
 export interface SessionContextMenuPosition {
@@ -24,6 +25,8 @@ interface SessionContextMenuProps {
   onStartRename: () => void;
   onAddTag: (tag: string) => void;
   onRemoveTag?: (tag: string) => void;
+  isArchived?: boolean;
+  onArchiveToggle?: (id: string) => void;
   onRequestDelete: () => void;
 }
 
@@ -39,9 +42,12 @@ export function SessionContextMenu({
   onStartRename,
   onAddTag,
   onRemoveTag,
+  isArchived = false,
+  onArchiveToggle,
   onRequestDelete,
 }: SessionContextMenuProps) {
   const { theme } = useTheme();
+  const { t } = useI18n();
   const [addingTag, setAddingTag] = useState(false);
   const [tagDraft, setTagDraft] = useState("");
   const menuRef = useRef<HTMLDivElement>(null);
@@ -86,7 +92,7 @@ export function SessionContextMenu({
     }
     // First measure the menu, then clamp
     const MENU_W = 200;
-    const MENU_H = (addingTag ? 220 : 180) + (existingTags.length > 0 ? 34 : 0);
+    const MENU_H = (addingTag ? 250 : 210) + (existingTags.length > 0 ? 34 : 0);
     const padding = 6;
     const vw = window.innerWidth;
     const vh = window.innerHeight;
@@ -120,6 +126,10 @@ export function SessionContextMenu({
   const handleDelete = useCallback(() => {
     runAndClose(() => onRequestDelete());
   }, [runAndClose, onRequestDelete]);
+
+  const handleArchive = useCallback(() => {
+    runAndClose(() => onArchiveToggle?.(session.id));
+  }, [runAndClose, onArchiveToggle, session.id]);
 
   const handleSubmitTag = useCallback(
     (e: React.FormEvent) => {
@@ -231,6 +241,16 @@ export function SessionContextMenu({
         </div>
       )}
       <div className={styles.separator} />
+      {onArchiveToggle && (
+        <button role="menuitem" onClick={handleArchive} className={styles.menuItem}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={styles.menuIcon}>
+            <polyline points="21 8 21 21 3 21 3 8" />
+            <rect x="1" y="3" width="22" height="5" />
+            <line x1="10" y1="12" x2="14" y2="12" />
+          </svg>
+          <span>{isArchived ? t("session.unarchive") : t("session.archive")}</span>
+        </button>
+      )}
       <button role="menuitem" onClick={handleDelete} className={`${styles.menuItem} ${styles.menuItemDanger}`}>
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={styles.menuIcon}>
           <polyline points="3 6 5 6 21 6" />

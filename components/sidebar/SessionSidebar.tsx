@@ -41,7 +41,7 @@ interface Props {
 }
 
 export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSession, initialSessionId, onInitialRestoreDone, refreshKey, onSessionDeleted, selectedCwd: selectedCwdProp, onCwdChange, onOpenFile, explorerRefreshKey, onAtMention, onOpenDiff, onOpenParallel, parallelSessionIds, activeTagFilter: activeTagFilterProp, onSelectTagFilter, showExplorer = true }: Props) {
-  const { allSessions, loading, error, pinnedIds, sessionRefreshDone, loadSessions, handlePinToggle } = useSessions(refreshKey);
+  const { allSessions, loading, error, pinnedIds, sessionRefreshDone, loadSessions, handlePinToggle, archivedIds, handleArchiveToggle } = useSessions(refreshKey);
   const { state: cwdState, actions: cwdActions, refs: cwdRefs } = useCwd(onCwdChange);
   const { selectedCwd } = cwdState;
   const { setSelectedCwd } = cwdActions;
@@ -123,16 +123,26 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
   // Deep search mode: triggers when query length >= 2 (since 1 char is too noisy)
   const inSearchMode = searchQuery.trim().length >= 2;
 
+  const [showArchived, setShowArchived] = useState(false);
+  const archivedSet = useMemo(() => new Set(archivedIds), [archivedIds]);
+  const archivedCount = useMemo(
+    () => allSessions.filter((s) => archivedSet.has(s.id) && (!selectedCwd || s.cwd === selectedCwd)).length,
+    [allSessions, archivedSet, selectedCwd],
+  );
+
   const filteredSessions = useMemo(() => {
     let list = selectedCwd
       ? allSessions.filter((s) => s.cwd === selectedCwd)
       : allSessions;
+    if (!showArchived) {
+      list = list.filter((s) => !archivedSet.has(s.id));
+    }
     if (activeTagFilter) {
       const tagged = tags[activeTagFilter] ?? [];
       list = list.filter((s) => tagged.includes(s.id));
     }
     return list;
-  }, [allSessions, selectedCwd, activeTagFilter, tags]);
+  }, [allSessions, selectedCwd, activeTagFilter, tags, showArchived, archivedSet]);
 
   // Local filter: name + firstMessage (cheap, runs in sidebar)
   const searchFilteredSessions = useMemo(() => {
@@ -314,6 +324,8 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                   onRemoveTag={(tag) => { removeTag(node.session.id, tag); showToast(`${translate("toast.tagRemoved")} #${tag}`, { type: "info" }); }}
                   isParallelOpen={parallelSessionIds?.includes(node.session.id) ?? false}
                   onOpenParallel={onOpenParallel}
+                  isArchived={archivedSet.has(node.session.id)}
+                  onArchiveToggle={handleArchiveToggle}
                 />
               </div>
             ))}
@@ -353,10 +365,20 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                 onRemoveTag={(tag) => { removeTag(node.session.id, tag); showToast(`${translate("toast.tagRemoved")} #${tag}`, { type: "info" }); }}
                 isParallelOpen={parallelSessionIds?.includes(node.session.id) ?? false}
                 onOpenParallel={onOpenParallel}
+                isArchived={archivedSet.has(node.session.id)}
+                onArchiveToggle={handleArchiveToggle}
               />
             </div>
           );
         })}
+        {archivedCount > 0 && (
+          <button
+            onClick={() => setShowArchived((v) => !v)}
+            className={styles.archivedToggle}
+          >
+            {showArchived ? t("sidebar.hideArchived") : t("sidebar.showArchived")} ({archivedCount})
+          </button>
+        )}
       </div>
       )}
 

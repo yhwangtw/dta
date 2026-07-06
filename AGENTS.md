@@ -85,21 +85,28 @@ lib/
   types.ts            shared types (incl. BashExecutionMessage)
 
 components/
-  layout/   AppShell (rail+panels+hotkeys), FilesPanel, ChangesPanel,
-            DiffPanel, FileViewer, TabBar, ErrorBoundary, text-viewer/
+  layout/   AppShell (layout wiring + hotkeys), IconRail, ShortcutsDialog,
+            FilesPanel, ChangesPanel, DiffPanel, FileViewer, TabBar,
+            ErrorBoundary, text-viewer/
   chat/     ChatWindow (find/⌘F, follow-mode scroll, ⌥↑/⌥↓ turn nav, status
-            line), CollapsibleMessage (long-history clamp), turn-nav.ts,
-            ChatInput (history ↑, bash prefix), MessageView, BashBlock,
-            AssistantMessageView (error card), BranchNavigator, ChatMinimap,
-            MarkdownBody (lazy KaTeX/Mermaid/PrismAsync)
-  sidebar/  SessionSidebar (+embedded explorer, showExplorer prop),
-            SessionItem, FileExplorer, CwdPicker, TagFilter
+            line, bookmarks), CollapsibleMessage (long-history clamp),
+            turn-nav.ts, ChatInput (history ↑, bash prefix), MessageView,
+            BashBlock, AssistantMessageView (error card, edit/write tool
+            diff view), BranchNavigator, ChatMinimap, MarkdownBody (lazy
+            KaTeX/Mermaid/PrismAsync)
+  sidebar/  SessionSidebar (+embedded explorer, showExplorer prop, archived
+            toggle), SessionItem, SessionContextMenu (tags/archive/delete),
+            FileExplorer, CwdPicker, TagFilter
   modals/   ModelsConfig, SkillsConfig, AnalyticsModal, ToolPanel
   ui/       CommandPalette, Toast, Skeleton
 
-hooks/    useAgentSession (SSE, scroll contract, stall watchdog, bash run),
-          useAppShellState, useCommandPalette, useSessions, useToast (global
-          store), useTheme, useExplorer (persisted), …
+hooks/    useAgentSession (chat orchestration; extracted pieces live in
+          use-agent-connection.ts — SSE + stall watchdog,
+          use-transcript-scroll.ts, use-model-catalog.ts, and
+          use-agent-session-types.ts — reducer + computeSessionStats),
+          useAppShellState, useRightPanelWidth, useCommandPalette,
+          useSessions (pins + archive), useToast (global store), useTheme,
+          useExplorer (persisted), …
 ```
 
 ---

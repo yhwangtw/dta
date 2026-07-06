@@ -9,6 +9,8 @@ interface Props {
   streamingMessage: Partial<AgentMessage> | null;
   scrollContainer: RefObject<HTMLDivElement | null>;
   messageRefs: RefObject<(HTMLDivElement | null)[]>;
+  /** Visible-message indices carrying a bookmark — marked amber. */
+  bookmarkedIndices?: Set<number>;
 }
 
 const MINIMAP_WIDTH = 36;
@@ -63,9 +65,11 @@ interface NodeInfo {
   heightRatio: number;
   msg: AgentMessage | Partial<AgentMessage>;
   index: number;
+  /** Index among visible (user/assistant) messages — bookmark lookup key. */
+  visIdx: number;
 }
 
-export function ChatMinimap({ messages, streamingMessage, scrollContainer, messageRefs }: Props) {
+export function ChatMinimap({ messages, streamingMessage, scrollContainer, messageRefs, bookmarkedIndices }: Props) {
   const [scrollRatio, setScrollRatio] = useState(0);
   const [viewportRatio, setViewportRatio] = useState(1);
   const [visible, setVisible] = useState(false);
@@ -110,6 +114,7 @@ export function ChatMinimap({ messages, streamingMessage, scrollContainer, messa
       if (msg.role !== "user" && msg.role !== "assistant") continue;
 
       const el = refs?.[refIndex];
+      const visIdx = refIndex;
       refIndex++;
 
       if (!hasTextContent(msg)) continue;
@@ -124,6 +129,7 @@ export function ChatMinimap({ messages, streamingMessage, scrollContainer, messa
           heightRatio: h / totalH,
           msg,
           index: newNodes.length,
+          visIdx,
         });
       }
     }
@@ -255,7 +261,10 @@ export function ChatMinimap({ messages, streamingMessage, scrollContainer, messa
 
       {/* Message nodes */}
       {nodes.map((node) => {
-        const color = getNodeColor(node.msg);
+        const bookmarked = bookmarkedIndices?.has(node.visIdx) ?? false;
+        const color = bookmarked
+          ? { bg: "var(--color-warning-text-strong, #d97706)", border: "var(--color-warning-text-strong, #d97706)" }
+          : getNodeColor(node.msg);
         const isNearest = nearestIndex === node.index;
         const isUser = node.msg.role === "user";
         const dotTop = node.topRatio * 100;

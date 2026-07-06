@@ -7,10 +7,12 @@ import { sendAgentCommand } from "@/lib/agent-client";
 import { showToast } from "@/hooks/useToast";
 import { translate } from "@/lib/i18n";
 import { setIdleTitle, setRunningTitle, setDoneTitle, setErrorTitle, notifyDone, requestNotifyPermission } from "@/lib/attention";
-import { getAlwaysFollow } from "@/lib/prefs";
 import type { ToolEntry } from "@/components/modals/ToolPanel";
 import type { SessionData, AgentEvent, AgentPhase, UseAgentSessionOptions, ThinkingLevelOption, ChatInputHandle, AttachedImage } from "./use-agent-session-types";
-import { streamReducer, getRunError } from "./use-agent-session-types";
+import { streamReducer, getRunError, computeSessionStats } from "./use-agent-session-types";
+import { useAgentEvents, useStallWatchdog } from "./use-agent-connection";
+import { useTranscriptScroll } from "./use-transcript-scroll";
+import { useModelCatalog } from "./use-model-catalog";
 
 export type { SessionData, AgentPhase, ThinkingLevelOption, ChatInputHandle, AttachedImage };
 
@@ -30,11 +32,6 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const [entryIds, setEntryIds] = useState<string[]>([]);
   const [streamState, dispatch] = useReducer(streamReducer, { isStreaming: false, streamingMessage: null });
   const [agentRunning, setAgentRunning] = useState(false);
-  const [modelNames, setModelNames] = useState<Record<string, string>>({});
-  const [modelList, setModelList] = useState<{ id: string; name: string; provider: string }[]>([]);
-  const [modelThinkingLevels, setModelThinkingLevels] = useState<Record<string, string[]>>({});
-  const [modelThinkingLevelMaps, setModelThinkingLevelMaps] = useState<Record<string, Record<string, string | null>>>({});
-  const [newSessionModel, setNewSessionModelState] = useState<{ provider: string; modelId: string } | null>(null);
   const [toolPreset, setToolPreset] = useState<"none" | "default" | "full">("default");
   const [thinkingLevel, setThinkingLevel] = useState<ThinkingLevelOption>("auto");
   const [retryInfo, setRetryInfo] = useState<{ attempt: number; maxAttempts: number; errorMessage?: string } | null>(null);
@@ -49,49 +46,35 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const [agentStartedAt, setAgentStartedAt] = useState<number | null>(null);
   const [queuedFollowUps, setQueuedFollowUps] = useState<string[]>([]);
   const [bashRun, setBashRun] = useState<{ command: string; output: string; running: boolean } | null>(null);
-  // Seconds since the last SSE event while a run is active; 0 = healthy.
-  const [stalledSecs, setStalledSecs] = useState(0);
-  const lastEventAtRef = useRef(Date.now());
   // Streaming-update throttle (see the message_update case)
   const pendingStreamMsgRef = useRef<AgentMessage | null>(null);
   const streamFlushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const eventSourceRef = useRef<EventSource | null>(null);
   const sessionIdRef = useRef<string | null>(session?.id ?? null);
   const agentRunningRef = useRef(false);
   const agentPhaseRef = useRef<AgentPhase>(null);
   const handleAgentEventRef = useRef<((event: AgentEvent) => void) | null>(null);
-  const initialScrollDoneRef = useRef(false);
-  const lastUserMsgRef = useRef<HTMLDivElement | null>(null);
-  const pendingScrollToUserRef = useRef(false);
-  const messagesEndRef = useRef<HTMLDivElement | null>(null);
-  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   // Already-named sessions never need auto-naming — skip the summarize call
   const hasSummarizedRef = useRef(Boolean(session?.name));
   const sessionNameRef = useRef<string | undefined>(session?.name);
 
-  const setNewSessionModel = opts.setNewSessionModel ?? setNewSessionModelState;
+  const { eventSourceRef, lastEventAtRef, connectEvents } = useAgentEvents(agentRunningRef, handleAgentEventRef);
+  const { stalledSecs, setStalledSecs } = useStallWatchdog(agentRunning, agentPhaseRef, lastEventAtRef);
+  const {
+    initialScrollDoneRef, lastUserMsgRef, pendingScrollToUserRef,
+    messagesEndRef, scrollContainerRef,
+  } = useTranscriptScroll(messages.length, agentRunning, agentRunningRef);
+  const {
+    modelNames, modelList, modelThinkingLevels, modelThinkingLevelMaps,
+    newSessionModel, setNewSessionModel,
+  } = useModelCatalog(isNew, modelsRefreshKey, opts.setNewSessionModel);
+
   const setToolPresetState = opts.setToolPreset ?? setToolPreset;
 
   const currentModel = currentModelOverride ?? data?.context.model ?? pendingModel ?? null;
   const displayModel = isNew ? newSessionModel : currentModel;
 
-  const sessionStats = (() => {
-    const tokens = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
-    let cost = 0;
-    for (const msg of messages) {
-      if (msg.role !== "assistant") continue;
-      const u = (msg as import("@/lib/types").AssistantMessage).usage;
-      if (!u) continue;
-      tokens.input += u.input ?? 0;
-      tokens.output += u.output ?? 0;
-      tokens.cacheRead += u.cacheRead ?? 0;
-      tokens.cacheWrite += u.cacheWrite ?? 0;
-      cost += u.cost?.total ?? 0;
-    }
-    const total = tokens.input + tokens.output + tokens.cacheRead + tokens.cacheWrite;
-    return total > 0 ? { tokens, cost } : null;
-  })();
+  const sessionStats = computeSessionStats(messages);
 
   const loadSession = useCallback(async (sid: string, showLoading = false, includeState = false) => {
     try {
@@ -158,42 +141,6 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       console.error("Failed to load tools:", e);
     }
   }, [setToolPresetState]);
-
-  const reconnectAttemptRef = useRef(0);
-
-  const connectEvents = useCallback((sid: string) => {
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-      eventSourceRef.current = null;
-    }
-    const es = new EventSource(`/api/agent/${encodeURIComponent(sid)}/events`);
-    eventSourceRef.current = es;
-    es.onopen = () => {
-      reconnectAttemptRef.current = 0;
-    };
-    es.onmessage = (e) => {
-      lastEventAtRef.current = Date.now();
-      try {
-        const event = JSON.parse(e.data) as AgentEvent;
-        handleAgentEventRef.current?.(event);
-      } catch {
-        // ignore
-      }
-    };
-    es.onerror = () => {
-      if (eventSourceRef.current === es && agentRunningRef.current) {
-        es.close();
-        eventSourceRef.current = null;
-        // Exponential backoff: 1s, 2s, 4s, ... capped at 15s, so a downed
-        // server isn't hammered once per second.
-        const delay = Math.min(1000 * 2 ** reconnectAttemptRef.current, 15_000);
-        reconnectAttemptRef.current++;
-        setTimeout(() => {
-          if (agentRunningRef.current) connectEvents(sid);
-        }, delay);
-      }
-    };
-  }, []);
 
   useEffect(() => {
     agentRunningRef.current = agentRunning;
@@ -356,7 +303,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         }
         break;
     }
-  }, [loadSession, onAgentEnd, onSessionNamed]);
+  }, [loadSession, onAgentEnd, onSessionNamed, lastEventAtRef, setStalledSecs]);
   handleAgentEventRef.current = handleAgentEvent;
 
   // Shared by the tGD-command and plain-prompt paths of handleSend: create a
@@ -512,7 +459,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       setAgentPhase(null);
       dispatch({ type: "end" });
     }
-  }, [isNew, newSessionCwd, session, agentRunning, connectEvents, createNewSession, loadSession]);
+  }, [isNew, newSessionCwd, session, agentRunning, connectEvents, createNewSession, loadSession, pendingScrollToUserRef]);
 
   const handleAbort = useCallback(async () => {
     const sid = sessionIdRef.current;
@@ -734,18 +681,6 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     }
   }, [setToolPresetState]);
 
-  const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
-    messagesEndRef.current?.scrollIntoView({ behavior });
-  }, []);
-
-  const scrollUserMsgToTop = useCallback(() => {
-    const container = scrollContainerRef.current;
-    const el = lastUserMsgRef.current;
-    if (!container || !el) return;
-    const elAbsTop = el.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop;
-    container.scrollTo({ top: elAbsTop - 16, behavior: "smooth" });
-  }, []);
-
   // Load session on mount
   useEffect(() => {
     if (session) {
@@ -783,64 +718,6 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     if (!onBranchDataChange) return;
     onBranchDataChange(data?.tree ?? [], activeLeafId, handleLeafChange);
   }, [data?.tree, activeLeafId, handleLeafChange, onBranchDataChange]);
-
-  useEffect(() => {
-    if (messages.length > 0) {
-      if (pendingScrollToUserRef.current) {
-        pendingScrollToUserRef.current = false;
-        initialScrollDoneRef.current = true;
-        scrollUserMsgToTop();
-      } else if (!initialScrollDoneRef.current) {
-        initialScrollDoneRef.current = true;
-        scrollToBottom("instant");
-      } else if (!agentRunningRef.current) {
-        // Only follow to the bottom if the reader is already near it —
-        // yanking someone who scrolled up (or is reading the answer from the
-        // top anchor) loses their place. Distance is measured fresh here:
-        // the run spacer has already unmounted by the time this effect runs.
-        const el = scrollContainerRef.current;
-        const dist = el ? el.scrollHeight - el.scrollTop - el.clientHeight : 0;
-        if (dist < 200 || getAlwaysFollow()) scrollToBottom("smooth");
-      }
-    }
-  }, [messages.length, agentRunning, scrollToBottom, scrollUserMsgToTop]);
-
-  // Load model list
-  useEffect(() => {
-    fetch("/api/models").then((r) => r.json()).then((d: { models: Record<string, string>; modelList?: { id: string; name: string; provider: string }[]; defaultModel?: { provider: string; modelId: string } | null; thinkingLevels?: Record<string, string[]>; thinkingLevelMaps?: Record<string, Record<string, string | null>> }) => {
-      setModelNames(d.models);
-      if (d.thinkingLevels) setModelThinkingLevels(d.thinkingLevels);
-      if (d.thinkingLevelMaps) setModelThinkingLevelMaps(d.thinkingLevelMaps);
-      if (d.modelList) {
-        setModelList(d.modelList);
-        if (isNew && d.modelList.length > 0) {
-          const def = d.defaultModel;
-          const match = def && d.modelList.find((m) => m.id === def.modelId && m.provider === def.provider);
-          const selected = match
-            ? { provider: match.provider, modelId: match.id }
-            : { provider: d.modelList[0].provider, modelId: d.modelList[0].id };
-          setNewSessionModel(selected);
-        }
-      }
-    }).catch(() => {});
-  }, [isNew, modelsRefreshKey, setNewSessionModel]);
-
-  // Stall watchdog: while a run is active, warn when no SSE event has
-  // arrived for a while. Heartbeat comments don't fire onmessage, so this
-  // measures real progress. Tool runs are legitimately quiet for longer,
-  // hence the higher threshold there.
-  useEffect(() => {
-    if (!agentRunning) {
-      setStalledSecs(0);
-      return;
-    }
-    const id = setInterval(() => {
-      const idle = Math.floor((Date.now() - lastEventAtRef.current) / 1000);
-      const threshold = agentPhaseRef.current?.kind === "running_tools" ? 120 : 60;
-      setStalledSecs(idle >= threshold ? idle : 0);
-    }, 5000);
-    return () => clearInterval(id);
-  }, [agentRunning]);
 
   // Compact error auto-dismiss
   useEffect(() => {

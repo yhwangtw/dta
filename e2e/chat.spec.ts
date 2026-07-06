@@ -79,7 +79,7 @@ test.describe("chat transcript", () => {
     // itself may fail with a toast, which is fine).
     await retry.click();
     await page.waitForTimeout(1_500);
-    await expect(page.getByPlaceholder("Message...")).toBeVisible();
+    await expect(page.getByPlaceholder("Message…")).toBeVisible();
   });
 
   test("always-follow toggle persists via the palette", async ({ page }) => {

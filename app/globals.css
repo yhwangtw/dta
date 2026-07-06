@@ -762,6 +762,8 @@ span.linenumber {
 .msg-item {
   content-visibility: auto;
   contain-intrinsic-size: auto 120px;
+  /* Breathing room when ⌥↑/⌥↓ aligns a turn to the viewport top */
+  scroll-margin-top: 10px;
 }
 
 /* ═══ Interactive hover utility classes ═══ */

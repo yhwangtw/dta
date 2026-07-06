@@ -42,9 +42,12 @@ Requirements: Node.js ≥ 22 and a working [pi](https://github.com/earendil-work
 
 ### Navigation
 - **⌘K command palette** — Search sessions, tags, files, and run commands (bilingual search)
-- **⌘F in-conversation find** — Match counter, Enter/⇧Enter to cycle, flash highlight
+- **⌘F in-conversation find** — Match counter, Enter/⇧Enter to cycle, flash highlight; jumping into a collapsed message expands it
+- **⌥↑ / ⌥↓ turn navigation** — Walk between user messages turn by turn; the minimap also jumps on click
+- **Long-message collapse** — Historical messages taller than a screen clamp to a preview with a "Show full message" control; the latest exchange always renders in full
 - **Icon rail** — Sessions / Files / Changes / Search / Analytics views; Models / Skills / Language / Theme at the bottom
-- **Jump to bottom** — Floating button when scrolled up; entering the tail engages sticky follow while streaming
+- **Jump to bottom** — Floating button when scrolled up; while output streams it counts the new lines accumulating below (`↓ +N lines`); entering the tail engages sticky follow
+- **Always-follow mode** — ⌘K → "Toggle Always-Follow Output" pins the view to streaming output terminal-style (persisted, default off)
 - **Input history** — ↑ in an empty input recalls previous messages
 
 ### Session Management
@@ -79,6 +82,7 @@ Requirements: Node.js ≥ 22 and a working [pi](https://github.com/earendil-work
 |------|--------|
 | `⌘K` | Command palette (search & commands) |
 | `⌘F` | Find in conversation |
+| `⌥↑` / `⌥↓` | Previous / next user message |
 | `⇧⌘M` | Models |
 | `⌘/` | Skills |
 | `⌘B` | Toggle panel |

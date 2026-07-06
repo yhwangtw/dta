@@ -39,7 +39,16 @@ const MESSAGES = {
   "shortcuts.skills": { en: "Skills", zh: "技能" },
   "shortcuts.sidebar": { en: "Toggle sidebar", zh: "切換側欄" },
   "shortcuts.filePanel": { en: "Toggle file panel", zh: "切換檔案面板" },
+  "shortcuts.find": { en: "Find in conversation", zh: "對話內搜尋" },
+  "shortcuts.turnNav": { en: "Previous / next user message", zh: "上一則 / 下一則使用者訊息" },
   "shortcuts.close": { en: "Close dialogs", zh: "關閉對話框" },
+
+  // ── Chat transcript ──
+  "chat.showFull": { en: "Show full message", zh: "展開完整訊息" },
+  "chat.lines": { en: "lines", zh: "行" },
+  "chat.collapseMsg": { en: "Collapse message", zh: "收合訊息" },
+  "toast.followOn": { en: "Always-follow output: on", zh: "自動跟隨輸出:開" },
+  "toast.followOff": { en: "Always-follow output: off", zh: "自動跟隨輸出:關" },
 
   // ── System prompt panel ──
   "system.empty": { en: "System prompt is empty (tools are disabled)", zh: "系統提示為空(工具已停用)" },

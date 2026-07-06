@@ -15,9 +15,10 @@ import { useFileTabs } from "@/hooks/useFileTabs";
 import { useSessions } from "@/hooks/useSessions";
 import { useTags } from "@/hooks/useTags";
 import { useCommandPalette } from "@/hooks/useCommandPalette";
-import { useToast } from "@/hooks/useToast";
+import { useToast, showToast } from "@/hooks/useToast";
 import { encodeFilePathForApi } from "@/lib/file-paths";
-import { useI18n } from "@/lib/i18n";
+import { useI18n, translate } from "@/lib/i18n";
+import { toggleAlwaysFollow } from "@/lib/prefs";
 import { useTabTitle } from "@/lib/attention";
 import { setSkin } from "@/lib/skin";
 import { ErrorBoundary } from "./ErrorBoundary";
@@ -209,6 +210,10 @@ export function AppShell() {
       toggleSidebar: () => setSidebarOpen((v) => !v),
       toggleFilePanel: () => setRightPanelOpen((v) => !v),
       toggleChatWidth,
+      toggleFollowStream: () => {
+        const on = toggleAlwaysFollow();
+        showToast(translate(on ? "toast.followOn" : "toast.followOff"));
+      },
       setSkin,
       newSession: () => {
         if (!effectiveCwdForPalette) return;
@@ -824,6 +829,8 @@ export function AppShell() {
           <h3 className={s.shortcutsTitle}>{t("shortcuts.title")}</h3>
           {([
             ["⌘K", t("shortcuts.palette")],
+            ["⌘F", t("shortcuts.find")],
+            ["⌥↑ / ⌥↓", t("shortcuts.turnNav")],
             ["⇧⌘M", t("shortcuts.models")],
             ["⌘/", t("shortcuts.skills")],
             ["⌘B", t("shortcuts.sidebar")],

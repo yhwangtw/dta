@@ -762,15 +762,17 @@ span.linenumber {
 }
 
 
-/* Right panel: animate width */
+/* Right panel: animate width; --right-panel-w is set inline when the user
+   has dragged the splitter (persisted), otherwise the 42% default applies. */
 @media (min-width: 1025px) {
   .right-panel-container {
+    position: relative;
     overflow: hidden;
     transition: width 0.2s ease, min-width 0.2s ease;
     flex-shrink: 0;
   }
   .right-panel-container.right-panel-open {
-    width: 42%;
+    width: var(--right-panel-w, 42%);
     min-width: 300px;
   }
   .right-panel-container.right-panel-closed {
@@ -778,10 +780,32 @@ span.linenumber {
     min-width: 0;
     border-left: none !important;
   }
+  .right-panel-container.right-panel-dragging {
+    transition: none;
+  }
   /* keep inner content at fixed width so it doesn't reflow during animation */
   .right-panel-container > * {
-    width: 42vw;
+    width: var(--right-panel-w, 42vw);
     min-width: 300px;
+  }
+  .right-panel-resizer {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+    cursor: col-resize;
+    z-index: 30;
+  }
+  .right-panel-resizer:hover,
+  .right-panel-resizer.right-panel-resizer-active {
+    background: var(--color-accent-border);
+  }
+}
+
+@media (max-width: 1024px) {
+  .right-panel-resizer {
+    display: none;
   }
 }
 

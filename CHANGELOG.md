@@ -4,6 +4,11 @@ All notable changes to tGD-pi-web are documented here.
 
 ## [Unreleased]
 
+### Added
+- **Resizable file panel**: drag the left edge (persisted as `pi-right-width`), double-click to reset to the 42% default.
+- **File viewer power-ups**: in-file find with match cycling and `:N` go-to-line (highlighted + centered), copy-contents button, and **edit-in-place** — Save (⌘S)/Cancel backed by a new `PUT /api/files/<path>` (existing text files only, allowed-roots gated, size-capped; the live-watch refresh never clobbers an open editor).
+- `e2e/viewer.spec.ts`: splitter drag/persist/reset, find + go-to-line, edit → save-to-disk round-trip.
+
 ### Fixed
 - **Session tags were broken in both directions**: the server stores `sessionId → [tags]` but the client treated the same map as `tag → [sessionIds]` — the two keyings only agreed by accident, so chips appeared only after a reload, removal looked like it did nothing, and tag filtering broke after refresh. `useTags` now inverts the server map on load and everything client-side uses one canonical shape.
 - **Tags with ≤3 entries could not be removed at all**: the inline chips had no remove control (only the overflow row did). Every chip now has an ×, and the session context menu lists current tags with per-tag removal.

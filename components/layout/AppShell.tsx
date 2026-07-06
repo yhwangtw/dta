@@ -58,6 +58,42 @@ export function AppShell() {
       return !v;
     });
   }, []);
+
+  // ── Right panel width: draggable splitter, persisted ────────────────────
+  const [rightWidth, setRightWidth] = useState<number | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const v = parseInt(localStorage.getItem("pi-right-width") ?? "", 10);
+      return Number.isFinite(v) && v >= 320 ? v : null;
+    } catch {
+      return null;
+    }
+  });
+  const [draggingRight, setDraggingRight] = useState(false);
+  const startRightResize = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setDraggingRight(true);
+    const onMove = (ev: MouseEvent) => {
+      const max = Math.round(window.innerWidth * 0.7);
+      const w = Math.min(Math.max(window.innerWidth - ev.clientX, 320), max);
+      setRightWidth(w);
+    };
+    const onUp = () => {
+      setDraggingRight(false);
+      setRightWidth((w) => {
+        try { if (w) localStorage.setItem("pi-right-width", String(w)); } catch { /* ignore */ }
+        return w;
+      });
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  }, []);
+  const resetRightWidth = useCallback(() => {
+    setRightWidth(null);
+    try { localStorage.removeItem("pi-right-width"); } catch { /* ignore */ }
+  }, []);
   const chatInputRef = useRef<ChatInputHandle | null>(null);
 
   useEffect(() => {
@@ -781,10 +817,24 @@ export function AppShell() {
         </div>
       </div>
 
-      {/* Right panel: file viewer — always mounted, width animated via CSS */}
+      {/* Right panel: file viewer — always mounted, width animated via CSS.
+          The splitter on its left edge drags the width (persisted);
+          double-click resets to the 42% default. */}
       <div
-        className={`right-panel-container${rightPanelOpen ? " right-panel-open" : " right-panel-closed"} ${s.rightPanelContainer}`}
+        className={`right-panel-container${rightPanelOpen ? " right-panel-open" : " right-panel-closed"}${draggingRight ? " right-panel-dragging" : ""} ${s.rightPanelContainer}`}
+        style={rightWidth ? ({ "--right-panel-w": `${rightWidth}px` } as React.CSSProperties) : undefined}
       >
+        {rightPanelOpen && (
+          <div
+            className={`right-panel-resizer${draggingRight ? " right-panel-resizer-active" : ""}`}
+            onMouseDown={startRightResize}
+            onDoubleClick={resetRightWidth}
+            title="Drag to resize · double-click to reset"
+            aria-label="Resize file panel"
+            role="separator"
+            aria-orientation="vertical"
+          />
+        )}
         {/* Right panel tab bar */}
         <div className={s.rightPanelTabBar}>
           <div className={s.rightPanelTabBarInner}>

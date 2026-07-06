@@ -70,6 +70,9 @@ Requirements: Node.js ≥ 22 and a working [pi](https://github.com/earendil-work
 - **Context menu & keyboard** — Copy path / relative path / @ mention / view diff on right-click; navigate the tree with ↑ ↓ ← → and Enter
 - **Changes view** — Git working-tree status for the session cwd (branch, per-file status + stats), refreshed after every agent turn; click a file for a HEAD ↔ worktree diff
 - **File preview** — Source with highlighting, Markdown/HTML preview, images, diffs
+- **Resizable panel** — Drag the file panel's left edge to resize (persisted); double-click resets
+- **In-file find & go-to-line** — `find / :line` box in the viewer toolbar; matches highlight and center
+- **Edit in place** — Text files open in an editor with Save (⌘S) / Cancel; writes go through the same allowed-roots gate as reads
 - **@-mention** — Insert a file path into the chat input from the tree
 
 ### Rendering

@@ -4,7 +4,7 @@ All notable changes to tGD-pi-web are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning: `YYYY.MM.DD` (date-based, aligned with upstream tGD).
 
-## [Unreleased] — PR #1 (92b2b14) + PR #2 (7c96d41)
+## [2026.07.06] — 4aa62a9 (PR #1, #2, #3)
 
 ### Added
 - **Bash mode**: `!cmd` executes in the session cwd with output streamed over SSE (`bash_start/chunk/end` events); results recorded as `bashExecution` entries the agent can read; `!!cmd` excludes output from LLM context; Cancel for long runs; terminal-pane rendering with exit badges.

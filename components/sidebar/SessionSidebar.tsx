@@ -31,6 +31,7 @@ interface Props {
   onOpenFile?: (filePath: string, fileName: string) => void;
   explorerRefreshKey?: number;
   onAtMention?: (relativePath: string) => void;
+  onOpenDiff?: (relativePath: string) => void;
   onOpenParallel?: (session: SessionInfo) => void;
   parallelSessionIds?: string[];
   activeTagFilter?: string | null;
@@ -39,7 +40,7 @@ interface Props {
   showExplorer?: boolean;
 }
 
-export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSession, initialSessionId, onInitialRestoreDone, refreshKey, onSessionDeleted, selectedCwd: selectedCwdProp, onCwdChange, onOpenFile, explorerRefreshKey, onAtMention, onOpenParallel, parallelSessionIds, activeTagFilter: activeTagFilterProp, onSelectTagFilter, showExplorer = true }: Props) {
+export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSession, initialSessionId, onInitialRestoreDone, refreshKey, onSessionDeleted, selectedCwd: selectedCwdProp, onCwdChange, onOpenFile, explorerRefreshKey, onAtMention, onOpenDiff, onOpenParallel, parallelSessionIds, activeTagFilter: activeTagFilterProp, onSelectTagFilter, showExplorer = true }: Props) {
   const { allSessions, loading, error, pinnedIds, sessionRefreshDone, loadSessions, handlePinToggle } = useSessions(refreshKey);
   const { state: cwdState, actions: cwdActions, refs: cwdRefs } = useCwd(onCwdChange);
   const { selectedCwd } = cwdState;
@@ -99,7 +100,23 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
     onNewSession?.(tempId, selectedCwd);
   }, [selectedCwd, onNewSession]);
 
-  const recentCwds = getRecentCwds(allSessions);
+  // All known projects (cwd + session count), most recently used first.
+  const projects = useMemo(() => {
+    const byCwd = new Map<string, { count: number; latest: string }>();
+    for (const s of allSessions) {
+      if (!s.cwd) continue;
+      const entry = byCwd.get(s.cwd);
+      if (entry) {
+        entry.count++;
+        if (s.modified > entry.latest) entry.latest = s.modified;
+      } else {
+        byCwd.set(s.cwd, { count: 1, latest: s.modified });
+      }
+    }
+    return [...byCwd.entries()]
+      .sort((a, b) => b[1].latest.localeCompare(a[1].latest))
+      .map(([cwd, { count }]) => ({ cwd, count }));
+  }, [allSessions]);
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -184,7 +201,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
           state={cwdState}
           actions={cwdActions}
           refs={cwdRefs}
-          recentCwds={recentCwds}
+          projects={projects}
           initialSessionId={initialSessionId ?? null}
           isRestoring={restoredRef.current}
         />
@@ -388,6 +405,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                 onOpenFile={onOpenFile ?? (() => {})}
                 refreshKey={explorerKey}
                 onAtMention={onAtMention}
+                onOpenDiff={onOpenDiff}
               />
             </div>
           )}

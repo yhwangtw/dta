@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { getFileIcon, FolderIcon } from "./FileIcons";
 import { encodeFilePathForApi, getRelativeFilePath, joinFilePath } from "@/lib/file-paths";
 import styles from "./FileExplorer.module.css";
@@ -10,14 +10,6 @@ const JUNK_DIRS = new Set([
   ".git", ".next", ".nuxt", "node_modules", "__pycache__", ".venv", "venv",
   ".idea", ".vscode", ".DS_Store", "dist", "build", ".cache", ".turbo",
 ]);
-
-function matchesFilter(node: FileNode, q: string): boolean {
-  if (node.name.toLowerCase().includes(q)) return true;
-  if (node.isDir && node.children) {
-    return node.children.some((c) => matchesFilter(c, q));
-  }
-  return false;
-}
 
 interface FileEntry {
   name: string;
@@ -35,11 +27,29 @@ interface FileNode {
   loaded?: boolean;
 }
 
+interface SearchHit {
+  name: string;
+  relative: string;
+  full: string;
+  isDir: boolean;
+}
+
+interface MenuTarget {
+  x: number;
+  y: number;
+  fullPath: string;
+  relative: string;
+  isDir: boolean;
+  gitStatus?: string;
+}
+
 interface Props {
   cwd: string;
   onOpenFile: (filePath: string, fileName: string) => void;
   refreshKey?: number;
   onAtMention?: (relativePath: string) => void;
+  /** Open the HEAD ↔ worktree diff for a changed file (relative path). */
+  onOpenDiff?: (relativePath: string) => void;
 }
 
 async function fetchEntries(dirPath: string): Promise<FileNode[]> {
@@ -59,16 +69,19 @@ async function fetchEntries(dirPath: string): Promise<FileNode[]> {
     }));
 }
 
+/** Porcelain status → badge letter + color. */
+function GitBadge({ status }: { status: string }) {
+  const letter = status === "??" ? "U" : status[0];
+  const color =
+    letter === "D" ? "var(--color-error-text)"
+    : letter === "A" || letter === "U" ? "var(--color-success, #22c55e)"
+    : "var(--color-warning-text-strong, #d97706)";
+  return <span className={styles.gitBadge} style={{ color }}>{letter}</span>;
+}
+
 function TreeNode({
-  node,
-  depth,
-  cwd,
-  onOpenFile,
-  onAtMention,
-  expandedPaths,
-  onToggleExpanded,
-  refreshKey,
-  filterQuery,
+  node, depth, cwd, onOpenFile, onAtMention, expandedPaths, onToggleExpanded,
+  refreshKey, gitStatus, onContextMenu,
 }: {
   node: FileNode;
   depth: number;
@@ -78,7 +91,8 @@ function TreeNode({
   expandedPaths: Set<string>;
   onToggleExpanded: (fullPath: string, open: boolean) => void;
   refreshKey?: number;
-  filterQuery?: string;
+  gitStatus: Map<string, string>;
+  onContextMenu: (t: MenuTarget) => void;
 }) {
   const open = expandedPaths.has(node.fullPath);
   const [children, setChildren] = useState<FileNode[]>(node.children ?? []);
@@ -98,12 +112,6 @@ function TreeNode({
     }
   }, [loaded, node.fullPath]);
 
-  // When refreshKey causes a re-render with the same node identity, reload open dirs
-  const prevLoadedRef = useRef(loaded);
-  useEffect(() => {
-    prevLoadedRef.current = loaded;
-  });
-
   // Re-fetch children when refreshKey changes and the directory is already open/loaded
   useEffect(() => {
     if (open && loaded) {
@@ -122,12 +130,32 @@ function TreeNode({
     }
   }, [node.isDir, node.fullPath, node.name, loaded, open, loadChildren, onOpenFile, onToggleExpanded]);
 
+  const relative = getRelativeFilePath(node.fullPath, cwd);
+  const fileStatus = node.isDir ? undefined : gitStatus.get(relative);
+  // A dir is "dirty" when any changed file lives under it.
+  let dirDirty = false;
+  if (node.isDir && gitStatus.size > 0) {
+    const prefix = `${relative}/`;
+    for (const key of gitStatus.keys()) {
+      if (key.startsWith(prefix)) { dirDirty = true; break; }
+    }
+  }
+
   return (
     <div>
       <div
         onClick={handleClick}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          onContextMenu({ x: e.clientX, y: e.clientY, fullPath: node.fullPath, relative, isDir: node.isDir, gitStatus: fileStatus });
+        }}
+        onMouseDown={(e) => (e.currentTarget as HTMLElement).focus()}
         className={`hover-bg hover-group ${styles.treeNode}`}
         style={{ paddingLeft: 8 + depth * 14 }}
+        tabIndex={-1}
+        data-fx-row
+        data-dir={node.isDir ? "1" : "0"}
+        data-open={open ? "1" : "0"}
       >
         {node.isDir && (
           <svg
@@ -143,12 +171,11 @@ function TreeNode({
         <span className={styles.iconWrapper}>
           {node.isDir ? <FolderIcon size={14} open={open} /> : getFileIcon(node.name, 14)}
         </span>
-        <span
-          className={styles.fileName}
-          title={node.fullPath}
-        >
+        <span className={styles.fileName} title={node.fullPath}>
           {node.name}
         </span>
+        {fileStatus && <GitBadge status={fileStatus} />}
+        {dirDirty && <span className={styles.dirtyDot} aria-hidden />}
         {loading && (
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round">
             <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4" />
@@ -159,7 +186,7 @@ function TreeNode({
             className={`hover-reveal ${styles.mentionButton}`}
             onClick={(e) => {
               e.stopPropagation();
-              onAtMention(getRelativeFilePath(node.fullPath, cwd));
+              onAtMention(relative);
             }}
             title="Insert path into chat"
           >
@@ -173,10 +200,8 @@ function TreeNode({
       </div>
       {node.isDir && open && (
         <div>
-          {children
-            .filter((c) => !filterQuery || c.isDir ? true : matchesFilter(c, filterQuery))
-            .map((child) => (
-            <TreeNode key={child.fullPath} node={child} depth={depth + 1} cwd={cwd} onOpenFile={onOpenFile} onAtMention={onAtMention} expandedPaths={expandedPaths} onToggleExpanded={onToggleExpanded} refreshKey={refreshKey} filterQuery={filterQuery} />
+          {children.map((child) => (
+            <TreeNode key={child.fullPath} node={child} depth={depth + 1} cwd={cwd} onOpenFile={onOpenFile} onAtMention={onAtMention} expandedPaths={expandedPaths} onToggleExpanded={onToggleExpanded} refreshKey={refreshKey} gitStatus={gitStatus} onContextMenu={onContextMenu} />
           ))}
           {children.length === 0 && loaded && (
             <div className={styles.emptyDirMessage} style={{ paddingLeft: 8 + (depth + 1) * 14 }}>
@@ -189,7 +214,7 @@ function TreeNode({
   );
 }
 
-export function FileExplorer({ cwd, onOpenFile, refreshKey, onAtMention }: Props) {
+export function FileExplorer({ cwd, onOpenFile, refreshKey, onAtMention, onOpenDiff }: Props) {
   const { t } = useI18n();
   const [roots, setRoots] = useState<FileNode[]>([]);
   const [loading, setLoading] = useState(true);
@@ -198,6 +223,7 @@ export function FileExplorer({ cwd, onOpenFile, refreshKey, onAtMention }: Props
   const prevCwdRef = useRef<string | null>(null);
   const [filterQuery, setFilterQuery] = useState("");
   const filterInputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const handleToggleExpanded = useCallback((fullPath: string, open: boolean) => {
     setExpandedPaths((prev) => {
@@ -223,27 +249,110 @@ export function FileExplorer({ cwd, onOpenFile, refreshKey, onAtMention }: Props
       .finally(() => setLoading(false));
   }, [cwd, refreshKey]);
 
-  // Auto-expand parent paths when filter is active
-  const effectiveExpanded = useMemo(() => {
-    if (!filterQuery.trim()) return expandedPaths;
-    const q = filterQuery.toLowerCase();
-    const autoExpand = new Set<string>();
-    const walk = (nodes: FileNode[]) => {
-      for (const n of nodes) {
-        if (n.isDir && matchesFilter(n, q)) {
-          // expand this dir so children are visible
-          autoExpand.add(n.fullPath);
-          if (n.children && n.children.length > 0) {
-            walk(n.children);
-          }
+  // ── Git working-tree status (badges) ────────────────────────────────────
+  const [gitStatus, setGitStatus] = useState<Map<string, string>>(new Map());
+  useEffect(() => {
+    let alive = true;
+    fetch(`/api/git/changes?cwd=${encodeURIComponent(cwd)}`)
+      .then((r) => r.json())
+      .then((d: { git?: boolean; files?: { path: string; status: string }[] }) => {
+        if (!alive) return;
+        const map = new Map<string, string>();
+        if (d?.git && Array.isArray(d.files)) {
+          for (const f of d.files) map.set(f.path, f.status);
         }
+        setGitStatus(map);
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [cwd, refreshKey]);
+
+  // ── Deep search (server-side, ≥2 chars) ─────────────────────────────────
+  const searchMode = filterQuery.trim().length >= 2;
+  const [searchResults, setSearchResults] = useState<SearchHit[]>([]);
+  const [searchTruncated, setSearchTruncated] = useState(false);
+  const [searching, setSearching] = useState(false);
+
+  useEffect(() => {
+    if (!searchMode) {
+      setSearchResults([]);
+      setSearching(false);
+      return;
+    }
+    setSearching(true);
+    const q = filterQuery.trim();
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/files/search?cwd=${encodeURIComponent(cwd)}&q=${encodeURIComponent(q)}`);
+        const data = await res.json() as { results?: SearchHit[]; truncated?: boolean };
+        setSearchResults(Array.isArray(data.results) ? data.results : []);
+        setSearchTruncated(!!data.truncated);
+      } catch {
+        setSearchResults([]);
+      } finally {
+        setSearching(false);
       }
+    }, 220);
+    return () => clearTimeout(timer);
+  }, [filterQuery, cwd, searchMode, refreshKey]);
+
+  /** Clicking a dir in search results reveals it in the tree. */
+  const revealInTree = useCallback((relative: string) => {
+    setExpandedPaths((prev) => {
+      const next = new Set(prev);
+      const parts = relative.split("/");
+      let acc = cwd;
+      for (const part of parts) {
+        acc = joinFilePath(acc, part);
+        next.add(acc);
+      }
+      return next;
+    });
+    setFilterQuery("");
+  }, [cwd]);
+
+  // ── Context menu ─────────────────────────────────────────────────────────
+  const [menu, setMenu] = useState<MenuTarget | null>(null);
+  useEffect(() => {
+    if (!menu) return;
+    const close = () => setMenu(null);
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") close(); };
+    window.addEventListener("mousedown", close);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("mousedown", close);
+      window.removeEventListener("keydown", onKey);
     };
-    walk(roots);
-    // Merge with user-toggled paths
-    for (const p of expandedPaths) autoExpand.add(p);
-    return autoExpand;
-  }, [filterQuery, roots, expandedPaths]);
+  }, [menu]);
+
+  const copyText = useCallback((text: string) => {
+    navigator.clipboard?.writeText(text).catch(() => {});
+    setMenu(null);
+  }, []);
+
+  // ── Keyboard navigation over rendered rows ───────────────────────────────
+  const onTreeKeyDown = useCallback((e: React.KeyboardEvent) => {
+    const rows = Array.from(containerRef.current?.querySelectorAll<HTMLElement>("[data-fx-row]") ?? []);
+    if (rows.length === 0) return;
+    const active = document.activeElement as HTMLElement | null;
+    const idx = active ? rows.indexOf(active) : -1;
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      const next = idx === -1 ? 0 : e.key === "ArrowDown" ? Math.min(idx + 1, rows.length - 1) : Math.max(idx - 1, 0);
+      rows[next]?.focus();
+    } else if (e.key === "Enter" && idx >= 0) {
+      e.preventDefault();
+      rows[idx].click();
+    } else if ((e.key === "ArrowRight" || e.key === "ArrowLeft") && idx >= 0) {
+      const el = rows[idx];
+      const isDir = el.dataset.dir === "1";
+      const open = el.dataset.open === "1";
+      if (isDir && ((e.key === "ArrowRight" && !open) || (e.key === "ArrowLeft" && open))) {
+        e.preventDefault();
+        el.click();
+      }
+    }
+  }, []);
 
   if (loading) {
     return (
@@ -263,13 +372,9 @@ export function FileExplorer({ cwd, onOpenFile, refreshKey, onAtMention }: Props
     );
   }
 
-  const filteredRoots = filterQuery.trim()
-    ? roots.filter((n) => matchesFilter(n, filterQuery.toLowerCase()))
-    : roots;
-
   return (
     <div>
-      {/* Filter input */}
+      {/* Filter / search input */}
       <div className={styles.filterWrapper}>
         <input
           ref={filterInputRef}
@@ -284,27 +389,105 @@ export function FileExplorer({ cwd, onOpenFile, refreshKey, onAtMention }: Props
           onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; }}
         />
       </div>
-      <div className={styles.filterResults}>
-        {filteredRoots.map((node) => (
-          <TreeNode
-            key={node.fullPath}
-            node={node}
-            depth={0}
-            cwd={cwd}
-            onOpenFile={onOpenFile}
-            onAtMention={onAtMention}
-            expandedPaths={effectiveExpanded}
-            onToggleExpanded={handleToggleExpanded}
-            refreshKey={refreshKey}
-            filterQuery={filterQuery.trim() || undefined}
-          />
-        ))}
-        {filteredRoots.length === 0 && (
-          <div className={styles.noResults}>
-            {filterQuery.trim() ? "No matches" : "No files found"}
-          </div>
+
+      <div ref={containerRef} className={styles.filterResults} onKeyDown={onTreeKeyDown}>
+        {searchMode ? (
+          <>
+            {searching && searchResults.length === 0 && (
+              <div className={styles.noResults}>…</div>
+            )}
+            {searchResults.map((hit) => (
+              <div
+                key={hit.full}
+                onClick={() => hit.isDir ? revealInTree(hit.relative) : onOpenFile(hit.full, hit.name)}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setMenu({ x: e.clientX, y: e.clientY, fullPath: hit.full, relative: hit.relative, isDir: hit.isDir, gitStatus: gitStatus.get(hit.relative) });
+                }}
+                onMouseDown={(e) => (e.currentTarget as HTMLElement).focus()}
+                className={`hover-bg hover-group ${styles.searchHit}`}
+                title={hit.full}
+                tabIndex={-1}
+                data-fx-row
+                data-dir={hit.isDir ? "1" : "0"}
+                data-open="0"
+              >
+                <span className={styles.iconWrapper}>
+                  {hit.isDir ? <FolderIcon size={14} /> : getFileIcon(hit.name, 14)}
+                </span>
+                <span className={styles.hitText}>
+                  <span className={styles.fileName}>{hit.name}</span>
+                  <span className={styles.hitPath}>{hit.relative}</span>
+                </span>
+                {gitStatus.has(hit.relative) && <GitBadge status={gitStatus.get(hit.relative)!} />}
+                {onAtMention && !hit.isDir && (
+                  <button
+                    className={`hover-reveal ${styles.mentionButton}`}
+                    onClick={(e) => { e.stopPropagation(); onAtMention(hit.relative); }}
+                    title="Insert path into chat"
+                  >
+                    @
+                  </button>
+                )}
+              </div>
+            ))}
+            {!searching && searchResults.length === 0 && (
+              <div className={styles.noResults}>No matches</div>
+            )}
+            {searchTruncated && (
+              <div className={styles.noResults}>{t("explorer.truncated")}</div>
+            )}
+          </>
+        ) : (
+          <>
+            {roots.map((node) => (
+              <TreeNode
+                key={node.fullPath}
+                node={node}
+                depth={0}
+                cwd={cwd}
+                onOpenFile={onOpenFile}
+                onAtMention={onAtMention}
+                expandedPaths={expandedPaths}
+                onToggleExpanded={handleToggleExpanded}
+                refreshKey={refreshKey}
+                gitStatus={gitStatus}
+                onContextMenu={setMenu}
+              />
+            ))}
+            {roots.length === 0 && (
+              <div className={styles.noResults}>No files found</div>
+            )}
+          </>
         )}
       </div>
+
+      {/* Context menu */}
+      {menu && (
+        <div
+          className={`glass ${styles.contextMenu}`}
+          style={{ left: menu.x, top: menu.y }}
+          onMouseDown={(e) => e.stopPropagation()}
+          role="menu"
+        >
+          <button className={styles.menuItem} onClick={() => copyText(menu.fullPath)}>
+            {t("explorer.copyPath")}
+          </button>
+          <button className={styles.menuItem} onClick={() => copyText(menu.relative)}>
+            {t("explorer.copyRel")}
+          </button>
+          {onAtMention && (
+            <button className={styles.menuItem} onClick={() => { onAtMention(menu.relative); setMenu(null); }}>
+              {t("explorer.mention")}
+            </button>
+          )}
+          {onOpenDiff && !menu.isDir && menu.gitStatus && (
+            <button className={styles.menuItem} onClick={() => { onOpenDiff(menu.relative); setMenu(null); }}>
+              {t("explorer.diff")}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -43,6 +43,27 @@ const MESSAGES = {
   "shortcuts.turnNav": { en: "Previous / next user message", zh: "上一則 / 下一則使用者訊息" },
   "shortcuts.close": { en: "Close dialogs", zh: "關閉對話框" },
 
+  // ── CWD picker ──
+  "cwd.select": { en: "Select project…", zh: "選擇專案…" },
+  "cwd.searchProjects": { en: "Search projects…", zh: "搜尋專案…" },
+  "cwd.noMatches": { en: "No matching projects", zh: "沒有符合的專案" },
+  "cwd.browse": { en: "Browse folders…", zh: "瀏覽資料夾…" },
+  "cwd.useThis": { en: "Use this folder", zh: "用這個資料夾" },
+  "cwd.back": { en: "Back", zh: "返回" },
+  "cwd.noSubdirs": { en: "No subfolders", zh: "沒有子資料夾" },
+  "cwd.default": { en: "Use default directory", zh: "使用預設目錄" },
+  "cwd.custom": { en: "Custom path…", zh: "自訂路徑…" },
+  "cwd.pin": { en: "Pin", zh: "釘選" },
+  "cwd.unpin": { en: "Unpin", zh: "取消釘選" },
+  "cwd.hide": { en: "Remove from list", zh: "從清單移除" },
+
+  // ── File explorer ──
+  "explorer.copyPath": { en: "Copy path", zh: "複製完整路徑" },
+  "explorer.copyRel": { en: "Copy relative path", zh: "複製相對路徑" },
+  "explorer.mention": { en: "Insert @ mention", zh: "插入 @ 提及" },
+  "explorer.diff": { en: "View diff", zh: "檢視 diff" },
+  "explorer.truncated": { en: "More matches exist — refine the search", zh: "還有更多結果 — 請縮小搜尋範圍" },
+
   // ── Appearance panel ──
   "appearance.title": { en: "Appearance", zh: "外觀" },
   "appearance.light": { en: "Light", zh: "淺色" },

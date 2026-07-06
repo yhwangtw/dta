@@ -50,6 +50,12 @@ app/api/
   agent/[id]/summarize/route.ts   POST — auto-naming (skips named sessions)
   git/changes/route.ts            GET ?cwd= — status --porcelain + numstat
   git/file-diff/route.ts          GET ?cwd=&path= — HEAD vs worktree text
+  files/search/route.ts           GET ?cwd=&q= — recursive filename search
+                                  (BFS, allowed-roots gated, 200/depth-8 caps)
+  cwd/browse/route.ts             POST {path} — dirs-only listing for the
+                                  project picker (same trust model as
+                                  cwd/validate: picking a NEW workspace may
+                                  point anywhere; it becomes an allowed root)
   files/, models*, auth/, skills/, cwd/   unchanged surfaces
 
 lib/

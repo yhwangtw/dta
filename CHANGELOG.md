@@ -4,6 +4,15 @@ All notable changes to tGD-pi-web are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning: `YYYY.MM.DD` (date-based, aligned with upstream tGD).
 
+## [Unreleased]
+
+### Added
+- **Project picker rebuild**: searchable project list with folder name + path + session-count rows, keyboard navigation (↑↓/Enter), pin favorites and remove stale entries (persisted); **filesystem browse mode** (`/api/cwd/browse`) with breadcrumb navigation and "Use this folder"; **path autocomplete** while typing a custom path (debounced suggestions, Tab completes).
+- **Deep file search**: `/api/files/search` (recursive BFS, junk dirs skipped, allowed-roots gated, capped at 200 results / depth 8); the explorer filter switches to flat server results at 2+ chars, folder hits reveal themselves in the tree.
+- **Git-aware explorer**: modified/untracked files carry colored M/A/D/U badges (from `/api/git/changes`); folders containing changes show a dot.
+- **Explorer context menu**: copy path / copy relative path / insert @ mention / view diff (for changed files, opens the HEAD ↔ worktree diff panel).
+- **Explorer keyboard navigation**: ↑↓ move, ←→ collapse/expand, Enter opens.
+
 ## [2026.07.07] — eeacb35 (PR #6, #7, #8)
 
 ### Added

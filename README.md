@@ -52,6 +52,7 @@ Requirements: Node.js ≥ 22 and a working [pi](https://github.com/earendil-work
 
 ### Session Management
 - **Session browser** — Grouped by working directory, auto-detects recent projects
+- **Project picker** — Search projects, pin favorites, remove stale entries; browse the filesystem with breadcrumbs, or type a path with live autocomplete (Tab completes)
 - **Time grouping** — Today / Yesterday / This Week / Earlier
 - **Search, tags, pins** — Instant filter, colored tag chips, pinned sessions float to top
 - **Auto-naming** — Generates a title after the first exchange
@@ -62,6 +63,9 @@ Requirements: Node.js ≥ 22 and a working [pi](https://github.com/earendil-work
 
 ### Files & Changes
 - **Files view** — Full-height file tree in the rail panel; a collapsible tree also lives under the session list (your choice persists)
+- **Deep file search** — Typing 2+ characters in the tree filter searches the whole project recursively (server-side, junk dirs skipped) and shows flat results; clicking a folder result reveals it in the tree
+- **Git-aware tree** — Modified/untracked files carry M/A/D/U badges; folders containing changes get a dot; right-click → view diff
+- **Context menu & keyboard** — Copy path / relative path / @ mention / view diff on right-click; navigate the tree with ↑ ↓ ← → and Enter
 - **Changes view** — Git working-tree status for the session cwd (branch, per-file status + stats), refreshed after every agent turn; click a file for a HEAD ↔ worktree diff
 - **File preview** — Source with highlighting, Markdown/HTML preview, images, diffs
 - **@-mention** — Insert a file path into the chat input from the tree

@@ -9,6 +9,7 @@ interface Props {
   onOpenFile: (filePath: string, fileName: string) => void;
   onAtMention?: (relativePath: string) => void;
   refreshKey?: number;
+  onOpenDiff?: (relativePath: string) => void;
 }
 
 /**
@@ -16,7 +17,7 @@ interface Props {
  * Splitting this out of SessionSidebar gives both the session list and the
  * tree the whole column instead of fighting over one.
  */
-export function FilesPanel({ cwd, onOpenFile, onAtMention, refreshKey }: Props) {
+export function FilesPanel({ cwd, onOpenFile, onAtMention, refreshKey, onOpenDiff }: Props) {
   const { t } = useI18n();
 
   if (!cwd) {
@@ -38,7 +39,7 @@ export function FilesPanel({ cwd, onOpenFile, onAtMention, refreshKey }: Props) 
         {shortCwd}
       </div>
       <div className={s.tree}>
-        <FileExplorer cwd={cwd} onOpenFile={onOpenFile} refreshKey={refreshKey} onAtMention={onAtMention} />
+        <FileExplorer cwd={cwd} onOpenFile={onOpenFile} refreshKey={refreshKey} onAtMention={onAtMention} onOpenDiff={onOpenDiff} />
       </div>
     </div>
   );

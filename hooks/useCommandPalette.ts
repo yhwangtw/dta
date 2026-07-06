@@ -29,6 +29,7 @@ export type PaletteActionId =
   | "view:toggle-sidebar"
   | "view:toggle-file-panel"
   | "view:toggle-chat-width"
+  | "view:toggle-follow"
   | "skin:terminal"
   | "skin:industrial"
   | "skin:aurora"
@@ -62,6 +63,7 @@ export interface PaletteCallbacks {
   toggleSidebar: () => void;
   toggleFilePanel: () => void;
   toggleChatWidth: () => void;
+  toggleFollowStream: () => void;
   setSkin: (skin: "terminal" | "industrial" | "aurora" | "editorial") => void;
   newSession: () => void;
   openParallelForActive: () => void;
@@ -160,6 +162,14 @@ const ACTIONS: PaletteResult[] = [
     subtitle: "Switch the conversation between normal and wide width",
     keywords: "width wide narrow layout 寬度",
     data: { action: "view:toggle-chat-width" } as { action: PaletteActionId },
+  },
+  {
+    id: "action:toggle-follow",
+    kind: "action",
+    title: "Toggle Always-Follow Output",
+    subtitle: "Keep the view pinned to streaming output, terminal-style (default off)",
+    keywords: "follow scroll stream pin tail terminal auto 跟隨 捲動 黏底 自動",
+    data: { action: "view:toggle-follow" } as { action: PaletteActionId },
   },
   {
     id: "action:new-session",
@@ -381,6 +391,7 @@ export function useCommandPalette({
         case "view:toggle-sidebar": cbs.toggleSidebar(); break;
         case "view:toggle-file-panel": cbs.toggleFilePanel(); break;
         case "view:toggle-chat-width": cbs.toggleChatWidth(); break;
+        case "view:toggle-follow": cbs.toggleFollowStream(); break;
         case "skin:terminal": cbs.setSkin("terminal"); break;
         case "skin:industrial": cbs.setSkin("industrial"); break;
         case "skin:aurora": cbs.setSkin("aurora"); break;

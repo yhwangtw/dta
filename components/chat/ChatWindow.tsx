@@ -6,6 +6,9 @@ import { MessageView } from "./MessageView";
 import { ChatInput, type ChatInputHandle } from "./ChatInput";
 import { ChatMinimap, useMessageRefs } from "./ChatMinimap";
 import { BashBlock } from "./BashBlock";
+import { CollapsibleMessage } from "./CollapsibleMessage";
+import { pickTurnTarget } from "./turn-nav";
+import { getAlwaysFollow } from "@/lib/prefs";
 import { useAgentSession, type AgentPhase } from "@/hooks/useAgentSession";
 import { getRunError } from "@/hooks/use-agent-session-types";
 import { useAudio } from "@/hooks/useAudio";
@@ -228,6 +231,21 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
   const visibleMessages = messages.filter((m) => m.role === "user" || m.role === "assistant");
   const messageRefs = useMessageRefs(visibleMessages.length);
 
+  // ── Long-message collapse ────────────────────────────────────────────────
+  // Historical messages taller than a threshold clamp to a preview; the
+  // current turn (last user message onward) always renders in full. Keys are
+  // the same entry-id-or-index keys the list uses, so expansion survives
+  // streaming re-renders.
+  const [expandedKeys, setExpandedKeys] = useState<Set<string | number>>(new Set());
+  const toggleExpanded = useCallback((key: string | number) => {
+    setExpandedKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
+
   // Stable identities so the memoized MessageView actually skips re-renders
   // during streaming (ChatWindow re-renders on every token event).
   const toolResultsMap = useMemo(() => {
@@ -261,6 +279,10 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
   // top-anchored reading position is never captured against the user's will.
   const [showJumpToBottom, setShowJumpToBottom] = useState(false);
   const followStreamRef = useRef(false);
+  // "+N lines below" counter: how much new content has accumulated under the
+  // viewport while the reader is NOT following a running stream.
+  const [newLines, setNewLines] = useState(0);
+  const newBaselineRef = useRef(0);
   useEffect(() => {
     const el = scrollContainerRef.current;
     if (!el) return;
@@ -274,12 +296,45 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
         // At the tail = end marker sits in the bottom zone of the viewport.
         // Scrolling up pushes it below the fold → disengage.
         followStreamRef.current = markerTop <= containerBottom + 80 && markerTop >= containerBottom - 250;
+        if (followStreamRef.current) {
+          newBaselineRef.current = el.scrollHeight;
+          setNewLines((v) => (v === 0 ? v : 0));
+        }
       }
     };
     onScroll();
     el.addEventListener("scroll", onScroll, { passive: true });
     return () => el.removeEventListener("scroll", onScroll);
   }, [scrollContainerRef, messagesEndRef, messages.length]);
+
+  // Terminal-style preference: engage follow as soon as a run starts.
+  useEffect(() => {
+    if (agentRunning && getAlwaysFollow()) followStreamRef.current = true;
+  }, [agentRunning]);
+
+  // Re-baseline the "+N" counter whenever layout shifts for non-content
+  // reasons: run start/end, the run spacer mounting/resizing, or a historical
+  // message being expanded/collapsed. Content growth after this is real.
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    newBaselineRef.current = el.scrollHeight;
+    setNewLines(0);
+  }, [agentRunning, spacerHeight, expandedKeys, scrollContainerRef]);
+
+  // Count new content while streaming without following.
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el || !agentRunning) return;
+    if (followStreamRef.current) {
+      newBaselineRef.current = el.scrollHeight;
+      setNewLines((v) => (v === 0 ? v : 0));
+      return;
+    }
+    const delta = el.scrollHeight - newBaselineRef.current;
+    const lines = delta > 12 ? Math.max(1, Math.round(delta / 24)) : 0;
+    setNewLines((v) => (v === lines ? v : lines));
+  }, [messages, streamState.streamingMessage, agentRunning, scrollContainerRef]);
 
   const jumpToBottom = useCallback(() => {
     // block:"end" — with the run spacer mounted below the marker, the default
@@ -323,20 +378,67 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
     return hits;
   }, [messages, findQuery]);
 
+  // Keys of visible messages, parallel to messageRefs — used to auto-expand a
+  // collapsed message before jumping a find match into it.
+  const visibleKeys = useMemo(() => {
+    const keys: (string | number)[] = [];
+    messages.forEach((m, idx) => {
+      if (m.role === "user" || m.role === "assistant") keys.push(entryIds[idx] ?? idx);
+    });
+    return keys;
+  }, [messages, entryIds]);
+
   const gotoMatch = useCallback((pos: number) => {
     const target = findMatches[pos];
     if (target === undefined) return;
-    const el = messageRefs.current[target];
-    if (!el) return;
-    el.scrollIntoView({ block: "center", behavior: "smooth" });
-    el.animate(
-      [
-        { boxShadow: "0 0 0 3px var(--color-accent-border)", borderRadius: "8px" },
-        { boxShadow: "0 0 0 3px transparent", borderRadius: "8px" },
-      ],
-      { duration: 1400, easing: "ease-out" },
-    );
-  }, [findMatches, messageRefs]);
+    const key = visibleKeys[target];
+    if (key !== undefined) {
+      setExpandedKeys((prev) => (prev.has(key) ? prev : new Set(prev).add(key)));
+    }
+    // Give a collapsed target a beat to expand before scrolling to it.
+    setTimeout(() => {
+      const el = messageRefs.current[target];
+      if (!el) return;
+      el.scrollIntoView({ block: "center", behavior: "smooth" });
+      el.animate(
+        [
+          { boxShadow: "0 0 0 3px var(--color-accent-border)", borderRadius: "8px" },
+          { boxShadow: "0 0 0 3px transparent", borderRadius: "8px" },
+        ],
+        { duration: 1400, easing: "ease-out" },
+      );
+    }, 60);
+  }, [findMatches, messageRefs, visibleKeys]);
+
+  // ⌥↑ / ⌥↓ — walk between user turns (each jump aligns a user message to
+  // the viewport top, mirroring the send-time anchor position).
+  useEffect(() => {
+    if (isParallel) return;
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (!e.altKey || e.metaKey || e.ctrlKey || (e.key !== "ArrowUp" && e.key !== "ArrowDown")) return;
+      const container = scrollContainerRef.current;
+      if (!container) return;
+      const cTop = container.getBoundingClientRect().top;
+      const els: HTMLElement[] = [];
+      const tops: number[] = [];
+      let visIdx = 0;
+      for (const msg of messages) {
+        if (msg.role !== "user" && msg.role !== "assistant") continue;
+        const el = messageRefs.current[visIdx];
+        if (msg.role === "user" && el) {
+          els.push(el);
+          tops.push(el.getBoundingClientRect().top - cTop);
+        }
+        visIdx++;
+      }
+      const target = pickTurnTarget(tops, e.key === "ArrowUp" ? "prev" : "next");
+      if (target === null) return;
+      e.preventDefault();
+      els[target].scrollIntoView({ block: "start", behavior: "smooth" });
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isParallel, messages, scrollContainerRef, messageRefs]);
 
   useEffect(() => {
     if (isParallel) return; // one handler per app — main pane owns ⌘F
@@ -562,9 +664,14 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
           <button
             onClick={jumpToBottom}
             aria-label="Jump to bottom"
-            className={`absolute bottom-4 left-1/2 z-10 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--bg-elev-2)] text-[var(--text-muted)] shadow-[var(--color-shadow-dropdown)] transition hover:text-[var(--text)] ${agentRunning ? "border-[var(--color-accent-border)] text-[var(--accent)]" : ""}`}
+            className={`absolute bottom-4 left-1/2 z-10 flex h-8 -translate-x-1/2 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--bg-elev-2)] text-[var(--text-muted)] shadow-[var(--color-shadow-dropdown)] transition hover:text-[var(--text)] ${agentRunning && newLines > 0 ? "gap-1 px-3" : "w-8"} ${agentRunning ? "border-[var(--color-accent-border)] text-[var(--accent)]" : ""}`}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><polyline points="19 12 12 19 5 12" /></svg>
+            {agentRunning && newLines > 0 && (
+              <span className="text-[11.5px] font-medium tabular-nums">
+                +{newLines} {t("chat.lines")}
+              </span>
+            )}
           </button>
         )}
         <div ref={scrollContainerRef} className="flex-1 overflow-y-auto pt-4 [scrollbar-width:none]">
@@ -617,12 +724,20 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                   />
                 );
                 if (!isVisible) return view;
+                // The current turn (last user message onward) never collapses.
+                const collapsible = lastUserIdx === -1 ? idx < messages.length - 1 : idx < lastUserIdx;
                 return (
                   <div key={key} className="msg-item" ref={(el) => {
                     messageRefs.current[currentRefIdx] = el;
                     if (idx === lastUserIdx) { (lastUserMsgRef as { current: HTMLDivElement | null }).current = el; }
                   }}>
-                    {view}
+                    <CollapsibleMessage
+                      collapsible={collapsible}
+                      expanded={expandedKeys.has(key)}
+                      onToggle={() => toggleExpanded(key)}
+                    >
+                      {view}
+                    </CollapsibleMessage>
                   </div>
                 );
               });
@@ -662,11 +777,15 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
               </div>
             )}
 
+            {/* End marker sits BEFORE the run spacer: follow mode and the jump
+                button pin to the tail of real content. If the marker came
+                after the spacer, following a stream would park the viewport in
+                the spacer's blank space instead of on the streaming text. */}
+            <div ref={messagesEndRef} />
+
             {agentRunning && (
               <div style={{ height: spacerHeight ?? "80vh" }} />
             )}
-
-            <div ref={messagesEndRef} />
           </div>
         </div>
         <ChatMinimap

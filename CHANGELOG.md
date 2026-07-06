@@ -4,6 +4,17 @@ All notable changes to tGD-pi-web are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning: `YYYY.MM.DD` (date-based, aligned with upstream tGD).
 
+## [Unreleased]
+
+### Added
+- **Long-message collapse**: historical messages taller than a screen clamp to a 380px preview with a fade and "Show full message · ~N lines" control; the latest exchange always renders in full; ⌘F jumps auto-expand a collapsed target.
+- **Turn navigation**: ⌥↑ / ⌥↓ walk between user messages (aligned to the send-time top-anchor position); added to the shortcuts dialog together with the previously missing ⌘F row.
+- **New-content counter**: while output streams and the reader isn't following, the jump-to-bottom button shows how many lines have accumulated below (`↓ +N lines`).
+- **Always-follow mode**: ⌘K → "Toggle Always-Follow Output" pins the view to streaming output terminal-style; persisted (`pi-follow-stream`), default off.
+
+### Fixed
+- The transcript end marker now renders **before** the run spacer — engaging follow during a run used to pin the viewport to the spacer's blank space instead of the streaming text.
+
 ## [2026.07.06] — 4aa62a9 (PR #1, #2, #3)
 
 ### Added

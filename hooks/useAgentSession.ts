@@ -7,6 +7,7 @@ import { sendAgentCommand } from "@/lib/agent-client";
 import { showToast } from "@/hooks/useToast";
 import { translate } from "@/lib/i18n";
 import { setIdleTitle, setRunningTitle, setDoneTitle, setErrorTitle, notifyDone, requestNotifyPermission } from "@/lib/attention";
+import { getAlwaysFollow } from "@/lib/prefs";
 import type { ToolEntry } from "@/components/modals/ToolPanel";
 import type { SessionData, AgentEvent, AgentPhase, UseAgentSessionOptions, ThinkingLevelOption, ChatInputHandle, AttachedImage } from "./use-agent-session-types";
 import { streamReducer, getRunError } from "./use-agent-session-types";
@@ -718,7 +719,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         // the run spacer has already unmounted by the time this effect runs.
         const el = scrollContainerRef.current;
         const dist = el ? el.scrollHeight - el.scrollTop - el.clientHeight : 0;
-        if (dist < 200) scrollToBottom("smooth");
+        if (dist < 200 || getAlwaysFollow()) scrollToBottom("smooth");
       }
     }
   }, [messages.length, agentRunning, scrollToBottom, scrollUserMsgToTop]);

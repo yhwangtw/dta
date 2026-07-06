@@ -58,6 +58,7 @@ lib/
   session-reader.ts   incremental listing (stat cache) + context building
   i18n.tsx            en/zh-TW strings — module store, useI18n()/translate()
   skin.ts             appearance skins — html[data-skin] token overrides
+  prefs.ts            small persisted UI prefs (always-follow stream)
   attention.ts        tab title store (React-rendered <title>) + notifications
   file-security.ts / file-mime.ts / file-stream.ts / file-paths.ts
   normalize.ts        toolCall field-name normalization
@@ -66,7 +67,8 @@ lib/
 components/
   layout/   AppShell (rail+panels+hotkeys), FilesPanel, ChangesPanel,
             DiffPanel, FileViewer, TabBar, ErrorBoundary, text-viewer/
-  chat/     ChatWindow (find/⌘F, follow-mode scroll, status line),
+  chat/     ChatWindow (find/⌘F, follow-mode scroll, ⌥↑/⌥↓ turn nav, status
+            line), CollapsibleMessage (long-history clamp), turn-nav.ts,
             ChatInput (history ↑, bash prefix), MessageView, BashBlock,
             AssistantMessageView (error card), BranchNavigator, ChatMinimap,
             MarkdownBody (lazy KaTeX/Mermaid/PrismAsync)
@@ -129,6 +131,22 @@ empty/corrupted files as a side effect. Cache lives on `globalThis`
   not smooth (smooth queues jitter at token rate).
 - Jump-to-bottom uses `block:"end"` — `block:"start"` + spacer can scroll the
   conversation out of the viewport.
+- **The end marker renders BEFORE the run spacer.** Follow mode and the jump
+  button pin to the marker; if it sat after the spacer, following a stream
+  would park the viewport in the spacer's blank space instead of on the text.
+- Long-message collapse (`CollapsibleMessage`): history taller than 720px
+  clamps to 380px behind a fade; the current turn (last user message onward)
+  is exempt. Measured in a layout effect (no first-paint jump). ⌘F's
+  `gotoMatch` pre-expands the target via `visibleKeys` before scrolling.
+- ⌥↑/⌥↓ turn nav (`turn-nav.ts`): the pick epsilon (16px) must stay larger
+  than `.msg-item`'s `scroll-margin-top` (10px) or "next" re-selects the
+  currently-aligned message and the jump goes nowhere.
+- "+N lines" counter on the jump button: baseline = scrollHeight, re-anchored
+  on run start/end, spacer resize, expand/collapse, and whenever the reader is
+  at the tail. Only counts while running and not following.
+- Always-follow preference (`lib/prefs.ts`, `pi-follow-stream`): read by
+  ChatWindow (engage follow at run start) AND useAgentSession (end-of-run
+  scroll gate). Toggled from the ⌘K palette, default off.
 
 ### Run outcome signals
 `agent_end` events carry `messages`; `getRunError()`

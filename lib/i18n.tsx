@@ -70,6 +70,10 @@ const MESSAGES = {
   "appearance.dark": { en: "Dark", zh: "深色" },
 
   // ── Chat transcript ──
+  "chat.retry": { en: "Retry last run", zh: "重試上一次執行" },
+  "chat.ctxHigh": { en: "Context is nearly full — compact to free space", zh: "Context 快滿了 — 建議壓縮騰出空間" },
+  "chat.compactNow": { en: "Compact", zh: "壓縮" },
+  "chat.queueCancelAll": { en: "Cancel all", zh: "全部取消" },
   "chat.showFull": { en: "Show full message", zh: "展開完整訊息" },
   "chat.lines": { en: "lines", zh: "行" },
   "chat.collapseMsg": { en: "Collapse message", zh: "收合訊息" },

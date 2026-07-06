@@ -33,7 +33,9 @@ Requirements: Node.js ≥ 22 and a working [pi](https://github.com/earendil-work
 - **Model switching** — Change model and thinking level mid-conversation
 - **Tool panel** — Control which tools the agent can use (none / preset / all)
 - **Compact session** — Summarize long threads to save context window
-- **Honest status** — Live spinner + elapsed timer while running; stall warning when the model stops responding; failed runs show the full error in a red card (never a silent empty reply)
+- **Honest status** — Live spinner + elapsed timer while running; stall warning when the model stops responding; failed runs show the full error in a red card (never a silent empty reply) plus a one-click **Retry** that rolls back and re-sends the same prompt
+- **Context pressure nudge** — At 80%+ context usage a banner suggests compaction with a one-click Compact button
+- **Queue control** — Queued follow-ups are listed individually and can be cancelled one at a time (or all at once)
 
 ### Stay informed while it works
 - **Tab title** — `⏳ session` while running, flashes `✅` on completion (`⚠` on failure)

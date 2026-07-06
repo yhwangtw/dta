@@ -7,6 +7,9 @@ Versioning: `YYYY.MM.DD` (date-based, aligned with upstream tGD).
 ## [Unreleased]
 
 ### Added
+- **One-click Retry** after a failed run: rolls back to before the failed exchange (via `navigate_tree`) and re-sends the same prompt.
+- **Context-pressure nudge**: at ≥80% context usage a warning banner above the input offers one-click compaction.
+- **Individual queue cancel**: queued follow-ups render as separate rows, each cancellable (pi's queue clears wholesale, so removal re-queues the survivors).
 - **Project picker rebuild**: searchable project list with folder name + path + session-count rows, keyboard navigation (↑↓/Enter), pin favorites and remove stale entries (persisted); **filesystem browse mode** (`/api/cwd/browse`) with breadcrumb navigation and "Use this folder"; **path autocomplete** while typing a custom path (debounced suggestions, Tab completes).
 - **Deep file search**: `/api/files/search` (recursive BFS, junk dirs skipped, allowed-roots gated, capped at 200 results / depth 8); the explorer filter switches to flat server results at 2+ chars, folder hits reveal themselves in the tree.
 - **Git-aware explorer**: modified/untracked files carry colored M/A/D/U badges (from `/api/git/changes`); folders containing changes show a dot.

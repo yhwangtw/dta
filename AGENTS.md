@@ -9,7 +9,16 @@ npm run dev   # port 30141
 Typecheck: `node_modules/.bin/tsc --noEmit`  
 Lint: `npx eslint .`  
 Tests: `npm test` (vitest)  
+E2E: `npm run test:e2e` (Playwright — builds and boots a production server on
+:30177 with generated fixtures; **stop `npm run dev` first**, the build step
+corrupts a running dev server's `.next/`. Local containers with a
+preinstalled browser: `PW_CHROMIUM_PATH=/opt/pw-browsers/chromium npm run test:e2e`.)  
 **Never run `next build` while the dev server is running** — pollutes `.next/` and breaks `npm run dev`.
+
+E2E traps: transcript text offscreen is `content-visibility`-skipped and
+Playwright calls it *hidden* — anchor on sidebar text or use `toBeAttached`,
+scroll before visibility asserts. UI strings use the ellipsis character
+(`Message…`, `Filter files…`), not three dots.
 
 ---
 

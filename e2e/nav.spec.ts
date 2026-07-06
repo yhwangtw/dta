@@ -1,5 +1,4 @@
 import { test, expect, type Page } from "@playwright/test";
-import path from "path";
 
 const MAIN = "/?session=aaaa1111-2222-3333-4444-555566667777";
 const PROJECT_CWD = process.env.E2E_PROJECT_CWD!;
@@ -85,7 +84,8 @@ test.describe("project picker", () => {
     // Type the fixture project path minus its last few characters
     const partial = PROJECT_CWD.slice(0, -4);
     await page.getByPlaceholder("/path/to/project").fill(partial);
-    const suggestion = page.locator("button", { hasText: path.basename(PROJECT_CWD) }).first();
+    // Suggestion buttons carry the full path as their title — precise match
+    const suggestion = page.getByTitle(PROJECT_CWD, { exact: true });
     await expect(suggestion).toBeVisible({ timeout: 10_000 });
     await suggestion.click();
     await expect(page.getByPlaceholder("/path/to/project")).toHaveValue(`${PROJECT_CWD}/`);

@@ -17,6 +17,8 @@ interface SessionTreeItemProps {
   tags?: string[];
   onSetTag?: (tag: string) => void;
   onRemoveTag?: (tag: string) => void;
+  isArchived?: boolean;
+  onArchiveToggle?: (id: string) => void;
   isParallelOpen?: boolean;
   onOpenParallel?: (session: SessionInfo) => void;
 }
@@ -33,6 +35,8 @@ export function SessionTreeItem({
   tags,
   onSetTag,
   onRemoveTag,
+  isArchived,
+  onArchiveToggle,
   isParallelOpen = false,
   onOpenParallel,
 }: SessionTreeItemProps) {
@@ -68,6 +72,8 @@ export function SessionTreeItem({
           tags={tags}
           onSetTag={onSetTag}
           onRemoveTag={onRemoveTag}
+          isArchived={isArchived}
+          onArchiveToggle={onArchiveToggle}
           isParallelOpen={isParallelOpen}
           onOpenParallel={onOpenParallel}
         />

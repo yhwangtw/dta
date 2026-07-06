@@ -36,6 +36,8 @@ Requirements: Node.js ≥ 22 and a working [pi](https://github.com/earendil-work
 - **Honest status** — Live spinner + elapsed timer while running; stall warning when the model stops responding; failed runs show the full error in a red card (never a silent empty reply) plus a one-click **Retry** that rolls back and re-sends the same prompt
 - **Context pressure nudge** — At 80%+ context usage a banner suggests compaction with a one-click Compact button
 - **Queue control** — Queued follow-ups are listed individually and can be cancelled one at a time (or all at once)
+- **Tool-call diff view** — `edit` tool calls expand into a real red/green diff and `write` calls show the written file content, instead of raw JSON arguments
+- **Message bookmarks** — Star any message (hover → ☆); bookmarks persist per session and show as amber markers on the minimap
 
 ### Stay informed while it works
 - **Tab title** — `⏳ session` while running, flashes `✅` on completion (`⚠` on failure)
@@ -57,6 +59,7 @@ Requirements: Node.js ≥ 22 and a working [pi](https://github.com/earendil-work
 - **Project picker** — Search projects, pin favorites, remove stale entries; browse the filesystem with breadcrumbs, or type a path with live autocomplete (Tab completes)
 - **Time grouping** — Today / Yesterday / This Week / Earlier
 - **Search, tags, pins** — Instant filter, colored tag chips, pinned sessions float to top
+- **Archive** — Hide finished sessions from the list without deleting them (right-click → Archive); an "Show archived (N)" toggle reveals them and Unarchive restores
 - **Auto-naming** — Generates a title after the first exchange
 - **Fork** — Branch off from any user message into an independent new session
 - **In-session branches** — Roll back to any node and continue; branch navigator in the top bar
@@ -172,8 +175,9 @@ app/api/
   git/              # changes list + per-file diff for the session cwd
   models*, auth/, skills/, cwd/   # config surfaces
 components/
-  layout/           # AppShell (rail + panels), FilesPanel, ChangesPanel,
-                    # DiffPanel, FileViewer, ErrorBoundary
+  layout/           # AppShell (layout wiring), IconRail, ShortcutsDialog,
+                    # FilesPanel, ChangesPanel, DiffPanel, FileViewer,
+                    # ErrorBoundary
   chat/             # ChatWindow, ChatInput, MessageView, BashBlock,
                     # BranchNavigator, ChatMinimap, MarkdownBody
   sidebar/          # SessionSidebar, SessionItem, FileExplorer, CwdPicker
@@ -186,7 +190,10 @@ lib/
   skin.ts           # appearance skin store
   attention.ts      # tab title + notifications store
   file-*.ts         # security / mime / streaming helpers
-hooks/              # useAgentSession, useAppShellState, useSessions, …
+hooks/              # useAgentSession (chat orchestration) + its extracted
+                    # pieces: use-agent-connection (SSE + stall watchdog),
+                    # use-transcript-scroll, use-model-catalog;
+                    # useAppShellState, useSessions, useRightPanelWidth, …
 ```
 
 ## License

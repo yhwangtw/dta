@@ -26,6 +26,8 @@ interface SessionItemProps {
   onRemoveTag?: (tag: string) => void;
   isParallelOpen?: boolean;
   onOpenParallel?: (session: SessionInfo) => void;
+  isArchived?: boolean;
+  onArchiveToggle?: (id: string) => void;
 }
 
 export function SessionItem({
@@ -45,6 +47,8 @@ export function SessionItem({
   onRemoveTag,
   isParallelOpen = false,
   onOpenParallel,
+  isArchived = false,
+  onArchiveToggle,
 }: SessionItemProps) {
   const [renaming, setRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState("");
@@ -310,6 +314,8 @@ export function SessionItem({
           onStartRename={startRename}
           onAddTag={onSetTag ?? (() => {})}
           onRemoveTag={onRemoveTag}
+          isArchived={isArchived}
+          onArchiveToggle={onArchiveToggle}
           onRequestDelete={() => setConfirmDelete(true)}
         />
       )}

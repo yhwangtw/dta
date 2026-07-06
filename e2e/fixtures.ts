@@ -77,5 +77,25 @@ export function createFixtures(root: string): { cwd: string } {
     errorLines.map((l) => JSON.stringify(l)).join("\n") + "\n",
   );
 
+  // Tool-call session — drives the edit/write diff-view spec
+  const toolLines = [
+    { type: "session", version: 3, id: "ffff1111-2222-3333-4444-555566667777", timestamp: "2026-07-05T11:00:00.000Z", cwd },
+    { type: "model_change", id: "e1000001", parentId: null, provider: "anthropic", modelId: "claude-sonnet-5", timestamp: "2026-07-05T11:00:00.000Z" },
+    { type: "message", id: "e1000002", parentId: "e1000001", timestamp: "2026-07-05T11:00:05.000Z", message: { role: "user", content: "把 answer 改成 100 並新增一個 utils 檔", timestamp: 1751713205000 } },
+    { type: "message", id: "e1000003", parentId: "e1000002", timestamp: "2026-07-05T11:00:20.000Z", message: { role: "assistant", content: [
+      { type: "text", text: "好,我先改 `src/index.ts`,再新增 `src/utils.ts`。" },
+      { type: "toolCall", id: "tc_edit_1", name: "edit", arguments: { path: "src/index.ts", oldText: "export const answer = 42;", newText: "export const answer = 100;\n// clamped" } },
+      { type: "toolCall", id: "tc_write_1", name: "write", arguments: { path: "src/utils.ts", content: "export function clamp(value: number, min: number, max: number): number {\n  return Math.min(Math.max(value, min), max);\n}\n" } },
+    ], usage: { input: 900, output: 300, cacheRead: 0, cacheWrite: 0, cost: { total: 0.008 } }, timestamp: 1751713220000 } },
+    { type: "message", id: "e1000004", parentId: "e1000003", timestamp: "2026-07-05T11:00:22.000Z", message: { role: "toolResult", toolCallId: "tc_edit_1", content: [{ type: "text", text: "Edited src/index.ts" }], timestamp: 1751713222000 } },
+    { type: "message", id: "e1000005", parentId: "e1000004", timestamp: "2026-07-05T11:00:24.000Z", message: { role: "toolResult", toolCallId: "tc_write_1", content: [{ type: "text", text: "Wrote src/utils.ts (3 lines)" }], timestamp: 1751713224000 } },
+    { type: "message", id: "e1000006", parentId: "e1000005", timestamp: "2026-07-05T11:00:30.000Z", message: { role: "assistant", content: [{ type: "text", text: "完成:`answer` 改為 100,`src/utils.ts` 新增 `clamp`。" }], usage: { input: 1300, output: 80, cacheRead: 900, cacheWrite: 0, cost: { total: 0.005 } }, timestamp: 1751713230000 } },
+    { type: "session_info", id: "e1000007", parentId: "e1000006", name: "工具呼叫測試" },
+  ];
+  writeFileSync(
+    path.join(sessionsDir, "2026-07-05T11-00-00_ffff1111-2222-3333-4444-555566667777.jsonl"),
+    toolLines.map((l) => JSON.stringify(l)).join("\n") + "\n",
+  );
+
   return { cwd };
 }

@@ -152,3 +152,25 @@
 .dropRipple {
   transform-origin: center;
 }
+
+/* Message bookmark star (top-right of each message row) */
+.bookmarkStar {
+  position: absolute;
+  top: 2px;
+  right: -4px;
+  z-index: 5;
+  padding: 2px;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.bookmarkStar:hover {
+  color: var(--color-warning-text-strong, #d97706);
+}
+
+.bookmarkStarOn {
+  color: var(--color-warning-text-strong, #d97706);
+}

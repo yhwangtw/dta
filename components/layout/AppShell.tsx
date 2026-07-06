@@ -8,11 +8,14 @@ import { FilesPanel } from "./FilesPanel";
 import { ChangesPanel } from "./ChangesPanel";
 import { DiffPanel } from "./DiffPanel";
 import { AppearancePanel } from "./AppearancePanel";
+import { IconRail, type PanelView } from "./IconRail";
+import { ShortcutsDialog } from "./ShortcutsDialog";
 import { TabBar } from "./TabBar";
 import { BranchNavigator } from "../chat/BranchNavigator";
 import { useTheme } from "@/hooks/useTheme";
 import { useAppShellState } from "@/hooks/useAppShellState";
 import { useFileTabs } from "@/hooks/useFileTabs";
+import { useRightPanelWidth } from "@/hooks/useRightPanelWidth";
 import { useSessions } from "@/hooks/useSessions";
 import { useTags } from "@/hooks/useTags";
 import { useCommandPalette } from "@/hooks/useCommandPalette";
@@ -34,8 +37,8 @@ const SkillsConfig = lazy(() => import("../modals/SkillsConfig").then((m) => ({ 
 const AnalyticsModal = lazy(() => import("../modals/AnalyticsModal").then((m) => ({ default: m.AnalyticsModal })));
 
 export function AppShell() {
-  const { isDark, toggleTheme } = useTheme();
-  const { locale, setLocale, t } = useI18n();
+  const { toggleTheme } = useTheme();
+  const { locale, t } = useI18n();
   const { state, actions, refs, topBarRef } = useAppShellState();
   const { fileTabs, activeFileTabId, rightPanelOpen, setRightPanelOpen, setActiveFileTabId, handleOpenFile, handleCloseFileTab } = useFileTabs();
 
@@ -45,7 +48,7 @@ export function AppShell() {
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [panelView, setPanelView] = useState<"sessions" | "files" | "changes">("sessions");
+  const [panelView, setPanelView] = useState<PanelView>("sessions");
   const [diffFile, setDiffFile] = useState<string | null>(null);
   const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
   const [wideChat, setWideChat] = useState(() => {
@@ -59,41 +62,7 @@ export function AppShell() {
     });
   }, []);
 
-  // ── Right panel width: draggable splitter, persisted ────────────────────
-  const [rightWidth, setRightWidth] = useState<number | null>(() => {
-    if (typeof window === "undefined") return null;
-    try {
-      const v = parseInt(localStorage.getItem("pi-right-width") ?? "", 10);
-      return Number.isFinite(v) && v >= 320 ? v : null;
-    } catch {
-      return null;
-    }
-  });
-  const [draggingRight, setDraggingRight] = useState(false);
-  const startRightResize = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    setDraggingRight(true);
-    const onMove = (ev: MouseEvent) => {
-      const max = Math.round(window.innerWidth * 0.7);
-      const w = Math.min(Math.max(window.innerWidth - ev.clientX, 320), max);
-      setRightWidth(w);
-    };
-    const onUp = () => {
-      setDraggingRight(false);
-      setRightWidth((w) => {
-        try { if (w) localStorage.setItem("pi-right-width", String(w)); } catch { /* ignore */ }
-        return w;
-      });
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-    };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-  }, []);
-  const resetRightWidth = useCallback(() => {
-    setRightWidth(null);
-    try { localStorage.removeItem("pi-right-width"); } catch { /* ignore */ }
-  }, []);
+  const { rightWidth, draggingRight, startRightResize, resetRightWidth } = useRightPanelWidth();
   const chatInputRef = useRef<ChatInputHandle | null>(null);
 
   useEffect(() => {
@@ -108,7 +77,7 @@ export function AppShell() {
 
   // Rail behavior: clicking the active view collapses the panel; clicking the
   // other view switches to it (opening the panel if needed).
-  const handleRailView = useCallback((view: "sessions" | "files" | "changes") => {
+  const handleRailView = useCallback((view: PanelView) => {
     if (view === panelView) {
       setSidebarOpen((open) => !open);
     } else {
@@ -183,15 +152,6 @@ export function AppShell() {
   });
 
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
-
-  useEffect(() => {
-    if (!shortcutsOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setShortcutsOpen(false);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [shortcutsOpen]);
 
   // Global hotkeys. Every hint shown in the ⌘K palette must be bound here —
   // an advertised shortcut that does nothing reads as a broken app.
@@ -380,112 +340,18 @@ export function AppShell() {
     <title>{tabTitle}</title>
     <div className={s.container}>
       {/* Icon rail — global navigation, always visible */}
-      <nav className={s.rail} aria-label="Primary">
-        <button
-          onClick={() => handleRailView("sessions")}
-          title="Sessions"
-          aria-pressed={panelView === "sessions" && sidebarOpen}
-          className={`${s.railButton} ${panelView === "sessions" && sidebarOpen ? s.railButtonActive : ""}`}
-        >
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-          </svg>
-        </button>
-        <button
-          onClick={() => handleRailView("files")}
-          title={t("sidebar.explorer")}
-          aria-pressed={panelView === "files" && sidebarOpen}
-          className={`${s.railButton} ${panelView === "files" && sidebarOpen ? s.railButtonActive : ""}`}
-        >
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-          </svg>
-        </button>
-        <button
-          onClick={() => handleRailView("changes")}
-          title="Changes"
-          aria-pressed={panelView === "changes" && sidebarOpen}
-          className={`${s.railButton} ${panelView === "changes" && sidebarOpen ? s.railButtonActive : ""}`}
-        >
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="6" y1="3" x2="6" y2="15" /><circle cx="18" cy="6" r="3" /><circle cx="6" cy="18" r="3" />
-            <path d="M18 9a9 9 0 0 1-9 9" />
-          </svg>
-        </button>
-        <button onClick={() => palette.open()} title={`${t("topbar.searchTitle")}`} className={s.railButton}>
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
-        </button>
-        <button onClick={() => setAnalyticsOpen(true)} title={t("topbar.analyticsTitle")} className={s.railButton}>
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" />
-          </svg>
-        </button>
-        <div className={s.railSpacer} />
-        <button onClick={() => setModelsConfigOpen(true)} title={`${t("sidebar.models")} (⇧⌘M)`} className={s.railButton}>
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="4" y="4" width="16" height="16" rx="2" /><rect x="9" y="9" width="6" height="6" />
-            <line x1="9" y1="1" x2="9" y2="4" /><line x1="15" y1="1" x2="15" y2="4" />
-            <line x1="9" y1="20" x2="9" y2="23" /><line x1="15" y1="20" x2="15" y2="23" />
-            <line x1="20" y1="9" x2="23" y2="9" /><line x1="20" y1="14" x2="23" y2="14" />
-            <line x1="1" y1="9" x2="4" y2="9" /><line x1="1" y1="14" x2="4" y2="14" />
-          </svg>
-        </button>
-        <button
-          onClick={() => setSkillsConfigOpen(true)}
-          disabled={!panelCwd}
-          title={`${t("sidebar.skills")} (⌘/)`}
-          className={s.railButton}
-        >
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />
-          </svg>
-        </button>
-        <button
-          onClick={() => setAppearanceOpen((v) => !v)}
-          title={t("appearance.title")}
-          aria-pressed={appearanceOpen}
-          className={`${s.railButton} ${appearanceOpen ? s.railButtonActive : ""}`}
-        >
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="13.5" cy="6.5" r="0.6" fill="currentColor" />
-            <circle cx="17.5" cy="10.5" r="0.6" fill="currentColor" />
-            <circle cx="8.5" cy="7.5" r="0.6" fill="currentColor" />
-            <circle cx="6.5" cy="12.5" r="0.6" fill="currentColor" />
-            <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" />
-          </svg>
-        </button>
-        <button onClick={() => setLocale(locale === "en" ? "zh" : "en")} title={t("topbar.language")} className={s.railButton}>
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" />
-            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-          </svg>
-        </button>
-        <button
-          onClick={(e) => {
-            const rect = e.currentTarget.getBoundingClientRect();
-            toggleTheme({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
-          }}
-          title={isDark ? t("topbar.lightMode") : t("topbar.darkMode")}
-          aria-pressed={isDark}
-          className={s.railButton}
-        >
-          {isDark ? (
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="5" />
-              <line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" />
-              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-              <line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" />
-              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="5.64" />
-            </svg>
-          ) : (
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-            </svg>
-          )}
-        </button>
-      </nav>
+      <IconRail
+        panelView={panelView}
+        sidebarOpen={sidebarOpen}
+        onSelectView={handleRailView}
+        onOpenPalette={palette.open}
+        onOpenAnalytics={() => setAnalyticsOpen(true)}
+        onOpenModels={() => setModelsConfigOpen(true)}
+        onOpenSkills={() => setSkillsConfigOpen(true)}
+        skillsDisabled={!panelCwd}
+        appearanceOpen={appearanceOpen}
+        onToggleAppearance={() => setAppearanceOpen((v) => !v)}
+      />
       {/* Mobile overlay backdrop */}
       <div
         className="sidebar-overlay-backdrop"
@@ -886,35 +752,7 @@ export function AppShell() {
     )}
     {analyticsOpen && <Suspense fallback={null}><AnalyticsModal open={analyticsOpen} onClose={() => setAnalyticsOpen(false)} /></Suspense>}
     {appearanceOpen && <AppearancePanel onClose={() => setAppearanceOpen(false)} />}
-    {shortcutsOpen && (
-      <div
-        className={s.shortcutsOverlay}
-        onClick={(e) => { if (e.target === e.currentTarget) setShortcutsOpen(false); }}
-        onKeyDown={(e) => { if (e.key === "Escape") setShortcutsOpen(false); }}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Keyboard shortcuts"
-      >
-        <div className={s.shortcutsDialog}>
-          <h3 className={s.shortcutsTitle}>{t("shortcuts.title")}</h3>
-          {([
-            ["⌘K", t("shortcuts.palette")],
-            ["⌘F", t("shortcuts.find")],
-            ["⌥↑ / ⌥↓", t("shortcuts.turnNav")],
-            ["⇧⌘M", t("shortcuts.models")],
-            ["⌘/", t("shortcuts.skills")],
-            ["⌘B", t("shortcuts.sidebar")],
-            ["⌘\\", t("shortcuts.filePanel")],
-            ["Esc", t("shortcuts.close")],
-          ] as [string, string][]).map(([keys, label]) => (
-            <div key={keys} className={s.shortcutRow}>
-              <span>{label}</span>
-              <span className={s.shortcutKbd}>{keys}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    )}
+    {shortcutsOpen && <ShortcutsDialog onClose={() => setShortcutsOpen(false)} />}
     {/* ⌘K Command Palette — last so it sits on top of every modal */}
     <CommandPalette
       palette={palette}

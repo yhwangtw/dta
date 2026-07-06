@@ -46,7 +46,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
   const { selectedCwd } = cwdState;
   const { setSelectedCwd } = cwdActions;
   const { explorerOpen, explorerKey, explorerRefreshDone, toggleExplorer, refreshExplorer } = useExplorer(explorerRefreshKey);
-  const { tags, setTag, removeTag } = useTags();
+  const { tags, setTag, removeTag, sessionTagsOf } = useTags();
   const { showToast } = useToast();
   const { t } = useI18n();
   // Tag filter can be lifted to the parent (e.g. for ⌘K palette control).
@@ -309,7 +309,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                   depth={0}
                   isPinned
                   onPinToggle={handlePinToggle}
-                  tags={tags[node.session.id] ?? []}
+                  tags={sessionTagsOf(node.session.id)}
                   onSetTag={(tag) => { setTag(node.session.id, tag); showToast(`${translate("toast.tagAdded")} #${tag}`, { type: "success" }); }}
                   onRemoveTag={(tag) => { removeTag(node.session.id, tag); showToast(`${translate("toast.tagRemoved")} #${tag}`, { type: "info" }); }}
                   isParallelOpen={parallelSessionIds?.includes(node.session.id) ?? false}
@@ -348,7 +348,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                 depth={0}
                 isPinned={false}
                 onPinToggle={handlePinToggle}
-                tags={tags[node.session.id] ?? []}
+                tags={sessionTagsOf(node.session.id)}
                 onSetTag={(tag) => { setTag(node.session.id, tag); showToast(`${translate("toast.tagAdded")} #${tag}`, { type: "success" }); }}
                 onRemoveTag={(tag) => { removeTag(node.session.id, tag); showToast(`${translate("toast.tagRemoved")} #${tag}`, { type: "info" }); }}
                 isParallelOpen={parallelSessionIds?.includes(node.session.id) ?? false}

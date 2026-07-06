@@ -249,6 +249,14 @@ export function SessionItem({
                     style={{ background: ts.bg, color: ts.fg, borderColor: ts.border }}
                   >
                     #{t}
+                    {onRemoveTag && (
+                      <button
+                        onClick={(e) => handleTagRemove(e, t)}
+                        className={styles.tagChipRemove}
+                        title={`Remove #${t}`}
+                        aria-label={`Remove #${t}`}
+                      >×</button>
+                    )}
                   </span>
                 );
               })}
@@ -301,6 +309,7 @@ export function SessionItem({
           onOpenParallel={onOpenParallel ?? (() => {})}
           onStartRename={startRename}
           onAddTag={onSetTag ?? (() => {})}
+          onRemoveTag={onRemoveTag}
           onRequestDelete={() => setConfirmDelete(true)}
         />
       )}

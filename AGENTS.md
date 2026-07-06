@@ -202,6 +202,14 @@ notification flows through `handleCwdChange`, whose reset path calls
 matches the open session, skip the reset or the `?session=` URL param (and
 reload-restore) silently breaks.
 
+### Session tags — one canonical shape
+The server (`/api/sessions/tags`, `<agent-dir>/tags.json`) stores
+`sessionId → [tags]`. The client (`useTags`) **inverts on load** to
+`tag → [sessionIds]` and everything client-side uses that shape: TagFilter,
+palette, filtering, and `sessionTagsOf()` for per-item chips. Never index the
+client map by session id — that mismatch once made chips render only after a
+reload and removal appear to no-op.
+
 ### Two kinds of branching — don't confuse them
 - **Fork**: new independent `.jsonl` file; shown as a child via
   `parentSession` header (display metadata only — safe to rewrite files).

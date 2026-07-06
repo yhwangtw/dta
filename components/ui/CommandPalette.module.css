@@ -21,8 +21,10 @@
   width: 600px;
   max-width: calc(100vw - 32px);
   max-height: 70vh;
-  background: var(--bg);
-  border: 1px solid var(--border);
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(20px) saturate(1.5);
+  backdrop-filter: blur(20px) saturate(1.5);
+  border: 1px solid var(--glass-border);
   border-radius: 10px;
   display: flex;
   flex-direction: column;

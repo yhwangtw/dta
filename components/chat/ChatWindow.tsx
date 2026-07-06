@@ -613,7 +613,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
       <>
       <div className="relative flex flex-1 overflow-hidden">
         {findOpen && (
-          <div className="absolute right-4 top-2 z-20 flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--bg-elev-2)] px-2 py-1 shadow-[var(--color-shadow-dropdown)]">
+          <div className="glass absolute right-4 top-2 z-20 flex items-center gap-1 rounded-lg border px-2 py-1 shadow-[var(--color-shadow-dropdown)]">
             <input
               ref={findInputRef}
               value={findQuery}
@@ -664,7 +664,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
           <button
             onClick={jumpToBottom}
             aria-label="Jump to bottom"
-            className={`absolute bottom-4 left-1/2 z-10 flex h-8 -translate-x-1/2 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--bg-elev-2)] text-[var(--text-muted)] shadow-[var(--color-shadow-dropdown)] transition hover:text-[var(--text)] ${agentRunning && newLines > 0 ? "gap-1 px-3" : "w-8"} ${agentRunning ? "border-[var(--color-accent-border)] text-[var(--accent)]" : ""}`}
+            className={`glass absolute bottom-4 left-1/2 z-10 flex h-8 -translate-x-1/2 items-center justify-center rounded-full border text-[var(--text-muted)] shadow-[var(--color-shadow-dropdown)] transition hover:text-[var(--text)] ${agentRunning && newLines > 0 ? "gap-1 px-3" : "w-8"} ${agentRunning ? "!border-[var(--color-accent-border)] text-[var(--accent)]" : ""}`}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><polyline points="19 12 12 19 5 12" /></svg>
             {agentRunning && newLines > 0 && (

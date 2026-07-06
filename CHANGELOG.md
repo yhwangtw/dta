@@ -7,6 +7,9 @@ Versioning: `YYYY.MM.DD` (date-based, aligned with upstream tGD).
 ## [Unreleased]
 
 ### Added
+- **Glass skin** (fifth appearance): frosted translucent panels over a fixed aurora-gradient backdrop, light + dark; `⌘K → Appearance: Glass`.
+- **Appearance picker**: palette button in the rail opens a glass popover with a light/dark toggle and swatch cards for all five skins (applies live on click, Esc/outside-click closes); "Open Appearance" also added to ⌘K.
+- **Frosted floating chrome on every skin**: command palette, shortcuts dialog, toasts, ⌘F find bar, jump-to-bottom button, and the top bar now use backdrop-blur glass; `--glass-bg`/`--glass-border` tokens derive from each skin's palette via `color-mix`.
 - **Long-message collapse**: historical messages taller than a screen clamp to a 380px preview with a fade and "Show full message · ~N lines" control; the latest exchange always renders in full; ⌘F jumps auto-expand a collapsed target.
 - **Turn navigation**: ⌥↑ / ⌥↓ walk between user messages (aligned to the send-time top-anchor position); added to the shortcuts dialog together with the previously missing ⌘F row.
 - **New-content counter**: while output streams and the reader isn't following, the jump-to-bottom button shows how many lines have accumulated below (`↓ +N lines`).
@@ -14,6 +17,7 @@ Versioning: `YYYY.MM.DD` (date-based, aligned with upstream tGD).
 
 ### Fixed
 - The transcript end marker now renders **before** the run spacer — engaging follow during a run used to pin the viewport to the spacer's blank space instead of the streaming text.
+- React dev warning (and dev-overlay "1 Issue" badge) on theme switch: code blocks now pin both `background` and `backgroundColor` because the highlighter themes mix the two forms.
 
 ## [2026.07.06] — 4aa62a9 (PR #1, #2, #3)
 

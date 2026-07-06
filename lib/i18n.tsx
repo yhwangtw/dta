@@ -43,6 +43,11 @@ const MESSAGES = {
   "shortcuts.turnNav": { en: "Previous / next user message", zh: "上一則 / 下一則使用者訊息" },
   "shortcuts.close": { en: "Close dialogs", zh: "關閉對話框" },
 
+  // ── Appearance panel ──
+  "appearance.title": { en: "Appearance", zh: "外觀" },
+  "appearance.light": { en: "Light", zh: "淺色" },
+  "appearance.dark": { en: "Dark", zh: "深色" },
+
   // ── Chat transcript ──
   "chat.showFull": { en: "Show full message", zh: "展開完整訊息" },
   "chat.lines": { en: "lines", zh: "行" },

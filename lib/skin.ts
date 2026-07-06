@@ -8,7 +8,7 @@ import { useSyncExternalStore } from "react";
 // "terminal" is the base palette in globals.css (no attribute needed).
 // ============================================================================
 
-export const SKINS = ["terminal", "industrial", "aurora", "editorial"] as const;
+export const SKINS = ["terminal", "industrial", "aurora", "editorial", "glass"] as const;
 export type Skin = (typeof SKINS)[number];
 
 /** Default when the user hasn't picked one. */
@@ -19,6 +19,20 @@ export const SKIN_LABELS: Record<Skin, string> = {
   industrial: "Industrial (mono)",
   aurora: "Aurora (violet)",
   editorial: "Editorial (warm)",
+  glass: "Glass (frost)",
+};
+
+/**
+ * Representative colors for the appearance picker's swatches. This is data
+ * that *depicts* each skin (regardless of the active one), not styling — the
+ * "no hardcoded colors in components" rule doesn't apply here.
+ */
+export const SKIN_PREVIEWS: Record<Skin, { light: string; dark: string; accent: string }> = {
+  terminal: { light: "#fbfdfb", dark: "#0c0e10", accent: "#34d399" },
+  industrial: { light: "#ffffff", dark: "#0a0a0a", accent: "#737373" },
+  aurora: { light: "#fbfaff", dark: "#131020", accent: "#7c3aed" },
+  editorial: { light: "#faf6ee", dark: "#171310", accent: "#b45309" },
+  glass: { light: "#e9edfb", dark: "#0b0e1e", accent: "#5b5bd6" },
 };
 
 const listeners = new Set<() => void>();

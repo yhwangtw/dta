@@ -25,6 +25,7 @@ export type PaletteActionId =
   | "settings:models"
   | "settings:skills"
   | "settings:analytics"
+  | "settings:appearance"
   | "view:toggle-theme"
   | "view:toggle-sidebar"
   | "view:toggle-file-panel"
@@ -34,6 +35,7 @@ export type PaletteActionId =
   | "skin:industrial"
   | "skin:aurora"
   | "skin:editorial"
+  | "skin:glass"
   | "view:clear-tag"
   | "session:new"
   | "session:open-parallel"
@@ -59,12 +61,13 @@ export interface PaletteCallbacks {
   openModels: () => void;
   openSkills: () => void;
   openAnalytics: () => void;
+  openAppearance: () => void;
   toggleTheme: () => void;
   toggleSidebar: () => void;
   toggleFilePanel: () => void;
   toggleChatWidth: () => void;
   toggleFollowStream: () => void;
-  setSkin: (skin: "terminal" | "industrial" | "aurora" | "editorial") => void;
+  setSkin: (skin: "terminal" | "industrial" | "aurora" | "editorial" | "glass") => void;
   newSession: () => void;
   openParallelForActive: () => void;
   openHelp: () => void;
@@ -98,6 +101,14 @@ const ACTIONS: PaletteResult[] = [
     subtitle: "Token usage and cost report for the active session",
     keywords: "stats tokens cost 分析 統計 成本",
     data: { action: "settings:analytics" } as { action: PaletteActionId },
+  },
+  {
+    id: "action:appearance",
+    kind: "action",
+    title: "Open Appearance",
+    subtitle: "Pick a skin and light/dark theme",
+    keywords: "skin theme appearance picker 外觀 皮膚 主題",
+    data: { action: "settings:appearance" } as { action: PaletteActionId },
   },
   {
     id: "action:toggle-theme",
@@ -154,6 +165,14 @@ const ACTIONS: PaletteResult[] = [
     subtitle: "Warm paper tones with burnt orange — the default",
     keywords: "skin theme appearance warm paper orange 外觀 風格 紙 橙",
     data: { action: "skin:editorial" } as { action: PaletteActionId },
+  },
+  {
+    id: "action:skin-glass",
+    kind: "action",
+    title: "Appearance: Glass",
+    subtitle: "Frosted panels over an aurora gradient",
+    keywords: "skin theme appearance glass frost blur glassmorphism 外觀 風格 玻璃 磨砂",
+    data: { action: "skin:glass" } as { action: PaletteActionId },
   },
   {
     id: "action:toggle-chat-width",
@@ -387,6 +406,7 @@ export function useCommandPalette({
         case "settings:models": cbs.openModels(); break;
         case "settings:skills": cbs.openSkills(); break;
         case "settings:analytics": cbs.openAnalytics(); break;
+        case "settings:appearance": cbs.openAppearance(); break;
         case "view:toggle-theme": cbs.toggleTheme(); break;
         case "view:toggle-sidebar": cbs.toggleSidebar(); break;
         case "view:toggle-file-panel": cbs.toggleFilePanel(); break;
@@ -396,6 +416,7 @@ export function useCommandPalette({
         case "skin:industrial": cbs.setSkin("industrial"); break;
         case "skin:aurora": cbs.setSkin("aurora"); break;
         case "skin:editorial": cbs.setSkin("editorial"); break;
+        case "skin:glass": cbs.setSkin("glass"); break;
         case "session:new": cbs.newSession(); break;
         case "session:open-parallel": cbs.openParallelForActive(); break;
         case "help:shortcuts": cbs.openHelp(); break;

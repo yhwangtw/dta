@@ -161,7 +161,19 @@ Base palette (terminal) lives in `:root`/`html.dark`; the other skins are
 `html[data-skin="…"]` token-override blocks in `globals.css` (~23 tokens ×
 skin × theme). Components read CSS variables only — **never hardcode colors**.
 Default skin: `editorial` (see `DEFAULT_SKIN` and the no-flash init script in
-`layout.tsx`).
+`layout.tsx` — adding a skin means updating `SKINS`, the init script's inline
+array, and the palette's `skin:*` actions).
+
+Glass layer: `--glass-bg`/`--glass-border` are derived from each skin's own
+surfaces via `color-mix` in `:root`, so all skins get matching frosted chrome
+(palette, dialogs, toasts, find bar, jump button, top bar) for free. The
+`glass` skin overrides them and sets translucent surface tokens over a fixed
+body gradient; its `--bg-elev-*` stay near-opaque on purpose — dropdowns have
+no backdrop blur and must stay readable over arbitrary content.
+
+Inline-style trap: react-syntax-highlighter themes mix `background` and
+`backgroundColor`; `MarkdownBody`'s customStyle pins **both** so the merged
+style stays stable across theme switches (React dev warns otherwise).
 
 ### cwd-follow must not reset the view
 The sidebar follows the open session's cwd (cross-project selection). That

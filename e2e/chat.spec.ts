@@ -67,7 +67,10 @@ test.describe("chat transcript", () => {
     await page.keyboard.type("第 7 段詳細說明");
     await page.waitForTimeout(400);
     await page.keyboard.press("Enter");
-    await expect(page.getByRole("button", { name: /Collapse message/ }).first()).toBeVisible({ timeout: 5_000 });
+    // Attached, not visible: the expanded message is taller than the viewport
+    // and its collapse control can sit below the fold (content-visibility
+    // reports offscreen content as hidden).
+    await expect(page.getByRole("button", { name: /Collapse message/ }).first()).toBeAttached({ timeout: 5_000 });
   });
 
   test("failed run shows the error card and a Retry action", async ({ page }) => {
@@ -79,7 +82,10 @@ test.describe("chat transcript", () => {
     // itself may fail with a toast, which is fine).
     await retry.click();
     await page.waitForTimeout(1_500);
-    await expect(page.getByPlaceholder("Message…")).toBeVisible();
+    // The app must stay alive whether the resend reached a model (local) or
+    // failed instantly for lack of provider config (CI) — the composer
+    // textarea exists in both states, though its placeholder differs.
+    await expect(page.locator("textarea").first()).toBeVisible();
   });
 
   test("always-follow toggle persists via the palette", async ({ page }) => {

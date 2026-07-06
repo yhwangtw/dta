@@ -216,3 +216,46 @@ export async function GET(
     return NextResponse.json({ error: String(error) }, { status: 500 });
   }
 }
+
+// PUT /api/files/<path>  body: { content: string }
+// Saves a text file edited in the viewer. Existing files only (no create),
+// same allowed-roots gate as reads, capped at the text-preview limit so the
+// editor and the reader agree on what "a text file" is.
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ path: string[] }> }
+) {
+  try {
+    const { path: segments } = await params;
+    const filePath = filePathFromSegments(segments);
+
+    const allowedRoots = await getAllowedRoots();
+    if (!isPathAllowed(filePath, allowedRoots)) {
+      return NextResponse.json({ error: "Access denied" }, { status: 403 });
+    }
+
+    let stat: fs.Stats;
+    try {
+      stat = fs.statSync(filePath);
+    } catch {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    if (!stat.isFile()) {
+      return NextResponse.json({ error: "Not a file" }, { status: 400 });
+    }
+
+    const body = await request.json() as { content?: unknown };
+    if (typeof body.content !== "string") {
+      return NextResponse.json({ error: "content (string) is required" }, { status: 400 });
+    }
+    const bytes = Buffer.byteLength(body.content, "utf8");
+    if (bytes > TEXT_PREVIEW_MAX_BYTES) {
+      return NextResponse.json({ error: `Too large to save (${bytes} bytes)` }, { status: 413 });
+    }
+
+    fs.writeFileSync(filePath, body.content, "utf8");
+    return NextResponse.json({ success: true, size: bytes });
+  } catch (error) {
+    return NextResponse.json({ error: String(error) }, { status: 500 });
+  }
+}

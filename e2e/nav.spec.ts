@@ -84,8 +84,9 @@ test.describe("project picker", () => {
     // Type the fixture project path minus its last few characters
     const partial = PROJECT_CWD.slice(0, -4);
     await page.getByPlaceholder("/path/to/project").fill(partial);
-    // Suggestion buttons carry the full path as their title — precise match
-    const suggestion = page.getByTitle(PROJECT_CWD, { exact: true });
+    // Suggestion entries are <button title="<full path>"> — the picker's main
+    // button (span) and project rows (div) share the title, so pin the tag.
+    const suggestion = page.locator(`button[title="${PROJECT_CWD}"]`);
     await expect(suggestion).toBeVisible({ timeout: 10_000 });
     await suggestion.click();
     await expect(page.getByPlaceholder("/path/to/project")).toHaveValue(`${PROJECT_CWD}/`);

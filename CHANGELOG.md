@@ -8,6 +8,7 @@ Versioning: `YYYY.MM.DD` (date-based, aligned with upstream tGD).
 
 ### Added
 - **Glass skin** (fifth appearance): frosted translucent panels over a fixed aurora-gradient backdrop, light + dark; `⌘K → Appearance: Glass`.
+- **Appearance picker**: palette button in the rail opens a glass popover with a light/dark toggle and swatch cards for all five skins (applies live on click, Esc/outside-click closes); "Open Appearance" also added to ⌘K.
 - **Frosted floating chrome on every skin**: command palette, shortcuts dialog, toasts, ⌘F find bar, jump-to-bottom button, and the top bar now use backdrop-blur glass; `--glass-bg`/`--glass-border` tokens derive from each skin's palette via `color-mix`.
 - **Long-message collapse**: historical messages taller than a screen clamp to a 380px preview with a fade and "Show full message · ~N lines" control; the latest exchange always renders in full; ⌘F jumps auto-expand a collapsed target.
 - **Turn navigation**: ⌥↑ / ⌥↓ walk between user messages (aligned to the send-time top-anchor position); added to the shortcuts dialog together with the previously missing ⌘F row.

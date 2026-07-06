@@ -72,7 +72,8 @@ cd tGD-pi-web
 - **供應商圖示** — Anthropic、OpenAI、Google 等
 
 ### 外觀
-- **五套可切換外觀** — Editorial 米紙暖色(預設)/ Terminal 翡翠綠 / Industrial 工業黑白 / Aurora 極光紫 / Glass 極光漸層磨砂玻璃,每套都有明暗主題。`⌘K` → "Appearance" 切換
+- **五套可切換外觀** — Editorial 米紙暖色(預設)/ Terminal 翡翠綠 / Industrial 工業黑白 / Aurora 極光紫 / Glass 極光漸層磨砂玻璃,每套都有明暗主題
+- **外觀選擇器** — 導航欄的調色盤按鈕打開面板:明暗切換 + 五套皮膚色票卡,點了立即預覽;`⌘K` 也能開
 - **磨砂浮動元件** — 指令面板、對話框、toast、搜尋列、跳轉按鈕都是毛玻璃(backdrop-blur),顏色自動匹配每套外觀
 - **介面語言** — 英文(預設)⇄ 繁體中文,導航欄地球圖示切換
 - **字型** — 內建 Inter + JetBrains Mono,繁體中文優先的 fallback 鏈,零網路依賴

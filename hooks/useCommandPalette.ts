@@ -25,6 +25,7 @@ export type PaletteActionId =
   | "settings:models"
   | "settings:skills"
   | "settings:analytics"
+  | "settings:appearance"
   | "view:toggle-theme"
   | "view:toggle-sidebar"
   | "view:toggle-file-panel"
@@ -60,6 +61,7 @@ export interface PaletteCallbacks {
   openModels: () => void;
   openSkills: () => void;
   openAnalytics: () => void;
+  openAppearance: () => void;
   toggleTheme: () => void;
   toggleSidebar: () => void;
   toggleFilePanel: () => void;
@@ -99,6 +101,14 @@ const ACTIONS: PaletteResult[] = [
     subtitle: "Token usage and cost report for the active session",
     keywords: "stats tokens cost 分析 統計 成本",
     data: { action: "settings:analytics" } as { action: PaletteActionId },
+  },
+  {
+    id: "action:appearance",
+    kind: "action",
+    title: "Open Appearance",
+    subtitle: "Pick a skin and light/dark theme",
+    keywords: "skin theme appearance picker 外觀 皮膚 主題",
+    data: { action: "settings:appearance" } as { action: PaletteActionId },
   },
   {
     id: "action:toggle-theme",
@@ -396,6 +406,7 @@ export function useCommandPalette({
         case "settings:models": cbs.openModels(); break;
         case "settings:skills": cbs.openSkills(); break;
         case "settings:analytics": cbs.openAnalytics(); break;
+        case "settings:appearance": cbs.openAppearance(); break;
         case "view:toggle-theme": cbs.toggleTheme(); break;
         case "view:toggle-sidebar": cbs.toggleSidebar(); break;
         case "view:toggle-file-panel": cbs.toggleFilePanel(); break;

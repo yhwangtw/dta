@@ -7,6 +7,7 @@ import { FileViewer } from "./FileViewer";
 import { FilesPanel } from "./FilesPanel";
 import { ChangesPanel } from "./ChangesPanel";
 import { DiffPanel } from "./DiffPanel";
+import { AppearancePanel } from "./AppearancePanel";
 import { TabBar } from "./TabBar";
 import { BranchNavigator } from "../chat/BranchNavigator";
 import { useTheme } from "@/hooks/useTheme";
@@ -42,6 +43,7 @@ export function AppShell() {
   const [modelsRefreshKey, setModelsRefreshKey] = useState(0);
   const [skillsConfigOpen, setSkillsConfigOpen] = useState(false);
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
+  const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [panelView, setPanelView] = useState<"sessions" | "files" | "changes">("sessions");
   const [diffFile, setDiffFile] = useState<string | null>(null);
@@ -206,6 +208,7 @@ export function AppShell() {
       openModels: () => setModelsConfigOpen(true),
       openSkills: () => setSkillsConfigOpen(true),
       openAnalytics: () => setAnalyticsOpen(true),
+      openAppearance: () => setAppearanceOpen(true),
       toggleTheme: () => toggleTheme(),
       toggleSidebar: () => setSidebarOpen((v) => !v),
       toggleFilePanel: () => setRightPanelOpen((v) => !v),
@@ -399,6 +402,20 @@ export function AppShell() {
         >
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />
+          </svg>
+        </button>
+        <button
+          onClick={() => setAppearanceOpen((v) => !v)}
+          title={t("appearance.title")}
+          aria-pressed={appearanceOpen}
+          className={`${s.railButton} ${appearanceOpen ? s.railButtonActive : ""}`}
+        >
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="13.5" cy="6.5" r="0.6" fill="currentColor" />
+            <circle cx="17.5" cy="10.5" r="0.6" fill="currentColor" />
+            <circle cx="8.5" cy="7.5" r="0.6" fill="currentColor" />
+            <circle cx="6.5" cy="12.5" r="0.6" fill="currentColor" />
+            <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" />
           </svg>
         </button>
         <button onClick={() => setLocale(locale === "en" ? "zh" : "en")} title={t("topbar.language")} className={s.railButton}>
@@ -816,6 +833,7 @@ export function AppShell() {
       <Suspense fallback={null}><SkillsConfig cwd={(state.activeCwd ?? state.selectedSession?.cwd ?? state.newSessionCwd)!} onClose={() => setSkillsConfigOpen(false)} /></Suspense>
     )}
     {analyticsOpen && <Suspense fallback={null}><AnalyticsModal open={analyticsOpen} onClose={() => setAnalyticsOpen(false)} /></Suspense>}
+    {appearanceOpen && <AppearancePanel onClose={() => setAppearanceOpen(false)} />}
     {shortcutsOpen && (
       <div
         className={s.shortcutsOverlay}

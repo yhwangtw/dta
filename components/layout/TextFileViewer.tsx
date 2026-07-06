@@ -5,6 +5,7 @@ import { encodeFilePathForApi, getRelativeFilePath } from "@/lib/file-paths";
 import { useFileWatch } from "@/hooks/useFileWatch";
 import { formatSize, type FileData } from "./file-viewer-utils";
 import { SourceView } from "./text-viewer/SourceView";
+import { PlainSourceView } from "./text-viewer/PlainSourceView";
 import { DiffViewMode } from "./text-viewer/DiffViewMode";
 import { PreviewView } from "./text-viewer/PreviewView";
 import { showToast } from "@/hooks/useToast";
@@ -29,6 +30,17 @@ export function TextFileViewer({ filePath, cwd }: Props) {
   // ── In-file find / go-to-line ────────────────────────────────────────────
   const [findQuery, setFindQuery] = useState("");
   const [findPos, setFindPos] = useState(0);
+  // Debounced: activeLine flips per-line rendering in the highlighter — don't
+  // re-render a big file on every keystroke.
+  const [debouncedFind, setDebouncedFind] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedFind(findQuery), 150);
+    return () => clearTimeout(t);
+  }, [findQuery]);
+
+  // Large files skip syntax highlighting by default (Prism on thousands of
+  // lines janks for seconds); a toolbar button forces it when wanted.
+  const [forceHighlight, setForceHighlight] = useState(false);
 
   // ── Edit mode ────────────────────────────────────────────────────────────
   const [editing, setEditing] = useState(false);
@@ -79,11 +91,14 @@ export function TextFileViewer({ filePath, cwd }: Props) {
     }).finally(() => setLoading(false));
   }, [filePath, fetchContent]);
 
-  // Refresh on file-watch change events — but never clobber an open editor.
+  // Refresh on file-watch change events — debounced 300ms so an agent
+  // writing in bursts triggers one reload, and never clobber an open editor.
   useEffect(() => {
-    if (refreshTrigger > 0 && !editingRef.current) {
-      fetchContent(filePath, true);
-    }
+    if (refreshTrigger === 0) return;
+    const t = setTimeout(() => {
+      if (!editingRef.current) fetchContent(filePath, true);
+    }, 300);
+    return () => clearTimeout(t);
   }, [refreshTrigger, filePath, fetchContent]);
 
   // Reset transient tool state when switching files
@@ -92,21 +107,26 @@ export function TextFileViewer({ filePath, cwd }: Props) {
     setFindPos(0);
     setEditing(false);
     setDraft("");
+    setForceHighlight(false);
   }, [filePath]);
 
-  // Line numbers (1-based) matching the find query; ":123" jumps to a line.
+  // Line numbers (1-based) matching the (debounced) find query; ":123" jumps.
   const matches = useMemo(() => {
     if (!data) return [] as number[];
-    const q = findQuery.trim().toLowerCase();
+    const q = debouncedFind.trim().toLowerCase();
     if (!q || q.startsWith(":")) return [];
     const out: number[] = [];
     data.content.split("\n").forEach((line, i) => {
       if (line.toLowerCase().includes(q)) out.push(i + 1);
     });
     return out;
-  }, [data, findQuery]);
+  }, [data, debouncedFind]);
 
-  const gotoLine = findQuery.trim().startsWith(":") ? parseInt(findQuery.trim().slice(1), 10) : NaN;
+  const lineCount = useMemo(() => (data ? data.content.split("\n").length : 0), [data]);
+  const isLarge = !!data && (data.size > 150_000 || lineCount > 1500);
+  const usePlain = isLarge && !forceHighlight;
+
+  const gotoLine = debouncedFind.trim().startsWith(":") ? parseInt(debouncedFind.trim().slice(1), 10) : NaN;
   const activeLine = Number.isFinite(gotoLine) && gotoLine > 0
     ? gotoLine
     : matches.length > 0
@@ -213,6 +233,19 @@ export function TextFileViewer({ filePath, cwd }: Props) {
             className={`${styles.toggleStandalone} ${wrapLines ? styles.toggleActive : styles.toggleInactive}`}
           >
             wrap
+          </button>
+        )}
+
+        {/* Large-file highlight toggle (plain is the default for big files) */}
+        {viewMode === "source" && !previewMode && !editing && isLarge && (
+          <button
+            onClick={() => setForceHighlight((v) => !v)}
+            title={usePlain
+              ? "Large file — rendered without highlighting. Click to force syntax highlighting (slow)."
+              : "Switch back to fast plain rendering"}
+            className={`${styles.toggleStandalone} ${forceHighlight ? styles.toggleActive : styles.toggleInactive}`}
+          >
+            {usePlain ? "plain·large" : "highlighted"}
           </button>
         )}
 
@@ -338,6 +371,8 @@ export function TextFileViewer({ filePath, cwd }: Props) {
           />
         ) : (isHtml || isMarkdown) && previewMode ? (
           <PreviewView content={data.content} language={data.language} />
+        ) : usePlain ? (
+          <PlainSourceView content={data.content} activeLine={activeLine} />
         ) : (
           <SourceView content={data.content} language={data.language} wrapLines={wrapLines} activeLine={activeLine} />
         )}

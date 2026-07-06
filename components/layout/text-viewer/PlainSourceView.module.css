@@ -1,0 +1,36 @@
+.plainPre {
+  margin: 0;
+  padding: 12px 0;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.6;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100%;
+  overflow-x: auto;
+}
+
+.chunk {
+  /* 500 lines × 20.8px — keeps scrollbar geometry stable while skipped */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 10400px;
+}
+
+.line {
+  white-space: pre;
+  padding: 0 12px 0 0;
+}
+
+.lineActive {
+  composes: line;
+  background: var(--color-accent-bg-strong);
+}
+
+.lineNo {
+  display: inline-block;
+  min-width: 3em;
+  padding-right: 1em;
+  text-align: right;
+  color: var(--text-dim);
+  user-select: none;
+}

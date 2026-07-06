@@ -4,6 +4,12 @@ All notable changes to tGD-pi-web are documented here.
 
 ## [Unreleased]
 
+### Performance
+- **Large files render instantly**: files over 1500 lines / 150KB skip syntax highlighting by default (plain view with line numbers in content-visibility chunks — ~0.7s open vs 60s+ for forced Prism on a 3000-line file); a toolbar toggle forces highlighting when wanted. Find/go-to-line stay exact in plain mode.
+- **Streaming updates throttled to ~12 fps**: markdown re-parses per SSE chunk were O(message length); now the last chunk in each 80ms window wins (flushed exactly on message end).
+- **Streaming code blocks render plain** until the message completes, then highlight once (Prism was re-tokenizing the whole growing block on every chunk — same pattern Mermaid already used).
+- File viewer: `SourceView` memoized, in-file find debounced 150ms, live-watch reloads debounced 300ms so agent write-bursts trigger one refresh.
+
 ### Added
 - **Markdown reading polish**: GFM task lists render with styled checkboxes (no stray bullets), wide tables scroll in their own wrapper with zebra striping, `---` dividers are actually visible, nested lists sit tight, blockquotes use the accent border, and external links open in a new tab with an ↗ marker.
 - The file viewer's Markdown preview now uses the same renderer as chat (math, Mermaid, highlighted code and all the fixes above included).

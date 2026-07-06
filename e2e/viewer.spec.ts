@@ -43,6 +43,19 @@ test.describe("file viewer", () => {
     await expect(page.locator("[data-active-line]").first()).toBeAttached();
   });
 
+  test("large files fall back to plain rendering with working go-to-line", async ({ page }) => {
+    await page.goto(MAIN);
+    await expect(page.getByText("專案架構分析").first()).toBeVisible({ timeout: 20_000 });
+    await page.getByText("big-file.ts").first().click();
+    // Plain mode by default: toolbar badge present, zero Prism tokens
+    await expect(page.getByText("plain·large")).toBeVisible({ timeout: 15_000 });
+    expect(await page.locator(".right-panel-container span[class*='token']").count()).toBe(0);
+    // go-to-line still exact
+    await page.locator("input[placeholder='find / :line']").fill(":1500");
+    await expect(page.locator("[data-active-line]").first()).toBeVisible();
+    await expect(page.locator("[data-active-line]").first()).toContainText("item1498");
+  });
+
   test("edit → save writes the file to disk", async ({ page }) => {
     await openReadme(page);
     await page.getByRole("button", { name: "Raw", exact: true }).click();

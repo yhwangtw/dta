@@ -108,7 +108,7 @@ export function MarkdownBody({ children, className, isStreaming }: MarkdownBodyP
               if (lang === "mermaid") {
                 return <MermaidBlock code={raw.replace(/\n$/, "")} isStreaming={isStreaming} />;
               }
-              return <CodeBlock code={raw.replace(/\n$/, "")} lang={lang} />;
+              return <CodeBlock code={raw.replace(/\n$/, "")} lang={lang} plain={isStreaming} />;
             }
             return (
               <code
@@ -271,7 +271,7 @@ function MermaidBlock({ code, isStreaming }: { code: string; isStreaming?: boole
   );
 }
 
-function CodeBlock({ code, lang, headerAction }: { code: string; lang: string; headerAction?: ReactNode }) {
+function CodeBlock({ code, lang, headerAction, plain }: { code: string; lang: string; headerAction?: ReactNode; plain?: boolean }) {
   const { isDark } = useTheme();
   const [copied, setCopied] = useState(false);
 
@@ -296,6 +296,12 @@ function CodeBlock({ code, lang, headerAction }: { code: string; lang: string; h
           </button>
         </div>
       </div>
+      {plain ? (
+        // Streaming: Prism re-tokenizes the whole growing block on every
+        // chunk — render plain until the message completes, then highlight
+        // once. Same pattern as Mermaid.
+        <pre className={styles.plainStreamPre}><code>{code}</code></pre>
+      ) : (
       <SyntaxHighlighter
         language={lang || "text"}
         style={isDark ? vscDarkPlus : vs}
@@ -318,6 +324,7 @@ function CodeBlock({ code, lang, headerAction }: { code: string; lang: string; h
       >
         {code}
       </SyntaxHighlighter>
+      )}
     </div>
   );
 }

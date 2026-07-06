@@ -52,6 +52,9 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   // Seconds since the last SSE event while a run is active; 0 = healthy.
   const [stalledSecs, setStalledSecs] = useState(0);
   const lastEventAtRef = useRef(Date.now());
+  // Streaming-update throttle (see the message_update case)
+  const pendingStreamMsgRef = useRef<AgentMessage | null>(null);
+  const streamFlushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const eventSourceRef = useRef<EventSource | null>(null);
   const sessionIdRef = useRef<string | null>(session?.id ?? null);
@@ -212,6 +215,13 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         if (sessionIdRef.current) loadSession(sessionIdRef.current);
         break;
       case "agent_end":
+        // Cancel any throttled streaming frame (aborted runs may end without
+        // a message_end).
+        pendingStreamMsgRef.current = null;
+        if (streamFlushTimerRef.current != null) {
+          clearTimeout(streamFlushTimerRef.current);
+          streamFlushTimerRef.current = null;
+        }
         setAgentRunning(false);
         setAgentPhase(null);
         setRetryInfo(null);
@@ -258,12 +268,36 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
           break;
         }
         if (msg) {
-          dispatch({ type: "update", message: normalizeToolCalls(msg as AgentMessage) });
+          const normalized = normalizeToolCalls(msg as AgentMessage);
+          if (event.type === "message_start") {
+            dispatch({ type: "update", message: normalized });
+          } else {
+            // Throttle streaming updates: every chunk re-parses the whole
+            // message's markdown (O(length) per token). Batch to ~12
+            // frames/sec — the last chunk in each window wins.
+            pendingStreamMsgRef.current = normalized;
+            if (streamFlushTimerRef.current == null) {
+              streamFlushTimerRef.current = setTimeout(() => {
+                streamFlushTimerRef.current = null;
+                if (pendingStreamMsgRef.current) {
+                  dispatch({ type: "update", message: pendingStreamMsgRef.current });
+                  pendingStreamMsgRef.current = null;
+                }
+              }, 80);
+            }
+          }
         }
         setAgentPhase(null);
         break;
       }
       case "message_end": {
+        // Drop any pending throttled frame — the completed message wins, and
+        // a late flush after the reset would resurrect the streaming bubble.
+        pendingStreamMsgRef.current = null;
+        if (streamFlushTimerRef.current != null) {
+          clearTimeout(streamFlushTimerRef.current);
+          streamFlushTimerRef.current = null;
+        }
         const completed = event.message as AgentMessage | undefined;
         if (completed && completed.role !== "user") {
           setMessages((prev) => [...prev, normalizeToolCalls(completed)]);

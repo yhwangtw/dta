@@ -62,10 +62,14 @@ test.describe("chat transcript", () => {
 
   test("⌘F jump auto-expands a collapsed match", async ({ page }) => {
     await openMain(page);
-    // A phrase that only lives deep inside the collapsed long message
+    // A phrase that only lives deep inside the collapsed long message.
+    // fill() the find input directly — keyboard.type races the rAF focus
+    // on slow runners and drops leading characters.
     await page.keyboard.press("Control+f");
-    await page.keyboard.type("第 7 段詳細說明");
-    await page.waitForTimeout(400);
+    const findInput = page.getByPlaceholder("Find in conversation…");
+    await expect(findInput).toBeVisible();
+    await findInput.fill("第 7 段詳細說明");
+    await page.waitForTimeout(200);
     await page.keyboard.press("Enter");
     // Attached, not visible: the expanded message is taller than the viewport
     // and its collapse control can sit below the fold (content-visibility

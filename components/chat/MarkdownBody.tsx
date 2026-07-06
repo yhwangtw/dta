@@ -122,6 +122,28 @@ export function MarkdownBody({ children, className, isStreaming }: MarkdownBodyP
           pre({ children }) {
             return <>{children}</>;
           },
+          // Wide tables scroll in their own wrapper instead of squishing the
+          // column layout (or overflowing the bubble).
+          table({ children, ...props }) {
+            return (
+              <div className="md-table-wrap">
+                <table {...props}>{children}</table>
+              </div>
+            );
+          },
+          // External links open in a new tab (and get the ↗ marker via CSS).
+          a({ href, children, ...props }) {
+            const external = typeof href === "string" && /^https?:\/\//.test(href);
+            return (
+              <a
+                href={href}
+                {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                {...props}
+              >
+                {children}
+              </a>
+            );
+          },
         }}
       >
         {normalizedMarkdown}

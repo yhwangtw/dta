@@ -1,7 +1,6 @@
 "use client";
 
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { MarkdownBody } from "@/components/chat/MarkdownBody";
 import styles from "../TextFileViewer.module.css";
 
 interface Props {
@@ -21,9 +20,11 @@ export function PreviewView({ content, language }: Props) {
     );
   }
   if (language === "markdown") {
+    // Same renderer as chat messages — math, mermaid, code highlighting,
+    // table wrappers, and external-link handling all come along for free.
     return (
-      <div className={`markdown-body markdown-file-preview ${styles.markdownPreview}`}>
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+      <div className={styles.markdownPreview}>
+        <MarkdownBody className="markdown-file-preview">{content}</MarkdownBody>
       </div>
     );
   }

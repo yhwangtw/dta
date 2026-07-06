@@ -5,6 +5,8 @@ All notable changes to tGD-pi-web are documented here.
 ## [Unreleased]
 
 ### Added
+- **Markdown reading polish**: GFM task lists render with styled checkboxes (no stray bullets), wide tables scroll in their own wrapper with zebra striping, `---` dividers are actually visible, nested lists sit tight, blockquotes use the accent border, and external links open in a new tab with an ↗ marker.
+- The file viewer's Markdown preview now uses the same renderer as chat (math, Mermaid, highlighted code and all the fixes above included).
 - **Resizable file panel**: drag the left edge (persisted as `pi-right-width`), double-click to reset to the 42% default.
 - **File viewer power-ups**: in-file find with match cycling and `:N` go-to-line (highlighted + centered), copy-contents button, and **edit-in-place** — Save (⌘S)/Cancel backed by a new `PUT /api/files/<path>` (existing text files only, allowed-roots gated, size-capped; the live-watch refresh never clobbers an open editor).
 - `e2e/viewer.spec.ts`: splitter drag/persist/reset, find + go-to-line, edit → save-to-disk round-trip.

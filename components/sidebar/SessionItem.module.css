@@ -161,8 +161,8 @@
   gap: 2px;
   font-size: 10.5px;
   line-height: 1.2;
-  padding: 1px 6px;
-  border-radius: 8px;
+  padding: 2px 7px;
+  border-radius: 999px;
   background: var(--color-accent-bg);
   color: var(--color-accent);
   font-weight: 500;

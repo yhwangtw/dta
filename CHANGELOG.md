@@ -1,6 +1,16 @@
 # Changelog
 
 All notable changes to tGD-pi-web are documented here.
+
+## [Unreleased]
+
+### Fixed
+- **Session tags were broken in both directions**: the server stores `sessionId → [tags]` but the client treated the same map as `tag → [sessionIds]` — the two keyings only agreed by accident, so chips appeared only after a reload, removal looked like it did nothing, and tag filtering broke after refresh. `useTags` now inverts the server map on load and everything client-side uses one canonical shape.
+- **Tags with ≤3 entries could not be removed at all**: the inline chips had no remove control (only the overflow row did). Every chip now has an ×, and the session context menu lists current tags with per-tag removal.
+
+### Changed
+- Tag chip styling unified across the session items, the filter row, and the context menu (same pill radius/padding).
+- New `e2e/tags.spec.ts` covers add → immediate chip render → remove via chip and via menu → filter round-trip.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning: `YYYY.MM.DD` (date-based, aligned with upstream tGD); same-day
 re-releases append `-N`. Safe for the npx flow (npm's `latest` dist-tag =

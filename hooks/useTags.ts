@@ -18,8 +18,19 @@ export function useTags() {
     try {
       const res = await fetch("/api/sessions/tags");
       if (!res.ok) return;
-      const data = await res.json() as { tags?: SessionTags };
-      setTags(data.tags ?? {});
+      const data = await res.json() as { tags?: Record<string, string[]> };
+      // The server stores sessionId → [tags]; everything client-side works
+      // with the inverse (tag → [sessionIds]) for cheap filter lookups.
+      // Historically this inversion was missing and the two keyings were
+      // used interchangeably — chips/filters only agreed by accident.
+      const inverted: SessionTags = {};
+      for (const [sessionId, tagList] of Object.entries(data.tags ?? {})) {
+        for (const tag of tagList) {
+          if (!inverted[tag]) inverted[tag] = [];
+          if (!inverted[tag].includes(sessionId)) inverted[tag].push(sessionId);
+        }
+      }
+      setTags(inverted);
     } catch {
       // best-effort
     } finally {

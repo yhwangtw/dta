@@ -101,3 +101,38 @@
 .tagInput::placeholder {
   color: var(--text-dim);
 }
+
+/* Current tags with per-tag remove */
+.tagList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px 10px 6px 32px;
+}
+
+.tagListChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 10.5px;
+  line-height: 1.2;
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-weight: 500;
+}
+
+.tagListRemove {
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 12px;
+  line-height: 1;
+  padding: 0 0 0 2px;
+  cursor: pointer;
+  opacity: 0.6;
+}
+
+.tagListRemove:hover {
+  opacity: 1;
+}

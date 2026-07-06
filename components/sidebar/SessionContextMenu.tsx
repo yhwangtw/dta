@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import type { SessionInfo } from "@/lib/types";
+import { getTagStyle } from "@/lib/tag-colors";
+import { useTheme } from "@/hooks/useTheme";
 import styles from "./SessionContextMenu.module.css";
 
 export interface SessionContextMenuPosition {
@@ -21,6 +23,7 @@ interface SessionContextMenuProps {
   onOpenParallel: (session: SessionInfo) => void;
   onStartRename: () => void;
   onAddTag: (tag: string) => void;
+  onRemoveTag?: (tag: string) => void;
   onRequestDelete: () => void;
 }
 
@@ -35,8 +38,10 @@ export function SessionContextMenu({
   onOpenParallel,
   onStartRename,
   onAddTag,
+  onRemoveTag,
   onRequestDelete,
 }: SessionContextMenuProps) {
+  const { theme } = useTheme();
   const [addingTag, setAddingTag] = useState(false);
   const [tagDraft, setTagDraft] = useState("");
   const menuRef = useRef<HTMLDivElement>(null);
@@ -81,7 +86,7 @@ export function SessionContextMenu({
     }
     // First measure the menu, then clamp
     const MENU_W = 200;
-    const MENU_H = addingTag ? 220 : 180;
+    const MENU_H = (addingTag ? 220 : 180) + (existingTags.length > 0 ? 34 : 0);
     const padding = 6;
     const vw = window.innerWidth;
     const vh = window.innerHeight;
@@ -90,7 +95,7 @@ export function SessionContextMenu({
     if (left + MENU_W + padding > vw) left = Math.max(padding, vw - MENU_W - padding);
     if (top + MENU_H + padding > vh) top = Math.max(padding, vh - MENU_H - padding);
     setClampedPos({ left, top });
-  }, [position, addingTag]);
+  }, [position, addingTag, existingTags.length]);
 
   const runAndClose = useCallback(
     (fn: () => void) => {
@@ -201,6 +206,29 @@ export function SessionContextMenu({
           </svg>
           <span>Add tag</span>
         </button>
+      )}
+      {/* Current tags — click × to remove (the menu stays open for multi-remove) */}
+      {onRemoveTag && existingTags.length > 0 && (
+        <div className={styles.tagList} role="menuitem" aria-label="Current tags">
+          {existingTags.map((tag) => {
+            const ts = getTagStyle(tag, theme);
+            return (
+              <span
+                key={tag}
+                className={styles.tagListChip}
+                style={{ background: ts.bg, color: ts.fg, borderColor: ts.border }}
+              >
+                #{tag}
+                <button
+                  onClick={() => onRemoveTag(tag)}
+                  className={styles.tagListRemove}
+                  title={`Remove #${tag}`}
+                  aria-label={`Remove #${tag}`}
+                >×</button>
+              </span>
+            );
+          })}
+        </div>
       )}
       <div className={styles.separator} />
       <button role="menuitem" onClick={handleDelete} className={`${styles.menuItem} ${styles.menuItemDanger}`}>

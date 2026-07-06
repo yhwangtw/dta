@@ -4,7 +4,7 @@ All notable changes to tGD-pi-web are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning: `YYYY.MM.DD` (date-based, aligned with upstream tGD).
 
-## [Unreleased]
+## [2026.07.07] — eeacb35 (PR #6, #7, #8)
 
 ### Added
 - **Glass skin** (fifth appearance): frosted translucent panels over a fixed aurora-gradient backdrop, light + dark; `⌘K → Appearance: Glass`.

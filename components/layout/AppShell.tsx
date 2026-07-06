@@ -312,6 +312,7 @@ export function AppShell() {
           onOpenFile={handleOpenFile}
           explorerRefreshKey={state.explorerRefreshKey}
           onAtMention={handleAtMention}
+          onOpenDiff={handleOpenDiff}
           onOpenParallel={actions.openParallel}
           parallelSessionIds={state.parallelSessions.map((s) => s.id)}
           activeTagFilter={activeTagFilter}
@@ -323,6 +324,7 @@ export function AppShell() {
           onOpenFile={handleOpenFile}
           onAtMention={handleAtMention}
           refreshKey={state.explorerRefreshKey}
+          onOpenDiff={handleOpenDiff}
         />
       ) : (
         <ChangesPanel

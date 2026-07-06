@@ -24,6 +24,7 @@
     "release": "npm version patch --no-git-tag-version && npm run build && npm publish --access public",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "playwright test",
     "analyze": "ANALYZE=true next build --webpack"
   },
   "overrides": {
@@ -49,6 +50,7 @@
   },
   "devDependencies": {
     "@next/bundle-analyzer": "^16.2.10",
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4.2.2",
     "@types/node": "^26.0.1",
     "@types/react": "^19",

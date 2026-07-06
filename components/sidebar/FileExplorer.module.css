@@ -109,3 +109,85 @@
   font-size: 11px;
   color: var(--text-dim);
 }
+
+/* Keyboard-focused row */
+.treeNode:focus,
+.searchHit:focus {
+  outline: 1px solid var(--color-accent-border);
+  outline-offset: -1px;
+  border-radius: 4px;
+}
+
+/* Git status */
+.gitBadge {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.dirtyDot {
+  flex-shrink: 0;
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--color-warning-text-strong, #d97706);
+  opacity: 0.7;
+}
+
+/* Deep-search flat results */
+.searchHit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.hitText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.hitPath {
+  font-size: 9.5px;
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Context menu */
+.contextMenu {
+  position: fixed;
+  z-index: 1300;
+  min-width: 168px;
+  padding: 4px;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  box-shadow: var(--color-shadow-dropdown);
+}
+
+.menuItem {
+  display: block;
+  width: 100%;
+  padding: 6px 9px;
+  border: none;
+  border-radius: 5px;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  text-align: left;
+  font-size: 11.5px;
+  font-family: inherit;
+}
+
+.menuItem:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}

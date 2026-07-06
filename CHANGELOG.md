@@ -4,6 +4,19 @@ All notable changes to tGD-pi-web are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning: `YYYY.MM.DD` (date-based, aligned with upstream tGD).
 
+## [Unreleased]
+
+### Added
+- **In-repo E2E suite**: 15 Playwright specs (chat, appearance, navigation) run against a production server with generated fixtures (`e2e/fixtures.ts` builds a real git demo project + pi session files); new CI `E2E` job with report artifact on failure. `npm run test:e2e`.
+- **One-click Retry** after a failed run: rolls back to before the failed exchange (via `navigate_tree`) and re-sends the same prompt.
+- **Context-pressure nudge**: at ≥80% context usage a warning banner above the input offers one-click compaction.
+- **Individual queue cancel**: queued follow-ups render as separate rows, each cancellable (pi's queue clears wholesale, so removal re-queues the survivors).
+- **Project picker rebuild**: searchable project list with folder name + path + session-count rows, keyboard navigation (↑↓/Enter), pin favorites and remove stale entries (persisted); **filesystem browse mode** (`/api/cwd/browse`) with breadcrumb navigation and "Use this folder"; **path autocomplete** while typing a custom path (debounced suggestions, Tab completes).
+- **Deep file search**: `/api/files/search` (recursive BFS, junk dirs skipped, allowed-roots gated, capped at 200 results / depth 8); the explorer filter switches to flat server results at 2+ chars, folder hits reveal themselves in the tree.
+- **Git-aware explorer**: modified/untracked files carry colored M/A/D/U badges (from `/api/git/changes`); folders containing changes show a dot.
+- **Explorer context menu**: copy path / copy relative path / insert @ mention / view diff (for changed files, opens the HEAD ↔ worktree diff panel).
+- **Explorer keyboard navigation**: ↑↓ move, ←→ collapse/expand, Enter opens.
+
 ## [2026.07.07] — eeacb35 (PR #6, #7, #8)
 
 ### Added

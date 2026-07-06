@@ -33,7 +33,9 @@ Requirements: Node.js ≥ 22 and a working [pi](https://github.com/earendil-work
 - **Model switching** — Change model and thinking level mid-conversation
 - **Tool panel** — Control which tools the agent can use (none / preset / all)
 - **Compact session** — Summarize long threads to save context window
-- **Honest status** — Live spinner + elapsed timer while running; stall warning when the model stops responding; failed runs show the full error in a red card (never a silent empty reply)
+- **Honest status** — Live spinner + elapsed timer while running; stall warning when the model stops responding; failed runs show the full error in a red card (never a silent empty reply) plus a one-click **Retry** that rolls back and re-sends the same prompt
+- **Context pressure nudge** — At 80%+ context usage a banner suggests compaction with a one-click Compact button
+- **Queue control** — Queued follow-ups are listed individually and can be cancelled one at a time (or all at once)
 
 ### Stay informed while it works
 - **Tab title** — `⏳ session` while running, flashes `✅` on completion (`⚠` on failure)
@@ -52,6 +54,7 @@ Requirements: Node.js ≥ 22 and a working [pi](https://github.com/earendil-work
 
 ### Session Management
 - **Session browser** — Grouped by working directory, auto-detects recent projects
+- **Project picker** — Search projects, pin favorites, remove stale entries; browse the filesystem with breadcrumbs, or type a path with live autocomplete (Tab completes)
 - **Time grouping** — Today / Yesterday / This Week / Earlier
 - **Search, tags, pins** — Instant filter, colored tag chips, pinned sessions float to top
 - **Auto-naming** — Generates a title after the first exchange
@@ -62,6 +65,9 @@ Requirements: Node.js ≥ 22 and a working [pi](https://github.com/earendil-work
 
 ### Files & Changes
 - **Files view** — Full-height file tree in the rail panel; a collapsible tree also lives under the session list (your choice persists)
+- **Deep file search** — Typing 2+ characters in the tree filter searches the whole project recursively (server-side, junk dirs skipped) and shows flat results; clicking a folder result reveals it in the tree
+- **Git-aware tree** — Modified/untracked files carry M/A/D/U badges; folders containing changes get a dot; right-click → view diff
+- **Context menu & keyboard** — Copy path / relative path / @ mention / view diff on right-click; navigate the tree with ↑ ↓ ← → and Enter
 - **Changes view** — Git working-tree status for the session cwd (branch, per-file status + stats), refreshed after every agent turn; click a file for a HEAD ↔ worktree diff
 - **File preview** — Source with highlighting, Markdown/HTML preview, images, diffs
 - **@-mention** — Insert a file path into the chat input from the tree

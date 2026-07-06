@@ -175,7 +175,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
     lastUserMsgRef,
     handleSend, handleAbort, handleFork, handleNavigate, handleModelChange,
     handleCompact, handleSteer, handleFollowUp, handleAbortCompaction,
-    handleToolPresetChange, handleThinkingLevelChange, handleClearQueue, handleAbortBash, handleAgentEventRef,
+    handleToolPresetChange, handleThinkingLevelChange, handleClearQueue, handleRemoveQueued, handleRetry, handleAbortBash, handleAgentEventRef,
   } = useAgentSession({
     session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked,
     modelsRefreshKey, onBranchDataChange, onSystemPromptChange, onSessionNamed,
@@ -743,6 +743,21 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
               });
             })()}
 
+            {/* One-click retry when the last run ended in failure */}
+            {!agentRunning && messages.length > 0 &&
+              messages[messages.length - 1].role === "assistant" &&
+              (messages[messages.length - 1] as { stopReason?: string }).stopReason === "error" && (
+              <button
+                onClick={() => void handleRetry()}
+                className="mb-3 inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-error-border,rgba(239,68,68,0.35))] bg-[var(--color-error-bg,rgba(239,68,68,0.08))] px-3 py-1.5 text-[12px] font-medium text-[var(--color-error-text)] transition hover:bg-[var(--color-error-bg-strong,rgba(239,68,68,0.16))]"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <polyline points="23 4 23 10 17 10" /><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                </svg>
+                {t("chat.retry")}
+              </button>
+            )}
+
             {bashRun && (
               <BashBlock
                 command={bashRun.command}
@@ -797,22 +812,49 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
       </div>
 
       <div className="relative">
-        {queuedFollowUps.length > 0 && (
+        {/* Context-pressure nudge: suggest compaction before it's too late */}
+        {contextUsage?.percent != null && contextUsage.percent >= 80 && !isCompacting && (
           <div className={`mx-auto flex items-center gap-2 px-4 pb-1 ${wideChat ? "max-w-[1180px]" : "max-w-[820px]"}`}>
             <div className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-[var(--color-warning-border)] bg-[var(--color-warning-bg)] px-3 py-1.5 text-[12px] text-[var(--color-warning-text)]">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
               <span className="truncate">
-                {queuedFollowUps.length === 1
-                  ? `Queued: ${queuedFollowUps[0]}`
-                  : `${queuedFollowUps.length} follow-ups queued`}
+                {t("chat.ctxHigh")} ({Math.round(contextUsage.percent)}%)
               </span>
               <button
-                onClick={handleClearQueue}
-                className="ml-auto shrink-0 rounded px-1.5 py-0.5 text-[11px] hover:bg-[var(--color-warning-bg-strong)]"
-                title="Cancel queued follow-ups"
+                onClick={handleCompact}
+                disabled={agentRunning}
+                className="ml-auto shrink-0 rounded border border-[var(--color-warning-border)] px-2 py-0.5 text-[11px] font-medium hover:bg-[var(--color-warning-bg-strong)] disabled:opacity-50"
               >
-                Cancel
+                {t("chat.compactNow")}
               </button>
+            </div>
+          </div>
+        )}
+        {queuedFollowUps.length > 0 && (
+          <div className={`mx-auto px-4 pb-1 ${wideChat ? "max-w-[1180px]" : "max-w-[820px]"}`}>
+            <div className="flex flex-col gap-1 rounded-lg border border-[var(--color-warning-border)] bg-[var(--color-warning-bg)] px-3 py-1.5 text-[12px] text-[var(--color-warning-text)]">
+              {queuedFollowUps.map((q, i) => (
+                <div key={`${i}-${q.slice(0, 24)}`} className="flex min-w-0 items-center gap-2">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+                  <span className="min-w-0 flex-1 truncate" title={q}>{q}</span>
+                  <button
+                    onClick={() => void handleRemoveQueued(i)}
+                    className="shrink-0 rounded p-0.5 hover:bg-[var(--color-warning-bg-strong)]"
+                    title="Cancel this follow-up"
+                    aria-label="Cancel this follow-up"
+                  >
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                  </button>
+                </div>
+              ))}
+              {queuedFollowUps.length > 1 && (
+                <button
+                  onClick={handleClearQueue}
+                  className="self-end rounded px-1.5 py-0.5 text-[11px] hover:bg-[var(--color-warning-bg-strong)]"
+                >
+                  {t("chat.queueCancelAll")}
+                </button>
+              )}
             </div>
           </div>
         )}

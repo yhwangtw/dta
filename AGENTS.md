@@ -9,7 +9,16 @@ npm run dev   # port 30141
 Typecheck: `node_modules/.bin/tsc --noEmit`  
 Lint: `npx eslint .`  
 Tests: `npm test` (vitest)  
+E2E: `npm run test:e2e` (Playwright — builds and boots a production server on
+:30177 with generated fixtures; **stop `npm run dev` first**, the build step
+corrupts a running dev server's `.next/`. Local containers with a
+preinstalled browser: `PW_CHROMIUM_PATH=/opt/pw-browsers/chromium npm run test:e2e`.)  
 **Never run `next build` while the dev server is running** — pollutes `.next/` and breaks `npm run dev`.
+
+E2E traps: transcript text offscreen is `content-visibility`-skipped and
+Playwright calls it *hidden* — anchor on sidebar text or use `toBeAttached`,
+scroll before visibility asserts. UI strings use the ellipsis character
+(`Message…`, `Filter files…`), not three dots.
 
 ---
 
@@ -50,6 +59,12 @@ app/api/
   agent/[id]/summarize/route.ts   POST — auto-naming (skips named sessions)
   git/changes/route.ts            GET ?cwd= — status --porcelain + numstat
   git/file-diff/route.ts          GET ?cwd=&path= — HEAD vs worktree text
+  files/search/route.ts           GET ?cwd=&q= — recursive filename search
+                                  (BFS, allowed-roots gated, 200/depth-8 caps)
+  cwd/browse/route.ts             POST {path} — dirs-only listing for the
+                                  project picker (same trust model as
+                                  cwd/validate: picking a NEW workspace may
+                                  point anywhere; it becomes an allowed root)
   files/, models*, auth/, skills/, cwd/   unchanged surfaces
 
 lib/

@@ -608,6 +608,53 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     }
   }, []);
 
+  /**
+   * Remove ONE queued follow-up. pi's queue API only clears wholesale, so
+   * this clears and re-queues the survivors. If the run finishes mid-swap the
+   * worst case is a follow-up delivering slightly later — never a duplicate.
+   */
+  const handleRemoveQueued = useCallback(async (idx: number) => {
+    const sid = sessionIdRef.current;
+    if (!sid) return;
+    const remaining = queuedFollowUps.filter((_, i) => i !== idx);
+    try {
+      await sendAgentCommand(sid, { type: "clear_queue" });
+      for (const message of remaining) {
+        await sendAgentCommand(sid, { type: "follow_up", message });
+      }
+      setQueuedFollowUps(remaining);
+    } catch (e) {
+      showToast(`${translate("toast.followUpFailed")}: ${e instanceof Error ? e.message : e}`, { type: "error" });
+    }
+  }, [queuedFollowUps]);
+
+  /**
+   * Re-run the last failed exchange: roll back to the node before the last
+   * user message (dropping the errored attempt into a dead branch), then
+   * send the same prompt again.
+   */
+  const handleRetry = useCallback(async () => {
+    if (agentRunning) return;
+    let lastUserIdx = -1;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === "user") { lastUserIdx = i; break; }
+    }
+    if (lastUserIdx === -1) return;
+    const content = (messages[lastUserIdx] as { content?: unknown }).content;
+    const text = typeof content === "string"
+      ? content
+      : Array.isArray(content)
+        ? (content as Array<{ type?: string; text?: string }>).filter((b) => b.type === "text").map((b) => b.text ?? "").join("\n")
+        : "";
+    if (!text.trim()) return;
+    let prevEntryId: string | undefined;
+    for (let i = lastUserIdx - 1; i >= 0; i--) {
+      if (entryIds[i]) { prevEntryId = entryIds[i]; break; }
+    }
+    if (prevEntryId) await handleNavigate(prevEntryId);
+    await handleSend(text);
+  }, [messages, entryIds, agentRunning, handleNavigate, handleSend]);
+
   const handleAbortBash = useCallback(async () => {
     const sid = sessionIdRef.current;
     if (!sid) return;
@@ -782,7 +829,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     // Actions
     handleSend, handleAbort, handleFork, handleNavigate, handleModelChange,
     handleCompact, handleSteer, handleFollowUp, handleAbortCompaction,
-    handleToolPresetChange, handleThinkingLevelChange, handleClearQueue, handleAbortBash, loadTools, setActiveLeafId, setData, setMessages,
+    handleToolPresetChange, handleThinkingLevelChange, handleClearQueue, handleRemoveQueued, handleRetry, handleAbortBash, loadTools, setActiveLeafId, setData, setMessages,
     dispatch, setAgentRunning, setForkingEntryId,
     // Subscriptions
     handleAgentEventRef,

@@ -4,6 +4,9 @@ All notable changes to tGD-pi-web are documented here.
 
 ## [Unreleased]
 
+### Added
+- **Skills panel shows the full SKILL.md content**, rendered as markdown (same renderer as chat) in a scrollable box under the existing Name/Description fields. New `GET /api/skills?cwd=…&content=<filePath>` returns one skill's body; the path must match a skill the resource loader actually discovered, so it can't be used to read arbitrary files.
+
 ### Changed
 - **Right-panel resizer hover no longer glows accent-orange**: hovering shows a quiet neutral line; the accent line appears only while actually dragging.
 - **HTML preview iframe is always white** — pages without their own background used to inherit the app's dark theme and render default-black text on a dark bg.

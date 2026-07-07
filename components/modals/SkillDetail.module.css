@@ -117,3 +117,14 @@
   color: var(--text-muted);
   line-height: 1.6;
 }
+
+/* SKILL.md body — rendered markdown in a bounded, scrollable box */
+.contentBox {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  padding: 12px 14px;
+  max-height: 46vh;
+  overflow-y: auto;
+  font-size: 13px;
+}

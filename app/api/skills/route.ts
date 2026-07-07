@@ -1,12 +1,17 @@
 import { NextResponse } from "next/server";
 import { existsSync, readFileSync, writeFileSync } from "fs";
-import { DefaultResourceLoader, getAgentDir, parseFrontmatter } from "@earendil-works/pi-coding-agent";
+import { DefaultResourceLoader, getAgentDir, parseFrontmatter, stripFrontmatter } from "@earendil-works/pi-coding-agent";
 
 export const dynamic = "force-dynamic";
 
 // GET /api/skills?cwd=<path>
 // Uses DefaultResourceLoader (same logic as AgentSession startup) so settings.json
 // skill paths, package skills, and .agents/skills directories are all included.
+//
+// GET /api/skills?cwd=<path>&content=<filePath>
+// Returns one skill's markdown body. The path must match a skill the loader
+// discovered for this cwd — that membership check (not a prefix test) is what
+// keeps the param from becoming an arbitrary-file read.
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const cwd = searchParams.get("cwd");
@@ -16,6 +21,18 @@ export async function GET(req: Request) {
     const loader = new DefaultResourceLoader({ cwd, agentDir: getAgentDir() });
     await loader.reload();
     const { skills, diagnostics } = loader.getSkills();
+
+    const contentPath = searchParams.get("content");
+    if (contentPath) {
+      const skill = skills.find((s: { filePath: string }) => s.filePath === contentPath);
+      if (!skill || !existsSync(contentPath)) {
+        return NextResponse.json({ error: "not a known skill file" }, { status: 404 });
+      }
+      // Frontmatter (name/description/flags) already renders as fields in the
+      // UI — return just the instruction body.
+      return NextResponse.json({ content: stripFrontmatter(readFileSync(contentPath, "utf8")) });
+    }
+
     return NextResponse.json({ skills, diagnostics });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });

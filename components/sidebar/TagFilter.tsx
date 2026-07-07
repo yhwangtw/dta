@@ -26,9 +26,11 @@ export function TagFilter({ tags, activeTag, onSelectTag }: Props) {
         const ts = getTagStyle(tag, theme);
         const isActive = activeTag === tag;
         // Active state keeps the same hue but uses a stronger fill so it reads
-        // as "selected" against the row background.
+        // as "selected". ts.fg is dark in light mode / pastel in dark mode, so
+        // the text sitting on top of it flips with the theme.
+        const activeText = theme === "dark" ? "#1a1a1a" : "#ffffff";
         const bg = isActive ? ts.fg : ts.bg;
-        const fg = isActive ? "#ffffff" : ts.fg;
+        const fg = isActive ? activeText : ts.fg;
         const border = isActive ? ts.fg : ts.border;
         return (
           <button
@@ -38,10 +40,15 @@ export function TagFilter({ tags, activeTag, onSelectTag }: Props) {
             title={`${count} session${count === 1 ? "" : "s"} tagged #${tag}`}
             style={{ background: bg, color: fg, borderColor: border }}
           >
-            <span className={styles.hash}>#</span>{tag}
+            #{tag}
             <span
               className={styles.count}
-              style={isActive ? { background: "rgba(255,255,255,0.25)", color: "#fff" } : undefined}
+              // Badge stays in the tag's own hue: the stronger border tint
+              // doubles as its fill (gray --bg-elev-2 looked foreign next to
+              // the identical chips on the session rows).
+              style={isActive
+                ? { background: theme === "dark" ? "rgba(0,0,0,0.18)" : "rgba(255,255,255,0.28)", color: activeText }
+                : { background: ts.border, color: ts.fg }}
             >
               {count}
             </span>

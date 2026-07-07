@@ -1,5 +1,6 @@
 import { createAgentSession, SessionManager } from "@earendil-works/pi-coding-agent";
 import { cacheSessionPath } from "./session-reader";
+import { createSnapshot } from "./git-snapshot";
 import type { AgentSessionLike, ToolInfo } from "./pi-types";
 
 // ============================================================================
@@ -25,7 +26,7 @@ export class AgentSessionWrapper {
   private onDestroyCallback: (() => void) | null = null;
   private _alive = true;
 
-  constructor(public readonly inner: AgentSessionLike) {}
+  constructor(public readonly inner: AgentSessionLike, public readonly cwd: string = "") {}
 
   get sessionId(): string {
     return this.inner.sessionId;
@@ -70,6 +71,12 @@ export class AgentSessionWrapper {
 
     switch (type) {
       case "prompt": {
+        // Snapshot the working tree before the run so its file changes can be
+        // rolled back later (best-effort; no-op outside a git repo). Awaited so
+        // the capture lands before the agent starts editing.
+        if (this.cwd) {
+          await createSnapshot(this.cwd, this.inner.sessionId, "Before run").catch(() => {});
+        }
         // Fire and forget — events come via subscribe
         const promptImages = command.images as Array<{ type: "image"; data: string; mimeType: string }> | undefined;
         this.inner.prompt(command.message as string, promptImages?.length ? { images: promptImages } : undefined).catch(() => {});
@@ -358,7 +365,7 @@ export async function startRpcSession(
       inner.agent.state.systemPrompt = "";
     }
 
-    const wrapper = new AgentSessionWrapper(inner);
+    const wrapper = new AgentSessionWrapper(inner, cwd);
     wrapper.start();
 
     const realSessionId = inner.sessionId as string;

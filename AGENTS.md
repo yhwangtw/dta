@@ -217,6 +217,16 @@ palette, filtering, and `sessionTagsOf()` for per-item chips. Never index the
 client map by session id — that mismatch once made chips render only after a
 reload and removal appear to no-op.
 
+### File snapshots (`lib/git-snapshot.ts`)
+Git-backed restore points captured before each run (rpc-manager's `prompt` case
++ the `/tgd-*` command route call `createSnapshot`). Uses a throwaway
+`GIT_INDEX_FILE` to `add -A` + `write-tree` (never touches the user's index/HEAD),
+`commit-tree` the result, and keeps it via `refs/pi/snap/<sessionId>/<id>`.
+Metadata in `<agent-dir>/snapshots/<sessionId>.json`. **Restore is a precise
+delta**: diff snapshot-commit vs current working tree, then per file — M/D
+`git checkout <snap> -- file`, A (created since) `rm`. Path-guarded to stay
+inside cwd. Dedup by tree sha; cap 20/session. Git repos only.
+
 ### Prompt templates
 User-defined reusable prompts. Server (`/api/prompts`, `<agent-dir>/prompts.json`)
 stores `[{id, name, body}]`. `usePrompts` is a module-level store (shared across

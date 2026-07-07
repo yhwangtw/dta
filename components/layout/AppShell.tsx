@@ -328,6 +328,7 @@ export function AppShell() {
       ) : (
         <ChangesPanel
           cwd={panelCwd}
+          sessionId={state.selectedSession?.id ?? null}
           refreshKey={state.refreshKey}
           onOpenDiff={handleOpenDiff}
           selectedPath={diffFile}

@@ -163,6 +163,9 @@
   line-height: 1.2;
   padding: 2px 7px;
   border-radius: 999px;
+  /* transparent border so the inline borderColor from getTagStyle shows —
+     keeps the pill identical to TagFilter / context-menu chips */
+  border: 1px solid transparent;
   background: var(--color-accent-bg);
   color: var(--color-accent);
   font-weight: 500;

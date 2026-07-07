@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { MarkdownBody } from "./MarkdownBody";
 import type {
   UserMessage,
@@ -41,14 +41,17 @@ function copyText(text: string): Promise<void> {
   }
 }
 
-export function UserMessageView({ message, entryId, onFork, forking, onNavigate, prevAssistantEntryId, onEditContent }: {
+export function UserMessageView({ message, entryId, onFork, forking, prevAssistantEntryId, onEditRerun }: {
   message: UserMessage;
   entryId?: string;
   onFork?: (entryId: string) => void;
   forking?: boolean;
+  /** @deprecated superseded by inline edit (onEditRerun); still accepted for compat */
   onNavigate?: (entryId: string) => void;
   prevAssistantEntryId?: string;
+  /** @deprecated superseded by inline edit (onEditRerun) */
   onEditContent?: (content: string) => void;
+  onEditRerun?: (prevAssistantEntryId: string | undefined, newText: string) => void;
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -60,6 +63,27 @@ export function UserMessageView({ message, entryId, onFork, forking, onNavigate,
           .map((b) => b.text)
           .join("\n");
 
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(content);
+  const editRef = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    if (!editing) return;
+    const ta = editRef.current;
+    if (!ta) return;
+    ta.focus();
+    ta.setSelectionRange(ta.value.length, ta.value.length);
+    ta.style.height = "auto";
+    ta.style.height = `${ta.scrollHeight}px`;
+  }, [editing]);
+
+  const startEdit = () => { setDraft(content); setEditing(true); };
+  const commitEdit = () => {
+    const text = draft.trim();
+    if (!text) return;
+    setEditing(false);
+    onEditRerun?.(prevAssistantEntryId, text);
+  };
+
   const imageBlocks: ImageContent[] =
     typeof message.content === "string"
       ? []
@@ -67,7 +91,7 @@ export function UserMessageView({ message, entryId, onFork, forking, onNavigate,
 
   const time = formatTime(message.timestamp);
   const canFork = !!entryId && !!onFork;
-  const canNavigate = !!prevAssistantEntryId && !!onNavigate;
+  const canEdit = !!prevAssistantEntryId && !!onEditRerun;
 
   const copyContent = () => {
     copyText(content).then(() => {
@@ -81,6 +105,36 @@ export function UserMessageView({ message, entryId, onFork, forking, onNavigate,
       className={`hover-group ${styles.root}`}
     >
       <div className={styles.messageRow}>
+        {editing ? (
+          <div className={styles.editBox}>
+            <textarea
+              ref={editRef}
+              value={draft}
+              onChange={(e) => {
+                setDraft(e.target.value);
+                e.target.style.height = "auto";
+                e.target.style.height = `${e.target.scrollHeight}px`;
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") { e.preventDefault(); setEditing(false); }
+                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); commitEdit(); }
+              }}
+              className={styles.editTextarea}
+              spellCheck={false}
+            />
+            <div className={styles.editActions}>
+              <span className={styles.editHint}>Re-runs from here — later turns are replaced</span>
+              <button onClick={() => setEditing(false)} className={styles.editCancel}>Cancel</button>
+              <button onClick={commitEdit} disabled={!draft.trim()} className={styles.editRerunBtn}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="23 4 23 10 17 10" />
+                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                </svg>
+                Rerun
+              </button>
+            </div>
+          </div>
+        ) : (
         <div
           className={styles.bubble}
         >
@@ -111,11 +165,12 @@ export function UserMessageView({ message, entryId, onFork, forking, onNavigate,
           )}
           {content && <MarkdownBody className="markdown-user-message">{content}</MarkdownBody>}
         </div>
+        )}
 
       </div>
 
-      {/* Bottom row: action buttons + timestamp */}
-      {(time || canFork || canNavigate || true) && (
+      {/* Bottom row: action buttons + timestamp (hidden while editing) */}
+      {!editing && (
         <div className={styles.bottomRow}>
           <div className={`hover-reveal ${styles.actionButtons}`}>
             <button
@@ -136,19 +191,18 @@ export function UserMessageView({ message, entryId, onFork, forking, onNavigate,
               {copied ? "Copied" : "Copy"}
             </button>
           </div>
-          {(canFork || canNavigate) && (
+          {(canFork || canEdit) && (
             <div className={`${forking ? "" : "hover-reveal"} ${styles.actionButtons}`}>
-              {canNavigate && (
+              {canEdit && (
                 <button
-                  onClick={() => { onNavigate!(prevAssistantEntryId!); onEditContent?.(content); }}
-                  title="Edit from here — branches within this session"
+                  onClick={startEdit}
+                  title="Edit this message and re-run from here — branches within this session"
                   className={`${styles.actionButton} text-dim hover-accent`}
                 >
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="15 10 20 15 15 20" />
-                    <path d="M4 4v7a4 4 0 0 0 4 4h12" />
+                    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
                   </svg>
-                  Edit from here
+                  Edit
                 </button>
               )}
               {canFork && (

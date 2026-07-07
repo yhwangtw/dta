@@ -92,6 +92,28 @@ test.describe("chat transcript", () => {
     await expect(page.locator("textarea").first()).toBeVisible();
   });
 
+  test("edit turns a past user message into an inline editor prefilled with its text", async ({ page }) => {
+    await openMain(page);
+    const userMsg = page.getByText("services 層有沒有需要重構的地方").first();
+    await userMsg.scrollIntoViewIfNeeded();
+    await userMsg.hover();
+    await page.getByRole("button", { name: "Edit", exact: true }).first().click();
+    // The bubble becomes a textarea prefilled with the message text, plus Rerun.
+    await expect
+      .poll(async () => {
+        for (const ta of await page.locator("textarea").all()) {
+          if ((await ta.inputValue()).includes("services 層有沒有需要重構的地方")) return true;
+        }
+        return false;
+      }, { timeout: 5_000 })
+      .toBe(true);
+    await expect(page.getByRole("button", { name: "Rerun" })).toBeVisible();
+    // Cancel restores the read-only bubble
+    await page.getByRole("button", { name: "Cancel" }).click();
+    await expect(page.getByRole("button", { name: "Rerun" })).toHaveCount(0);
+    await expect(page.getByText("services 層有沒有需要重構的地方").first()).toBeVisible();
+  });
+
   test("always-follow toggle persists via the palette", async ({ page }) => {
     await openMain(page);
     for (const round of ["on", "off"] as const) {

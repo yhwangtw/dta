@@ -44,6 +44,38 @@
   font-display: swap;
 }
 
+/* Noto Sans TC — bundled so Traditional Chinese renders with TC glyphs on
+   every platform (was falling back to system CJK: PingFang on macOS, but on
+   Linux/Windows often a Simplified-default Noto or an ugly bitmap font, so
+   the same Han codepoints drew with the wrong regional shapes). Subset to CJK
+   only — the unicode-range keeps Latin/digits on Inter — and shipped in 3
+   weights (600 rounds up to 700). Full ideograph coverage, so no character
+   ever falls through to a system font. */
+@font-face {
+  font-family: 'Noto Sans TC';
+  src: url('/fonts/noto-sans-tc-regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+F900-FAFF, U+FE30-FE4F, U+FF00-FFEF;
+}
+@font-face {
+  font-family: 'Noto Sans TC';
+  src: url('/fonts/noto-sans-tc-medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+F900-FAFF, U+FE30-FE4F, U+FF00-FFEF;
+}
+@font-face {
+  font-family: 'Noto Sans TC';
+  src: url('/fonts/noto-sans-tc-bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+F900-FAFF, U+FE30-FE4F, U+FF00-FFEF;
+}
+
 @theme {
   --color-bg: var(--bg);
   --color-bg-panel: var(--bg-panel);
@@ -554,7 +586,7 @@ body {
 }
 
 :root {
-  --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', 'Consolas', ui-monospace, monospace, 'PingFang TC', 'Microsoft JhengHei';
+  --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', 'Consolas', ui-monospace, monospace, 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei';
 }
 
 pre, code {

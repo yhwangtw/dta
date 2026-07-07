@@ -4,7 +4,8 @@
   gap: 4px;
   padding: 6px 10px;
   border-bottom: 1px solid var(--border);
-  background: var(--bg-elev-1);
+  /* No own background — --bg-elev-1 is pure white in the light skins and
+     showed up as a stark band against the sidebar's tinted background. */
 }
 
 /* Base pill matches .tagChip on the session rows (same size/padding/radius/

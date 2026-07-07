@@ -5,7 +5,7 @@ All notable changes to tGD-pi-web are documented here.
 ## [Unreleased]
 
 ### Changed
-- **Tag filter chips (top of the sidebar) now match the session-row chips exactly**: no more gap between `#` and the name, the count badge is tinted in the tag's own hue instead of foreign gray, hover no longer jumps the chip, and the active (selected) fill uses theme-aware text — dark text on the pastel fill in dark mode instead of unreadable white. Session-row chips also gained the same 1px hue border the other chips already had.
+- **Tag filter chips (top of the sidebar) now match the session-row chips exactly**: no more gap between `#` and the name, the count badge is tinted in the tag's own hue instead of foreign gray, hover no longer jumps the chip, and the active (selected) fill uses theme-aware text — dark text on the pastel fill in dark mode instead of unreadable white. Session-row chips also gained the same 1px hue border the other chips already had. The filter row itself no longer paints its own `--bg-elev-1` background (pure white in the light skins — it showed as a stark band against the sidebar's tinted background).
 
 ### Fixed
 - **`/tgd-*` commands failed with "Command not found" in resumed sessions** (fresh sessions were fine). The input handler special-cased `/tgd-*` and, for existing sessions only, routed it through `/api/agent/[id]/command` — an exact `extensionRunner.getCommand()` lookup that misses whenever the tGD workflow isn't registered under that exact extension-command name. Slash commands now always go through the normal prompt path, where pi itself resolves them (extension command → input hook → skill → prompt template → plain text), identically for new and resumed sessions.

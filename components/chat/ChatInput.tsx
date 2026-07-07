@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useRef, useState, useCallback, useEffect, useImperativeHandle, forwardRef, KeyboardEvent } from "react";
-import { COMPOSITION_END_ENTER_GRACE_MS, TGD_COMMANDS } from "./chat-input-constants";
-import { SlashMenu } from "./SlashMenu";
+import React, { useRef, useState, useCallback, useEffect, useMemo, useImperativeHandle, forwardRef, KeyboardEvent } from "react";
+import { COMPOSITION_END_ENTER_GRACE_MS, buildSlashItems } from "./chat-input-constants";
+import { SlashMenu, filterSlashItems } from "./SlashMenu";
+import { usePrompts } from "@/hooks/usePrompts";
 import { ModelSelector } from "./ModelSelector";
 import { ThinkingSelector } from "./ThinkingSelector";
 import { ToolPresetSelector } from "./ToolPresetSelector";
@@ -59,6 +60,8 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
   soundEnabled, onSoundToggle,
 }: Props, ref) {
   const { t } = useI18n();
+  const { prompts } = usePrompts();
+  const slashItems = useMemo(() => buildSlashItems(prompts), [prompts]);
   const [value, setValue] = useState("");
   const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([]);
   const [showSlashMenu, setShowSlashMenu] = useState(false);
@@ -215,9 +218,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
 
       // Slash menu navigation
       if (showSlashMenu) {
-        const filtered = TGD_COMMANDS.filter((cmd) =>
-          cmd.name.toLowerCase().includes(slashFilter.toLowerCase())
-        );
+        const filtered = filterSlashItems(slashItems, slashFilter);
 
         if (e.key === "ArrowDown") {
           e.preventDefault();
@@ -232,8 +233,9 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
         if (e.key === "Enter" && !e.shiftKey) {
           e.preventDefault();
           if (filtered[slashSelectedIndex]) {
-            // Insert command into textarea, don't auto-send
-            setValue(filtered[slashSelectedIndex].name + " ");
+            // Insert the item's payload (tGD `/name `, or a template's body),
+            // don't auto-send.
+            setValue(filtered[slashSelectedIndex].insert);
             setShowSlashMenu(false);
             setSlashFilter("");
             setSlashSelectedIndex(0);
@@ -291,7 +293,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
         }
       }
     },
-    [isStreaming, onSteer, onFollowUp, sendQueued, handleSend, showSlashMenu, slashFilter, slashSelectedIndex, value]
+    [isStreaming, onSteer, onFollowUp, sendQueued, handleSend, showSlashMenu, slashFilter, slashSelectedIndex, slashItems, value]
   );
 
   const handleInput = useCallback(() => {
@@ -450,10 +452,11 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
           {/* Slash command menu */}
           <SlashMenu
             show={showSlashMenu}
+            items={slashItems}
             filter={slashFilter}
             selectedIndex={slashSelectedIndex}
-            onSelect={(cmd) => {
-              setValue(cmd);
+            onSelect={(insert) => {
+              setValue(insert);
               setShowSlashMenu(false);
               setSlashFilter("");
               setSlashSelectedIndex(0);

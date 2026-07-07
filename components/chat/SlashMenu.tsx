@@ -1,25 +1,30 @@
 "use client";
 
 import { useRef } from "react";
-import { TGD_COMMANDS } from "./chat-input-constants";
+import type { SlashItem } from "./chat-input-constants";
 import styles from "./SlashMenu.module.css";
 
 interface SlashMenuProps {
   show: boolean;
+  items: SlashItem[];
   filter: string;
   selectedIndex: number;
-  onSelect: (command: string) => void;
+  /** Called with the text to insert into the composer (item.insert). */
+  onSelect: (insert: string) => void;
   onHover: (index: number) => void;
   onLeave: () => void;
   onClose: () => void;
 }
 
-export function SlashMenu({ show, filter, selectedIndex, onSelect, onHover, onLeave }: SlashMenuProps) {
+export function filterSlashItems(items: SlashItem[], filter: string): SlashItem[] {
+  const f = filter.toLowerCase();
+  return items.filter((it) => it.name.toLowerCase().includes(f));
+}
+
+export function SlashMenu({ show, items, filter, selectedIndex, onSelect, onHover, onLeave }: SlashMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const filtered = TGD_COMMANDS.filter((cmd) =>
-    cmd.name.toLowerCase().includes(filter.toLowerCase())
-  );
+  const filtered = filterSlashItems(items, filter);
 
   if (!show || filtered.length === 0) return null;
 
@@ -28,19 +33,20 @@ export function SlashMenu({ show, filter, selectedIndex, onSelect, onHover, onLe
       ref={menuRef}
       className={styles.menu}
     >
-      {filtered.map((cmd, i) => (
+      {filtered.map((item, i) => (
         <button
-          key={cmd.name}
-          onClick={() => onSelect(cmd.name + " ")}
+          key={item.name + (item.isTemplate ? ":tpl" : "")}
+          onClick={() => onSelect(item.insert)}
           onMouseEnter={() => onHover(i)}
           onMouseLeave={() => { if (i === selectedIndex) onLeave(); }}
           className={`${styles.item} ${i === selectedIndex ? "bg-selected" : "bg-none hover-bg-text text-muted"} ${i === selectedIndex ? styles.itemSelected : ""}`}
         >
           <span className={styles.commandName}>
-            {cmd.name}
+            {item.name}
+            {item.isTemplate && <span className={styles.templateTag}>template</span>}
           </span>
           <span className={styles.description}>
-            {cmd.description}
+            {item.description}
           </span>
         </button>
       ))}

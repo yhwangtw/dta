@@ -217,11 +217,25 @@ palette, filtering, and `sessionTagsOf()` for per-item chips. Never index the
 client map by session id — that mismatch once made chips render only after a
 reload and removal appear to no-op.
 
+### Prompt templates
+User-defined reusable prompts. Server (`/api/prompts`, `<agent-dir>/prompts.json`)
+stores `[{id, name, body}]`. `usePrompts` is a module-level store (shared across
+instances, same pattern as `useToast`) so the composer's `/` menu and the
+manager modal (⌘K → Prompt templates) stay in sync. `buildSlashItems()` merges
+them with the built-in `TGD_COMMANDS`; a tGD item inserts `/name `, a template
+inserts its `body`. Names are slugified server-side so `/name` is unambiguous.
+
 ### Two kinds of branching — don't confuse them
 - **Fork**: new independent `.jsonl` file; shown as a child via
   `parentSession` header (display metadata only — safe to rewrite files).
 - **In-session branch**: `navigate_tree` within one file; switching loads
   `/api/sessions/[id]/context?leafId=`.
+
+### Edit-and-rerun a past turn
+`UserMessageView` inline editor → `handleEditRerun(prevEntryId, newText)` in
+`useAgentSession`: `navigate_tree` back to the entry before the turn, then send
+the edited text as a fresh branch. Same primitives as `handleRetry` (which does
+the last turn, unedited).
 
 ### ToolCall field normalization
 Pi stores `{type:"toolCall", id, name, arguments}` but `ToolCallContent` uses

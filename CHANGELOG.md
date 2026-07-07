@@ -5,6 +5,9 @@ All notable changes to tGD-pi-web are documented here.
 ## [Unreleased]
 
 ### Added
+- **Prompt template library.** Save reusable prompts and insert them by typing `/name` in the composer — they appear in the same `/` menu as the tGD commands (marked `template`) and insert their full body text. Manage them from ⌘K → **Prompt templates** (add / edit / delete). Stored server-side in `prompts.json` next to tags/pins; a shared store keeps the menu and the manager in sync live. New API `GET/POST/DELETE /api/prompts`.
+
+### Added
 - **Edit a past message and re-run.** Hover any earlier user turn → Edit turns the bubble into an inline textarea prefilled with its text; Rerun rolls the conversation back to that point (via `navigate_tree`, branching within the session) and re-sends the edited prompt. ⌘/Ctrl+Enter reruns, Esc cancels. Replaces the old "Edit from here" (which dumped the text into the bottom composer).
 - **Bundled Traditional Chinese font (Noto Sans TC).** Chinese text used to fall back to a system CJK font — PingFang on macOS (fine), but on Linux/Windows often a Simplified-default Noto or a bitmap font (e.g. WenQuanYi), which draws the *same* Han codepoints with Simplified/low-quality glyph shapes. Now Noto Sans TC ships with the app (400/500/700, CJK-only subset, full ideograph coverage, ~7 MB) so Traditional glyphs render identically on every OS. The `@font-face` `unicode-range` keeps Latin/digits on Inter; regeneration steps are in AGENTS.md.
 - **Skills panel shows the full SKILL.md content**, rendered as markdown (same renderer as chat) in a scrollable box under the existing Name/Description fields. New `GET /api/skills?cwd=…&content=<filePath>` returns one skill's body; the path must match a skill the resource loader actually discovered, so it can't be used to read arbitrary files.

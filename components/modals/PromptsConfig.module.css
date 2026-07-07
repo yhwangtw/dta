@@ -1,0 +1,245 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 10vh 16px 16px;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(2px);
+}
+
+.modal {
+  width: 100%;
+  max-width: 560px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-panel, var(--bg));
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.closeButton {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.closeButton:hover {
+  color: var(--text);
+}
+
+.body {
+  overflow-y: auto;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Editor */
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nameRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.slash {
+  font-family: var(--font-mono);
+  color: var(--text-dim);
+  font-size: 14px;
+}
+
+.nameInput {
+  width: 160px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  padding: 5px 9px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  outline: none;
+}
+
+.nameInput:focus {
+  border-color: var(--color-accent);
+}
+
+.nameHint {
+  font-size: 10.5px;
+  color: var(--text-dim);
+}
+
+.nameHint code {
+  font-family: var(--font-mono);
+  color: var(--color-accent);
+}
+
+.bodyInput {
+  width: 100%;
+  resize: vertical;
+  min-height: 90px;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.55;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  outline: none;
+}
+
+.bodyInput:focus {
+  border-color: var(--color-accent);
+}
+
+.editorActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.cancelBtn {
+  font-size: 12px;
+  padding: 5px 12px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.cancelBtn:hover {
+  color: var(--text);
+}
+
+.saveBtn {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 5px 14px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  background: var(--color-accent);
+  color: var(--color-accent-fg, #fff);
+  cursor: pointer;
+}
+
+.saveBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* List */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.empty {
+  font-size: 12.5px;
+  color: var(--text-dim);
+  padding: 8px 2px;
+}
+
+.empty code {
+  font-family: var(--font-mono);
+  color: var(--color-accent);
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 9px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+}
+
+.item:hover {
+  background: var(--bg-hover);
+}
+
+.itemEditing {
+  border-color: var(--color-accent);
+  background: var(--color-accent-bg);
+}
+
+.itemMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.itemName {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--color-accent);
+}
+
+.itemBody {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.itemActions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.itemBtn {
+  font-size: 11.5px;
+  padding: 3px 9px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.itemBtn:hover {
+  color: var(--text);
+}
+
+.itemBtnDanger:hover {
+  color: var(--color-error, #dc2626);
+  border-color: var(--color-error, #dc2626);
+}

@@ -34,6 +34,7 @@ import s from "./AppShell.module.css";
 // Lazy-load heavy modals — they're ~1000 lines each and rarely opened
 const ModelsConfig = lazy(() => import("../modals/ModelsConfig").then((m) => ({ default: m.ModelsConfig })));
 const SkillsConfig = lazy(() => import("../modals/SkillsConfig").then((m) => ({ default: m.SkillsConfig })));
+const PromptsConfig = lazy(() => import("../modals/PromptsConfig").then((m) => ({ default: m.PromptsConfig })));
 const AnalyticsModal = lazy(() => import("../modals/AnalyticsModal").then((m) => ({ default: m.AnalyticsModal })));
 
 export function AppShell() {
@@ -45,6 +46,7 @@ export function AppShell() {
   const [modelsConfigOpen, setModelsConfigOpen] = useState(false);
   const [modelsRefreshKey, setModelsRefreshKey] = useState(0);
   const [skillsConfigOpen, setSkillsConfigOpen] = useState(false);
+  const [promptsConfigOpen, setPromptsConfigOpen] = useState(false);
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -203,6 +205,7 @@ export function AppShell() {
     palette.register({
       openModels: () => setModelsConfigOpen(true),
       openSkills: () => setSkillsConfigOpen(true),
+      openPrompts: () => setPromptsConfigOpen(true),
       openAnalytics: () => setAnalyticsOpen(true),
       openAppearance: () => setAppearanceOpen(true),
       toggleTheme: () => toggleTheme(),
@@ -747,6 +750,9 @@ export function AppShell() {
       </svg>
     </button>
     {modelsConfigOpen && <Suspense fallback={null}><ModelsConfig onClose={() => { setModelsConfigOpen(false); setModelsRefreshKey((k) => k + 1); }} /></Suspense>}
+    {promptsConfigOpen && (
+      <Suspense fallback={null}><PromptsConfig onClose={() => setPromptsConfigOpen(false)} /></Suspense>
+    )}
     {skillsConfigOpen && (state.activeCwd ?? state.selectedSession?.cwd ?? state.newSessionCwd) && (
       <Suspense fallback={null}><SkillsConfig cwd={(state.activeCwd ?? state.selectedSession?.cwd ?? state.newSessionCwd)!} onClose={() => setSkillsConfigOpen(false)} /></Suspense>
     )}

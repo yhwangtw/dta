@@ -24,6 +24,7 @@ export interface PaletteResult {
 export type PaletteActionId =
   | "settings:models"
   | "settings:skills"
+  | "settings:prompts"
   | "settings:analytics"
   | "settings:appearance"
   | "view:toggle-theme"
@@ -60,6 +61,7 @@ export interface CommandPaletteApi {
 export interface PaletteCallbacks {
   openModels: () => void;
   openSkills: () => void;
+  openPrompts: () => void;
   openAnalytics: () => void;
   openAppearance: () => void;
   toggleTheme: () => void;
@@ -93,6 +95,14 @@ const ACTIONS: PaletteResult[] = [
     keywords: "skill plugin extension 技能",
     hint: "⌘/",
     data: { action: "settings:skills" } as { action: PaletteActionId },
+  },
+  {
+    id: "action:prompts",
+    kind: "action",
+    title: "Prompt templates",
+    subtitle: "Create and manage reusable prompts — insert with /name in the composer",
+    keywords: "prompt template snippet reusable 範本 常用 提示",
+    data: { action: "settings:prompts" } as { action: PaletteActionId },
   },
   {
     id: "action:analytics",
@@ -405,6 +415,7 @@ export function useCommandPalette({
       switch (action) {
         case "settings:models": cbs.openModels(); break;
         case "settings:skills": cbs.openSkills(); break;
+        case "settings:prompts": cbs.openPrompts(); break;
         case "settings:analytics": cbs.openAnalytics(); break;
         case "settings:appearance": cbs.openAppearance(); break;
         case "view:toggle-theme": cbs.toggleTheme(); break;

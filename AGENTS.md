@@ -243,6 +243,17 @@ Semantic tokens with light/dark + per-skin variants. `chrome-mono` class =
 JetBrains Mono for machine-y labels (group headers, stats, meta); message
 content stays Inter.
 
+### Bundled fonts (`public/fonts/`, `@font-face` in `globals.css`)
+Latin: **Inter** (400/500/600/700) + **JetBrains Mono** (400/700). CJK:
+**Noto Sans TC** (400/500/700, CJK-only subset ~7MB total) so Traditional
+Chinese renders with TC glyphs on every OS — without it, Linux/Windows fall
+back to a Simplified-default or bitmap system font (e.g. WenQuanYi) and draw
+Han codepoints with the wrong regional shapes. The `@font-face` blocks carry
+a CJK `unicode-range` so Latin/digits stay on Inter; the sans + mono stacks
+list `'Noto Sans TC'` ahead of the system CJK names. Regenerate the subset
+with `pyftsubset <full-NotoSansTC-weight>.ttf --unicodes=U+3000-303F,U+3400-4DBF,U+4E00-9FFF,U+F900-FAFF,U+FE30-FE4F,U+FF00-FFEF --flavor=woff2`
+(full-weight TTFs come from the `@expo-google-fonts/noto-sans-tc` npm package).
+
 ---
 
 ## Pi Session File Format

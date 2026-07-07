@@ -5,6 +5,7 @@ All notable changes to tGD-pi-web are documented here.
 ## [Unreleased]
 
 ### Added
+- **Bundled Traditional Chinese font (Noto Sans TC).** Chinese text used to fall back to a system CJK font — PingFang on macOS (fine), but on Linux/Windows often a Simplified-default Noto or a bitmap font (e.g. WenQuanYi), which draws the *same* Han codepoints with Simplified/low-quality glyph shapes. Now Noto Sans TC ships with the app (400/500/700, CJK-only subset, full ideograph coverage, ~7 MB) so Traditional glyphs render identically on every OS. The `@font-face` `unicode-range` keeps Latin/digits on Inter; regeneration steps are in AGENTS.md.
 - **Skills panel shows the full SKILL.md content**, rendered as markdown (same renderer as chat) in a scrollable box under the existing Name/Description fields. New `GET /api/skills?cwd=…&content=<filePath>` returns one skill's body; the path must match a skill the resource loader actually discovered, so it can't be used to read arbitrary files.
 
 ### Changed

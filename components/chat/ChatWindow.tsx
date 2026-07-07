@@ -175,7 +175,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
     lastUserMsgRef,
     handleSend, handleAbort, handleFork, handleNavigate, handleModelChange,
     handleCompact, handleSteer, handleFollowUp, handleAbortCompaction,
-    handleToolPresetChange, handleThinkingLevelChange, handleClearQueue, handleRemoveQueued, handleRetry, handleAbortBash, handleAgentEventRef,
+    handleToolPresetChange, handleThinkingLevelChange, handleClearQueue, handleRemoveQueued, handleRetry, handleEditRerun, handleAbortBash, handleAgentEventRef,
   } = useAgentSession({
     session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked,
     modelsRefreshKey, onBranchDataChange, onSystemPromptChange, onSessionNamed,
@@ -759,6 +759,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                     onNavigate={agentRunning ? undefined : handleNavigate}
                     prevAssistantEntryId={agentRunning ? undefined : prevAssistantEntryId}
                     onEditContent={handleEditContent}
+                    onEditRerun={agentRunning ? undefined : handleEditRerun}
                     showTimestamp={showTimestamp}
                     prevTimestamp={idx > 0 ? (messages[idx - 1] as import("@/lib/types").AgentMessage & { timestamp?: number }).timestamp : undefined}
                   />

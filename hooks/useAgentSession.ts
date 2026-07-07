@@ -597,6 +597,18 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     await handleSend(text);
   }, [messages, entryIds, agentRunning, handleNavigate, handleSend]);
 
+  // Edit an earlier user turn in place and re-run from there: roll the tree
+  // back to the entry before it (prevEntryId — the assistant turn that
+  // preceded it, same target the "Edit from here" nav uses) and send the new
+  // text as a fresh branch. Same primitives as handleRetry, but for an
+  // arbitrary message with edited content.
+  const handleEditRerun = useCallback(async (prevEntryId: string | undefined, newText: string) => {
+    if (agentRunning) return;
+    if (!newText.trim()) return;
+    if (prevEntryId) await handleNavigate(prevEntryId);
+    await handleSend(newText);
+  }, [agentRunning, handleNavigate, handleSend]);
+
   const handleAbortBash = useCallback(async () => {
     const sid = sessionIdRef.current;
     if (!sid) return;
@@ -701,7 +713,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     // Actions
     handleSend, handleAbort, handleFork, handleNavigate, handleModelChange,
     handleCompact, handleSteer, handleFollowUp, handleAbortCompaction,
-    handleToolPresetChange, handleThinkingLevelChange, handleClearQueue, handleRemoveQueued, handleRetry, handleAbortBash, loadTools, setActiveLeafId, setData, setMessages,
+    handleToolPresetChange, handleThinkingLevelChange, handleClearQueue, handleRemoveQueued, handleRetry, handleEditRerun, handleAbortBash, loadTools, setActiveLeafId, setData, setMessages,
     dispatch, setAgentRunning, setForkingEntryId,
     // Subscriptions
     handleAgentEventRef,

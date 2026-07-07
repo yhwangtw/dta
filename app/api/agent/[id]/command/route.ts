@@ -43,9 +43,16 @@ export async function POST(
       return NextResponse.json({ error: `Command "${command}" not found` }, { status: 404 });
     }
 
+    // Snapshot the working tree before the command runs (tGD phases edit
+    // files) so it can be rolled back later. Best-effort; no-op outside git.
+    if (session.cwd) {
+      const { createSnapshot } = await import("@/lib/git-snapshot");
+      await createSnapshot(session.cwd, session.sessionId, `Before /${command}`).catch(() => {});
+    }
+
     // Create command context
     const ctx = extensionRunner.createCommandContext();
-    
+
     // Execute the command handler
     await cmd.handler(args, ctx);
 

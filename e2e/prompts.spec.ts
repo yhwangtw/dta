@@ -41,7 +41,9 @@ test.describe("prompt templates", () => {
     await page.locator("input[placeholder='name']").fill(NAME);
     await page.locator("textarea[placeholder^='Template body']").fill(BODY);
     await page.getByRole("button", { name: "Add template" }).click();
-    await expect(page.getByText(`/${NAME}`)).toBeVisible();
+    // Saved item shows in the list with a Delete control (unambiguous — the
+    // live name-hint also renders the /name text while typing).
+    await expect(page.getByRole("button", { name: "Delete" }).first()).toBeVisible();
     await page.keyboard.press("Escape");
 
     // It shows up in the composer's slash menu and inserts the BODY (not /name)

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useI18n } from "@/lib/i18n";
+import { useToast } from "@/hooks/useToast";
 import s from "./ChangesPanel.module.css";
 
 interface ChangedFile {
@@ -11,12 +12,28 @@ interface ChangedFile {
   deletions: number | null;
 }
 
+interface Snapshot {
+  id: string;
+  ts: number;
+  label: string;
+  fileCount: number;
+}
+
 interface Props {
   cwd: string | null;
+  sessionId?: string | null;
   /** Re-fetch when this changes (bumped after each agent turn). */
   refreshKey?: number;
   onOpenDiff: (path: string) => void;
   selectedPath?: string | null;
+}
+
+function snapTime(ts: number): string {
+  const d = new Date(ts);
+  const now = new Date();
+  const time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const sameDay = d.toDateString() === now.toDateString();
+  return sameDay ? time : `${d.toLocaleDateString([], { month: "short", day: "numeric" })} ${time}`;
 }
 
 const STATUS_CLASS: Record<string, string> = {
@@ -31,12 +48,16 @@ const STATUS_CLASS: Record<string, string> = {
  * Working-tree changes for the session cwd — the "what did the agent just
  * touch" view. Click a file to open its HEAD↔worktree diff.
  */
-export function ChangesPanel({ cwd, refreshKey, onOpenDiff, selectedPath }: Props) {
+export function ChangesPanel({ cwd, sessionId, refreshKey, onOpenDiff, selectedPath }: Props) {
   const { t } = useI18n();
+  const { showToast } = useToast();
   const [files, setFiles] = useState<ChangedFile[]>([]);
   const [branch, setBranch] = useState<string | null>(null);
   const [isGit, setIsGit] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
+  const [snapsOpen, setSnapsOpen] = useState(false);
+  const [restoringId, setRestoringId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!cwd) return;
@@ -55,9 +76,43 @@ export function ChangesPanel({ cwd, refreshKey, onOpenDiff, selectedPath }: Prop
     }
   }, [cwd]);
 
+  const loadSnapshots = useCallback(async () => {
+    if (!cwd || !sessionId) { setSnapshots([]); return; }
+    try {
+      const res = await fetch(`/api/git/snapshots?cwd=${encodeURIComponent(cwd)}&sessionId=${encodeURIComponent(sessionId)}`);
+      if (!res.ok) return;
+      const d = await res.json() as { git: boolean; snapshots: Snapshot[] };
+      setSnapshots(d.snapshots ?? []);
+    } catch {
+      setSnapshots([]);
+    }
+  }, [cwd, sessionId]);
+
   useEffect(() => {
     load();
-  }, [load, refreshKey]);
+    loadSnapshots();
+  }, [load, loadSnapshots, refreshKey]);
+
+  const restore = useCallback(async (snap: Snapshot) => {
+    if (!cwd || !sessionId) return;
+    if (!window.confirm(`Restore files to "${snap.label}" (${snapTime(snap.ts)})?\n\nFiles changed since then are reverted; files created since are removed. This cannot be undone.`)) return;
+    setRestoringId(snap.id);
+    try {
+      const res = await fetch("/api/git/snapshots/restore", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cwd, sessionId, id: snap.id }),
+      });
+      const d = await res.json() as { ok?: boolean; restored?: number; removed?: number; error?: string };
+      if (!res.ok || d.error) throw new Error(d.error ?? `HTTP ${res.status}`);
+      showToast(`Restored ${d.restored ?? 0} file(s)${d.removed ? `, removed ${d.removed}` : ""}`, { type: "success" });
+      await load();
+    } catch (e) {
+      showToast(`Restore failed: ${e instanceof Error ? e.message : e}`, { type: "error" });
+    } finally {
+      setRestoringId(null);
+    }
+  }, [cwd, sessionId, showToast, load]);
 
   if (!cwd) {
     return <div className={s.empty}>{t("sidebar.selectProjectFirst")}</div>;
@@ -110,6 +165,43 @@ export function ChangesPanel({ cwd, refreshKey, onOpenDiff, selectedPath }: Prop
               )}
             </button>
           ))}
+        </div>
+      )}
+
+      {/* Restore points — snapshots captured before each agent run */}
+      {isGit && sessionId && snapshots.length > 0 && (
+        <div className={s.snapSection}>
+          <button
+            className={`${s.snapHeader} chrome-mono`}
+            onClick={() => setSnapsOpen((v) => !v)}
+            aria-expanded={snapsOpen}
+          >
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className={snapsOpen ? s.caretOpen : s.caretClosed}>
+              <polyline points="2 3.5 5 6.5 8 3.5" />
+            </svg>
+            <span>Restore points</span>
+            <span className={s.count}>{snapshots.length}</span>
+          </button>
+          {snapsOpen && (
+            <div className={s.snapList}>
+              {snapshots.map((snap) => (
+                <div key={snap.id} className={s.snapItem}>
+                  <div className={s.snapMain}>
+                    <span className={s.snapLabel} title={snap.label}>{snap.label}</span>
+                    <span className={`${s.snapMeta} chrome-mono`}>{snapTime(snap.ts)} · {snap.fileCount} changed</span>
+                  </div>
+                  <button
+                    onClick={() => restore(snap)}
+                    disabled={restoringId !== null}
+                    className={s.snapRestore}
+                    title="Revert the working tree to this point"
+                  >
+                    {restoringId === snap.id ? "…" : "Restore"}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

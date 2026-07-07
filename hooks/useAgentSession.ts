@@ -378,52 +378,13 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       }
       return;
     }
-    // Check if this is a tGD slash command
-    const tgdCommandMatch = message.trim().match(/^\/tgd-(\w+)(.*)$/);
-    if (tgdCommandMatch) {
-      const [, commandName, args] = tgdCommandMatch;
-      const command = `tgd-${commandName}`;
-      
-      // Add user message to UI
-      const userMsg: AgentMessage = {
-        role: "user",
-        content: message,
-        timestamp: Date.now(),
-      };
-      setMessages((prev) => [...prev, userMsg]);
-      setAgentRunning(true);
-      setAgentPhase({ kind: "waiting_model" });
-      dispatch({ type: "start" });
-      pendingScrollToUserRef.current = true;
-      try {
-        if (isNew && newSessionCwd) {
-          // New session — create it with the slash command as initial message
-          await createNewSession(message);
-        } else if (session) {
-          // Existing session - execute command directly
-          connectEvents(session.id);
-          const res = await fetch(`/api/agent/${session.id}/command`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ command, args: args.trim() }),
-          });
-          
-          if (!res.ok) {
-            const error = await res.json();
-            throw new Error(error.error || `HTTP ${res.status}`);
-          }
-        } else {
-          throw new Error("No session available");
-        }
-      } catch (e) {
-        console.error("Failed to execute command:", e);
-        showToast(`${translate("toast.commandFailed")}: ${e instanceof Error ? e.message : e}`, { type: "error" });
-        setAgentRunning(false);
-        setAgentPhase(null);
-        dispatch({ type: "end" });
-      }
-      return;
-    }
+    // Slash commands (/tgd-* included) are NOT special-cased here: they go
+    // through the normal prompt path below, where pi's own prompt() resolves
+    // them (extension command → input hook → skill → prompt template → plain
+    // text). Routing them through /api/agent/[id]/command instead used to
+    // break resumed sessions whenever the exact name wasn't a registered
+    // extension command, while fresh sessions — which always used the prompt
+    // path — worked.
 
     const imageBlocks = images?.map((img) => ({ type: "image" as const, source: { type: "base64" as const, media_type: img.mimeType, data: img.data } }));
     const userMsg: AgentMessage = {

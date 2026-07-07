@@ -2,6 +2,11 @@
 
 All notable changes to tGD-pi-web are documented here.
 
+## [Unreleased]
+
+### Fixed
+- **`/tgd-*` commands failed with "Command not found" in resumed sessions** (fresh sessions were fine). The input handler special-cased `/tgd-*` and, for existing sessions only, routed it through `/api/agent/[id]/command` — an exact `extensionRunner.getCommand()` lookup that misses whenever the tGD workflow isn't registered under that exact extension-command name. Slash commands now always go through the normal prompt path, where pi itself resolves them (extension command → input hook → skill → prompt template → plain text), identically for new and resumed sessions.
+
 ## [2026.07.07-4] — 185bbf1 (PR #16)
 
 ### Added

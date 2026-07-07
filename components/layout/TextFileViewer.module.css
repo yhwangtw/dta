@@ -144,7 +144,9 @@
   width: 100%;
   height: 100%;
   border: none;
-  background: var(--bg);
+  /* Always white: pages without their own background render transparent, and
+     inheriting the app's dark theme puts default-black text on a dark bg. */
+  background: #ffffff;
 }
 
 /* Markdown preview */

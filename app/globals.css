@@ -830,9 +830,24 @@ span.linenumber {
     cursor: col-resize;
     z-index: 30;
   }
-  .right-panel-resizer:hover,
-  .right-panel-resizer.right-panel-resizer-active {
-    background: var(--color-accent-border);
+  /* Hover shows a quiet neutral line (the full-width accent fill read as an
+     orange glow); the accent only appears while actually dragging. */
+  .right-panel-resizer::after {
+    content: "";
+    position: absolute;
+    left: 2px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    border-radius: 2px;
+    background: transparent;
+    transition: background 0.12s ease;
+  }
+  .right-panel-resizer:hover::after {
+    background: var(--border);
+  }
+  .right-panel-resizer.right-panel-resizer-active::after {
+    background: var(--color-accent);
   }
 }
 

@@ -5,6 +5,8 @@ All notable changes to tGD-pi-web are documented here.
 ## [Unreleased]
 
 ### Changed
+- **Right-panel resizer hover no longer glows accent-orange**: hovering shows a quiet neutral line; the accent line appears only while actually dragging.
+- **HTML preview iframe is always white** — pages without their own background used to inherit the app's dark theme and render default-black text on a dark bg.
 - **Tag filter chips (top of the sidebar) now match the session-row chips exactly**: no more gap between `#` and the name, the count badge is tinted in the tag's own hue instead of foreign gray, hover no longer jumps the chip, and the active (selected) fill uses theme-aware text — dark text on the pastel fill in dark mode instead of unreadable white. Session-row chips also gained the same 1px hue border the other chips already had. The filter row itself no longer paints its own `--bg-elev-1` background (pure white in the light skins — it showed as a stark band against the sidebar's tinted background).
 
 ### Fixed

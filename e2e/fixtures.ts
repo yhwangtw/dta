@@ -38,6 +38,21 @@ export function createFixtures(root: string): { cwd: string } {
   }
   writeFileSync(path.join(cwd, "big-file.ts"), bigLines.join("\n") + "\n");
 
+  // ── tGD artifacts sibling dir (`<project>-tGD/`) ──────────────────────
+  const tgdDir = path.join(root, "demo-project-tGD");
+  mkdirSync(path.join(tgdDir, "user-login", "prototype"), { recursive: true });
+  mkdirSync(path.join(tgdDir, ".scans", "demo"), { recursive: true });
+  mkdirSync(path.join(tgdDir, "wiki"), { recursive: true });
+  writeFileSync(path.join(tgdDir, "CONTEXT.md"), "# Project Context\n\nA demo project.\n");
+  writeFileSync(path.join(tgdDir, "TRACKING-PLAN.md"), "# Tracking Plan\n\n- event: login_success\n");
+  writeFileSync(path.join(tgdDir, "wiki", "wiki.html"), "<!doctype html><h1>Wiki</h1>");
+  writeFileSync(path.join(tgdDir, "user-login", "PRD.md"), "# PRD: user-login\n\n## 1. Objectives\n登入功能。\n");
+  writeFileSync(path.join(tgdDir, "user-login", "SPEC.md"), "# SPEC: user-login\n\n## API\nPOST /api/auth/login\n");
+  writeFileSync(path.join(tgdDir, "user-login", "DESIGN.md"), "# DESIGN\n\n## Component Tree\n- LoginForm\n");
+  writeFileSync(path.join(tgdDir, "user-login", "TASKS.md"), "# TASKS\n\n### Task 1\n建立 endpoint。\n");
+  writeFileSync(path.join(tgdDir, "user-login", "prototype", "variant-a.html"), "<!doctype html><title>proto</title><h1>Login mock</h1>");
+  writeFileSync(path.join(tgdDir, ".scans", "demo", "index.txt"), "excluded infra\n");
+
   // ── Session fixtures ──────────────────────────────────────────────────
   const sessionsDir = path.join(root, "agent", "sessions", "-demo");
   mkdirSync(sessionsDir, { recursive: true });

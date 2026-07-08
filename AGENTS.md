@@ -227,6 +227,15 @@ delta**: diff snapshot-commit vs current working tree, then per file — M/D
 `git checkout <snap> -- file`, A (created since) `rm`. Path-guarded to stay
 inside cwd. Dedup by tree sha; cap 20/session. Git repos only.
 
+### tGD artifacts (`lib/tgd-artifacts.ts`, `components/layout/TgdArtifactsPanel.tsx`)
+The tGD workflow writes its docs to a **sibling** `<project>-tGD/` dir (or
+`$TGD_DIR`), *outside* the code repo — `CONTEXT.md`, `TRACKING-PLAN.md`, `wiki/`,
+and per-feature dirs (a "feature" = a dir with `PRD.md` or `SPEC.md`) holding
+PRD/SPEC/DESIGN/TASKS/METRICS + `prototype/*.html`. `resolveTgdDir(cwd)` finds it;
+`getAllowedRoots()` adds it so the file viewer can open those docs. The `tgd`
+rail view lists them and maps docs → phases (PRD/SPEC→define, TASKS→plan) for the
+pipeline echo. `.scans/` and dot-dirs are infra, excluded. API: `GET /api/tgd/artifacts`.
+
 ### tGD pipeline (`components/chat/TgdPipeline.tsx`)
 Always-visible phase bar at the top of the session view. `PHASE_ACTIONS`
 (ChatWindow) is the source of the seven phases; status is derived from the

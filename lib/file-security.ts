@@ -46,8 +46,15 @@ export async function getAllowedRoots(): Promise<Set<string>> {
 
   const sessions = await listAllSessions();
   const roots = new Set<string>();
+  const { resolveTgdDir } = await import("./tgd-artifacts");
   for (const s of sessions) {
-    if (s.cwd) roots.add(s.cwd);
+    if (s.cwd) {
+      roots.add(s.cwd);
+      // tGD artifacts live in a sibling `<project>-tGD/` dir — allow it too so
+      // the file viewer can open PRD/SPEC/etc. opened from the tGD panel.
+      const tgd = resolveTgdDir(s.cwd);
+      if (tgd) roots.add(tgd);
+    }
   }
   // Also allow ~/pi-cwd-* directories created by the default-cwd endpoint
   const home = (await import("os")).homedir();

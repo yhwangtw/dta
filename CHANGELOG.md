@@ -4,6 +4,10 @@ All notable changes to tGD-pi-web are documented here.
 
 ## [Unreleased]
 
+### Added
+- **tGD artifacts panel.** A new rail view (📄 tGD) surfaces the documents the tGD workflow writes into the sibling `<project>-tGD/` directory — `CONTEXT.md`, `TRACKING-PLAN.md`, the wiki, and per-feature `PRD.md` / `SPEC.md` / `DESIGN.md` / `TASKS.md` / `METRICS.md` + HTML prototypes. Each feature card shows which tGD phases it has evidence for (PRD/SPEC → Define, TASKS → Plan …), echoing the pipeline. Clicking any file opens it in the right panel (markdown render / HTML preview). Infra dirs (`.scans/`, `wiki/`) are excluded from the feature list. New API `GET /api/tgd/artifacts`; the `<project>-tGD` sibling is added to the file viewer's allowed roots so its docs can be opened.
+
+
 ### Fixed
 - **Right file-panel resize handle no longer swallows clicks on the file text.** The handle inherited `min-width: 300px` from a layout rule, so its resize hit-area was actually **300px wide** — the left third of the panel was a dead zone that hijacked text selection/clicks (worst on touch). It's now a real 9px gutter (content inset to match), and width persistence was made robust: it saves synchronously on mouseup and only when the pointer actually moved, so a plain click — or the double-click that resets the width — no longer races the save.
 

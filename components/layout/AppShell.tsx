@@ -6,6 +6,7 @@ import { ChatWindow } from "../chat/ChatWindow";
 import { FileViewer } from "./FileViewer";
 import { FilesPanel } from "./FilesPanel";
 import { ChangesPanel } from "./ChangesPanel";
+import { TgdArtifactsPanel } from "./TgdArtifactsPanel";
 import { DiffPanel } from "./DiffPanel";
 import { AppearancePanel } from "./AppearancePanel";
 import { IconRail, type PanelView } from "./IconRail";
@@ -324,6 +325,12 @@ export function AppShell() {
           onAtMention={handleAtMention}
           refreshKey={state.explorerRefreshKey}
           onOpenDiff={handleOpenDiff}
+        />
+      ) : panelView === "tgd" ? (
+        <TgdArtifactsPanel
+          cwd={panelCwd}
+          refreshKey={state.refreshKey}
+          onOpenFile={handleOpenFile}
         />
       ) : (
         <ChangesPanel

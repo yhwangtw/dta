@@ -538,6 +538,8 @@
   background: var(--bg);
 }
 
+/* padding-left reserves the gutter the resize handle lives in (see
+   .right-panel-resizer, 9px) so the handle never overlaps file content. */
 .rightPanelTabBar {
   display: flex;
   align-items: center;
@@ -545,6 +547,7 @@
   background: var(--bg-panel);
   border-bottom: 1px solid var(--border);
   height: 36px;
+  padding-left: 9px;
 }
 
 .rightPanelTabBarInner {
@@ -555,6 +558,7 @@
 .rightPanelContent {
   flex: 1;
   overflow: hidden;
+  padding-left: 9px;
 }
 
 .rightPanelEmpty {

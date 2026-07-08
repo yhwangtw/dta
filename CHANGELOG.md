@@ -2,6 +2,11 @@
 
 All notable changes to tGD-pi-web are documented here.
 
+## [Unreleased]
+
+### Fixed
+- **Right file-panel resize handle no longer swallows clicks on the file text.** The handle inherited `min-width: 300px` from a layout rule, so its resize hit-area was actually **300px wide** — the left third of the panel was a dead zone that hijacked text selection/clicks (worst on touch). It's now a real 9px gutter (content inset to match), and width persistence was made robust: it saves synchronously on mouseup and only when the pointer actually moved, so a plain click — or the double-click that resets the width — no longer races the save.
+
 ## [2026.07.08] (PR #18–#27)
 
 ### Added

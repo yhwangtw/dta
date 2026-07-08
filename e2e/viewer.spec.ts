@@ -13,18 +13,34 @@ test.describe("file viewer", () => {
   test("splitter drags the panel width, persists, and resets on double-click", async ({ page }) => {
     await openReadme(page);
     const panel = page.locator(".right-panel-container");
+    // Wait for the open animation (width transition) to settle before measuring
+    // the thin resize handle, or its box is a moving target and the drag misses.
+    await expect
+      .poll(async () => {
+        const w = await panel.evaluate((el) => Math.round(el.getBoundingClientRect().width));
+        await page.waitForTimeout(120);
+        const w2 = await panel.evaluate((el) => Math.round(el.getBoundingClientRect().width));
+        return w === w2 ? w : -1;
+      })
+      .toBeGreaterThan(0);
     const before = await panel.evaluate((el) => el.getBoundingClientRect().width);
 
     const resizer = page.locator(".right-panel-resizer");
     const box = (await resizer.boundingBox())!;
-    await page.mouse.move(box.x + 3, box.y + 300);
+    // Distinct intermediate moves — a real drag emits many mousemove events,
+    // and only a moved drag persists the width (see useRightPanelWidth).
+    await page.mouse.move(box.x + 4, box.y + 300);
     await page.mouse.down();
-    await page.mouse.move(box.x - 180, box.y + 300, { steps: 8 });
+    await page.mouse.move(box.x - 40, box.y + 300);
+    await page.mouse.move(box.x - 110, box.y + 300);
+    await page.mouse.move(box.x - 180, box.y + 300);
     await page.mouse.up();
     await expect
       .poll(() => panel.evaluate((el) => el.getBoundingClientRect().width))
       .toBeGreaterThan(before + 120);
-    expect(await page.evaluate(() => localStorage.getItem("pi-right-width"))).toBeTruthy();
+    await expect
+      .poll(() => page.evaluate(() => localStorage.getItem("pi-right-width")))
+      .toBeTruthy();
 
     await resizer.dblclick();
     await expect

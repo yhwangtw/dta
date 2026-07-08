@@ -853,21 +853,29 @@ span.linenumber {
     width: var(--right-panel-w, 42vw);
     min-width: 300px;
   }
+  /* The handle occupies a reserved gutter on the panel's left edge (the panel
+     content is inset by the same width — see .rightPanelTabBar/.rightPanelContent),
+     so its hit area never sits over the file text. Slightly wider for touch. */
   .right-panel-resizer {
     position: absolute;
     left: 0;
     top: 0;
     bottom: 0;
-    width: 6px;
+    width: 9px;
+    /* Override the min-width: 300px inherited from `.right-panel-container > *`
+       — without this the handle is 300px wide and its resize hit area covers
+       the left third of the file content. */
+    min-width: 0;
     cursor: col-resize;
     z-index: 30;
+    touch-action: none;
   }
   /* Hover shows a quiet neutral line (the full-width accent fill read as an
      orange glow); the accent only appears while actually dragging. */
   .right-panel-resizer::after {
     content: "";
     position: absolute;
-    left: 2px;
+    left: 3px;
     top: 0;
     bottom: 0;
     width: 2px;

@@ -2,7 +2,7 @@
 
 All notable changes to tGD-pi-web are documented here.
 
-## [Unreleased]
+## [2026.07.08] (PR #18–#27)
 
 ### Added
 - **Persistent tGD pipeline.** A slim always-visible bar at the top of the chat shows the seven tGD phases (Map → Define → Plan → Develop → Verify → Review → Release) and **auto-detects progress from the session transcript** — phases whose `/tgd-*` command has run show a check (done), the most recent one is highlighted (current), the rest are muted (todo). Click any phase to drop its command into the composer, so you can advance the workflow mid-session instead of only from the welcome screen. Dismissable (`×`, persisted); a `tGD ▸` chip brings it back.

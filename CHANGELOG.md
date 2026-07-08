@@ -4,6 +4,8 @@ All notable changes to tGD-pi-web are documented here.
 
 ## [Unreleased]
 
+## [2026.07.08-1] (PR #30–#31)
+
 ### Added
 - **tGD artifacts panel.** A new rail view (📄 tGD) surfaces the documents the tGD workflow writes into the sibling `<project>-tGD/` directory — `CONTEXT.md`, `TRACKING-PLAN.md`, the wiki, and per-feature `PRD.md` / `SPEC.md` / `DESIGN.md` / `TASKS.md` / `METRICS.md` + HTML prototypes. Each feature card shows which tGD phases it has evidence for (PRD/SPEC → Define, TASKS → Plan …), echoing the pipeline. Clicking any file opens it in the right panel (markdown render / HTML preview). Infra dirs (`.scans/`, `wiki/`) are excluded from the feature list. New API `GET /api/tgd/artifacts`; the `<project>-tGD` sibling is added to the file viewer's allowed roots so its docs can be opened.
 

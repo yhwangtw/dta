@@ -1,0 +1,107 @@
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-elev-1, var(--bg-panel));
+  flex-shrink: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.bar::-webkit-scrollbar { display: none; }
+
+.brand {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+
+.track {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.connector {
+  width: 12px;
+  height: 1.5px;
+  border-radius: 1px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+.conn_done { background: var(--color-accent); }
+.conn_current { background: color-mix(in srgb, var(--color-accent) 50%, var(--border)); }
+.conn_todo { background: var(--border); }
+
+.phase {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: none;
+  font-size: 11.5px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+
+.icon {
+  display: inline-flex;
+  width: 13px;
+  height: 13px;
+  align-items: center;
+  justify-content: center;
+}
+
+/* todo — muted, low emphasis */
+.todo {
+  color: var(--text-dim);
+}
+.todo:hover {
+  color: var(--text-muted);
+  background: var(--bg-hover);
+}
+
+/* done — accent tint with a check */
+.done {
+  color: var(--color-accent);
+}
+.done:hover {
+  background: var(--color-accent-bg);
+}
+
+/* current — solid accent fill, the focal point */
+.current {
+  color: var(--color-accent-fg, #fff);
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+.current:hover {
+  filter: brightness(1.05);
+}
+
+.hide {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 2px;
+  display: inline-flex;
+}
+.hide:hover { color: var(--text); }

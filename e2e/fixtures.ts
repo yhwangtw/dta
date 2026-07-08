@@ -97,5 +97,22 @@ export function createFixtures(root: string): { cwd: string } {
     toolLines.map((l) => JSON.stringify(l)).join("\n") + "\n",
   );
 
+  // tGD-workflow session — ran /tgd-map, /tgd-define, /tgd-plan, so the pipeline
+  // shows map+define done and plan current.
+  const tgdLines = [
+    { type: "session", version: 3, id: "dddd1111-2222-3333-4444-555566667777", timestamp: "2026-07-06T09:00:00.000Z", cwd },
+    { type: "message", id: "t1000001", parentId: null, timestamp: "2026-07-06T09:00:05.000Z", message: { role: "user", content: "/tgd-map 理解這個專案", timestamp: 1751792405000 } },
+    { type: "message", id: "t1000002", parentId: "t1000001", timestamp: "2026-07-06T09:01:00.000Z", message: { role: "assistant", content: [{ type: "text", text: "已盤點程式庫結構。" }], timestamp: 1751792460000 } },
+    { type: "session_info", id: "t1000003", parentId: "t1000002", name: "tGD 流程測試" },
+    { type: "message", id: "t1000004", parentId: "t1000003", timestamp: "2026-07-06T09:05:00.000Z", message: { role: "user", content: "/tgd-define 撰寫 PRD", timestamp: 1751792700000 } },
+    { type: "message", id: "t1000005", parentId: "t1000004", timestamp: "2026-07-06T09:06:00.000Z", message: { role: "assistant", content: [{ type: "text", text: "PRD 草稿完成。" }], timestamp: 1751792760000 } },
+    { type: "message", id: "t1000006", parentId: "t1000005", timestamp: "2026-07-06T09:10:00.000Z", message: { role: "user", content: "/tgd-plan 拆解任務", timestamp: 1751793000000 } },
+    { type: "message", id: "t1000007", parentId: "t1000006", timestamp: "2026-07-06T09:11:00.000Z", message: { role: "assistant", content: [{ type: "text", text: "任務清單就緒。" }], timestamp: 1751793060000 } },
+  ];
+  writeFileSync(
+    path.join(sessionsDir, "2026-07-06T09-00-00_dddd1111-2222-3333-4444-555566667777.jsonl"),
+    tgdLines.map((l) => JSON.stringify(l)).join("\n") + "\n",
+  );
+
   return { cwd };
 }

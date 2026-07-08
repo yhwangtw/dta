@@ -174,3 +174,19 @@
 .bookmarkStarOn {
   color: var(--color-warning-text-strong, #d97706);
 }
+
+/* Collapsed tGD pipeline — click to bring the bar back */
+.pipelineShow {
+  align-self: flex-start;
+  margin: 3px 0 0 12px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+.pipelineShow:hover { color: var(--color-accent); }

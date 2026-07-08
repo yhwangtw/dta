@@ -7,6 +7,7 @@ import { ChatInput, type ChatInputHandle } from "./ChatInput";
 import { ChatMinimap, useMessageRefs } from "./ChatMinimap";
 import { BashBlock } from "./BashBlock";
 import { CollapsibleMessage } from "./CollapsibleMessage";
+import { TgdPipeline, type PhaseStatus } from "./TgdPipeline";
 import { pickTurnTarget } from "./turn-nav";
 import { getAlwaysFollow } from "@/lib/prefs";
 import { useAgentSession, type AgentPhase } from "@/hooks/useAgentSession";
@@ -182,6 +183,44 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
   });
 
   const { t } = useI18n();
+
+  // ── tGD pipeline: detect which phases have run in this session ──
+  const [pipelineHidden, setPipelineHidden] = useState(false);
+  useEffect(() => { setPipelineHidden(localStorage.getItem("pi-tgd-pipeline-hidden") === "1"); }, []);
+  const hidePipeline = useCallback(() => { setPipelineHidden(true); localStorage.setItem("pi-tgd-pipeline-hidden", "1"); }, []);
+  const showPipeline = useCallback(() => { setPipelineHidden(false); localStorage.removeItem("pi-tgd-pipeline-hidden"); }, []);
+
+  const tgdPhases = useMemo(
+    () => PHASE_ACTIONS.map((p) => ({ cmd: p.cmd, label: p.label, desc: t(p.descKey), icon: p.icon })),
+    [t],
+  );
+  // The last /tgd-* invoked in the transcript is "current"; earlier-invoked
+  // phases are "done"; the rest are "todo".
+  const tgdState = useMemo(() => {
+    const invoked = new Set<string>();
+    let current: string | null = null;
+    for (const m of messages) {
+      if (m.role !== "user") continue;
+      const c = (m as { content?: unknown }).content;
+      const text = typeof c === "string"
+        ? c
+        : Array.isArray(c) ? (c as Array<{ type?: string; text?: string }>).filter((b) => b.type === "text").map((b) => b.text ?? "").join(" ") : "";
+      const match = text.trim().match(/^\/(tgd-\w+)/);
+      if (match) {
+        const cmd = `/${match[1]}`;
+        if (PHASE_ACTIONS.some((p) => p.cmd === cmd)) { invoked.add(cmd); current = cmd; }
+      }
+    }
+    return { invoked, current };
+  }, [messages]);
+  const phaseStatusOf = useCallback((cmd: string): PhaseStatus => {
+    if (cmd === tgdState.current) return "current";
+    return tgdState.invoked.has(cmd) ? "done" : "todo";
+  }, [tgdState]);
+  const runPhase = useCallback((cmd: string) => {
+    chatInputRef?.current?.setText(cmd + " ");
+  }, [chatInputRef]);
+
   const { soundEnabled, onSoundToggle, playDoneSound } = useAudio();
   const playDoneSoundRef = useRef(playDoneSound);
   playDoneSoundRef.current = playDoneSound;
@@ -651,6 +690,13 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
         </div>
       ) : (
       <>
+      {pipelineHidden ? (
+        <button onClick={showPipeline} className={styles.pipelineShow} title="Show the tGD pipeline">
+          tGD ▸
+        </button>
+      ) : (
+        <TgdPipeline phases={tgdPhases} statusOf={phaseStatusOf} onRun={runPhase} onHide={hidePipeline} />
+      )}
       <div className="relative flex flex-1 overflow-hidden">
         {findOpen && (
           <div className="glass absolute right-4 top-2 z-20 flex items-center gap-1 rounded-lg border px-2 py-1 shadow-[var(--color-shadow-dropdown)]">

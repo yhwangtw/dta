@@ -227,6 +227,15 @@ delta**: diff snapshot-commit vs current working tree, then per file — M/D
 `git checkout <snap> -- file`, A (created since) `rm`. Path-guarded to stay
 inside cwd. Dedup by tree sha; cap 20/session. Git repos only.
 
+### tGD pipeline (`components/chat/TgdPipeline.tsx`)
+Always-visible phase bar at the top of the session view. `PHASE_ACTIONS`
+(ChatWindow) is the source of the seven phases; status is derived from the
+transcript — ChatWindow scans user messages for a leading `/tgd-<phase>`, the
+last match is `current`, earlier matches are `done`, the rest `todo`. Clicking a
+phase calls `chatInputRef.setText("/tgd-x ")` (no auto-send). Dismiss state is
+`localStorage["pi-tgd-pipeline-hidden"]`. The current phase carries
+`aria-current="step"` (stable test hook).
+
 ### Prompt templates
 User-defined reusable prompts. Server (`/api/prompts`, `<agent-dir>/prompts.json`)
 stores `[{id, name, body}]`. `usePrompts` is a module-level store (shared across

@@ -20,6 +20,22 @@
   flex-shrink: 0;
 }
 
+.feature {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--color-accent);
+  background: var(--color-accent-bg);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 30%, transparent);
+  padding: 1px 7px;
+  border-radius: 999px;
+  flex-shrink: 0;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .track {
   display: flex;
   align-items: center;

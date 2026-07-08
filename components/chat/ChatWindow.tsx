@@ -88,6 +88,15 @@ const PHASE_ACTIONS: { cmd: string; label: string; descKey: MsgKey; icon: React.
   },
 ];
 
+const CMD_ORDER = PHASE_ACTIONS.map((p) => p.cmd);
+
+// Client-side shape of the /api/tgd/artifacts response (subset we use).
+interface TgdArtifactsClient {
+  exists: boolean;
+  top: { name: string; phase?: string }[];
+  features: { name: string; phasesDone: string[]; mtimeMs: number }[];
+}
+
 const TYPEWRITER_PHRASES = [
   "ready when you are.",
   "ask me anything.",
@@ -194,29 +203,85 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
     () => PHASE_ACTIONS.map((p) => ({ cmd: p.cmd, label: p.label, desc: t(p.descKey), icon: p.icon })),
     [t],
   );
-  // The last /tgd-* invoked in the transcript is "current"; earlier-invoked
-  // phases are "done"; the rest are "todo".
+  // Transcript signal: which /tgd-* were invoked this session, the last one
+  // (live "current"), and the last feature token typed alongside a command.
   const tgdState = useMemo(() => {
     const invoked = new Set<string>();
     let current: string | null = null;
+    let featureToken: string | null = null;
     for (const m of messages) {
       if (m.role !== "user") continue;
       const c = (m as { content?: unknown }).content;
       const text = typeof c === "string"
         ? c
         : Array.isArray(c) ? (c as Array<{ type?: string; text?: string }>).filter((b) => b.type === "text").map((b) => b.text ?? "").join(" ") : "";
-      const match = text.trim().match(/^\/(tgd-\w+)/);
+      const match = text.trim().match(/^\/(tgd-\w+)(?:\s+(\S+))?/);
       if (match) {
         const cmd = `/${match[1]}`;
-        if (PHASE_ACTIONS.some((p) => p.cmd === cmd)) { invoked.add(cmd); current = cmd; }
+        if (PHASE_ACTIONS.some((p) => p.cmd === cmd)) {
+          invoked.add(cmd);
+          current = cmd;
+          if (match[2]) featureToken = match[2];
+        }
       }
     }
-    return { invoked, current };
+    return { invoked, current, featureToken };
   }, [messages]);
+
+  // Disk truth: read real tGD artifacts so "done" means the artifact exists,
+  // not merely that the slash command was typed. Only map/define/plan leave
+  // artifacts in the tGD dir; develop/verify/review/release act on the code
+  // repo, so those stay transcript-driven (hybrid below). Refetch on cwd
+  // change and whenever the agent stops (artifacts appear after it writes).
+  const tgdCwd = session?.cwd ?? newSessionCwd ?? null;
+  const [tgdArtifacts, setTgdArtifacts] = useState<TgdArtifactsClient | null>(null);
+  useEffect(() => {
+    if (!tgdCwd) { setTgdArtifacts(null); return; }
+    let cancelled = false;
+    fetch(`/api/tgd/artifacts?cwd=${encodeURIComponent(tgdCwd)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: TgdArtifactsClient | null) => { if (!cancelled) setTgdArtifacts(d && d.exists ? d : null); })
+      .catch(() => { /* leave transcript-only */ });
+    return () => { cancelled = true; };
+  }, [tgdCwd, agentRunning]);
+
+  // The "current feature" whose progress the bar reflects: the one named in the
+  // last /tgd-* command if it matches, else the most-recently-touched feature.
+  const currentFeature = useMemo(() => {
+    const features = tgdArtifacts?.features ?? [];
+    if (features.length === 0) return null;
+    if (tgdState.featureToken) {
+      const hit = features.find((f) => f.name === tgdState.featureToken);
+      if (hit) return hit;
+    }
+    return features.reduce((a, b) => (b.mtimeMs > a.mtimeMs ? b : a));
+  }, [tgdArtifacts, tgdState.featureToken]);
+
+  // Phases with real on-disk evidence (map/define/plan) for the current feature.
+  const diskDone = useMemo(() => {
+    const done = new Set<string>();
+    const top = tgdArtifacts?.top ?? [];
+    if (top.some((f) => f.phase === "map")) done.add("/tgd-map");
+    const hasTrackingPlan = top.some((f) => f.name === "TRACKING-PLAN.md");
+    if (currentFeature?.phasesDone.includes("define")) done.add("/tgd-define");
+    if (currentFeature?.phasesDone.includes("plan") || hasTrackingPlan) done.add("/tgd-plan");
+    return done;
+  }, [tgdArtifacts, currentFeature]);
+
   const phaseStatusOf = useCallback((cmd: string): PhaseStatus => {
-    if (cmd === tgdState.current) return "current";
-    return tgdState.invoked.has(cmd) ? "done" : "todo";
-  }, [tgdState]);
+    // Evidence = disk artifacts ∪ this session's invoked commands.
+    const done = new Set<string>([...diskDone, ...tgdState.invoked]);
+    // Current = the command you last ran live; else the next phase after the
+    // furthest one with evidence (so a fresh project highlights Map as "start").
+    let current = tgdState.current;
+    if (!current) {
+      let lastIdx = -1;
+      CMD_ORDER.forEach((c, i) => { if (done.has(c)) lastIdx = i; });
+      current = lastIdx + 1 < CMD_ORDER.length ? CMD_ORDER[lastIdx + 1] : null;
+    }
+    if (cmd === current) return "current";
+    return done.has(cmd) ? "done" : "todo";
+  }, [diskDone, tgdState]);
   const runPhase = useCallback((cmd: string) => {
     chatInputRef?.current?.setText(cmd + " ");
   }, [chatInputRef]);
@@ -695,7 +760,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
           tGD ▸
         </button>
       ) : (
-        <TgdPipeline phases={tgdPhases} statusOf={phaseStatusOf} onRun={runPhase} onHide={hidePipeline} />
+        <TgdPipeline phases={tgdPhases} statusOf={phaseStatusOf} onRun={runPhase} onHide={hidePipeline} feature={currentFeature?.name ?? null} />
       )}
       <div className="relative flex flex-1 overflow-hidden">
         {findOpen && (

@@ -39,6 +39,8 @@ export interface TgdFeature {
   prototypes: TgdArtifactFile[];
   /** phase slugs this feature has completed evidence for */
   phasesDone: string[];
+  /** newest mtime across the feature's docs — used to pick the "current" feature */
+  mtimeMs: number;
 }
 
 export interface TgdArtifacts {
@@ -87,12 +89,14 @@ export function readTgdArtifacts(cwd: string): TgdArtifacts {
 
     const docs: TgdArtifactFile[] = [];
     const phasesDone = new Set<string>();
+    let mtimeMs = 0;
     for (const doc of FEATURE_DOC_ORDER) {
       const p = join(dir, doc);
       if (existsSync(p)) {
         const phase = DOC_PHASE[doc];
         docs.push({ name: doc, path: p, phase });
         if (phase) phasesDone.add(phase);
+        try { mtimeMs = Math.max(mtimeMs, statSync(p).mtimeMs); } catch { /* ignore */ }
       }
     }
     const prototypes: TgdArtifactFile[] = [];
@@ -104,7 +108,7 @@ export function readTgdArtifacts(cwd: string): TgdArtifacts {
         }
       } catch { /* ignore */ }
     }
-    features.push({ name, path: dir, docs, prototypes, phasesDone: [...phasesDone] });
+    features.push({ name, path: dir, docs, prototypes, phasesDone: [...phasesDone], mtimeMs });
   }
 
   return { exists: true, tgdDir, top, features };

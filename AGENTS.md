@@ -238,12 +238,22 @@ pipeline echo. `.scans/` and dot-dirs are infra, excluded. API: `GET /api/tgd/ar
 
 ### tGD pipeline (`components/chat/TgdPipeline.tsx`)
 Always-visible phase bar at the top of the session view. `PHASE_ACTIONS`
-(ChatWindow) is the source of the seven phases; status is derived from the
-transcript — ChatWindow scans user messages for a leading `/tgd-<phase>`, the
-last match is `current`, earlier matches are `done`, the rest `todo`. Clicking a
-phase calls `chatInputRef.setText("/tgd-x ")` (no auto-send). Dismiss state is
+(ChatWindow) is the source of the seven phases. Status is **hybrid**: ChatWindow
+fetches `/api/tgd/artifacts?cwd=` and marks `map`/`define`/`plan` done from real
+on-disk artifacts (same truth as the artifacts panel — `map` = CONTEXT/wiki
+exists, `define`/`plan` = the current feature's `phasesDone`, plan also if
+`TRACKING-PLAN.md` exists); `develop`/`verify`/`review`/`release` have no tGD
+artifact so they stay transcript-driven (union with the session's invoked
+`/tgd-*`). `current` = the last `/tgd-*` typed this session, else the next phase
+after the furthest with evidence (so a fresh project highlights `map`). The bar
+is **feature-aware**: the tracked feature is the one named in the last `/tgd-*`
+command if it matches a feature dir, else the most-recently-touched feature
+(`TgdFeature.mtimeMs`), shown as a chip. Artifacts are refetched on cwd change
+and whenever the agent stops. Clicking a phase calls
+`chatInputRef.setText("/tgd-x ")` (no auto-send). Dismiss state is
 `localStorage["pi-tgd-pipeline-hidden"]`. The current phase carries
-`aria-current="step"` (stable test hook).
+`aria-current="step"` (stable test hook); the feature chip is
+`[class*="TgdPipeline_feature"]`.
 
 ### Prompt templates
 User-defined reusable prompts. Server (`/api/prompts`, `<agent-dir>/prompts.json`)

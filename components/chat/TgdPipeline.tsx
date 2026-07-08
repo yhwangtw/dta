@@ -16,19 +16,23 @@ interface Props {
   phases: TgdPhase[];
   statusOf: (cmd: string) => PhaseStatus;
   onRun: (cmd: string) => void;
+  /** Name of the feature whose progress the bar reflects, if known. */
+  feature?: string | null;
   /** Hide the whole bar (persisted by the parent). */
   onHide?: () => void;
 }
 
 /**
- * Always-visible tGD workflow pipeline. Each phase reflects whether it has been
- * run in this session (done), is the most recent one (current), or is still
- * ahead (todo). Clicking a phase drops its command into the composer.
+ * Always-visible tGD workflow pipeline. Each phase reflects real progress:
+ * map/define/plan are marked done when their artifacts exist on disk, the later
+ * phases when their command has run this session; the live phase is "current"
+ * and the rest are "todo". Clicking a phase drops its command into the composer.
  */
-export function TgdPipeline({ phases, statusOf, onRun, onHide }: Props) {
+export function TgdPipeline({ phases, statusOf, onRun, feature, onHide }: Props) {
   return (
     <div className={styles.bar}>
       <span className={styles.brand}>tGD</span>
+      {feature && <span className={styles.feature} title={`Tracking feature: ${feature}`}>{feature}</span>}
       <div className={styles.track}>
         {phases.map((phase, i) => {
           const status = statusOf(phase.cmd);

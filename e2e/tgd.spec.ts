@@ -22,8 +22,23 @@ test.describe("tGD pipeline", () => {
     // Map + Define are marked done (2 completed phases)
     await expect(page.locator('button[class*="TgdPipeline_done"]')).toHaveCount(2);
 
+    // The tracked feature (from the tGD dir) is shown
+    await expect(page.locator('[class*="TgdPipeline_feature"]')).toHaveText("user-login");
+
     // Clicking a phase drops its command into the composer
     await page.getByRole("button", { name: /Verify/ }).first().click();
     await expect(page.locator("textarea").last()).toHaveValue("/tgd-verify ");
+  });
+
+  test("marks phases done from on-disk artifacts even without running the commands", async ({ page }) => {
+    // This session (架構分析) never typed a /tgd-* command, but its project has a
+    // sibling tGD dir with CONTEXT.md + the user-login feature's PRD/SPEC/TASKS,
+    // so map/define/plan are done purely from disk and develop is next.
+    await page.goto("/?session=aaaa1111-2222-3333-4444-555566667777");
+    await expect(page.getByText("專案架構分析").first()).toBeVisible({ timeout: 20_000 });
+
+    await expect(page.locator('[class*="TgdPipeline_feature"]')).toHaveText("user-login");
+    await expect(page.locator('button[class*="TgdPipeline_done"]')).toHaveCount(3);
+    await expect(page.locator('[aria-current="step"]')).toHaveText(/Develop/);
   });
 });

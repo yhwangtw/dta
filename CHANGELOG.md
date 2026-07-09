@@ -4,6 +4,8 @@ All notable changes to tGD-pi-web are documented here.
 
 ## [Unreleased]
 
+## [2026.07.08-2] (PR #33–#34)
+
 ### Fixed
 - **Branch navigator dropdown no longer hides behind the tGD pipeline bar.** The top bar uses a `backdrop-filter` (glass), which traps `position:fixed` children in a stacking context that paints *under* the chat content — so the Branches panel opened behind the pipeline bar and was invisible. It's now rendered through a portal to `<body>` (escaping the trap) and clamped within the viewport so it never runs off the right edge on narrow layouts.
 - **Top bar and tGD pipeline no longer overflow/clip on narrow screens.** The top-bar action row now scrolls horizontally instead of overlapping, the session title and live token stats hide below 640px to reclaim space, and the pipeline bar tightens its spacing and drops the "tGD" wordmark on mobile (the phase track keeps its horizontal scroll).

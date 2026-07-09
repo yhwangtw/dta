@@ -182,6 +182,20 @@
   align-items: center;
   gap: 2px;
   height: 100%;
+  /* Scroll instead of overflowing/overlapping the rest of the bar on narrow
+     layouts. Buttons keep their size; the row scrolls horizontally. */
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.chatActions::-webkit-scrollbar { display: none; }
+.chatActions > * { flex-shrink: 0; }
+
+/* Narrow screens: reclaim top-bar space so the action buttons fit without
+   clipping — drop the session title and the (secondary) live stats. */
+@media (max-width: 640px) {
+  .chatTitle { display: none; }
+  .sessionStats { display: none; }
 }
 
 .exportButton {

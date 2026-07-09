@@ -121,3 +121,12 @@
   display: inline-flex;
 }
 .hide:hover { color: var(--text); }
+
+/* Narrow screens: tighten spacing and drop the "tGD" wordmark so more of the
+   scrollable phase track is visible. The track keeps its overflow-x scroll. */
+@media (max-width: 640px) {
+  .bar { gap: 6px; padding: 5px 8px; }
+  .brand { display: none; }
+  .phase { padding: 3px 7px; font-size: 11px; }
+  .connector { width: 8px; }
+}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import type { SessionEntry, SessionTreeNode } from "@/lib/types";
 import styles from "./BranchNavigator.module.css";
 import { useI18n } from "@/lib/i18n";
@@ -173,12 +174,25 @@ export function BranchNavigator({ tree, activeLeafId, onLeafChange, inline, cont
     if (!anchor) return;
     const update = () => {
       const rect = anchor.getBoundingClientRect();
-      setDropdownPos({ top: rect.bottom, left: rect.left, width: rect.width });
+      // Clamp within the viewport so the panel never runs off the right edge
+      // (the top bar can be wider than the screen on narrow layouts).
+      const margin = 8;
+      const width = Math.min(rect.width, window.innerWidth - margin * 2);
+      let left = rect.left;
+      if (left + width > window.innerWidth - margin) left = window.innerWidth - margin - width;
+      if (left < margin) left = margin;
+      setDropdownPos({ top: rect.bottom, left, width });
     };
     update();
     const ro = new ResizeObserver(update);
     ro.observe(anchor);
-    return () => ro.disconnect();
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, true);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, true);
+    };
   }, [open, inline, containerRef]);
 
   const activePathIds = useMemo(
@@ -228,7 +242,10 @@ export function BranchNavigator({ tree, activeLeafId, onLeafChange, inline, cont
           {branchIcon}
           <span>{t("topbar.branches")}</span>
         </button>
-        {open && dropdownPos && (
+        {open && dropdownPos && typeof document !== "undefined" && createPortal(
+          // Portalled to <body>: the top bar has a backdrop-filter, which traps
+          // position:fixed children in a stacking context that paints *under*
+          // the chat content (the tGD pipeline bar covered this dropdown).
           <div className={styles.inlineDropdown} style={{ top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width }}>
             {hasContent && firstNode ? (
               <div className={styles.dropdownContent}>
@@ -249,7 +266,8 @@ export function BranchNavigator({ tree, activeLeafId, onLeafChange, inline, cont
                 {noBranchReason}
               </div>
             )}
-          </div>
+          </div>,
+          document.body,
         )}
       </div>
     );

@@ -1,6 +1,8 @@
 "use client";
 
+import { useState, useRef } from "react";
 import { getFileIcon } from "../sidebar/FileIcons";
+import { useI18n } from "@/lib/i18n";
 import styles from "./TabBar.module.css";
 
 export interface Tab {
@@ -18,17 +20,40 @@ interface Props {
   activeTabId: string;
   onSelectTab: (id: string) => void;
   onCloseTab: (id: string) => void;
+  /** Close every tab except this one. */
+  onCloseOthers?: (id: string) => void;
+  /** Close all tabs. */
+  onCloseAll?: () => void;
+  /** Reorder: move the tab with `id` to `toIndex`. */
+  onReorder?: (id: string, toIndex: number) => void;
+  /** Reveal a tab's file in the explorer. */
+  onReveal?: (filePath: string) => void;
 }
 
-export function TabBar({ tabs, activeTabId, onSelectTab, onCloseTab }: Props) {
+export function TabBar({ tabs, activeTabId, onSelectTab, onCloseTab, onCloseOthers, onCloseAll, onReorder, onReveal }: Props) {
+  const { t } = useI18n();
+  const [menu, setMenu] = useState<{ x: number; y: number; tab: Tab } | null>(null);
+  const dragId = useRef<string | null>(null);
+
   return (
     <div className={styles.tabBar}>
-      {tabs.map((tab) => {
+      {tabs.map((tab, index) => {
         const isActive = tab.id === activeTabId;
         return (
           <div
             key={tab.id}
+            draggable={!!onReorder}
+            onDragStart={() => { dragId.current = tab.id; }}
+            onDragOver={(e) => { if (dragId.current && dragId.current !== tab.id) e.preventDefault(); }}
+            onDrop={(e) => {
+              e.preventDefault();
+              if (dragId.current && dragId.current !== tab.id) onReorder?.(dragId.current, index);
+              dragId.current = null;
+            }}
             onClick={() => onSelectTab(tab.id)}
+            // Middle-click closes, like a browser tab.
+            onAuxClick={(e) => { if (e.button === 1) { e.preventDefault(); onCloseTab(tab.id); } }}
+            onContextMenu={(e) => { e.preventDefault(); setMenu({ x: e.clientX, y: e.clientY, tab }); }}
             className={`${styles.tab} ${isActive ? styles.tabActive : styles.tabInactive}`}
           >
             <span className={`${styles.tabIcon} ${isActive ? styles.tabIconActive : styles.tabIconInactive}`}>
@@ -53,6 +78,32 @@ export function TabBar({ tabs, activeTabId, onSelectTab, onCloseTab }: Props) {
           </div>
         );
       })}
+
+      {menu && (
+        <>
+          <div className={styles.menuBackdrop} onClick={() => setMenu(null)} onContextMenu={(e) => { e.preventDefault(); setMenu(null); }} />
+          <div className={`glass ${styles.tabMenu}`} style={{ left: menu.x, top: menu.y }} role="menu">
+            {onReveal && (
+              <button className={styles.tabMenuItem} onClick={() => { onReveal(menu.tab.filePath); setMenu(null); }}>
+                {t("explorer.revealInTree")}
+              </button>
+            )}
+            <button className={styles.tabMenuItem} onClick={() => { onCloseTab(menu.tab.id); setMenu(null); }}>
+              {t("tabs.close")}
+            </button>
+            {onCloseOthers && tabs.length > 1 && (
+              <button className={styles.tabMenuItem} onClick={() => { onCloseOthers(menu.tab.id); setMenu(null); }}>
+                {t("tabs.closeOthers")}
+              </button>
+            )}
+            {onCloseAll && (
+              <button className={styles.tabMenuItem} onClick={() => { onCloseAll(); setMenu(null); }}>
+                {t("tabs.closeAll")}
+              </button>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }

@@ -5,6 +5,9 @@ import { getFileIcon, FolderIcon } from "./FileIcons";
 import { encodeFilePathForApi, getRelativeFilePath, joinFilePath } from "@/lib/file-paths";
 import styles from "./FileExplorer.module.css";
 import { useI18n } from "@/lib/i18n";
+import { showToast } from "@/hooks/useToast";
+import { createFile, createDir, renameEntry, deleteEntry, uploadFiles } from "@/lib/file-ops-client";
+import { FileOpsDialog, type FileOpRequest } from "./FileOpsDialog";
 
 const JUNK_DIRS = new Set([
   ".git", ".next", ".nuxt", "node_modules", "__pycache__", ".venv", "venv",
@@ -41,6 +44,8 @@ interface MenuTarget {
   relative: string;
   isDir: boolean;
   gitStatus?: string;
+  /** Right-clicked empty space → only creation/upload actions. */
+  rootArea?: boolean;
 }
 
 interface Props {
@@ -50,6 +55,10 @@ interface Props {
   onAtMention?: (relativePath: string) => void;
   /** Open the HEAD ↔ worktree diff for a changed file (relative path). */
   onOpenDiff?: (relativePath: string) => void;
+  /** Absolute path of the file currently shown in the viewer (for highlight). */
+  activeFilePath?: string | null;
+  /** Bump to reveal `activeFilePath` in the tree (expand ancestors). */
+  revealSignal?: number;
 }
 
 async function fetchEntries(dirPath: string): Promise<FileNode[]> {
@@ -81,7 +90,7 @@ function GitBadge({ status }: { status: string }) {
 
 function TreeNode({
   node, depth, cwd, onOpenFile, onAtMention, expandedPaths, onToggleExpanded,
-  refreshKey, gitStatus, onContextMenu,
+  refreshKey, gitStatus, onContextMenu, activePath,
 }: {
   node: FileNode;
   depth: number;
@@ -93,6 +102,7 @@ function TreeNode({
   refreshKey?: number;
   gitStatus: Map<string, string>;
   onContextMenu: (t: MenuTarget) => void;
+  activePath?: string | null;
 }) {
   const open = expandedPaths.has(node.fullPath);
   const [children, setChildren] = useState<FileNode[]>(node.children ?? []);
@@ -150,7 +160,7 @@ function TreeNode({
           onContextMenu({ x: e.clientX, y: e.clientY, fullPath: node.fullPath, relative, isDir: node.isDir, gitStatus: fileStatus });
         }}
         onMouseDown={(e) => (e.currentTarget as HTMLElement).focus()}
-        className={`hover-bg hover-group ${styles.treeNode}`}
+        className={`hover-bg hover-group ${styles.treeNode} ${!node.isDir && activePath === node.fullPath ? styles.treeNodeActive : ""}`}
         style={{ paddingLeft: 8 + depth * 14 }}
         tabIndex={-1}
         data-fx-row
@@ -201,7 +211,7 @@ function TreeNode({
       {node.isDir && open && (
         <div>
           {children.map((child) => (
-            <TreeNode key={child.fullPath} node={child} depth={depth + 1} cwd={cwd} onOpenFile={onOpenFile} onAtMention={onAtMention} expandedPaths={expandedPaths} onToggleExpanded={onToggleExpanded} refreshKey={refreshKey} gitStatus={gitStatus} onContextMenu={onContextMenu} />
+            <TreeNode key={child.fullPath} node={child} depth={depth + 1} cwd={cwd} onOpenFile={onOpenFile} onAtMention={onAtMention} expandedPaths={expandedPaths} onToggleExpanded={onToggleExpanded} refreshKey={refreshKey} gitStatus={gitStatus} onContextMenu={onContextMenu} activePath={activePath} />
           ))}
           {children.length === 0 && loaded && (
             <div className={styles.emptyDirMessage} style={{ paddingLeft: 8 + (depth + 1) * 14 }}>
@@ -214,7 +224,7 @@ function TreeNode({
   );
 }
 
-export function FileExplorer({ cwd, onOpenFile, refreshKey, onAtMention, onOpenDiff }: Props) {
+export function FileExplorer({ cwd, onOpenFile, refreshKey, onAtMention, onOpenDiff, activeFilePath, revealSignal }: Props) {
   const { t } = useI18n();
   const [roots, setRoots] = useState<FileNode[]>([]);
   const [loading, setLoading] = useState(true);
@@ -224,6 +234,12 @@ export function FileExplorer({ cwd, onOpenFile, refreshKey, onAtMention, onOpenD
   const [filterQuery, setFilterQuery] = useState("");
   const filterInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [localRefresh, setLocalRefresh] = useState(0);
+  const bumpRefresh = useCallback(() => setLocalRefresh((n) => n + 1), []);
+  const [dialog, setDialog] = useState<FileOpRequest | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const uploadInputRef = useRef<HTMLInputElement>(null);
+  const uploadTargetRef = useRef<string>(cwd);
 
   const handleToggleExpanded = useCallback((fullPath: string, open: boolean) => {
     setExpandedPaths((prev) => {
@@ -232,6 +248,9 @@ export function FileExplorer({ cwd, onOpenFile, refreshKey, onAtMention, onOpenD
       return next;
     });
   }, []);
+
+  // Combined refresh: parent bumps (refreshKey) + local file-op bumps.
+  const treeRefresh = (refreshKey ?? 0) + localRefresh;
 
   useEffect(() => {
     const cwdChanged = prevCwdRef.current !== cwd;
@@ -247,7 +266,7 @@ export function FileExplorer({ cwd, onOpenFile, refreshKey, onAtMention, onOpenD
       .then((entries) => setRoots(entries))
       .catch((e) => setError(String(e)))
       .finally(() => setLoading(false));
-  }, [cwd, refreshKey]);
+  }, [cwd, treeRefresh]);
 
   // ── Git working-tree status (badges) ────────────────────────────────────
   const [gitStatus, setGitStatus] = useState<Map<string, string>>(new Map());
@@ -265,7 +284,7 @@ export function FileExplorer({ cwd, onOpenFile, refreshKey, onAtMention, onOpenD
       })
       .catch(() => {});
     return () => { alive = false; };
-  }, [cwd, refreshKey]);
+  }, [cwd, treeRefresh]);
 
   // ── Deep search (server-side, ≥2 chars) ─────────────────────────────────
   const searchMode = filterQuery.trim().length >= 2;
@@ -294,7 +313,7 @@ export function FileExplorer({ cwd, onOpenFile, refreshKey, onAtMention, onOpenD
       }
     }, 220);
     return () => clearTimeout(timer);
-  }, [filterQuery, cwd, searchMode, refreshKey]);
+  }, [filterQuery, cwd, searchMode, treeRefresh]);
 
   /** Clicking a dir in search results reveals it in the tree. */
   const revealInTree = useCallback((relative: string) => {
@@ -310,6 +329,55 @@ export function FileExplorer({ cwd, onOpenFile, refreshKey, onAtMention, onOpenD
     });
     setFilterQuery("");
   }, [cwd]);
+
+  // ── Reveal the active file when asked (tab "reveal in explorer") ──
+  useEffect(() => {
+    if (!revealSignal || !activeFilePath) return;
+    const rel = getRelativeFilePath(activeFilePath, cwd);
+    if (rel.startsWith("..") || rel.startsWith("/")) return; // outside this cwd
+    revealInTree(rel);
+    setTimeout(() => {
+      const row = containerRef.current?.querySelector<HTMLElement>(`[title="${CSS.escape(activeFilePath)}"]`);
+      row?.scrollIntoView({ block: "center" });
+    }, 250);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [revealSignal]);
+
+  // ── File operations (create / rename / delete / upload) ──
+  const doUpload = useCallback(async (dir: string, files: File[]) => {
+    if (files.length === 0) return;
+    const { results, error } = await uploadFiles(dir, files);
+    if (error) { showToast(`${t("explorer.uploadFailed")}: ${error}`, { type: "error" }); return; }
+    const okCount = results.filter((r) => r.ok).length;
+    for (const f of results.filter((r) => !r.ok)) {
+      showToast(`${t("explorer.uploadFailed")}: ${f.name} — ${f.error}`, { type: "error" });
+    }
+    if (okCount > 0) showToast(`${t("explorer.uploaded")}: ${okCount}`);
+    revealInTree(getRelativeFilePath(dir, cwd));
+    bumpRefresh();
+  }, [cwd, t, revealInTree, bumpRefresh]);
+
+  const runOp = useCallback(async (name: string): Promise<string | null> => {
+    if (!dialog) return null;
+    let res: { error?: string };
+    if (dialog.kind === "new-file") res = await createFile(dialog.targetPath, name);
+    else if (dialog.kind === "new-folder") res = await createDir(dialog.targetPath, name);
+    else if (dialog.kind === "rename") res = await renameEntry(dialog.targetPath, name);
+    else res = await deleteEntry(dialog.targetPath);
+    if (res.error) return res.error;
+    bumpRefresh();
+    return null;
+  }, [dialog, bumpRefresh]);
+
+  const onFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    void doUpload(uploadTargetRef.current, Array.from(e.target.files ?? []));
+    e.target.value = "";
+  }, [doUpload]);
+
+  const openUpload = useCallback((dir: string) => {
+    uploadTargetRef.current = dir;
+    uploadInputRef.current?.click();
+  }, []);
 
   // ── Context menu ─────────────────────────────────────────────────────────
   const [menu, setMenu] = useState<MenuTarget | null>(null);
@@ -373,7 +441,19 @@ export function FileExplorer({ cwd, onOpenFile, refreshKey, onAtMention, onOpenD
   }
 
   return (
-    <div>
+    <div
+      className={dragOver ? styles.dragActive : undefined}
+      onDragOver={(e) => { if (e.dataTransfer.types.includes("Files")) { e.preventDefault(); setDragOver(true); } }}
+      onDragLeave={(e) => { if (e.currentTarget === e.target) setDragOver(false); }}
+      onDrop={(e) => {
+        if (!e.dataTransfer.types.includes("Files")) return;
+        e.preventDefault();
+        setDragOver(false);
+        void doUpload(cwd, Array.from(e.dataTransfer.files));
+      }}
+    >
+      <input ref={uploadInputRef} type="file" multiple hidden onChange={onFileInputChange} />
+      {dragOver && <div className={styles.dropHint}>{t("explorer.dropToUpload")}</div>}
       {/* Filter / search input */}
       <div className={styles.filterWrapper}>
         <input
@@ -390,7 +470,14 @@ export function FileExplorer({ cwd, onOpenFile, refreshKey, onAtMention, onOpenD
         />
       </div>
 
-      <div ref={containerRef} className={styles.filterResults} onKeyDown={onTreeKeyDown}>
+      <div ref={containerRef} className={styles.filterResults} onKeyDown={onTreeKeyDown}
+        onContextMenu={(e) => {
+          // Right-click on empty space → root-level ops.
+          if ((e.target as HTMLElement).closest("[data-fx-row]")) return;
+          e.preventDefault();
+          setMenu({ x: e.clientX, y: e.clientY, fullPath: cwd, relative: "", isDir: true, rootArea: true });
+        }}
+      >
         {searchMode ? (
           <>
             {searching && searchResults.length === 0 && (
@@ -450,9 +537,10 @@ export function FileExplorer({ cwd, onOpenFile, refreshKey, onAtMention, onOpenD
                 onAtMention={onAtMention}
                 expandedPaths={expandedPaths}
                 onToggleExpanded={handleToggleExpanded}
-                refreshKey={refreshKey}
+                refreshKey={treeRefresh}
                 gitStatus={gitStatus}
                 onContextMenu={setMenu}
+                activePath={activeFilePath}
               />
             ))}
             {roots.length === 0 && (
@@ -463,20 +551,48 @@ export function FileExplorer({ cwd, onOpenFile, refreshKey, onAtMention, onOpenD
       </div>
 
       {/* Context menu */}
-      {menu && (
+      {menu && (() => {
+        // New file/folder target: the dir itself, or the file's parent dir.
+        const parentDir = menu.isDir ? menu.fullPath : menu.fullPath.slice(0, menu.fullPath.lastIndexOf("/")) || cwd;
+        return (
         <div
           className={`glass ${styles.contextMenu}`}
           style={{ left: menu.x, top: menu.y }}
           onMouseDown={(e) => e.stopPropagation()}
           role="menu"
         >
-          <button className={styles.menuItem} onClick={() => copyText(menu.fullPath)}>
-            {t("explorer.copyPath")}
+          <button className={styles.menuItem} onClick={() => { setDialog({ kind: "new-file", targetPath: parentDir, label: getRelativeFilePath(parentDir, cwd) || "/" }); setMenu(null); }}>
+            {t("explorer.newFile")}
           </button>
-          <button className={styles.menuItem} onClick={() => copyText(menu.relative)}>
-            {t("explorer.copyRel")}
+          <button className={styles.menuItem} onClick={() => { setDialog({ kind: "new-folder", targetPath: parentDir, label: getRelativeFilePath(parentDir, cwd) || "/" }); setMenu(null); }}>
+            {t("explorer.newFolder")}
           </button>
-          {onAtMention && (
+          <button className={styles.menuItem} onClick={() => { openUpload(parentDir); setMenu(null); }}>
+            {t("explorer.uploadHere")}
+          </button>
+          {!menu.rootArea && <div className={styles.menuSep} />}
+          {!menu.rootArea && (
+            <button className={styles.menuItem} onClick={() => { setDialog({ kind: "rename", targetPath: menu.fullPath, label: menu.relative, currentName: menu.fullPath.split("/").pop(), isDir: menu.isDir }); setMenu(null); }}>
+              {t("explorer.rename")}
+            </button>
+          )}
+          {!menu.rootArea && (
+            <button className={`${styles.menuItem} ${styles.menuItemDanger}`} onClick={() => { setDialog({ kind: "delete", targetPath: menu.fullPath, label: menu.relative, isDir: menu.isDir }); setMenu(null); }}>
+              {t("explorer.delete")}
+            </button>
+          )}
+          {!menu.rootArea && <div className={styles.menuSep} />}
+          {!menu.rootArea && (
+            <button className={styles.menuItem} onClick={() => copyText(menu.fullPath)}>
+              {t("explorer.copyPath")}
+            </button>
+          )}
+          {!menu.rootArea && (
+            <button className={styles.menuItem} onClick={() => copyText(menu.relative)}>
+              {t("explorer.copyRel")}
+            </button>
+          )}
+          {onAtMention && !menu.rootArea && (
             <button className={styles.menuItem} onClick={() => { onAtMention(menu.relative); setMenu(null); }}>
               {t("explorer.mention")}
             </button>
@@ -486,7 +602,7 @@ export function FileExplorer({ cwd, onOpenFile, refreshKey, onAtMention, onOpenD
               {t("explorer.diff")}
             </button>
           )}
-          {!menu.isDir && (
+          {!menu.isDir && !menu.rootArea && (
             <a
               className={styles.menuItem}
               href={`/api/files/${encodeFilePathForApi(menu.fullPath)}?type=download`}
@@ -497,6 +613,11 @@ export function FileExplorer({ cwd, onOpenFile, refreshKey, onAtMention, onOpenD
             </a>
           )}
         </div>
+        );
+      })()}
+
+      {dialog && (
+        <FileOpsDialog req={dialog} onClose={() => setDialog(null)} onSubmit={runOp} />
       )}
     </div>
   );

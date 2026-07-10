@@ -4,6 +4,9 @@ All notable changes to tGD-pi-web are documented here.
 
 ## [Unreleased]
 
+### Fixed
+- **Context-nearly-full banner no longer breaks on narrow screens.** The warning above the composer used a bare `truncate` on a flex child — `min-width: auto` means it never shrinks, so on narrow layouts the text collided with the Compact button and the percentage was clipped mid-digit. The prose now truncates properly (`min-w-0 flex-1`, full text in the tooltip) and the **percentage sits outside the truncating span** so the key number is always visible.
+
 ## [2026.07.10-4] (PR #42)
 
 ### Added

@@ -986,13 +986,20 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
           <div className={`mx-auto flex items-center gap-2 px-4 pb-1 ${wideChat ? "max-w-[1180px]" : "max-w-[820px]"}`}>
             <div className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-[var(--color-warning-border)] bg-[var(--color-warning-bg)] px-3 py-1.5 text-[12px] text-[var(--color-warning-text)]">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
-              <span className="truncate">
-                {t("chat.ctxHigh")} ({Math.round(contextUsage.percent)}%)
+              {/* min-w-0 flex-1: a flex child's min-width:auto refuses to shrink,
+                  so bare `truncate` never elides — the text collided with the
+                  button on narrow screens. The percent is the key info, so it
+                  lives outside the truncating span and always stays visible. */}
+              <span className="min-w-0 flex-1 truncate" title={t("chat.ctxHigh")}>
+                {t("chat.ctxHigh")}
+              </span>
+              <span className="shrink-0 font-semibold tabular-nums">
+                {Math.round(contextUsage.percent)}%
               </span>
               <button
                 onClick={handleCompact}
                 disabled={agentRunning}
-                className="ml-auto shrink-0 rounded border border-[var(--color-warning-border)] px-2 py-0.5 text-[11px] font-medium hover:bg-[var(--color-warning-bg-strong)] disabled:opacity-50"
+                className="shrink-0 rounded border border-[var(--color-warning-border)] px-2 py-0.5 text-[11px] font-medium hover:bg-[var(--color-warning-bg-strong)] disabled:opacity-50"
               >
                 {t("chat.compactNow")}
               </button>

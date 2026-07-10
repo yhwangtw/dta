@@ -364,7 +364,9 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       const excludeFromContext = trimmedForBash.startsWith("!!");
       const bashCommand = trimmedForBash.replace(/^!+/, "").trim();
       if (!bashCommand) return;
-      await connectEvents(session.id);
+      if (!(await connectEvents(session.id))) {
+        console.warn("SSE stream not open before bash send — early output may be missed");
+      }
       setBashRun({ command: bashCommand, output: "", running: true });
       try {
         await sendAgentCommand(session.id, { type: "bash", command: bashCommand, excludeFromContext });
@@ -408,7 +410,9 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       } else if (session) {
         // Wait for the SSE stream to be open before prompting, so the run's
         // first events aren't emitted before we're subscribed.
-        await connectEvents(session.id);
+        if (!(await connectEvents(session.id))) {
+          console.warn("SSE stream not open before prompt — early events may be missed");
+        }
         await sendAgentCommand(session.id, {
           type: "prompt",
           message,

@@ -46,4 +46,11 @@ describe("looksLikeFilePath", () => {
     expect(looksLikeFilePath("src/")).toBeNull();
     expect(looksLikeFilePath("..")).toBeNull();
   });
+
+  it("well-known extension-less filenames are files", () => {
+    expect(looksLikeFilePath("Makefile")).toEqual({ path: "Makefile", line: undefined });
+    expect(looksLikeFilePath("Dockerfile")).toEqual({ path: "Dockerfile", line: undefined });
+    expect(looksLikeFilePath("docker/Dockerfile")).toEqual({ path: "docker/Dockerfile", line: undefined });
+    expect(looksLikeFilePath("Makefile:12")).toEqual({ path: "Makefile", line: 12 });
+  });
 });

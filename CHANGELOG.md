@@ -15,6 +15,9 @@ All notable changes to tGD-pi-web are documented here.
 - **pi upgraded 0.80.2 → 0.80.6.**
 
 ### Fixed
+- **`~/` file links resolve against the real home directory.** They used to have the `~` stripped, aliasing `~/x` to `/x` — which could silently open a *different* existing file. The home dir now comes from `/api/home` (cached), with a toast when it can't be resolved.
+- **Mention/slash menus no longer swallow IME keys.** With the `@file` or `/` menu open, pressing Enter to commit a CJK composition (or arrowing between candidates) used to be intercepted as menu navigation; both menus now ignore keys mid-composition, like the send path always has.
+- **Slash-menu selection stays in range while the filter narrows** (a stale index past the end of the filtered list left nothing highlighted and made Enter a no-op), and the project picker's keyboard navigation now reaches nested worktree rows — a search matching only a worktree path also keeps its parent project visible. Bare `Makefile`/`Dockerfile`-style names in chat now link too.
 - **The run's first SSE events can no longer be lost.** Sending a prompt used to tear down and recreate the EventSource and POST immediately — the run's earliest events could fire before the stream was open. `connectEvents` now reuses an already-open stream, and the send path awaits the connection (with a safety-net timeout) before prompting.
 - **Completion chime plays under browser autoplay restrictions.** The chime used to create a fresh `AudioContext` at `agent_end` (no user gesture in the call stack), which starts suspended and plays silence. One shared context is now unlocked on the first user gesture and resumed before scheduling.
 

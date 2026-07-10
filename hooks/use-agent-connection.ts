@@ -18,13 +18,26 @@ export function useAgentEvents(
   const lastEventAtRef = useRef(mountedAt);
   const reconnectAttemptRef = useRef(0);
 
-  const connectEvents = useCallback((sid: string): Promise<void> => {
+  // Resolves `true` once the stream to `sid` is open, `false` when it isn't
+  // yet (failsafe timeout / connect error) — a broken stream never blocks the
+  // caller, but it can tell the difference and log it.
+  const connectEvents = useCallback((sid: string): Promise<boolean> => {
     const url = `/api/agent/${encodeURIComponent(sid)}/events`;
     const current = eventSourceRef.current;
-    // Already connected to this session — reuse instead of tearing down (a
-    // recreate right before a prompt POST could drop the run's first events).
-    if (current && current.url.endsWith(url) && current.readyState === EventSource.OPEN) {
-      return Promise.resolve();
+    // Already connected (or connecting) to this session — reuse instead of
+    // tearing down (a recreate right before a prompt POST could drop the
+    // run's first events).
+    if (current && current.url.endsWith(url)) {
+      if (current.readyState === EventSource.OPEN) return Promise.resolve(true);
+      if (current.readyState === EventSource.CONNECTING) {
+        return new Promise<boolean>((resolve) => {
+          let settled = false;
+          const settle = (ok: boolean) => { if (!settled) { settled = true; clearTimeout(failSafe); resolve(ok); } };
+          const failSafe = setTimeout(() => settle(false), 1_500);
+          current.addEventListener("open", () => settle(true), { once: true });
+          current.addEventListener("error", () => settle(false), { once: true });
+        });
+      }
     }
     if (current) {
       current.close();
@@ -35,14 +48,14 @@ export function useAgentEvents(
     // Resolves when the stream is open, so callers can await the connection
     // BEFORE prompting — otherwise the run's first events race the subscribe.
     // A safety-net timeout keeps a broken stream from ever blocking a send.
-    return new Promise<void>((resolve) => {
+    return new Promise<boolean>((resolve) => {
       let settled = false;
-      const settle = () => { if (!settled) { settled = true; resolve(); } };
-      const failSafe = setTimeout(settle, 1_500);
+      const settle = (ok: boolean) => { if (!settled) { settled = true; resolve(ok); } };
+      const failSafe = setTimeout(() => settle(false), 1_500);
       es.onopen = () => {
         reconnectAttemptRef.current = 0;
         clearTimeout(failSafe);
-        settle();
+        settle(true);
       };
       es.onmessage = (e) => {
         lastEventAtRef.current = Date.now();
@@ -54,6 +67,7 @@ export function useAgentEvents(
         }
       };
       es.onerror = () => {
+        settle(false); // no-op after open — only fails a still-pending await
         if (eventSourceRef.current === es && agentRunningRef.current) {
           es.close();
           eventSourceRef.current = null;

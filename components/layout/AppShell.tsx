@@ -39,6 +39,19 @@ const SkillsConfig = lazy(() => import("../modals/SkillsConfig").then((m) => ({ 
 const PromptsConfig = lazy(() => import("../modals/PromptsConfig").then((m) => ({ default: m.PromptsConfig })));
 const AnalyticsModal = lazy(() => import("../modals/AnalyticsModal").then((m) => ({ default: m.AnalyticsModal })));
 
+// Home dir for expanding ~/ file links; fetched once, shared across clicks.
+let homeDirPromise: Promise<string | null> | null = null;
+function fetchHomeDir(): Promise<string | null> {
+  homeDirPromise ??= fetch("/api/home")
+    .then((r) => (r.ok ? r.json() : null))
+    .then((d: { home?: string } | null) => d?.home ?? null)
+    .catch(() => {
+      homeDirPromise = null; // transient failure — allow a retry on next click
+      return null;
+    });
+  return homeDirPromise;
+}
+
 export function AppShell() {
   const { toggleTheme } = useTheme();
   const { locale, t } = useI18n();
@@ -162,7 +175,13 @@ export function AppShell() {
     return onOpenFileRequest(async (link) => {
       const cwdBase = effectiveCwdForPalette;
       let abs = link.path;
-      if (abs.startsWith("~/")) abs = abs.slice(1); // let the server-side root check reject if outside
+      if (abs.startsWith("~/")) {
+        // Expand against the real home dir — stripping the "~" would alias
+        // ~/x to /x, which may exist and silently open the wrong file.
+        const home = await fetchHomeDir();
+        if (!home) { showToast(`Cannot resolve ${link.path}`, { type: "warning" }); return; }
+        abs = `${home.replace(/\/$/, "")}${abs.slice(1)}`;
+      }
       if (!abs.startsWith("/")) {
         if (!cwdBase) { showToast(`No project selected to resolve ${link.path}`, { type: "warning" }); return; }
         abs = `${cwdBase.replace(/\/$/, "")}/${abs.replace(/^\.\//, "")}`;

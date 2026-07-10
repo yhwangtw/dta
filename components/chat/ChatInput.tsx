@@ -313,8 +313,9 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
         nativeEvent.isComposing ||
         nativeEvent.keyCode === 229;
 
-      // @file mention menu navigation
-      if (mention && mentionItems.length > 0) {
+      // @file mention menu navigation. Skipped mid-IME-composition: Enter
+      // there commits the composed text, and arrows move between candidates.
+      if (!isComposing && mention && mentionItems.length > 0) {
         if (e.key === "ArrowDown") {
           e.preventDefault();
           setMentionIndex((i) => (i + 1) % mentionItems.length);
@@ -338,8 +339,8 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
         }
       }
 
-      // Slash menu navigation
-      if (showSlashMenu) {
+      // Slash menu navigation (same IME rule as the mention menu above)
+      if (!isComposing && showSlashMenu) {
         const filtered = filterSlashItems(slashItems, slashFilter);
 
         if (e.key === "ArrowDown") {
@@ -448,13 +449,16 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
       } else {
         setShowSlashMenu(true);
         setSlashFilter(filterText);
-        if (filterText === "") setSlashSelectedIndex(0);
+        // Keep the selection inside the narrowed list — a stale index past the
+        // end leaves nothing highlighted and Enter a no-op.
+        const count = filterSlashItems(slashItems, filterText).length;
+        setSlashSelectedIndex((i) => (filterText === "" ? 0 : Math.min(i, Math.max(0, count - 1))));
       }
     } else {
       setShowSlashMenu(false);
       setSlashFilter("");
     }
-  }, [cwd]);
+  }, [cwd, slashItems]);
 
   const handlePaste = useCallback((e: React.ClipboardEvent) => {
     const items = Array.from(e.clipboardData?.items ?? []);

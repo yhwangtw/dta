@@ -63,7 +63,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const {
     initialScrollDoneRef, lastUserMsgRef, pendingScrollToUserRef,
     messagesEndRef, scrollContainerRef,
-  } = useTranscriptScroll(messages.length, agentRunning, agentRunningRef);
+  } = useTranscriptScroll(messages.length, agentRunning, agentRunningRef, session?.id ?? null);
   const {
     modelNames, modelList, modelThinkingLevels, modelThinkingLevelMaps,
     newSessionModel, setNewSessionModel,

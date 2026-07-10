@@ -84,3 +84,14 @@
   object-fit: contain;
   box-shadow: var(--color-shadow-dropdown);
 }
+
+.zoomReset {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  padding: 1px 7px;
+  cursor: pointer;
+}
+.zoomReset:hover { color: var(--text); }

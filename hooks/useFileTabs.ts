@@ -38,6 +38,28 @@ export function useFileTabs() {
     });
   }, [fileTabs]);
 
+  const handleCloseOthers = useCallback((tabId: string) => {
+    setFileTabs((prev) => prev.filter((t) => t.id === tabId));
+    setActiveFileTabId(tabId);
+  }, []);
+
+  const handleCloseAll = useCallback(() => {
+    setFileTabs([]);
+    setActiveFileTabId(null);
+    setRightPanelOpen(false);
+  }, []);
+
+  const handleReorderTabs = useCallback((tabId: string, toIndex: number) => {
+    setFileTabs((prev) => {
+      const from = prev.findIndex((t) => t.id === tabId);
+      if (from === -1 || from === toIndex) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(Math.max(0, Math.min(toIndex, next.length)), 0, moved);
+      return next;
+    });
+  }, []);
+
   return {
     fileTabs,
     activeFileTabId,
@@ -46,5 +68,8 @@ export function useFileTabs() {
     setActiveFileTabId,
     handleOpenFile,
     handleCloseFileTab,
+    handleCloseOthers,
+    handleCloseAll,
+    handleReorderTabs,
   };
 }

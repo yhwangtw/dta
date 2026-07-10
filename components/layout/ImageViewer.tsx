@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { encodeFilePathForApi, getFileName, getRelativeFilePath } from "@/lib/file-paths";
 import { useFileWatch } from "@/hooks/useFileWatch";
 import { formatSize } from "./file-viewer-utils";
@@ -13,6 +13,31 @@ export function ImageViewer({ filePath, cwd }: { filePath: string; cwd?: string 
   const [naturalSize, setNaturalSize] = useState<{ w: number; h: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // ── Zoom / pan ──
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const panRef = useRef<{ x: number; y: number; startX: number; startY: number } | null>(null);
+  const resetView = useCallback(() => { setZoom(1); setPan({ x: 0, y: 0 }); }, []);
+  const onWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault();
+    setZoom((z) => {
+      const next = Math.min(8, Math.max(1, z * (e.deltaY < 0 ? 1.15 : 1 / 1.15)));
+      if (next === 1) setPan({ x: 0, y: 0 });
+      return next;
+    });
+  }, []);
+  const onPointerDown = useCallback((e: React.PointerEvent) => {
+    if (zoom <= 1) return;
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    panRef.current = { x: pan.x, y: pan.y, startX: e.clientX, startY: e.clientY };
+  }, [zoom, pan]);
+  const onPointerMove = useCallback((e: React.PointerEvent) => {
+    const p = panRef.current;
+    if (!p) return;
+    setPan({ x: p.x + (e.clientX - p.startX), y: p.y + (e.clientY - p.startY) });
+  }, []);
+  const onPointerUp = useCallback(() => { panRef.current = null; }, []);
+
   const ext = getFileName(filePath).toLowerCase().split(".").pop() ?? "";
 
   useEffect(() => {
@@ -20,7 +45,8 @@ export function ImageViewer({ filePath, cwd }: { filePath: string; cwd?: string 
     setSize(null);
     setNaturalSize(null);
     setError(null);
-  }, [filePath]);
+    resetView();
+  }, [filePath, resetView]);
 
   // Bust image cache on each file-watch change event
   useEffect(() => {
@@ -46,6 +72,11 @@ export function ImageViewer({ filePath, cwd }: { filePath: string; cwd?: string 
         <span className={styles.extension}>{ext || "image"}</span>
         {naturalSize && <span>{naturalSize.w} × {naturalSize.h}</span>}
         {formatSizeStr && <span>{formatSizeStr}</span>}
+        {zoom !== 1 && (
+          <button className={styles.zoomReset} onClick={resetView} title="Reset zoom">
+            {Math.round(zoom * 100)}% ⟲
+          </button>
+        )}
         <span
           title={watching ? "Live sync active" : "Not watching"}
           className={`${styles.watchStatus} ${watching ? styles.watchStatusLive : styles.watchStatusStatic}`}
@@ -56,7 +87,12 @@ export function ImageViewer({ filePath, cwd }: { filePath: string; cwd?: string 
           {watching ? "live" : "static"}
         </span>
       </div>
-      <div className={styles.imageContainer}>
+      <div
+        className={styles.imageContainer}
+        onWheel={onWheel}
+        onDoubleClick={resetView}
+        style={{ cursor: zoom > 1 ? (panRef.current ? "grabbing" : "grab") : "default" }}
+      >
         {error ? (
           <div className={styles.error}>{error}</div>
         ) : (
@@ -64,12 +100,17 @@ export function ImageViewer({ filePath, cwd }: { filePath: string; cwd?: string 
           <img
             src={src}
             alt={filePath}
+            draggable={false}
             onLoad={(e) => {
               const img = e.currentTarget;
               setNaturalSize({ w: img.naturalWidth, h: img.naturalHeight });
             }}
             onError={() => setError("Failed to load image")}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
             className={styles.image}
+            style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, transformOrigin: "center center" }}
           />
         )}
       </div>

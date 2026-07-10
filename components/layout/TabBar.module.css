@@ -76,3 +76,27 @@
   flex-shrink: 0;
   transition: background 0.1s, color 0.1s;
 }
+
+.menuBackdrop { position: fixed; inset: 0; z-index: 1099; }
+.tabMenu {
+  position: fixed;
+  z-index: 1100;
+  min-width: 150px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--color-shadow-modal);
+  display: flex;
+  flex-direction: column;
+}
+.tabMenuItem {
+  text-align: left;
+  padding: 6px 10px;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.tabMenuItem:hover { background: var(--bg-hover); color: var(--text); }

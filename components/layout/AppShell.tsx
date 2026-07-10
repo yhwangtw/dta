@@ -59,7 +59,7 @@ export function AppShell() {
   const { toggleTheme } = useTheme();
   const { locale, t } = useI18n();
   const { state, actions, refs, topBarRef } = useAppShellState();
-  const { fileTabs, activeFileTabId, rightPanelOpen, setRightPanelOpen, setActiveFileTabId, handleOpenFile, handleCloseFileTab } = useFileTabs();
+  const { fileTabs, activeFileTabId, rightPanelOpen, setRightPanelOpen, setActiveFileTabId, handleOpenFile, handleCloseFileTab, handleCloseOthers, handleCloseAll, handleReorderTabs } = useFileTabs();
 
   const [modelsConfigOpen, setModelsConfigOpen] = useState(false);
   const [modelsRefreshKey, setModelsRefreshKey] = useState(0);
@@ -70,6 +70,13 @@ export function AppShell() {
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [panelView, setPanelView] = useState<PanelView>("sessions");
+  const [revealSignal, setRevealSignal] = useState(0);
+  const revealInExplorer = useCallback((filePath: string) => {
+    setActiveFileTabId(`file:${filePath}`);
+    setPanelView("files");
+    setSidebarOpen(true);
+    setRevealSignal((n) => n + 1);
+  }, [setActiveFileTabId]);
   const [diffFile, setDiffFile] = useState<string | null>(null);
   const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
   const [wideChat, setWideChat] = useState(() => {
@@ -398,6 +405,8 @@ export function AppShell() {
           onAtMention={handleAtMention}
           refreshKey={state.explorerRefreshKey}
           onOpenDiff={handleOpenDiff}
+          activeFilePath={activeFileTab?.filePath ?? null}
+          revealSignal={revealSignal}
         />
       ) : panelView === "search" ? (
         <SearchPanel
@@ -806,6 +815,10 @@ export function AppShell() {
               activeTabId={activeFileTabId ?? ""}
               onSelectTab={setActiveFileTabId}
               onCloseTab={handleCloseFileTab}
+              onCloseOthers={handleCloseOthers}
+              onCloseAll={handleCloseAll}
+              onReorder={handleReorderTabs}
+              onReveal={revealInExplorer}
             />
           </div>
 

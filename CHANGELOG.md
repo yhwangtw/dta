@@ -4,6 +4,15 @@ All notable changes to tGD-pi-web are documented here.
 
 ## [Unreleased]
 
+## [2026.07.10-7] (PR #47)
+
+### Added
+- **File management in the explorer.** Right-click any file/folder (or empty space) for **New file**, **New folder**, **Rename**, **Delete** (with a confirm), and **Upload here** — plus **drag-and-drop upload** onto the tree. New `POST`/`DELETE` on `/api/files/<path>` (create/rename/upload/remove), name-validated (`lib/file-name.ts`) and gated by the same allowed-roots check as reads; deleting a project root is refused. Previously the only way to touch files from the web was bash mode.
+- **Explorer knows what you're viewing.** The file open in the right panel is highlighted in the tree, and each editor tab has a **Reveal in explorer** action (right-click) that expands its ancestors and scrolls it into view.
+- **Better editor tabs.** Middle-click closes a tab; right-click for **Close / Close others / Close all**; drag to reorder.
+- **Image zoom & pan.** The image viewer supports wheel-zoom (up to 8x), drag-to-pan, and double-click / a badge to reset — no more downloading a screenshot to read the details.
+
+
 ## [2026.07.10-6] (PR #46)
 
 ### Added

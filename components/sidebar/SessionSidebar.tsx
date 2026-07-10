@@ -274,6 +274,13 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
         className={styles.sessionList}
         style={{ flex: showExplorer && explorerOpen && (selectedCwdProp || selectedCwd) ? "1 1 0" : "1 1 auto" }}
       >
+        {/* Which project this list is scoped to — makes the picker's filtering visible */}
+        {selectedCwd && !loading && !error && (
+          <div className={styles.projectScopeLabel}>
+            <span className={styles.projectScopeName}>{selectedCwd.split(/[\\/]/).filter(Boolean).pop()}</span>
+            <span> · {filteredSessions.length} session{filteredSessions.length === 1 ? "" : "s"}</span>
+          </div>
+        )}
         {loading && (
           <div className={styles.loadingWrapper}>
             <SessionItemSkeleton count={6} />

@@ -56,6 +56,16 @@ const MESSAGES = {
   "cwd.pin": { en: "Pin", zh: "釘選" },
   "cwd.unpin": { en: "Unpin", zh: "取消釘選" },
   "cwd.hide": { en: "Remove from list", zh: "從清單移除" },
+  "cwd.switcherTitle": { en: "Switch project", zh: "切換專案" },
+  "cwd.switcherPlaceholder": { en: "Search projects, worktrees — or paste a path…", zh: "搜尋專案、worktree,或貼上路徑…" },
+  "cwd.pinnedGroup": { en: "Pinned", zh: "釘選" },
+  "cwd.recentGroup": { en: "Recent", zh: "最近" },
+  "cwd.discoveredGroup": { en: "Git repos found in ~", zh: "在 ~ 找到的 git repo" },
+  "cwd.footNav": { en: "navigate", zh: "選擇" },
+  "cwd.footOpen": { en: "open", zh: "開啟" },
+  "cwd.footClose": { en: "close", zh: "關閉" },
+  "cwd.footComplete": { en: "complete", zh: "補全" },
+  "cwd.footPathHint": { en: "type / or ~ to paste a path", zh: "輸入 / 或 ~ 直接貼路徑" },
 
   // ── File explorer ──
   "explorer.copyPath": { en: "Copy path", zh: "複製完整路徑" },

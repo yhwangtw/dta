@@ -289,9 +289,24 @@ below AppShell, which resolves relative → active cwd, verifies via
 ### Git worktrees (`lib/worktrees.ts`, `/api/worktrees`)
 `git worktree list --porcelain` parsed by `parseWorktreePorcelain` (unit-
 tested); prunable and missing-on-disk checkouts are filtered server-side.
-CwdPicker fetches the **selected** project's worktrees on dropdown open (one
-git call), nests linked checkouts under its row (branch chip,
-`data-testid="worktree-row"`), and dedupes their flat project rows.
+The ProjectSwitcher fetches worktrees for the top ~8 known projects on open,
+nests **linked** checkouts under their project row (branch chip,
+`data-testid="worktree-row"`), and dedupes their flat rows — but never the
+main checkout (it IS the project; excluding it blanks the whole list).
+
+### Project switcher (`components/sidebar/ProjectSwitcher.tsx`)
+CwdPicker is now just the sidebar trigger button
+(`data-testid="project-switcher-trigger"`, ⌘/Ctrl+P) + the modal, portalled
+to `<body>` (`data-testid="project-switcher"`). One input, two modes:
+default = fuzzy search over pinned/recent projects (from the `projects`
+prop), nested worktrees, and repos from `GET /api/projects/discover`
+(shallow `~` scan for `.git` dirs, 60s cache on globalThis); a leading `/`
+or `~` flips to path mode — dir completion via POST `/api/cwd/browse`,
+`Tab` completes the highlighted dir, `↵` commits the typed path through
+`/api/cwd/validate`. Pins/hidden keep the old localStorage keys
+(`pi-cwd-pins`/`pi-cwd-hidden`). `useCwd`'s `dropdownOpen` is reused as the
+modal's open state; its outside-click handler is inert (dropdownRef is no
+longer attached) — the modal closes itself via overlay mousedown/Esc.
 
 ### SSE connect-before-prompt
 `connectEvents(sid)` returns a promise that resolves on `onopen` (1.5s

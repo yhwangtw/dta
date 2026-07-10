@@ -4,6 +4,9 @@ All notable changes to tGD-pi-web are documented here.
 
 ## [Unreleased]
 
+### Changed
+- **Project picker rebuilt as a ⌘K-style switcher modal.** The old sidebar control — a faux-input path with three separate modes (list / folder browser / custom path) — is replaced by a real button (project name + path + chevron, `⌘/Ctrl+P`) that opens one modal with **one input for everything**: fuzzy search across pinned + recent projects, their **git worktrees** (nested, branch chip), and **repos auto-discovered under `~`** (new `GET /api/projects/discover`, shallow scan, cached) so the list isn't empty before any session exists; typing a `/` or `~` prefix flips the same input into **path mode** with live directory completion (`Tab` completes, `↵` uses the folder). Full keyboard nav; pins/hide carry over. The session list also gains a scope line ("`demo-project` · 4 sessions") so it's obvious the list is filtered by the selected project.
+
 ## [2026.07.10-2] (PR #39)
 
 ### Fixed

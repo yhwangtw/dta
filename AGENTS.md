@@ -235,6 +235,11 @@ PRD/SPEC/DESIGN/TASKS/METRICS + `prototype/*.html`. `resolveTgdDir(cwd)` finds i
 `getAllowedRoots()` adds it so the file viewer can open those docs. The `tgd`
 rail view lists them and maps docs → phases (PRD/SPEC→define, TASKS→plan) for the
 pipeline echo. `.scans/` and dot-dirs are infra, excluded. API: `GET /api/tgd/artifacts`.
+The panel has two views (toggle persisted in `localStorage["pi-tgd-artifacts-view"]`):
+**Artifacts** (the curated per-feature/phase view above) and **Files** — a lazy
+tree of the *whole* tGD dir (nothing excluded: `.scans/`, `wiki/docs/`, prototypes),
+built on the existing `GET /api/files/<abs>?type=list` endpoint (the tGD dir is an
+allowed root, so its subtree lists/reads without extra wiring).
 
 ### tGD pipeline (`components/chat/TgdPipeline.tsx`)
 Always-visible phase bar at the top of the session view. `PHASE_ACTIONS`

@@ -4,6 +4,9 @@ All notable changes to tGD-pi-web are documented here.
 
 ## [Unreleased]
 
+### Added
+- **tGD artifacts panel gained a "Files" view** that browses the *entire* `<project>-tGD/` directory as a lazy file tree — nothing hidden. The curated **Artifacts** view (per-feature docs + phase chips) deliberately omits infra like `.scans/` (the CodeGraph DB + knowledge graph) and the deep `wiki/docs/` tree; the Files tab shows all of it so you can open anything the tGD workflow wrote, including prototypes on features that don't yet have a PRD/SPEC. A segmented toggle in the panel header switches between the two (persisted). Reuses the existing file-list endpoint and viewer.
+
 ## [2026.07.08-2] (PR #33–#34)
 
 ### Fixed

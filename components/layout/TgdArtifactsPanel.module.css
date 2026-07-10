@@ -20,6 +20,46 @@
   color: var(--color-accent);
 }
 .headerTitle { color: var(--text-muted); flex: 1; }
+
+.viewToggle {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.viewTab, .viewTabActive {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-family: inherit;
+}
+.viewTab { color: var(--text-dim); }
+.viewTab:hover { color: var(--text-muted); background: var(--bg-hover); }
+.viewTabActive { color: var(--color-accent); background: var(--color-accent-bg); }
+
+/* ── Full-tree (Files) view ── */
+.tree { padding: 2px 0; }
+.dirRow {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+  padding: 4px 12px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  text-align: left;
+  font-size: 12.5px;
+}
+.dirRow:hover { background: var(--bg-hover); color: var(--text); }
+.dirName { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.treeChevron { flex-shrink: 0; transition: transform 0.12s; }
+.treeChevron[data-open] { transform: rotate(90deg); }
+.treeLoading { padding: 8px 14px; font-size: 11px; color: var(--text-dim); }
 .refresh {
   background: none;
   border: none;

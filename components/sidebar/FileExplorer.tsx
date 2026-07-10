@@ -486,6 +486,16 @@ export function FileExplorer({ cwd, onOpenFile, refreshKey, onAtMention, onOpenD
               {t("explorer.diff")}
             </button>
           )}
+          {!menu.isDir && (
+            <a
+              className={styles.menuItem}
+              href={`/api/files/${encodeFilePathForApi(menu.fullPath)}?type=download`}
+              download
+              onClick={() => setMenu(null)}
+            >
+              {t("explorer.download")}
+            </a>
+          )}
         </div>
       )}
     </div>

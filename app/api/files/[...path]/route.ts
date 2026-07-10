@@ -202,6 +202,15 @@ export async function GET(
     switch (type) {
       case "read":
         return handleRead(filePath, stat, request);
+      case "download": {
+        // Any file, any size — streamed with an attachment disposition so the
+        // browser saves it instead of previewing.
+        if (!stat.isFile()) {
+          return NextResponse.json({ error: "Not a file" }, { status: 400 });
+        }
+        const mime = getImageMime(filePath) || getAudioMime(filePath) || getDocumentMime(filePath) || "application/octet-stream";
+        return streamFile(filePath, stat, mime, request.headers.get("range"), "attachment");
+      }
       case "meta":
         return handleMeta(filePath, stat);
       case "preview":

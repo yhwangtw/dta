@@ -5,7 +5,18 @@ All notable changes to tGD-pi-web are documented here.
 ## [Unreleased]
 
 ### Added
+- **`@file` mention autocomplete in the composer.** Typing `@` lists the project root; `@name` fuzzy-searches filenames project-wide; `@dir/` drills into a directory (selecting a folder keeps the menu open on its contents); paths with spaces insert quoted. Arrows/Enter/Tab/Escape, same interaction as the `/` menu. Alongside this, the slash-command menu now only opens on a **leading** `/` — it used to fire on any trailing slash (so mid-text paths misfired), and commands replace the whole input anyway.
+- **File paths in chat are clickable.** Inline code that looks like a file path (`src/foo.ts`, `./x`, `/abs/path`, optional `:line`) gets a quiet dotted underline; clicking resolves it against the session cwd, checks it exists (toast if not), and opens it in the right-panel viewer. Conservative heuristic — `object.property`, `and/or`, URLs and identifiers stay plain text.
+- **Git worktree support.** New `GET /api/worktrees` lists a repo's checkouts (`git worktree list --porcelain`; prunable/missing filtered). The project picker nests the selected project's linked worktrees under its row with a branch chip — switching checkout is one click, and duplicate flat rows are removed.
+- **Download any file.** `GET /api/files/<path>?type=download` streams with an attachment disposition; the explorer's context menu gained a **Download** entry.
 - **tGD artifacts panel gained a "Files" view** that browses the *entire* `<project>-tGD/` directory as a lazy file tree — nothing hidden. The curated **Artifacts** view (per-feature docs + phase chips) deliberately omits infra like `.scans/` (the CodeGraph DB + knowledge graph) and the deep `wiki/docs/` tree; the Files tab shows all of it so you can open anything the tGD workflow wrote, including prototypes on features that don't yet have a PRD/SPEC. A segmented toggle in the panel header switches between the two (persisted). Reuses the existing file-list endpoint and viewer.
+
+### Changed
+- **pi upgraded 0.80.2 → 0.80.6.**
+
+### Fixed
+- **The run's first SSE events can no longer be lost.** Sending a prompt used to tear down and recreate the EventSource and POST immediately — the run's earliest events could fire before the stream was open. `connectEvents` now reuses an already-open stream, and the send path awaits the connection (with a safety-net timeout) before prompting.
+- **Completion chime plays under browser autoplay restrictions.** The chime used to create a fresh `AudioContext` at `agent_end` (no user gesture in the call stack), which starts suspended and plays silence. One shared context is now unlocked on the first user gesture and resumed before scheduling.
 
 ## [2026.07.08-2] (PR #33–#34)
 

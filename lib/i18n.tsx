@@ -63,6 +63,7 @@ const MESSAGES = {
   "explorer.copyRel": { en: "Copy relative path", zh: "複製相對路徑" },
   "explorer.mention": { en: "Insert @ mention", zh: "插入 @ 提及" },
   "explorer.diff": { en: "View diff", zh: "檢視 diff" },
+  "explorer.download": { en: "Download", zh: "下載" },
   "explorer.truncated": { en: "More matches exist — refine the search", zh: "還有更多結果 — 請縮小搜尋範圍" },
 
   // ── Appearance panel ──

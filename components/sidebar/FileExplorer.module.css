@@ -185,6 +185,8 @@
   text-align: left;
   font-size: 11.5px;
   font-family: inherit;
+  text-decoration: none; /* the Download entry is an <a> */
+  box-sizing: border-box;
 }
 
 .menuItem:hover {

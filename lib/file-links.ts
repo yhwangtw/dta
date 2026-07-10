@@ -18,6 +18,11 @@ export interface FileLink {
 // prose like `object.property` would light up as a link.
 const KNOWN_EXT = /\.(tsx?|jsx?|mjs|cjs|json|jsonc|md|markdown|mdx|css|scss|less|html?|py|pyi|rs|go|java|rb|sh|bash|zsh|fish|yml|yaml|toml|txt|log|sql|c|h|cpp|hpp|cc|hh|cxx|vue|svelte|astro|lock|env|cfg|conf|ini|xml|csv|tsv|svg|png|jpe?g|gif|webp|ico|pdf|docx?|xlsx?|proto|graphql|prisma|swift|kt|kts|php|pl|lua|r|scala|clj|cljs|ex|exs|erl|hs|elm|ml|mli|vb|cs|fs|fsx|dart|sol|zig|nim|tf|hcl|dockerfile|makefile|gradle|properties)$/i;
 
+// Extension-less names that are unambiguously files, not prose.
+const KNOWN_BARE = /^(makefile|gnumakefile|dockerfile|containerfile|justfile|gemfile|rakefile|procfile|vagrantfile|brewfile)$/i;
+
+const isFileName = (seg: string) => KNOWN_EXT.test(seg) || KNOWN_BARE.test(seg);
+
 /**
  * Does this inline-code text look like a file path?
  * - `name.ext` (known extension), `src/foo.ts`, `./x`, `../x`, `/abs/path`, `~/x`
@@ -34,12 +39,12 @@ export function looksLikeFilePath(text: string): FileLink | null {
   if (base.endsWith("/") || base === "." || base === "..") return null;
   const lastSeg = base.split("/").pop() ?? "";
   if (!base.includes("/")) {
-    return KNOWN_EXT.test(lastSeg) ? { path: base, line } : null;
+    return isFileName(lastSeg) ? { path: base, line } : null;
   }
   // With a slash: explicit prefixes always qualify; otherwise the last
   // segment needs an extension (`and/or`, `either/or` stay prose).
   if (/^(\.{1,2}\/|\/|~\/)/.test(base)) return { path: base, line };
-  return KNOWN_EXT.test(lastSeg) ? { path: base, line } : null;
+  return isFileName(lastSeg) ? { path: base, line } : null;
 }
 
 const EVENT = "pi-open-file-link";

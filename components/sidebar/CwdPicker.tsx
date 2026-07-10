@@ -119,10 +119,16 @@ export function CwdPicker({ state, actions, refs, projects, initialSessionId, is
   const visibleProjects = useMemo(() => {
     const q = query.trim().toLowerCase();
     const hiddenSet = new Set(hidden);
+    // A query hitting only a nested worktree keeps its parent visible —
+    // otherwise the worktree would be unfindable (its flat row is dropped).
+    const matches = (p: { cwd: string }) =>
+      !q ||
+      p.cwd.toLowerCase().includes(q) ||
+      (p.cwd === selectedCwd && linkedWorktrees.some((w) => w.path.toLowerCase().includes(q)));
     const list = projects.filter(
       // Worktrees of the selected project render nested under it — drop their
       // flat rows so the same checkout doesn't appear twice.
-      (p) => !hiddenSet.has(p.cwd) && !worktreePathSet.has(p.cwd) && (!q || p.cwd.toLowerCase().includes(q)),
+      (p) => !hiddenSet.has(p.cwd) && !worktreePathSet.has(p.cwd) && matches(p),
     );
     const pinRank = new Map(pins.map((cwd, i) => [cwd, i]));
     return [...list].sort((a, b) => {
@@ -130,7 +136,19 @@ export function CwdPicker({ state, actions, refs, projects, initialSessionId, is
       const pb = pinRank.has(b.cwd) ? pinRank.get(b.cwd)! : Infinity;
       return pa - pb; // pinned first (stable sort keeps recency order otherwise)
     });
-  }, [projects, query, pins, hidden, worktreePathSet]);
+  }, [projects, query, pins, hidden, worktreePathSet, selectedCwd, linkedWorktrees]);
+
+  // Flat keyboard-navigation order: each project row, with the selected
+  // project's nested worktree rows right after it — matching render order.
+  const navRows = useMemo(() => {
+    const rows: { cwd: string }[] = [];
+    for (const p of visibleProjects) {
+      rows.push({ cwd: p.cwd });
+      if (p.cwd === selectedCwd) for (const w of linkedWorktrees) rows.push({ cwd: w.path });
+    }
+    return rows;
+  }, [visibleProjects, selectedCwd, linkedWorktrees]);
+  const navIndexByCwd = useMemo(() => new Map(navRows.map((r, i) => [r.cwd, i])), [navRows]);
 
   useEffect(() => setActiveIdx(0), [query, dropdownOpen]);
 
@@ -325,13 +343,13 @@ export function CwdPicker({ state, actions, refs, projects, initialSessionId, is
               onKeyDown={(e) => {
                 if (e.key === "ArrowDown") {
                   e.preventDefault();
-                  setActiveIdx((i) => Math.min(i + 1, visibleProjects.length - 1));
+                  setActiveIdx((i) => Math.min(i + 1, navRows.length - 1));
                 } else if (e.key === "ArrowUp") {
                   e.preventDefault();
                   setActiveIdx((i) => Math.max(i - 1, 0));
                 } else if (e.key === "Enter") {
                   e.preventDefault();
-                  const target = visibleProjects[activeIdx];
+                  const target = navRows[activeIdx];
                   if (target) pickProject(target.cwd);
                 } else if (e.key === "Escape") {
                   setDropdownOpen(false);
@@ -348,14 +366,14 @@ export function CwdPicker({ state, actions, refs, projects, initialSessionId, is
             {visibleProjects.length === 0 && query && (
               <div className={styles.emptyNote}>{t("cwd.noMatches")}</div>
             )}
-            {visibleProjects.map((p, i) => {
+            {visibleProjects.map((p) => {
               const isSelected = p.cwd === selectedCwd;
               const isPinned = pins.includes(p.cwd);
               return (
                 <div key={p.cwd}>
                   <div
                     onClick={() => pickProject(p.cwd)}
-                    className={`${isSelected ? styles.projectRowSelected : styles.projectRow} ${i === activeIdx ? styles.projectRowActive : ""}`}
+                    className={`${isSelected ? styles.projectRowSelected : styles.projectRow} ${navIndexByCwd.get(p.cwd) === activeIdx ? styles.projectRowActive : ""}`}
                     title={p.cwd}
                     role="option"
                     aria-selected={isSelected}
@@ -392,7 +410,7 @@ export function CwdPicker({ state, actions, refs, projects, initialSessionId, is
                     <div
                       key={w.path}
                       onClick={() => pickProject(w.path)}
-                      className={`${styles.projectRow} ${styles.worktreeRow}`}
+                      className={`${styles.projectRow} ${styles.worktreeRow} ${navIndexByCwd.get(w.path) === activeIdx ? styles.projectRowActive : ""}`}
                       title={w.path}
                       role="option"
                       aria-selected={false}

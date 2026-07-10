@@ -5,6 +5,7 @@ All notable changes to tGD-pi-web are documented here.
 ## [Unreleased]
 
 ### Fixed
+- **Context-nearly-full banner and follow-up queue now align with the composer.** Both banners used symmetric `px-4` padding while the composer reserves an extra 36px on the right for the minimap rail — they stuck out past the input box's right edge (most visible on mobile). They now mirror the composer's exact geometry (`pl-4 pr-[52px]` + centered max-width), so the boxes sit flush.
 - **Context-nearly-full banner no longer breaks on narrow screens.** The warning above the composer used a bare `truncate` on a flex child — `min-width: auto` means it never shrinks, so on narrow layouts the text collided with the Compact button and the percentage was clipped mid-digit. The prose now truncates properly (`min-w-0 flex-1`, full text in the tooltip) and the **percentage sits outside the truncating span** so the key number is always visible.
 
 ## [2026.07.10-4] (PR #42)

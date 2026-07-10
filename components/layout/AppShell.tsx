@@ -38,6 +38,7 @@ import s from "./AppShell.module.css";
 // Lazy-load heavy modals — they're ~1000 lines each and rarely opened
 const ModelsConfig = lazy(() => import("../modals/ModelsConfig").then((m) => ({ default: m.ModelsConfig })));
 const SkillsConfig = lazy(() => import("../modals/SkillsConfig").then((m) => ({ default: m.SkillsConfig })));
+const ExtensionsConfig = lazy(() => import("../modals/ExtensionsConfig").then((m) => ({ default: m.ExtensionsConfig })));
 const PromptsConfig = lazy(() => import("../modals/PromptsConfig").then((m) => ({ default: m.PromptsConfig })));
 const AnalyticsModal = lazy(() => import("../modals/AnalyticsModal").then((m) => ({ default: m.AnalyticsModal })));
 
@@ -63,6 +64,7 @@ export function AppShell() {
   const [modelsConfigOpen, setModelsConfigOpen] = useState(false);
   const [modelsRefreshKey, setModelsRefreshKey] = useState(0);
   const [skillsConfigOpen, setSkillsConfigOpen] = useState(false);
+  const [extensionsConfigOpen, setExtensionsConfigOpen] = useState(false);
   const [promptsConfigOpen, setPromptsConfigOpen] = useState(false);
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
   const [appearanceOpen, setAppearanceOpen] = useState(false);
@@ -251,6 +253,7 @@ export function AppShell() {
     palette.register({
       openModels: () => setModelsConfigOpen(true),
       openSkills: () => setSkillsConfigOpen(true),
+      openExtensions: () => setExtensionsConfigOpen(true),
       openPrompts: () => setPromptsConfigOpen(true),
       openAnalytics: () => setAnalyticsOpen(true),
       openAppearance: () => setAppearanceOpen(true),
@@ -435,6 +438,8 @@ export function AppShell() {
         onOpenModels={() => setModelsConfigOpen(true)}
         onOpenSkills={() => setSkillsConfigOpen(true)}
         skillsDisabled={!panelCwd}
+        onOpenExtensions={() => setExtensionsConfigOpen(true)}
+        extensionsDisabled={!state.selectedSession}
         appearanceOpen={appearanceOpen}
         onToggleAppearance={() => setAppearanceOpen((v) => !v)}
       />
@@ -844,6 +849,9 @@ export function AppShell() {
     )}
     {skillsConfigOpen && (state.activeCwd ?? state.selectedSession?.cwd ?? state.newSessionCwd) && (
       <Suspense fallback={null}><SkillsConfig cwd={(state.activeCwd ?? state.selectedSession?.cwd ?? state.newSessionCwd)!} onClose={() => setSkillsConfigOpen(false)} /></Suspense>
+    )}
+    {extensionsConfigOpen && (
+      <Suspense fallback={null}><ExtensionsConfig sessionId={state.selectedSession?.id ?? null} onClose={() => setExtensionsConfigOpen(false)} /></Suspense>
     )}
     {analyticsOpen && <Suspense fallback={null}><AnalyticsModal open={analyticsOpen} onClose={() => setAnalyticsOpen(false)} /></Suspense>}
     {appearanceOpen && <AppearancePanel onClose={() => setAppearanceOpen(false)} />}

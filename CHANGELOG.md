@@ -4,6 +4,10 @@ All notable changes to tGD-pi-web are documented here.
 
 ## [Unreleased]
 
+### Added
+- **Extensions management panel.** New rail button (puzzle icon) + ⌘K entry opens a per-session view of everything pi's extensions registered: slash **commands**, custom **tools**, CLI **flags** (boolean flags toggle live, string flags edit inline via the runner's `setFlagValue`), and the directories they loaded from. Crucially it surfaces **load diagnostics** — a broken extension file used to fail silently in the web UI; its parse/load error (from the resource loader) plus command/shortcut collisions now show in a banner. A **Reload** button restarts the in-process session, re-discovering extensions/skills/prompts from disk without touching the transcript. New `GET/POST /api/agent/[id]/extensions`.
+- Note: pi 0.80.x has no MCP support, so there is nothing MCP-related to manage yet; the panel covers what the agent actually loads.
+
 ## [2026.07.10-3] (PR #40–#41)
 
 ### Added

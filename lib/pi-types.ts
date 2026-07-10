@@ -59,4 +59,8 @@ export interface AgentSessionLike {
   abortBash(): void;
   getContextUsage(): ContextUsage | undefined;
   readonly extensionRunner: ExtensionRunner | undefined;
+  /** Loader that discovered extensions/skills — carries the load errors. */
+  readonly resourceLoader?: {
+    getExtensions(): { errors: Array<{ path: string; error: string }> };
+  };
 }

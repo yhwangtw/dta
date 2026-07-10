@@ -24,6 +24,7 @@ export interface PaletteResult {
 export type PaletteActionId =
   | "settings:models"
   | "settings:skills"
+  | "settings:extensions"
   | "settings:prompts"
   | "settings:analytics"
   | "settings:appearance"
@@ -61,6 +62,7 @@ export interface CommandPaletteApi {
 export interface PaletteCallbacks {
   openModels: () => void;
   openSkills: () => void;
+  openExtensions: () => void;
   openPrompts: () => void;
   openAnalytics: () => void;
   openAppearance: () => void;
@@ -95,6 +97,14 @@ const ACTIONS: PaletteResult[] = [
     keywords: "skill plugin extension 技能",
     hint: "⌘/",
     data: { action: "settings:skills" } as { action: PaletteActionId },
+  },
+  {
+    id: "action:extensions",
+    kind: "action",
+    title: "Open Extensions",
+    subtitle: "Loaded pi extensions: commands, tools, flags, diagnostics",
+    keywords: "extension plugin command flag diagnostics 擴充",
+    data: { action: "settings:extensions" } as { action: PaletteActionId },
   },
   {
     id: "action:prompts",
@@ -415,6 +425,7 @@ export function useCommandPalette({
       switch (action) {
         case "settings:models": cbs.openModels(); break;
         case "settings:skills": cbs.openSkills(); break;
+        case "settings:extensions": cbs.openExtensions(); break;
         case "settings:prompts": cbs.openPrompts(); break;
         case "settings:analytics": cbs.openAnalytics(); break;
         case "settings:appearance": cbs.openAppearance(); break;

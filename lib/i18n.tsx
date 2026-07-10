@@ -81,6 +81,18 @@ const MESSAGES = {
   "appearance.dark": { en: "Dark", zh: "深色" },
   "appearance.logout": { en: "Log out", zh: "登出" },
 
+  // ── Extensions panel ──
+  "extensions.title": { en: "Extensions", zh: "擴充功能" },
+  "extensions.commands": { en: "Commands", zh: "指令" },
+  "extensions.tools": { en: "Tools", zh: "工具" },
+  "extensions.flags": { en: "Flags", zh: "旗標" },
+  "extensions.loadedFrom": { en: "Loaded from", zh: "載入來源" },
+  "extensions.none": { en: "None", zh: "無" },
+  "extensions.reload": { en: "Reload", zh: "重新載入" },
+  "extensions.reloading": { en: "Reloading…", zh: "重新載入中…" },
+  "extensions.reloaded": { en: "Extensions reloaded", zh: "擴充功能已重新載入" },
+  "extensions.noSession": { en: "Open a session first — extensions load per session.", zh: "請先開啟 session — 擴充功能隨 session 載入。" },
+
   // ── Content search panel ──
   "search.title": { en: "Search", zh: "搜尋" },
   "search.placeholder": { en: "Search in files…", zh: "在檔案中搜尋…" },

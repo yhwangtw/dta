@@ -15,6 +15,8 @@ interface IconRailProps {
   onOpenModels: () => void;
   onOpenSkills: () => void;
   skillsDisabled: boolean;
+  onOpenExtensions: () => void;
+  extensionsDisabled: boolean;
   appearanceOpen: boolean;
   onToggleAppearance: () => void;
 }
@@ -33,6 +35,8 @@ export function IconRail({
   onOpenModels,
   onOpenSkills,
   skillsDisabled,
+  onOpenExtensions,
+  extensionsDisabled,
   appearanceOpen,
   onToggleAppearance,
 }: IconRailProps) {
@@ -121,6 +125,16 @@ export function IconRail({
       >
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />
+        </svg>
+      </button>
+      <button
+        onClick={onOpenExtensions}
+        disabled={extensionsDisabled}
+        title={t("extensions.title")}
+        className={s.railButton}
+      >
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M20.5 11H19V7a2 2 0 0 0-2-2h-4V3.5a2.5 2.5 0 0 0-5 0V5H4a2 2 0 0 0-2 2v3.8h1.5a2.7 2.7 0 0 1 0 5.4H2V20a2 2 0 0 0 2 2h3.8v-1.5a2.7 2.7 0 0 1 5.4 0V22H17a2 2 0 0 0 2-2v-4h1.5a2.5 2.5 0 0 0 0-5z" />
         </svg>
       </button>
       <button

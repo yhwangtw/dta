@@ -4,6 +4,8 @@ All notable changes to tGD-pi-web are documented here.
 
 ## [Unreleased]
 
+## [2026.07.10-2] (PR #39)
+
 ### Fixed
 - **Export menu is usable again.** It opened *under* the tGD pipeline bar (invisible and unclickable): the top bar's `backdrop-filter` traps its stacking context — the same glass trap PR #34 fixed for the Branches dropdown, which this menu missed — and `.chatActions`' `overflow-x` clipped it besides. Now portalled to `<body>` and positioned from the button rect, same pattern as Branches.
 - **Analytics no longer crashes when history contains a failed run.** An errored assistant message (e.g. a 429) records usage without `cost`; the aggregation assumed `usage.cost.*` always exists, so one such message 500'd the whole report. Aggregation moved to `lib/usage-aggregation.ts` with missing fields defaulting to zero (and no NaN pollution from partial records).

@@ -4,6 +4,12 @@ All notable changes to tGD-pi-web are documented here.
 
 ## [Unreleased]
 
+## [2026.07.10-6] (PR #46)
+
+### Added
+- **Transcript images open in a lightbox.** Attachment thumbnails were unreadable, especially on a phone — clicking one now opens a full-screen viewer (Esc / backdrop click / × to close).
+- **Each session remembers its scroll position.** Switching sessions used to always jump to the bottom; the transcript now restores where you left off (within the page load), while sessions you left at the tail keep opening at the tail. Includes a guard so the position isn't clobbered with a bogus "at bottom" reading when the pane unmounts.
+
 ## [2026.07.10-5] (PR #43–#45)
 
 ### Added

@@ -8,6 +8,7 @@ import type {
   TextContent,
 } from "@/lib/types";
 import styles from "./UserMessageView.module.css";
+import { ImageLightbox } from "./ImageLightbox";
 
 function formatTime(ts?: number): string | null {
   if (!ts) return null;
@@ -54,6 +55,7 @@ export function UserMessageView({ message, entryId, onFork, forking, prevAssista
   onEditRerun?: (prevAssistantEntryId: string | undefined, newText: string) => void;
 }) {
   const [copied, setCopied] = useState(false);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   const content =
     typeof message.content === "string"
@@ -158,12 +160,15 @@ export function UserMessageView({ message, entryId, onFork, forking, prevAssista
                     src={src}
                     alt=""
                     className={styles.image}
+                    onClick={() => setLightboxSrc(src)}
+                    style={{ cursor: "zoom-in" }}
                   />
                 );
               })}
             </div>
           )}
           {content && <MarkdownBody className="markdown-user-message">{content}</MarkdownBody>}
+          {lightboxSrc && <ImageLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />}
         </div>
         )}
 

@@ -638,6 +638,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
       soundEnabled={soundEnabled}
       onSoundToggle={onSoundToggle}
       cwd={tgdCwd}
+      persistKey={session?.id ?? (newSessionCwd ? `new:${newSessionCwd}` : null)}
     />
   );
 

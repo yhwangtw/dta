@@ -81,6 +81,9 @@ const MESSAGES = {
   "appearance.dark": { en: "Dark", zh: "深色" },
   "appearance.logout": { en: "Log out", zh: "登出" },
 
+  // ── Composer ──
+  "input.escAbortHint": { en: "Press Esc again to stop the run", zh: "再按一次 Esc 中止執行" },
+
   // ── Extensions panel ──
   "extensions.title": { en: "Extensions", zh: "擴充功能" },
   "extensions.commands": { en: "Commands", zh: "指令" },

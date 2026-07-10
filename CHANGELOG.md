@@ -4,6 +4,14 @@ All notable changes to tGD-pi-web are documented here.
 
 ## [Unreleased]
 
+## [2026.07.10-5] (PR #43–#45)
+
+### Added
+- **Composer drafts and sent-history persist per session.** Typed-but-unsent text used to live only in memory — a refresh, crash, or session switch ate it. Drafts now save to localStorage (debounced, per session, cleared on send, 64KB cap) and restore when you come back; the ArrowUp sent-message history survives reloads the same way.
+- **Installable as a phone app (PWA).** `app/manifest.ts` (standalone display) + generated icons (192/512/maskable + apple-touch) — "Add to Home Screen" now opens pi-web full-screen without browser chrome. Viewport gains `interactive-widget=resizes-content` so mobile soft keyboards shrink the layout instead of covering the composer, plus `viewport-fit=cover` for notched screens.
+- **Esc Esc stops the run.** Pressing Escape twice within 600ms while streaming aborts the agent (single press shows a hint toast, so a stray Esc can't kill a run). Open mention/slash menus keep their Escape behavior.
+- **Code-shaped pastes are auto-fenced.** Pasting 4+ lines that look like code (indentation pattern or code tokens) wraps them in ``` so the transcript's markdown render stops mangling them; prose and short pastes are untouched.
+
 ### Fixed
 - **Context-nearly-full banner and follow-up queue now align with the composer.** Both banners used symmetric `px-4` padding while the composer reserves an extra 36px on the right for the minimap rail — they stuck out past the input box's right edge (most visible on mobile). They now mirror the composer's exact geometry (`pl-4 pr-[52px]` + centered max-width), so the boxes sit flush.
 - **Context-nearly-full banner no longer breaks on narrow screens.** The warning above the composer used a bare `truncate` on a flex child — `min-width: auto` means it never shrinks, so on narrow layouts the text collided with the Compact button and the percentage was clipped mid-digit. The prose now truncates properly (`min-w-0 flex-1`, full text in the tooltip) and the **percentage sits outside the truncating span** so the key number is always visible.

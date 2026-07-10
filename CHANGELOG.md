@@ -4,6 +4,8 @@ All notable changes to tGD-pi-web are documented here.
 
 ## [Unreleased]
 
+## [2026.07.10-5] (PR #43–#45)
+
 ### Added
 - **Composer drafts and sent-history persist per session.** Typed-but-unsent text used to live only in memory — a refresh, crash, or session switch ate it. Drafts now save to localStorage (debounced, per session, cleared on send, 64KB cap) and restore when you come back; the ArrowUp sent-message history survives reloads the same way.
 - **Installable as a phone app (PWA).** `app/manifest.ts` (standalone display) + generated icons (192/512/maskable + apple-touch) — "Add to Home Screen" now opens pi-web full-screen without browser chrome. Viewport gains `interactive-widget=resizes-content` so mobile soft keyboards shrink the layout instead of covering the composer, plus `viewport-fit=cover` for notched screens.

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect, useLayoutEffect, lazy, Suspense } from "react";
+import { createPortal } from "react-dom";
 import { SessionSidebar } from "../sidebar/SessionSidebar";
 import { ChatWindow } from "../chat/ChatWindow";
 import { FileViewer } from "./FileViewer";
@@ -320,11 +321,36 @@ export function AppShell() {
 
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const exportMenuRef = useRef<HTMLDivElement>(null);
+  const exportMenuPanelRef = useRef<HTMLDivElement>(null);
+  // Portalled to <body> (same lesson as the Branches dropdown, PR #34): the
+  // top bar's backdrop-filter traps its stacking context, so a menu hanging
+  // below the bar paints *under* the tGD pipeline bar / chat content.
+  const [exportMenuPos, setExportMenuPos] = useState<{ top: number; right: number } | null>(null);
+
+  useEffect(() => {
+    if (!exportMenuOpen) { setExportMenuPos(null); return; }
+    const anchor = exportMenuRef.current;
+    if (!anchor) return;
+    const update = () => {
+      const rect = anchor.getBoundingClientRect();
+      setExportMenuPos({ top: rect.bottom + 4, right: Math.max(8, window.innerWidth - rect.right) });
+    };
+    update();
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, true);
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, true);
+    };
+  }, [exportMenuOpen]);
 
   useEffect(() => {
     if (!exportMenuOpen) return;
     const close = (e: MouseEvent) => {
-      if (!exportMenuRef.current?.contains(e.target as Node)) setExportMenuOpen(false);
+      const t = e.target as Node;
+      if (!exportMenuRef.current?.contains(t) && !exportMenuPanelRef.current?.contains(t)) {
+        setExportMenuOpen(false);
+      }
     };
     document.addEventListener("mousedown", close);
     return () => document.removeEventListener("mousedown", close);
@@ -461,8 +487,13 @@ export function AppShell() {
                     <polyline points="2 4 5 7 8 4" />
                   </svg>
                 </button>
-                {exportMenuOpen && state.selectedSession && (
-                  <div className={s.exportMenu} role="menu">
+                {exportMenuOpen && state.selectedSession && exportMenuPos && typeof document !== "undefined" && createPortal(
+                  <div
+                    ref={exportMenuPanelRef}
+                    className={s.exportMenu}
+                    style={{ top: exportMenuPos.top, right: exportMenuPos.right }}
+                    role="menu"
+                  >
                     <button
                       onClick={() => { handleExportSession(); setExportMenuOpen(false); }}
                       className={s.exportMenuItem}
@@ -479,7 +510,8 @@ export function AppShell() {
                       <strong>Markdown</strong>
                       <span className={s.exportMenuHint}>{t("topbar.exportMdHint")}</span>
                     </button>
-                  </div>
+                  </div>,
+                  document.body,
                 )}
               </div>
               <button

@@ -2,16 +2,9 @@ import { NextResponse } from "next/server";
 import { existsSync } from "fs";
 import { SessionManager } from "@earendil-works/pi-coding-agent";
 import { resolveSessionPath, listAllSessions } from "@/lib/session-reader";
+import { addUsage, emptyUsage, type AssistantUsage } from "@/lib/usage-aggregation";
 
 export const dynamic = "force-dynamic";
-
-interface AssistantUsage {
-  input: number;
-  output: number;
-  cacheRead: number;
-  cacheWrite: number;
-  cost: { input: number; output: number; cacheRead: number; cacheWrite: number; total: number };
-}
 
 interface SessionAnalytics {
   id: string;
@@ -26,22 +19,6 @@ interface SessionAnalytics {
     byModel: Record<string, AssistantUsage>;
   };
   compactions: number;
-}
-
-function emptyUsage(): AssistantUsage {
-  return { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } };
-}
-
-function addUsage(target: AssistantUsage, src: AssistantUsage): void {
-  target.input += src.input;
-  target.output += src.output;
-  target.cacheRead += src.cacheRead;
-  target.cacheWrite += src.cacheWrite;
-  target.cost.input += src.cost.input;
-  target.cost.output += src.cost.output;
-  target.cost.cacheRead += src.cost.cacheRead;
-  target.cost.cacheWrite += src.cost.cacheWrite;
-  target.cost.total += src.cost.total;
 }
 
 export async function GET() {

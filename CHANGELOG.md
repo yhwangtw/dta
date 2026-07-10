@@ -4,6 +4,16 @@ All notable changes to tGD-pi-web are documented here.
 
 ## [Unreleased]
 
+## [2026.07.10-2] (PR #39)
+
+### Fixed
+- **Export menu is usable again.** It opened *under* the tGD pipeline bar (invisible and unclickable): the top bar's `backdrop-filter` traps its stacking context — the same glass trap PR #34 fixed for the Branches dropdown, which this menu missed — and `.chatActions`' `overflow-x` clipped it besides. Now portalled to `<body>` and positioned from the button rect, same pattern as Branches.
+- **Analytics no longer crashes when history contains a failed run.** An errored assistant message (e.g. a 429) records usage without `cost`; the aggregation assumed `usage.cost.*` always exists, so one such message 500'd the whole report. Aggregation moved to `lib/usage-aggregation.ts` with missing fields defaulting to zero (and no NaN pollution from partial records).
+
+### Changed
+- **Files above the 256KB text cap now open instead of erroring.** `type=read` returns the first 256KB (cut on a UTF-8 character boundary) with a `truncated` flag; the viewer shows a partial-preview banner with a download link and disables editing (saving a prefix would destroy the rest of the file).
+- **HTML preview works at any size.** The preview iframe now points its `src` at a new `type=raw` streaming endpoint (inline disposition, no size cap) instead of inlining the fetched text via `srcDoc` — so big prototypes render fully even when the code view is truncated. Sandbox unchanged (`allow-scripts`, no same-origin).
+
 ## [2026.07.10-1] (PR #36–#38)
 
 ### Added

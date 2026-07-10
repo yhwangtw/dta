@@ -256,8 +256,9 @@ export function TextFileViewer({ filePath, cwd }: Props) {
           </button>
         )}
 
-        {/* Edit / Save / Cancel */}
-        {viewMode === "source" && !previewMode && (
+        {/* Edit / Save / Cancel. Hidden for truncated previews — saving a
+            256KB prefix over a bigger file would destroy the rest of it. */}
+        {viewMode === "source" && !previewMode && !data.truncated && (
           editing ? (
             <div className={styles.toggleGroup}>
               <button
@@ -347,6 +348,16 @@ export function TextFileViewer({ filePath, cwd }: Props) {
         )}
       </div>
 
+      {/* Partial-preview banner: the API returned only the file's first chunk */}
+      {data.truncated && (
+        <div className={styles.truncatedNotice}>
+          Large file ({formatSize(data.size)}) — showing the beginning only; editing disabled.{" "}
+          <a href={`/api/files/${encodeFilePathForApi(filePath)}?type=download`} download>
+            Download the full file
+          </a>
+        </div>
+      )}
+
       {/* Content area — dispatch to mode-specific component */}
       <div className={styles.contentArea}>
         {editing ? (
@@ -370,7 +381,7 @@ export function TextFileViewer({ filePath, cwd }: Props) {
             language={data.language}
           />
         ) : (isHtml || isMarkdown) && previewMode ? (
-          <PreviewView content={data.content} language={data.language} />
+          <PreviewView content={data.content} language={data.language} filePath={filePath} />
         ) : usePlain ? (
           <PlainSourceView content={data.content} activeLine={activeLine} />
         ) : (

@@ -38,6 +38,21 @@
   flex-shrink: 0;
 }
 
+/* Partial-preview banner for files above the preview cap */
+.truncatedNotice {
+  padding: 4px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--color-warning-text);
+  background: var(--color-warning-bg);
+  flex-shrink: 0;
+}
+
+.truncatedNotice a {
+  color: inherit;
+  text-decoration: underline;
+}
+
 .filePath {
   font-family: var(--font-mono);
 }

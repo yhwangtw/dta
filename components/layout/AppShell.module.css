@@ -247,10 +247,10 @@
 }
 
 .exportMenu {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  margin-top: 4px;
+  /* Portalled to <body> and positioned from the button rect (inline style) —
+     inside the top bar the backdrop-filter stacking context painted it under
+     the tGD pipeline bar, and .chatActions' overflow-x clipped it. */
+  position: fixed;
   background: var(--bg-elev-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);

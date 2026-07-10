@@ -20,6 +20,7 @@ import {
   documentPreviewKind,
 } from "@/lib/file-mime";
 import { streamFile, wrapDocxPreviewHtml } from "@/lib/file-stream";
+import { readTextPrefixSync } from "@/lib/text-prefix";
 
 async function handleRead(
   filePath: string,
@@ -44,11 +45,15 @@ async function handleRead(
   if (documentMime) {
     return streamFile(filePath, stat, documentMime, request.headers.get("range"));
   }
+  const language = getLanguage(filePath);
   if (stat.size > TEXT_PREVIEW_MAX_BYTES) {
-    return NextResponse.json({ error: "File too large for preview (>256KB)" }, { status: 413 });
+    // Partial preview instead of a refusal: first 256KB (on a UTF-8 char
+    // boundary) + truncated flag. The viewer shows a banner with a download
+    // link and disables editing (saving a prefix would destroy the file).
+    const content = readTextPrefixSync(filePath, TEXT_PREVIEW_MAX_BYTES);
+    return NextResponse.json({ content, language, size: stat.size, truncated: true });
   }
   const content = fs.readFileSync(filePath, "utf-8");
-  const language = getLanguage(filePath);
   return NextResponse.json({ content, language, size: stat.size });
 }
 
@@ -210,6 +215,19 @@ export async function GET(
         }
         const mime = getImageMime(filePath) || getAudioMime(filePath) || getDocumentMime(filePath) || "application/octet-stream";
         return streamFile(filePath, stat, mime, request.headers.get("range"), "attachment");
+      }
+      case "raw": {
+        // Any file, any size — streamed inline so the browser renders it
+        // (the HTML preview iframe points its src here; no preview size cap).
+        if (!stat.isFile()) {
+          return NextResponse.json({ error: "Not a file" }, { status: 400 });
+        }
+        const ext = getExt(filePath);
+        const mime =
+          ext === "html" || ext === "htm"
+            ? "text/html; charset=utf-8"
+            : getImageMime(filePath) || getAudioMime(filePath) || getDocumentMime(filePath) || "text/plain; charset=utf-8";
+        return streamFile(filePath, stat, mime, request.headers.get("range"), "inline");
       }
       case "meta":
         return handleMeta(filePath, stat);

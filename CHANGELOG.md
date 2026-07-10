@@ -4,6 +4,10 @@ All notable changes to tGD-pi-web are documented here.
 
 ## [Unreleased]
 
+### Changed
+- **Files above the 256KB text cap now open instead of erroring.** `type=read` returns the first 256KB (cut on a UTF-8 character boundary) with a `truncated` flag; the viewer shows a partial-preview banner with a download link and disables editing (saving a prefix would destroy the rest of the file).
+- **HTML preview works at any size.** The preview iframe now points its `src` at a new `type=raw` streaming endpoint (inline disposition, no size cap) instead of inlining the fetched text via `srcDoc` — so big prototypes render fully even when the code view is truncated. Sandbox unchanged (`allow-scripts`, no same-origin).
+
 ## [2026.07.10-1] (PR #36–#38)
 
 ### Added

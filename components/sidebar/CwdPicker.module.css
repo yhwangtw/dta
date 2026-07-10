@@ -281,6 +281,29 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Linked git worktrees nested under the selected project */
+.worktreeRow {
+  padding-left: 22px;
+  gap: 6px;
+}
+.worktreeIcon {
+  flex-shrink: 0;
+  color: var(--text-dim);
+}
+.branchChip {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--color-accent-bg);
+  color: var(--color-accent);
+  font-size: 9.5px;
+  font-family: var(--font-mono);
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .rowActions {
   display: none;
   flex-shrink: 0;

@@ -18,38 +18,55 @@ export function useAgentEvents(
   const lastEventAtRef = useRef(mountedAt);
   const reconnectAttemptRef = useRef(0);
 
-  const connectEvents = useCallback((sid: string) => {
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
+  const connectEvents = useCallback((sid: string): Promise<void> => {
+    const url = `/api/agent/${encodeURIComponent(sid)}/events`;
+    const current = eventSourceRef.current;
+    // Already connected to this session — reuse instead of tearing down (a
+    // recreate right before a prompt POST could drop the run's first events).
+    if (current && current.url.endsWith(url) && current.readyState === EventSource.OPEN) {
+      return Promise.resolve();
+    }
+    if (current) {
+      current.close();
       eventSourceRef.current = null;
     }
-    const es = new EventSource(`/api/agent/${encodeURIComponent(sid)}/events`);
+    const es = new EventSource(url);
     eventSourceRef.current = es;
-    es.onopen = () => {
-      reconnectAttemptRef.current = 0;
-    };
-    es.onmessage = (e) => {
-      lastEventAtRef.current = Date.now();
-      try {
-        const event = JSON.parse(e.data) as AgentEvent;
-        handleAgentEventRef.current?.(event);
-      } catch {
-        // ignore
-      }
-    };
-    es.onerror = () => {
-      if (eventSourceRef.current === es && agentRunningRef.current) {
-        es.close();
-        eventSourceRef.current = null;
-        // Exponential backoff: 1s, 2s, 4s, ... capped at 15s, so a downed
-        // server isn't hammered once per second.
-        const delay = Math.min(1000 * 2 ** reconnectAttemptRef.current, 15_000);
-        reconnectAttemptRef.current++;
-        setTimeout(() => {
-          if (agentRunningRef.current) connectEvents(sid);
-        }, delay);
-      }
-    };
+    // Resolves when the stream is open, so callers can await the connection
+    // BEFORE prompting — otherwise the run's first events race the subscribe.
+    // A safety-net timeout keeps a broken stream from ever blocking a send.
+    return new Promise<void>((resolve) => {
+      let settled = false;
+      const settle = () => { if (!settled) { settled = true; resolve(); } };
+      const failSafe = setTimeout(settle, 1_500);
+      es.onopen = () => {
+        reconnectAttemptRef.current = 0;
+        clearTimeout(failSafe);
+        settle();
+      };
+      es.onmessage = (e) => {
+        lastEventAtRef.current = Date.now();
+        try {
+          const event = JSON.parse(e.data) as AgentEvent;
+          handleAgentEventRef.current?.(event);
+        } catch {
+          // ignore
+        }
+      };
+      es.onerror = () => {
+        if (eventSourceRef.current === es && agentRunningRef.current) {
+          es.close();
+          eventSourceRef.current = null;
+          // Exponential backoff: 1s, 2s, 4s, ... capped at 15s, so a downed
+          // server isn't hammered once per second.
+          const delay = Math.min(1000 * 2 ** reconnectAttemptRef.current, 15_000);
+          reconnectAttemptRef.current++;
+          setTimeout(() => {
+            if (agentRunningRef.current) void connectEvents(sid);
+          }, delay);
+        }
+      };
+    });
   }, [agentRunningRef, handleAgentEventRef]);
 
   return { eventSourceRef, lastEventAtRef, connectEvents };

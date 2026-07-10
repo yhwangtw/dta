@@ -364,7 +364,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       const excludeFromContext = trimmedForBash.startsWith("!!");
       const bashCommand = trimmedForBash.replace(/^!+/, "").trim();
       if (!bashCommand) return;
-      connectEvents(session.id);
+      await connectEvents(session.id);
       setBashRun({ command: bashCommand, output: "", running: true });
       try {
         await sendAgentCommand(session.id, { type: "bash", command: bashCommand, excludeFromContext });
@@ -406,7 +406,9 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       if (isNew && newSessionCwd) {
         await createNewSession(message, piImages);
       } else if (session) {
-        connectEvents(session.id);
+        // Wait for the SSE stream to be open before prompting, so the run's
+        // first events aren't emitted before we're subscribed.
+        await connectEvents(session.id);
         await sendAgentCommand(session.id, {
           type: "prompt",
           message,

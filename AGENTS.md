@@ -268,6 +268,38 @@ manager modal (⌘K → Prompt templates) stay in sync. `buildSlashItems()` merg
 them with the built-in `TGD_COMMANDS`; a tGD item inserts `/name `, a template
 inserts its `body`. Names are slugified server-side so `/name` is unambiguous.
 
+### Composer menus: `/` commands vs `@file` mentions
+Two dropdowns share the textarea. The slash menu only opens on a **leading**
+`/` (commands replace the whole input — `setValue(item.insert)`). The `@file`
+menu opens on an `@` at start-of-word before the caret (`detectFileMention`,
+exported from ChatInput, unit-tested): empty query lists the cwd root, `name`
+hits `/api/files/search` (fuzzy, project-wide), `dir/` lists that directory;
+selecting a dir drills down (menu stays open), a file inserts `@<relative> `
+(quoted if the path has spaces). Don't re-loosen the slash trigger — a
+trailing `/` fires during `@src/` drill-down and mid-text paths.
+
+### File-path links in chat (`lib/file-links.ts`)
+Inline code that passes `looksLikeFilePath` (conservative: bare names need a
+known extension; `./ ../ / ~/` prefixes qualify; optional `:line`) renders as
+a clickable link in MarkdownBody. Clicks broadcast over a CustomEvent bus
+(`requestOpenFile`/`onOpenFileRequest`) because MarkdownBody is many layers
+below AppShell, which resolves relative → active cwd, verifies via
+`?type=meta` (toast on 404), and opens the viewer tab.
+
+### Git worktrees (`lib/worktrees.ts`, `/api/worktrees`)
+`git worktree list --porcelain` parsed by `parseWorktreePorcelain` (unit-
+tested); prunable and missing-on-disk checkouts are filtered server-side.
+CwdPicker fetches the **selected** project's worktrees on dropdown open (one
+git call), nests linked checkouts under its row (branch chip,
+`data-testid="worktree-row"`), and dedupes their flat project rows.
+
+### SSE connect-before-prompt
+`connectEvents(sid)` returns a promise that resolves on `onopen` (1.5s
+safety-net timeout) and **reuses** an already-open EventSource for the same
+session instead of tearing it down. The prompt/bash send paths `await` it —
+POSTing before the stream is open loses the run's first events. Keep that
+ordering.
+
 ### Two kinds of branching — don't confuse them
 - **Fork**: new independent `.jsonl` file; shown as a child via
   `parentSession` header (display metadata only — safe to rewrite files).

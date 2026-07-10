@@ -3,6 +3,8 @@
 import React, { useRef, useState, useCallback, useEffect, useMemo, useImperativeHandle, forwardRef, KeyboardEvent } from "react";
 import { COMPOSITION_END_ENTER_GRACE_MS, buildSlashItems } from "./chat-input-constants";
 import { SlashMenu, filterSlashItems } from "./SlashMenu";
+import { FileMentionMenu, type FileMentionItem } from "./FileMentionMenu";
+import { encodeFilePathForApi, joinFilePath } from "@/lib/file-paths";
 import { usePrompts } from "@/hooks/usePrompts";
 import { ModelSelector } from "./ModelSelector";
 import { ThinkingSelector } from "./ThinkingSelector";
@@ -40,6 +42,28 @@ interface Props {
   retryInfo?: { attempt: number; maxAttempts: number; errorMessage?: string } | null;
   soundEnabled?: boolean;
   onSoundToggle?: () => void;
+  /** Project cwd — enables the `@file` mention autocomplete. */
+  cwd?: string | null;
+}
+
+/**
+ * Find an in-progress `@` mention before the caret: the `@` must be at the
+ * start or after whitespace, and the token after it must not contain
+ * whitespace (unless quoted with `"`, for paths with spaces).
+ */
+export function detectFileMention(value: string, caret: number): { start: number; query: string } | null {
+  const before = value.slice(0, caret);
+  const at = before.lastIndexOf("@");
+  if (at === -1) return null;
+  if (at > 0 && !/\s/.test(before[at - 1])) return null;
+  const token = before.slice(at + 1);
+  if (token.startsWith('"')) {
+    const inner = token.slice(1);
+    if (inner.includes('"')) return null; // quote closed — mention finished
+    return { start: at, query: inner };
+  }
+  if (/\s/.test(token)) return null;
+  return { start: at, query: token };
 }
 
 export interface ChatInputHandle {
@@ -58,6 +82,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
   thinkingLevel, onThinkingLevelChange, availableThinkingLevels, thinkingLevelMap,
   retryInfo,
   soundEnabled, onSoundToggle,
+  cwd,
 }: Props, ref) {
   const { t } = useI18n();
   const { prompts } = usePrompts();
@@ -67,6 +92,12 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
   const [showSlashMenu, setShowSlashMenu] = useState(false);
   const [slashFilter, setSlashFilter] = useState("");
   const [slashSelectedIndex, setSlashSelectedIndex] = useState(0);
+
+  // ── @file mention autocomplete ──
+  const [mention, setMention] = useState<{ start: number; query: string } | null>(null);
+  const [mentionItems, setMentionItems] = useState<FileMentionItem[]>([]);
+  const [mentionIndex, setMentionIndex] = useState(0);
+  const mentionSeqRef = useRef(0);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const slashMenuRef = useRef<HTMLDivElement>(null);
@@ -168,6 +199,72 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
     });
   }, []);
 
+  // Fetch @file suggestions: directory listing for empty/`dir/` queries
+  // (drill-down), fuzzy filename search otherwise. Debounced; stale responses
+  // dropped via a sequence counter.
+  useEffect(() => {
+    if (!mention || !cwd) { setMentionItems([]); return; }
+    const seq = ++mentionSeqRef.current;
+    const q = mention.query;
+    const timer = setTimeout(async () => {
+      try {
+        let items: FileMentionItem[] = [];
+        const slash = q.lastIndexOf("/");
+        if (q === "" || q.endsWith("/") || slash >= 0) {
+          // List <cwd>/<dirPart> and filter by the segment being typed.
+          const dirPart = slash >= 0 ? q.slice(0, slash) : "";
+          const namePart = slash >= 0 ? q.slice(slash + 1).toLowerCase() : q.toLowerCase();
+          const abs = dirPart ? joinFilePath(cwd, dirPart) : cwd;
+          const res = await fetch(`/api/files/${encodeFilePathForApi(abs)}?type=list`);
+          if (res.ok) {
+            const d = await res.json() as { entries?: { name: string; isDir: boolean }[] };
+            items = (d.entries ?? [])
+              .filter((e) => !namePart || e.name.toLowerCase().includes(namePart))
+              .map((e) => ({ name: e.name, relative: dirPart ? `${dirPart}/${e.name}` : e.name, isDir: e.isDir }));
+          }
+        } else {
+          const res = await fetch(`/api/files/search?cwd=${encodeURIComponent(cwd)}&q=${encodeURIComponent(q)}`);
+          if (res.ok) {
+            const d = await res.json() as { results?: { name: string; relative: string; isDir: boolean }[] };
+            items = (d.results ?? []).map((r) => ({ name: r.name, relative: r.relative, isDir: r.isDir }));
+          }
+        }
+        if (mentionSeqRef.current === seq) {
+          setMentionItems(items.slice(0, 15));
+          setMentionIndex(0);
+        }
+      } catch {
+        if (mentionSeqRef.current === seq) setMentionItems([]);
+      }
+    }, 120);
+    return () => clearTimeout(timer);
+  }, [mention, cwd]);
+
+  const applyMention = useCallback((item: FileMentionItem) => {
+    const ta = textareaRef.current;
+    if (!ta || !mention) return;
+    const caret = ta.selectionStart ?? ta.value.length;
+    const before = ta.value.slice(0, mention.start);
+    const after = ta.value.slice(caret);
+    // Dirs drill down (keep the menu open); files finish the mention.
+    const inserted = item.isDir
+      ? `@${item.relative}/`
+      : item.relative.includes(" ") ? `@"${item.relative}" ` : `@${item.relative} `;
+    const newVal = before + inserted + after;
+    setValue(newVal);
+    if (item.isDir) {
+      setMention({ start: mention.start, query: `${item.relative}/` });
+    } else {
+      setMention(null);
+      setMentionItems([]);
+    }
+    requestAnimationFrame(() => {
+      const pos = before.length + inserted.length;
+      ta.setSelectionRange(pos, pos);
+      ta.focus();
+    });
+  }, [mention]);
+
   // Sent-message history — ArrowUp in an empty input recalls previous
   // messages, ArrowDown walks back toward the blank prompt (CLI muscle memory).
   const historyRef = useRef<string[]>([]);
@@ -215,6 +312,31 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
         isComposingRef.current ||
         nativeEvent.isComposing ||
         nativeEvent.keyCode === 229;
+
+      // @file mention menu navigation
+      if (mention && mentionItems.length > 0) {
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          setMentionIndex((i) => (i + 1) % mentionItems.length);
+          return;
+        }
+        if (e.key === "ArrowUp") {
+          e.preventDefault();
+          setMentionIndex((i) => (i - 1 + mentionItems.length) % mentionItems.length);
+          return;
+        }
+        if ((e.key === "Enter" && !e.shiftKey) || e.key === "Tab") {
+          e.preventDefault();
+          if (mentionItems[mentionIndex]) applyMention(mentionItems[mentionIndex]);
+          return;
+        }
+        if (e.key === "Escape") {
+          e.preventDefault();
+          setMention(null);
+          setMentionItems([]);
+          return;
+        }
+      }
 
       // Slash menu navigation
       if (showSlashMenu) {
@@ -293,7 +415,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
         }
       }
     },
-    [isStreaming, onSteer, onFollowUp, sendQueued, handleSend, showSlashMenu, slashFilter, slashSelectedIndex, slashItems, value]
+    [isStreaming, onSteer, onFollowUp, sendQueued, handleSend, showSlashMenu, slashFilter, slashSelectedIndex, slashItems, value, mention, mentionItems, mentionIndex, applyMention]
   );
 
   const handleInput = useCallback(() => {
@@ -302,33 +424,37 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
     ta.style.height = "auto";
     ta.style.height = `${Math.min(ta.scrollHeight, 200)}px`;
 
-    // Detect slash command trigger
     const val = ta.value;
-    const slashIndex = val.lastIndexOf("/");
-    if (slashIndex >= 0 && slashIndex === val.length - 1) {
-      // User just typed "/"
-      setShowSlashMenu(true);
-      setSlashFilter("");
-      setSlashSelectedIndex(0);
-    } else if (slashIndex >= 0 && slashIndex === val.length - 2 && val[slashIndex + 1] === " ") {
-      // User typed "/ " (space after slash) - close menu
-      setShowSlashMenu(false);
-      setSlashFilter("");
-    } else if (slashIndex >= 0 && slashIndex === val.length - 1 - (val.length - slashIndex - 1)) {
-      // User is typing after slash - update filter
-      const filterText = val.slice(slashIndex + 1);
+
+    // @file mention takes priority (it may contain "/" for drill-down, which
+    // must not trigger the slash-command menu).
+    if (cwd) {
+      const m = detectFileMention(val, ta.selectionStart ?? val.length);
+      setMention(m);
+      if (m) {
+        setShowSlashMenu(false);
+        setSlashFilter("");
+        return;
+      }
+    }
+
+    // Slash commands are whole-message (selection replaces the entire input),
+    // so only a "/" at the very start opens the menu — a mid-text "/" is a path.
+    if (val.startsWith("/")) {
+      const filterText = val.slice(1);
       if (filterText.includes(" ")) {
         setShowSlashMenu(false);
         setSlashFilter("");
       } else {
+        setShowSlashMenu(true);
         setSlashFilter(filterText);
-        setSlashSelectedIndex(0);
+        if (filterText === "") setSlashSelectedIndex(0);
       }
     } else {
       setShowSlashMenu(false);
       setSlashFilter("");
     }
-  }, []);
+  }, [cwd]);
 
   const handlePaste = useCallback((e: React.ClipboardEvent) => {
     const items = Array.from(e.clipboardData?.items ?? []);
@@ -363,6 +489,12 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
         setShowSlashMenu(false);
         setSlashFilter("");
         setSlashSelectedIndex(0);
+      }
+      // Close the @file menu on outside clicks (its items handle mousedown).
+      if (!(e.target as HTMLElement).closest?.('[data-testid="file-mention-menu"]') &&
+          textareaRef.current && !textareaRef.current.contains(e.target as Node)) {
+        setMention(null);
+        setMentionItems([]);
       }
     };
     document.addEventListener("mousedown", handler);
@@ -447,6 +579,15 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
             }
             rows={1}
             className={styles.textarea}
+          />
+
+          {/* @file mention menu */}
+          <FileMentionMenu
+            show={!!mention}
+            items={mentionItems}
+            selectedIndex={mentionIndex}
+            onSelect={applyMention}
+            onHover={setMentionIndex}
           />
 
           {/* Slash command menu */}

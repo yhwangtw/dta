@@ -6,6 +6,18 @@
   font-size: 0.9em;
 }
 
+/* Inline code that looks like a file path — clickable, opens in the viewer.
+   Quiet by default (dotted underline), accent on hover. */
+.fileLink {
+  cursor: pointer;
+  text-decoration: underline dotted var(--text-dim);
+  text-underline-offset: 2px;
+}
+.fileLink:hover {
+  color: var(--color-accent);
+  text-decoration-color: var(--color-accent);
+}
+
 .blockContainer {
   position: relative;
   margin-top: 4px;

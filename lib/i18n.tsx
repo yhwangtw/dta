@@ -53,6 +53,7 @@ const MESSAGES = {
   "cwd.noSubdirs": { en: "No subfolders", zh: "沒有子資料夾" },
   "cwd.default": { en: "Use default directory", zh: "使用預設目錄" },
   "cwd.custom": { en: "Custom path…", zh: "自訂路徑…" },
+  "cwd.worktree": { en: "worktree", zh: "工作樹" },
   "cwd.pin": { en: "Pin", zh: "釘選" },
   "cwd.unpin": { en: "Unpin", zh: "取消釘選" },
   "cwd.hide": { en: "Remove from list", zh: "從清單移除" },
@@ -62,6 +63,7 @@ const MESSAGES = {
   "explorer.copyRel": { en: "Copy relative path", zh: "複製相對路徑" },
   "explorer.mention": { en: "Insert @ mention", zh: "插入 @ 提及" },
   "explorer.diff": { en: "View diff", zh: "檢視 diff" },
+  "explorer.download": { en: "Download", zh: "下載" },
   "explorer.truncated": { en: "More matches exist — refine the search", zh: "還有更多結果 — 請縮小搜尋範圍" },
 
   // ── Appearance panel ──

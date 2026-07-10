@@ -58,37 +58,44 @@ test.describe("file explorer", () => {
   });
 });
 
-test.describe("project picker", () => {
-  test("rich rows with session counts", async ({ page }) => {
+test.describe("project switcher", () => {
+  test("trigger opens the modal; rows carry session counts", async ({ page }) => {
     await openMain(page);
-    await page.getByRole("button", { name: /demo-project/ }).first().click();
-    const rows = page.locator("[role=option]");
-    await expect(rows.first()).toBeVisible();
-    await expect(rows.first()).toContainText("demo-project");
+    await page.getByTestId("project-switcher-trigger").click();
+    const modal = page.getByTestId("project-switcher");
+    await expect(modal).toBeVisible();
+    const row = modal.locator("[role=option]").filter({ hasText: "demo-project" }).first();
+    await expect(row).toBeVisible();
+    await expect(row).toContainText("session");
   });
 
-  test("browse mode lists subdirectories with a Use-this-folder action", async ({ page }) => {
+  test("search filters rows; Enter picks the highlighted project", async ({ page }) => {
     await openMain(page);
-    await page.getByRole("button", { name: /demo-project/ }).first().click();
-    await page.getByRole("button", { name: "Browse folders…" }).click();
-    await expect(page.getByRole("button", { name: "Use this folder" })).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByRole("button", { name: "src" })).toBeVisible();
-    await page.getByRole("button", { name: "Back" }).click();
-    await expect(page.getByRole("button", { name: "Browse folders…" })).toBeVisible();
+    await page.getByTestId("project-switcher-trigger").click();
+    const input = page.getByTestId("project-switcher").locator("input");
+    await input.pressSequentially("demo");
+    await expect(page.getByTestId("project-switcher").locator("[role=option]").first()).toContainText("demo-project");
+    await input.press("Enter");
+    await expect(page.getByTestId("project-switcher")).toHaveCount(0);
+    await expect(page.getByTestId("project-switcher-trigger")).toContainText("demo-project");
   });
 
-  test("custom path autocomplete suggests and completes directories", async ({ page }) => {
+  test("typing a path switches to path mode with directory completion", async ({ page }) => {
     await openMain(page);
-    await page.getByRole("button", { name: /demo-project/ }).first().click();
-    await page.getByRole("button", { name: "Custom path…" }).click();
+    await page.getByTestId("project-switcher-trigger").click();
+    const input = page.getByTestId("project-switcher").locator("input");
     // Type the fixture project path minus its last few characters
     const partial = PROJECT_CWD.slice(0, -4);
-    await page.getByPlaceholder("/path/to/project").fill(partial);
-    // Suggestion entries are <button title="<full path>"> — the picker's main
-    // button (span) and project rows (div) share the title, so pin the tag.
-    const suggestion = page.locator(`button[title="${PROJECT_CWD}"]`);
+    await input.fill(partial);
+    const suggestion = page.getByTestId("project-switcher").locator("[role=option]").filter({ hasText: "demo-project" }).first();
     await expect(suggestion).toBeVisible({ timeout: 10_000 });
-    await suggestion.click();
-    await expect(page.getByPlaceholder("/path/to/project")).toHaveValue(`${PROJECT_CWD}/`);
+    // Tab completes to the highlighted dir
+    await input.press("Tab");
+    await expect(input).toHaveValue(new RegExp("demo-project(-tGD|-wt)?/$"));
+    // Enter commits the typed path as the project cwd
+    await input.fill(PROJECT_CWD);
+    await input.press("Enter");
+    await expect(page.getByTestId("project-switcher")).toHaveCount(0);
+    await expect(page.getByTestId("project-switcher-trigger")).toContainText("demo-project");
   });
 });

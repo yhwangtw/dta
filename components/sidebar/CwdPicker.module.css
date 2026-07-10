@@ -1,455 +1,67 @@
-/* Root */
-.root {
-  position: relative;
-}
+/* Project entry point — a real button, not the old faux-input. The picker UI
+   itself is the ProjectSwitcher modal (own module). */
 
-/* Main button */
-.mainButton {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  padding: 6px 10px;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  font-size: var(--text-sm);
-  color: var(--text);
-  text-align: left;
-  transition: border-color 0.15s, background 0.15s;
-}
-
-.mainButtonSelected {
-  composes: mainButton;
-  background: var(--bg-hover);
-  border: 1px solid var(--border);
-}
-
-.mainButtonDefault {
-  composes: mainButton;
-  background: var(--color-accent-bg-subtle);
-  border: 1px solid var(--color-accent-border-focus-strong);
-}
-
-/* Path display */
-.pathSpan {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-family: inherit;
-  font-size: 11px;
-}
-
-.pathSpanSelected {
-  composes: pathSpan;
-  color: var(--text);
-}
-
-.pathSpanDefault {
-  composes: pathSpan;
-  color: var(--text-dim);
-}
-
-/* Dropdown */
-.dropdown {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
-  z-index: 100;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  box-shadow: 0 6px 20px var(--color-shadow-popup);
-  overflow: hidden;
-}
-
-/* CWD item in dropdown */
-.cwdItem {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  width: 100%;
-  padding: 8px 10px;
-  border: none;
-  border-bottom: 1px solid var(--border);
-  cursor: pointer;
-  text-align: left;
-  font-size: 11px;
-  font-family: inherit;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.cwdItemSelected {
-  composes: cwdItem;
-  background: var(--bg-selected);
-  color: var(--text);
-}
-
-.cwdItemDefault {
-  composes: cwdItem;
-  background: none;
-  color: var(--text-muted);
-}
-
-/* Flex shrink helper */
-.flexShrink0 {
-  flex-shrink: 0;
-}
-
-/* Spacer for unselected items */
-.spacer {
-  width: 10px;
-  flex-shrink: 0;
-}
-
-/* CWD text */
-.cwdText {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Dropdown action buttons (default cwd, custom path) */
-.dropdownButton {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  width: 100%;
-  padding: 8px 10px;
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  text-align: left;
-  font-size: 11px;
-}
-
-.dropdownButtonWithBorder {
-  composes: dropdownButton;
-  border-top: 1px solid var(--border);
-}
-
-/* Custom path input area */
-.customPathContainer {
-  padding: 6px 8px;
-}
-
-.customPathInput {
-  width: 100%;
-  font-size: 11px;
-  font-family: inherit;
-  padding: 5px 8px;
-  border: 1px solid var(--accent);
-  border-radius: 5px;
-  outline: none;
-  background: var(--bg);
-  color: var(--text);
-  box-sizing: border-box;
-}
-
-.customPathError {
-  margin-top: 5px;
-  color: var(--color-error-text);
-  font-size: 11px;
-  line-height: 1.35;
-  overflow-wrap: anywhere;
-}
-
-.customPathButtons {
-  display: flex;
-  gap: 5px;
-  margin-top: 5px;
-}
-
-.openButton {
-  flex: 1;
-  padding: 4px 0;
-  background: var(--accent);
-  border: none;
-  border-radius: 5px;
-  color: var(--color-white);
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-  opacity: 1;
-}
-
-.openButton:disabled {
-  cursor: not-allowed;
-  opacity: 0.65;
-}
-
-.cancelButton {
-  flex: 1;
-  padding: 4px 0;
-  background: var(--bg-hover);
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  color: var(--text-muted);
-  font-size: 11px;
-  cursor: pointer;
-}
-
-/* ── Project list (search + rich rows) ── */
-.searchInput {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 7px 10px;
-  border: none;
-  border-bottom: 1px solid var(--border);
-  background: transparent;
-  color: var(--text);
-  font-size: 11px;
-  font-family: inherit;
-  outline: none;
-}
-
-.searchInput::placeholder {
-  color: var(--text-dim);
-}
-
-.projectList {
-  max-height: 264px;
-  overflow-y: auto;
-}
-
-.projectRowBase {
+.trigger,
+.triggerEmpty {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 10px;
-  cursor: pointer;
-  border-bottom: 1px solid var(--border);
-}
-
-.projectRow {
-  composes: projectRowBase;
-  background: none;
-}
-
-.projectRowSelected {
-  composes: projectRowBase;
-  background: var(--bg-selected);
-}
-
-.projectRow:hover,
-.projectRowActive {
-  background: var(--bg-hover);
-}
-
-.projectText {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.projectName {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pinDot {
-  color: var(--accent);
-  font-size: 10px;
-}
-
-.projectPath {
-  font-size: 10px;
-  color: var(--text-dim);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.countChip {
-  flex-shrink: 0;
-  padding: 1px 6px;
-  border-radius: 999px;
-  background: var(--bg-subtle);
+  width: 100%;
+  background: var(--bg);
   border: 1px solid var(--border);
-  color: var(--text-dim);
-  font-size: 9.5px;
-  font-variant-numeric: tabular-nums;
+  border-radius: 8px;
+  padding: 7px 10px;
+  cursor: pointer;
+  font-size: 12.5px;
+  color: var(--text);
+  text-align: left;
+  transition: border-color 0.12s, background 0.12s;
+}
+.trigger:hover,
+.triggerEmpty:hover {
+  border-color: var(--color-accent);
+}
+.triggerEmpty {
+  color: var(--text-muted);
 }
 
-/* Linked git worktrees nested under the selected project */
-.worktreeRow {
-  padding-left: 22px;
-  gap: 6px;
-}
-.worktreeIcon {
-  flex-shrink: 0;
-  color: var(--text-dim);
-}
-.branchChip {
-  flex-shrink: 0;
-  padding: 1px 6px;
-  border-radius: 999px;
-  background: var(--color-accent-bg);
+.triggerIcon {
   color: var(--color-accent);
-  font-size: 9.5px;
+  flex-shrink: 0;
+  display: flex;
+}
+.triggerEmpty .triggerIcon {
+  color: var(--text-dim);
+}
+
+.triggerName {
+  font-weight: 650;
+  white-space: nowrap;
+  flex-shrink: 0;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.triggerPath {
+  color: var(--text-dim);
+  font-size: 10.5px;
   font-family: var(--font-mono);
-  max-width: 110px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.rowActions {
-  display: none;
-  flex-shrink: 0;
-  gap: 2px;
-}
-
-.projectRowBase:hover .rowActions {
-  display: inline-flex;
-}
-
-.rowActionBtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  border: none;
-  border-radius: 4px;
-  background: none;
-  color: var(--text-dim);
-  cursor: pointer;
-}
-
-.rowActionBtn:hover {
-  background: var(--bg-selected);
-  color: var(--text);
-}
-
-.emptyNote {
-  padding: 10px;
-  font-size: 11px;
-  color: var(--text-dim);
-  text-align: center;
-}
-
-/* ── Browse mode ── */
-.browseHeader {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 8px;
-  border-bottom: 1px solid var(--border);
-}
-
-.browseNavBtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  flex-shrink: 0;
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  background: none;
-  color: var(--text-muted);
-  cursor: pointer;
-}
-
-.browseNavBtn:hover:not(:disabled) {
-  background: var(--bg-hover);
-  color: var(--text);
-}
-
-.browseNavBtn:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-
-.browsePath {
   flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 10.5px;
-  color: var(--text-muted);
-  direction: rtl; /* keep the tail (current folder) visible when clipped */
-  text-align: left;
 }
 
-.browseList {
-  max-height: 240px;
-  overflow-y: auto;
-}
-
-.browseDir {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  width: 100%;
-  padding: 6px 10px;
-  border: none;
-  background: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  text-align: left;
-  font-size: 11.5px;
-  font-family: inherit;
-}
-
-.browseDir:hover {
-  background: var(--bg-hover);
-  color: var(--text);
-}
-
-.browseFooter {
-  padding: 6px 8px;
-  border-top: 1px solid var(--border);
-  margin-top: 0;
-}
-
-/* ── Custom path autocomplete ── */
-.suggestions {
-  margin-top: 4px;
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  overflow: hidden;
-  position: relative;
-}
-
-.suggestion {
-  display: block;
-  width: 100%;
-  padding: 4px 8px;
-  border: none;
-  background: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  text-align: left;
-  font-size: 10.5px;
-  font-family: inherit;
+.triggerPlaceholder {
+  flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.suggestion:hover {
-  background: var(--bg-hover);
-  color: var(--text);
-}
-
-.suggestHint {
-  position: absolute;
-  top: 3px;
-  right: 6px;
-  font-size: 9px;
+.triggerChevron {
   color: var(--text-dim);
-  pointer-events: none;
+  flex-shrink: 0;
+  display: flex;
 }

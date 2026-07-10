@@ -135,6 +135,22 @@
   min-height: 80px;
 }
 
+/* "«project» · N sessions" scope line at the top of the list */
+.projectScopeLabel {
+  padding: 7px 14px 3px;
+  font-size: 10px;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.projectScopeName {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
 .loadingWrapper {
   padding: 12px 14px;
 }

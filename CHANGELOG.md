@@ -4,6 +4,8 @@ All notable changes to tGD-pi-web are documented here.
 
 ## [Unreleased]
 
+## [2026.07.10-1] (PR #36–#38)
+
 ### Added
 - **`@file` mention autocomplete in the composer.** Typing `@` lists the project root; `@name` fuzzy-searches filenames project-wide; `@dir/` drills into a directory (selecting a folder keeps the menu open on its contents); paths with spaces insert quoted. Arrows/Enter/Tab/Escape, same interaction as the `/` menu. Alongside this, the slash-command menu now only opens on a **leading** `/` — it used to fire on any trailing slash (so mid-text paths misfired), and commands replace the whole input anyway.
 - **File paths in chat are clickable.** Inline code that looks like a file path (`src/foo.ts`, `./x`, `/abs/path`, optional `:line`) gets a quiet dotted underline; clicking resolves it against the session cwd, checks it exists (toast if not), and opens it in the right-panel viewer. Conservative heuristic — `object.property`, `and/or`, URLs and identifiers stay plain text.

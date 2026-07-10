@@ -79,6 +79,20 @@ const MESSAGES = {
   "appearance.title": { en: "Appearance", zh: "外觀" },
   "appearance.light": { en: "Light", zh: "淺色" },
   "appearance.dark": { en: "Dark", zh: "深色" },
+  "appearance.logout": { en: "Log out", zh: "登出" },
+
+  // ── Content search panel ──
+  "search.title": { en: "Search", zh: "搜尋" },
+  "search.placeholder": { en: "Search in files…", zh: "在檔案中搜尋…" },
+  "search.caseSensitive": { en: "Match case", zh: "區分大小寫" },
+  "search.searching": { en: "Searching…", zh: "搜尋中…" },
+  "search.noMatches": { en: "No matches", zh: "沒有符合的結果" },
+  "search.noProject": { en: "Select a project to search", zh: "請先選擇專案再搜尋" },
+  "search.error": { en: "Search failed", zh: "搜尋失敗" },
+  "search.hit": { en: "match", zh: "個結果" },
+  "search.hits": { en: "matches", zh: "個結果" },
+  "search.files": { en: "files", zh: "個檔案" },
+  "search.truncated": { en: "truncated", zh: "已截斷" },
 
   // ── Chat transcript ──
   "chat.retry": { en: "Retry last run", zh: "重試上一次執行" },

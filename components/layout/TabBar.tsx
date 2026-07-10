@@ -7,6 +7,10 @@ export interface Tab {
   id: string;
   label: string;
   filePath: string;
+  /** Line to jump to when opened from a search hit. */
+  gotoLine?: number;
+  /** Bumped each time the file is (re)opened at a line, to re-trigger the jump. */
+  gotoNonce?: number;
 }
 
 interface Props {

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "katex/dist/katex.min.css";
 import "./globals.css";
 
@@ -7,6 +7,21 @@ export const metadata: Metadata = {
   // it can reflect session name + agent running state. Declaring it here too
   // would make React's metadata hoisting overwrite every dynamic update.
   description: "Pi Coding Agent Web Interface",
+  // Installed-app behavior on iOS (Android reads the PWA manifest instead).
+  appleWebApp: {
+    capable: true,
+    title: "pi web",
+    statusBarStyle: "black-translucent",
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  // Soft keyboards shrink the layout viewport instead of overlaying it, so
+  // the composer stays visible while typing on mobile.
+  interactiveWidget: "resizes-content",
 };
 
 export default function RootLayout({

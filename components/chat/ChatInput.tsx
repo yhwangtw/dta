@@ -3,6 +3,9 @@
 import React, { useRef, useState, useCallback, useEffect, useMemo, useImperativeHandle, forwardRef, KeyboardEvent } from "react";
 import { COMPOSITION_END_ENTER_GRACE_MS, buildSlashItems } from "./chat-input-constants";
 import { SlashMenu, filterSlashItems } from "./SlashMenu";
+import { loadDraft, saveDraft, clearDraft, loadHistory, saveHistory } from "@/lib/composer-persistence";
+import { shouldFencePaste, fencePaste } from "@/lib/paste-fence";
+import { showToast } from "@/hooks/useToast";
 import { FileMentionMenu, type FileMentionItem } from "./FileMentionMenu";
 import { encodeFilePathForApi, joinFilePath } from "@/lib/file-paths";
 import { usePrompts } from "@/hooks/usePrompts";
@@ -44,6 +47,8 @@ interface Props {
   onSoundToggle?: () => void;
   /** Project cwd — enables the `@file` mention autocomplete. */
   cwd?: string | null;
+  /** Stable per-session key for draft/history persistence. */
+  persistKey?: string | null;
 }
 
 /**
@@ -83,6 +88,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
   retryInfo,
   soundEnabled, onSoundToggle,
   cwd,
+  persistKey,
 }: Props, ref) {
   const { t } = useI18n();
   const { prompts } = usePrompts();
@@ -104,6 +110,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isComposingRef = useRef(false);
   const lastCompositionEndAtRef = useRef(0);
+  const lastEscAtRef = useRef(0);
 
   useImperativeHandle(ref, () => ({
     insertIfEmpty(text: string) {
@@ -267,6 +274,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
 
   // Sent-message history — ArrowUp in an empty input recalls previous
   // messages, ArrowDown walks back toward the blank prompt (CLI muscle memory).
+  // Persisted per session so it survives reloads.
   const historyRef = useRef<string[]>([]);
   const historyPosRef = useRef(-1); // -1 = not navigating
   const pushHistory = useCallback((msg: string) => {
@@ -275,7 +283,30 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
     if (h[h.length - 1] !== msg) h.push(msg);
     if (h.length > 50) h.shift();
     historyPosRef.current = -1;
-  }, []);
+    saveHistory(persistKey ?? null, h);
+  }, [persistKey]);
+
+  // ── Draft persistence ──────────────────────────────────────────────────
+  // Restore draft + history when the session changes; save the draft
+  // (debounced) as it's typed. A refresh or session switch no longer eats
+  // whatever was mid-composition.
+  useEffect(() => {
+    setValue(loadDraft(persistKey ?? null));
+    historyRef.current = loadHistory(persistKey ?? null);
+    historyPosRef.current = -1;
+    requestAnimationFrame(() => {
+      const ta = textareaRef.current;
+      if (ta) {
+        ta.style.height = "auto";
+        ta.style.height = `${Math.min(ta.scrollHeight, 200)}px`;
+      }
+    });
+  }, [persistKey]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => saveDraft(persistKey ?? null, value), 300);
+    return () => clearTimeout(timer);
+  }, [value, persistKey]);
 
   const handleSend = useCallback(() => {
     const msg = value.trim();
@@ -284,11 +315,12 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
     onSend(msg, attachedImages.length ? attachedImages : undefined);
     pushHistory(msg);
     setValue("");
+    clearDraft(persistKey ?? null);
     clearImages();
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
     }
-  }, [value, attachedImages, isStreaming, onSend, clearImages, pushHistory]);
+  }, [value, attachedImages, isStreaming, onSend, clearImages, pushHistory, persistKey]);
 
   const sendQueued = useCallback((mode: "steer" | "followup") => {
     const msg = value.trim();
@@ -300,9 +332,10 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
     }
     pushHistory(msg);
     setValue("");
+    clearDraft(persistKey ?? null);
     clearImages();
     if (textareaRef.current) textareaRef.current.style.height = "auto";
-  }, [value, attachedImages, onSteer, onFollowUp, clearImages, pushHistory]);
+  }, [value, attachedImages, onSteer, onFollowUp, clearImages, pushHistory, persistKey]);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -375,6 +408,23 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
         }
       }
 
+      // Esc-Esc while a run is streaming aborts it (CLI muscle memory).
+      // Two presses within 600ms — a single Esc only arms it (and shows a
+      // hint), so stray Escapes can't kill a run. Open menus consumed their
+      // Escape above.
+      if (e.key === "Escape" && isStreaming && !isComposing) {
+        e.preventDefault();
+        const now = Date.now();
+        if (now - lastEscAtRef.current < 600) {
+          lastEscAtRef.current = 0;
+          onAbort();
+        } else {
+          lastEscAtRef.current = now;
+          showToast(t("input.escAbortHint"));
+        }
+        return;
+      }
+
       // History recall: only when not composing and the input is empty or
       // already mid-recall, so normal multi-line cursor movement is untouched.
       if (!isComposing && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
@@ -416,7 +466,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
         }
       }
     },
-    [isStreaming, onSteer, onFollowUp, sendQueued, handleSend, showSlashMenu, slashFilter, slashSelectedIndex, slashItems, value, mention, mentionItems, mentionIndex, applyMention]
+    [isStreaming, onSteer, onFollowUp, sendQueued, handleSend, showSlashMenu, slashFilter, slashSelectedIndex, slashItems, value, mention, mentionItems, mentionIndex, applyMention, onAbort, t]
   );
 
   const handleInput = useCallback(() => {
@@ -463,10 +513,30 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
   const handlePaste = useCallback((e: React.ClipboardEvent) => {
     const items = Array.from(e.clipboardData?.items ?? []);
     const imageItems = items.filter((item) => item.type.startsWith("image/"));
-    if (!imageItems.length) return;
-    e.preventDefault();
-    const files = imageItems.map((item) => item.getAsFile()).filter((f): f is File => f !== null);
-    processImageFiles(files);
+    if (imageItems.length) {
+      e.preventDefault();
+      const files = imageItems.map((item) => item.getAsFile()).filter((f): f is File => f !== null);
+      processImageFiles(files);
+      return;
+    }
+    // Code-shaped multiline pastes get fenced so the transcript's markdown
+    // render doesn't mangle them (conservative heuristic — prose is untouched).
+    const text = e.clipboardData?.getData("text/plain") ?? "";
+    if (shouldFencePaste(text)) {
+      e.preventDefault();
+      const ta = textareaRef.current;
+      const fenced = fencePaste(text);
+      if (!ta) { setValue((v) => v + fenced); return; }
+      const start = ta.selectionStart ?? ta.value.length;
+      const end = ta.selectionEnd ?? start;
+      const newVal = ta.value.slice(0, start) + fenced + ta.value.slice(end);
+      setValue(newVal);
+      requestAnimationFrame(() => {
+        ta.setSelectionRange(start + fenced.length, start + fenced.length);
+        ta.style.height = "auto";
+        ta.style.height = `${Math.min(ta.scrollHeight, 200)}px`;
+      });
+    }
   }, [processImageFiles]);
 
 

@@ -983,7 +983,11 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
       <div className="relative">
         {/* Context-pressure nudge: suggest compaction before it's too late */}
         {contextUsage?.percent != null && contextUsage.percent >= 80 && !isCompacting && (
-          <div className={`mx-auto flex items-center gap-2 px-4 pb-1 ${wideChat ? "max-w-[1180px]" : "max-w-[820px]"}`}>
+          /* pl-4 pr-[52px]: mirror ChatInput's container padding (right side
+             reserves the minimap rail) so the banner's box aligns exactly
+             with the composer below instead of sticking out to the right. */
+          <div className="pb-1 pl-4 pr-[52px]">
+          <div className={`mx-auto flex items-center gap-2 ${wideChat ? "max-w-[1180px]" : "max-w-[820px]"}`}>
             <div className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-[var(--color-warning-border)] bg-[var(--color-warning-bg)] px-3 py-1.5 text-[12px] text-[var(--color-warning-text)]">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
               {/* min-w-0 flex-1: a flex child's min-width:auto refuses to shrink,
@@ -1005,9 +1009,12 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
               </button>
             </div>
           </div>
+          </div>
         )}
         {queuedFollowUps.length > 0 && (
-          <div className={`mx-auto px-4 pb-1 ${wideChat ? "max-w-[1180px]" : "max-w-[820px]"}`}>
+          /* Same geometry as ChatInput's container (see the banner above). */
+          <div className="pb-1 pl-4 pr-[52px]">
+          <div className={`mx-auto ${wideChat ? "max-w-[1180px]" : "max-w-[820px]"}`}>
             <div className="flex flex-col gap-1 rounded-lg border border-[var(--color-warning-border)] bg-[var(--color-warning-bg)] px-3 py-1.5 text-[12px] text-[var(--color-warning-text)]">
               {queuedFollowUps.map((q, i) => (
                 <div key={`${i}-${q.slice(0, 24)}`} className="flex min-w-0 items-center gap-2">
@@ -1032,6 +1039,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                 </button>
               )}
             </div>
+          </div>
           </div>
         )}
         {chatInputElement}

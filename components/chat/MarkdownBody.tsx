@@ -9,6 +9,7 @@ import remarkGfm from "remark-gfm";
 import { PrismAsync as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vs, vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { useTheme } from "@/hooks/useTheme";
+import { looksLikeFilePath, requestOpenFile } from "@/lib/file-links";
 import styles from "./MarkdownBody.module.css";
 
 interface MarkdownBodyProps {
@@ -109,6 +110,23 @@ export function MarkdownBody({ children, className, isStreaming }: MarkdownBodyP
                 return <MermaidBlock code={raw.replace(/\n$/, "")} isStreaming={isStreaming} />;
               }
               return <CodeBlock code={raw.replace(/\n$/, "")} lang={lang} plain={isStreaming} />;
+            }
+            // File-path-looking inline code opens in the right-panel viewer.
+            const link = looksLikeFilePath(raw);
+            if (link) {
+              return (
+                <code
+                  className={`${styles.inlineCode} ${styles.fileLink}`}
+                  role="link"
+                  tabIndex={0}
+                  title={`Open ${link.path}`}
+                  onClick={() => requestOpenFile(link)}
+                  onKeyDown={(e) => { if (e.key === "Enter") requestOpenFile(link); }}
+                  {...props}
+                >
+                  {children}
+                </code>
+              );
             }
             return (
               <code

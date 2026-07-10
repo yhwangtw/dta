@@ -22,6 +22,7 @@ import { useTags } from "@/hooks/useTags";
 import { useCommandPalette } from "@/hooks/useCommandPalette";
 import { useToast, showToast } from "@/hooks/useToast";
 import { encodeFilePathForApi } from "@/lib/file-paths";
+import { onOpenFileRequest } from "@/lib/file-links";
 import { useI18n, translate } from "@/lib/i18n";
 import { toggleAlwaysFollow } from "@/lib/prefs";
 import { useTabTitle } from "@/lib/attention";
@@ -153,6 +154,29 @@ export function AppShell() {
     activeTag: activeTagFilter,
     onClearTag: () => setActiveTagFilter(null),
   });
+
+  // File-path links clicked inside chat messages (MarkdownBody broadcasts;
+  // we resolve relative → session cwd, confirm the file exists, then open it
+  // in the right-panel viewer — a dead path gets a toast instead of a blank tab).
+  useEffect(() => {
+    return onOpenFileRequest(async (link) => {
+      const cwdBase = effectiveCwdForPalette;
+      let abs = link.path;
+      if (abs.startsWith("~/")) abs = abs.slice(1); // let the server-side root check reject if outside
+      if (!abs.startsWith("/")) {
+        if (!cwdBase) { showToast(`No project selected to resolve ${link.path}`, { type: "warning" }); return; }
+        abs = `${cwdBase.replace(/\/$/, "")}/${abs.replace(/^\.\//, "")}`;
+      }
+      try {
+        const res = await fetch(`/api/files/${encodeFilePathForApi(abs)}?type=meta`);
+        if (!res.ok) { showToast(`File not found: ${link.path}`, { type: "warning" }); return; }
+      } catch {
+        showToast(`File not found: ${link.path}`, { type: "warning" });
+        return;
+      }
+      handleOpenFile(abs, abs.split("/").pop() ?? link.path);
+    });
+  }, [effectiveCwdForPalette, handleOpenFile]);
 
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
 

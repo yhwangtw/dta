@@ -53,6 +53,7 @@ const MESSAGES = {
   "cwd.noSubdirs": { en: "No subfolders", zh: "沒有子資料夾" },
   "cwd.default": { en: "Use default directory", zh: "使用預設目錄" },
   "cwd.custom": { en: "Custom path…", zh: "自訂路徑…" },
+  "cwd.worktree": { en: "worktree", zh: "工作樹" },
   "cwd.pin": { en: "Pin", zh: "釘選" },
   "cwd.unpin": { en: "Unpin", zh: "取消釘選" },
   "cwd.hide": { en: "Remove from list", zh: "從清單移除" },

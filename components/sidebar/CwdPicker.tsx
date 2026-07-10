@@ -93,11 +93,36 @@ export function CwdPicker({ state, actions, refs, projects, initialSessionId, is
   const [pins, setPins] = useState<string[]>(() => loadList(PINS_KEY));
   const [hidden, setHidden] = useState<string[]>(() => loadList(HIDDEN_KEY));
 
+  // ── Git worktrees of the selected project ────────────────────────────────
+  // Fetched once per dropdown open (single git call). Linked worktrees render
+  // nested under the selected project's row so switching checkout = one click.
+  const [worktrees, setWorktrees] = useState<{ path: string; branch: string | null; isMain: boolean }[]>([]);
+  useEffect(() => {
+    if (!dropdownOpen || !selectedCwd) { setWorktrees([]); return; }
+    let cancelled = false;
+    fetch(`/api/worktrees?cwd=${encodeURIComponent(selectedCwd)}`)
+      .then((r) => (r.ok ? r.json() : { worktrees: [] }))
+      .then((d: { worktrees?: { path: string; branch: string | null; isMain: boolean }[] }) => {
+        if (!cancelled) setWorktrees(d.worktrees ?? []);
+      })
+      .catch(() => { if (!cancelled) setWorktrees([]); });
+    return () => { cancelled = true; };
+  }, [dropdownOpen, selectedCwd]);
+
+  // The selected project's sibling checkouts (everything except itself).
+  const linkedWorktrees = useMemo(
+    () => worktrees.filter((w) => w.path !== selectedCwd),
+    [worktrees, selectedCwd],
+  );
+  const worktreePathSet = useMemo(() => new Set(linkedWorktrees.map((w) => w.path)), [linkedWorktrees]);
+
   const visibleProjects = useMemo(() => {
     const q = query.trim().toLowerCase();
     const hiddenSet = new Set(hidden);
     const list = projects.filter(
-      (p) => !hiddenSet.has(p.cwd) && (!q || p.cwd.toLowerCase().includes(q)),
+      // Worktrees of the selected project render nested under it — drop their
+      // flat rows so the same checkout doesn't appear twice.
+      (p) => !hiddenSet.has(p.cwd) && !worktreePathSet.has(p.cwd) && (!q || p.cwd.toLowerCase().includes(q)),
     );
     const pinRank = new Map(pins.map((cwd, i) => [cwd, i]));
     return [...list].sort((a, b) => {
@@ -105,7 +130,7 @@ export function CwdPicker({ state, actions, refs, projects, initialSessionId, is
       const pb = pinRank.has(b.cwd) ? pinRank.get(b.cwd)! : Infinity;
       return pa - pb; // pinned first (stable sort keeps recency order otherwise)
     });
-  }, [projects, query, pins, hidden]);
+  }, [projects, query, pins, hidden, worktreePathSet]);
 
   useEffect(() => setActiveIdx(0), [query, dropdownOpen]);
 
@@ -327,40 +352,63 @@ export function CwdPicker({ state, actions, refs, projects, initialSessionId, is
               const isSelected = p.cwd === selectedCwd;
               const isPinned = pins.includes(p.cwd);
               return (
-                <div
-                  key={p.cwd}
-                  onClick={() => pickProject(p.cwd)}
-                  className={`${isSelected ? styles.projectRowSelected : styles.projectRow} ${i === activeIdx ? styles.projectRowActive : ""}`}
-                  title={p.cwd}
-                  role="option"
-                  aria-selected={isSelected}
-                >
-                  <span className={styles.projectText}>
-                    <span className={styles.projectName}>
-                      {isPinned && <span className={styles.pinDot} aria-hidden>★ </span>}
-                      {lastSegment(p.cwd)}
+                <div key={p.cwd}>
+                  <div
+                    onClick={() => pickProject(p.cwd)}
+                    className={`${isSelected ? styles.projectRowSelected : styles.projectRow} ${i === activeIdx ? styles.projectRowActive : ""}`}
+                    title={p.cwd}
+                    role="option"
+                    aria-selected={isSelected}
+                  >
+                    <span className={styles.projectText}>
+                      <span className={styles.projectName}>
+                        {isPinned && <span className={styles.pinDot} aria-hidden>★ </span>}
+                        {lastSegment(p.cwd)}
+                      </span>
+                      <span className={styles.projectPath}>{shortenCwd(p.cwd, homeDir)}</span>
                     </span>
-                    <span className={styles.projectPath}>{shortenCwd(p.cwd, homeDir)}</span>
-                  </span>
-                  <span className={styles.countChip}>{p.count}</span>
-                  <span className={styles.rowActions}>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); togglePin(p.cwd); }}
-                      className={styles.rowActionBtn}
-                      title={isPinned ? t("cwd.unpin") : t("cwd.pin")}
-                    >
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill={isPinned ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
-                    </button>
-                    {!isSelected && (
+                    <span className={styles.countChip}>{p.count}</span>
+                    <span className={styles.rowActions}>
                       <button
-                        onClick={(e) => { e.stopPropagation(); hideProject(p.cwd); }}
+                        onClick={(e) => { e.stopPropagation(); togglePin(p.cwd); }}
                         className={styles.rowActionBtn}
-                        title={t("cwd.hide")}
+                        title={isPinned ? t("cwd.unpin") : t("cwd.pin")}
                       >
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill={isPinned ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
                       </button>
-                    )}
-                  </span>
+                      {!isSelected && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); hideProject(p.cwd); }}
+                          className={styles.rowActionBtn}
+                          title={t("cwd.hide")}
+                        >
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                        </button>
+                      )}
+                    </span>
+                  </div>
+                  {/* Linked git worktrees of the selected project — one-click checkout switch */}
+                  {isSelected && linkedWorktrees.map((w) => (
+                    <div
+                      key={w.path}
+                      onClick={() => pickProject(w.path)}
+                      className={`${styles.projectRow} ${styles.worktreeRow}`}
+                      title={w.path}
+                      role="option"
+                      aria-selected={false}
+                      data-testid="worktree-row"
+                    >
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={styles.worktreeIcon} aria-hidden>
+                        <line x1="6" y1="3" x2="6" y2="15" /><circle cx="18" cy="6" r="3" /><circle cx="6" cy="18" r="3" />
+                        <path d="M18 9a9 9 0 0 1-9 9" />
+                      </svg>
+                      <span className={styles.projectText}>
+                        <span className={styles.projectName}>{lastSegment(w.path)}</span>
+                        <span className={styles.projectPath}>{shortenCwd(w.path, homeDir)}</span>
+                      </span>
+                      {w.branch && <span className={styles.branchChip}>{w.branch}</span>}
+                    </div>
+                  ))}
                 </div>
               );
             })}

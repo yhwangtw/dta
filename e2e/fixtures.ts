@@ -27,6 +27,8 @@ export function createFixtures(root: string): { cwd: string } {
   git("init -q");
   git("add -A");
   git('commit -qm "initial"');
+  // Linked worktree — drives the CwdPicker worktree rows
+  git(`worktree add -q ${JSON.stringify(path.join(root, "demo-project-wt"))} -b feature-wt`);
   // Working-tree state: one modified, two untracked
   writeFileSync(path.join(cwd, "src/index.ts"), "export const answer = 43; // modified\n");
   writeFileSync(path.join(cwd, "from-bash.txt"), "bash-made\n");

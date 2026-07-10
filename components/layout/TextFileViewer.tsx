@@ -14,9 +14,13 @@ import styles from "./TextFileViewer.module.css";
 interface Props {
   filePath: string;
   cwd?: string;
+  /** Jump to this 1-based line on open (from a search hit). */
+  gotoLine?: number;
+  /** Bumped per jump request, so reopening an open file re-triggers the jump. */
+  gotoNonce?: number;
 }
 
-export function TextFileViewer({ filePath, cwd }: Props) {
+export function TextFileViewer({ filePath, cwd, gotoLine: gotoLineProp, gotoNonce }: Props) {
   const [data, setData] = useState<FileData | null>(null);
   const [prevContent, setPrevContent] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -109,6 +113,14 @@ export function TextFileViewer({ filePath, cwd }: Props) {
     setDraft("");
     setForceHighlight(false);
   }, [filePath]);
+
+  // Jump to a line requested by a search hit. Reuses the ":N" go-to-line path
+  // (seeds the find box), so the existing active-line scroll handles it. Keyed
+  // on gotoNonce so reopening an already-open file at a new line re-fires.
+  // Declared after the reset effect above so it wins on a fresh open.
+  useEffect(() => {
+    if (gotoLineProp && gotoLineProp > 0) setFindQuery(`:${gotoLineProp}`);
+  }, [gotoLineProp, gotoNonce]);
 
   // Line numbers (1-based) matching the (debounced) find query; ":123" jumps.
   const matches = useMemo(() => {

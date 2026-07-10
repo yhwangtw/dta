@@ -6,6 +6,7 @@ import { SessionSidebar } from "../sidebar/SessionSidebar";
 import { ChatWindow } from "../chat/ChatWindow";
 import { FileViewer } from "./FileViewer";
 import { FilesPanel } from "./FilesPanel";
+import { SearchPanel } from "./SearchPanel";
 import { ChangesPanel } from "./ChangesPanel";
 import { TgdArtifactsPanel } from "./TgdArtifactsPanel";
 import { DiffPanel } from "./DiffPanel";
@@ -394,6 +395,11 @@ export function AppShell() {
           onAtMention={handleAtMention}
           refreshKey={state.explorerRefreshKey}
           onOpenDiff={handleOpenDiff}
+        />
+      ) : panelView === "search" ? (
+        <SearchPanel
+          cwd={panelCwd}
+          onOpenFile={handleOpenFile}
         />
       ) : panelView === "tgd" ? (
         <TgdArtifactsPanel
@@ -805,7 +811,7 @@ export function AppShell() {
           {diffFile && panelCwd ? (
             <DiffPanel cwd={panelCwd} path={diffFile} onClose={() => setDiffFile(null)} />
           ) : activeFileTab?.filePath ? (
-            <FileViewer filePath={activeFileTab.filePath} cwd={state.activeCwd ?? undefined} />
+            <FileViewer filePath={activeFileTab.filePath} cwd={state.activeCwd ?? undefined} gotoLine={activeFileTab.gotoLine} gotoNonce={activeFileTab.gotoNonce} />
           ) : (
             <div className={s.rightPanelEmpty}>
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>

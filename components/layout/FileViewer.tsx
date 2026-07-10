@@ -9,6 +9,10 @@ import { TextFileViewer } from "./TextFileViewer";
 interface Props {
   filePath: string;
   cwd?: string;
+  /** Jump to this 1-based line on open (from a search hit). */
+  gotoLine?: number;
+  /** Changes each time a jump is requested, to re-trigger it for an open file. */
+  gotoNonce?: number;
 }
 
 export interface FileData {
@@ -71,7 +75,7 @@ export function formatDuration(seconds: number): string {
   return `${mins}:${String(secs).padStart(2, "0")}`;
 }
 
-export function FileViewer({ filePath, cwd }: Props) {
+export function FileViewer({ filePath, cwd, gotoLine, gotoNonce }: Props) {
   if (isImagePath(filePath)) {
     return <ImageViewer filePath={filePath} cwd={cwd} />;
   }
@@ -81,5 +85,5 @@ export function FileViewer({ filePath, cwd }: Props) {
   if (isDocumentPreviewPath(filePath)) {
     return <DocumentViewer filePath={filePath} cwd={cwd} />;
   }
-  return <TextFileViewer filePath={filePath} cwd={cwd} />;
+  return <TextFileViewer filePath={filePath} cwd={cwd} gotoLine={gotoLine} gotoNonce={gotoNonce} />;
 }

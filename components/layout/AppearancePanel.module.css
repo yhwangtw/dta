@@ -117,3 +117,23 @@
   flex-shrink: 0;
   color: var(--accent);
 }
+
+.logoutRow {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.logoutRow:hover {
+  color: var(--color-error);
+  border-color: var(--color-error);
+}

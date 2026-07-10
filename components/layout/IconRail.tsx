@@ -4,7 +4,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { useI18n } from "@/lib/i18n";
 import s from "./AppShell.module.css";
 
-export type PanelView = "sessions" | "files" | "changes" | "tgd";
+export type PanelView = "sessions" | "files" | "search" | "changes" | "tgd";
 
 interface IconRailProps {
   panelView: PanelView;
@@ -59,6 +59,16 @@ export function IconRail({
       >
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+        </svg>
+      </button>
+      <button
+        onClick={() => onSelectView("search")}
+        title={t("search.title")}
+        aria-pressed={panelView === "search" && sidebarOpen}
+        className={`${s.railButton} ${panelView === "search" && sidebarOpen ? s.railButtonActive : ""}`}
+      >
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.5" y2="16.5" />
         </svg>
       </button>
       <button

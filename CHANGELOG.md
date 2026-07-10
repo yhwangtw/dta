@@ -4,6 +4,8 @@ All notable changes to tGD-pi-web are documented here.
 
 ## [Unreleased]
 
+## [2026.07.10-3] (PR #40–#41)
+
 ### Added
 - **Optional access password (front-door lock for remote use).** pi-web has no accounts and can run bash, so exposing it beyond localhost was unsafe. Set `PIWEB_ACCESS_PASSWORD` and a `middleware.ts` gate now guards every route — unauthenticated page loads redirect to a `/login` page, API calls get a 401 — with an httpOnly cookie (SHA-256 of the password, timing-safe compare) that persists 30 days. Unset ⇒ gate off, local use unchanged. Log out from the Appearance panel. See `deploy/README.md`.
 - **Full-text file search.** A new **Search** panel in the sidebar rail greps the selected project (ripgrep when present, bounded pure-JS fallback otherwise — no dependency assumed), groups hits by file with the match highlighted, and clicking a hit opens the file at that line in the viewer. Case toggle; new `GET /api/files/grep` reusing the existing allowed-roots security. Filename search (⌘K / `@`) is unchanged; this searches *contents*.

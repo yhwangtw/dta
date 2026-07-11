@@ -1,6 +1,6 @@
 "use client";
 
-import { useTheme } from "@/hooks/useTheme";
+import { useTheme, toggleOriginFromEvent } from "@/hooks/useTheme";
 import { useI18n } from "@/lib/i18n";
 import s from "./AppShell.module.css";
 
@@ -158,10 +158,7 @@ export function IconRail({
         </svg>
       </button>
       <button
-        onClick={(e) => {
-          const rect = e.currentTarget.getBoundingClientRect();
-          toggleTheme({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
-        }}
+        onClick={(e) => toggleTheme(toggleOriginFromEvent(e))}
         title={isDark ? t("topbar.lightMode") : t("topbar.darkMode")}
         aria-pressed={isDark}
         className={s.railButton}

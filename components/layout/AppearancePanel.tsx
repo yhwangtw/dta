@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { SKINS, SKIN_LABELS, SKIN_PREVIEWS, useSkin } from "@/lib/skin";
-import { useTheme } from "@/hooks/useTheme";
+import { useTheme, toggleOriginFromEvent } from "@/hooks/useTheme";
 import { useI18n } from "@/lib/i18n";
 import styles from "./AppearancePanel.module.css";
 
@@ -61,7 +61,7 @@ export function AppearancePanel({ onClose }: Props) {
           type="button"
           className={`${styles.themeBtn} ${!isDark ? styles.themeBtnActive : ""}`}
           aria-pressed={!isDark}
-          onClick={() => { if (isDark) toggleTheme(); }}
+          onClick={(e) => { if (isDark) toggleTheme(toggleOriginFromEvent(e)); }}
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
             <circle cx="12" cy="12" r="5" />
@@ -76,7 +76,7 @@ export function AppearancePanel({ onClose }: Props) {
           type="button"
           className={`${styles.themeBtn} ${isDark ? styles.themeBtnActive : ""}`}
           aria-pressed={isDark}
-          onClick={() => { if (!isDark) toggleTheme(); }}
+          onClick={(e) => { if (!isDark) toggleTheme(toggleOriginFromEvent(e)); }}
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
             <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />

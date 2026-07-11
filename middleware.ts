@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { AUTH_COOKIE, gateEnabled, cookieAuthorizes } from "@/lib/access-gate";
+import { AUTH_COOKIE, gateEnabled, cookieAuthorizes, isPublicGatePath } from "@/lib/access-gate";
 
 // Access gate. When PIWEB_ACCESS_PASSWORD is unset this is a no-op (local use
 // is unchanged). When set, every request must carry a valid gate cookie —
@@ -12,10 +12,7 @@ export async function middleware(req: NextRequest) {
   if (!gateEnabled()) return NextResponse.next();
 
   const { pathname } = req.nextUrl;
-  const isLoginPage = pathname === "/login";
-  const isGateApi = pathname === "/api/auth/gate";
-  const isIcon = pathname === "/icon.svg" || pathname === "/favicon.ico";
-  if (isLoginPage || isGateApi || isIcon) return NextResponse.next();
+  if (isPublicGatePath(pathname)) return NextResponse.next();
 
   if (await cookieAuthorizes(req.cookies.get(AUTH_COOKIE)?.value)) {
     return NextResponse.next();
@@ -32,6 +29,8 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  // Run on everything except Next internals and obvious static files.
-  matcher: ["/((?!_next/static|_next/image|.*\\.(?:png|jpg|jpeg|gif|webp|svg|ico|woff2?|ttf)$).*)"],
+  // Run on everything except Next's build internals. Public static assets are
+  // allow-listed inside the middleware (isPublicPath) rather than skipped by
+  // extension, so /api/files/*.png can't slip past the gate.
+  matcher: ["/((?!_next/static|_next/image).*)"],
 };

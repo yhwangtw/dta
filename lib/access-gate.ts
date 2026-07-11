@@ -17,6 +17,27 @@
 
 export const AUTH_COOKIE = "piweb_gate";
 
+// Paths reachable without auth when the gate is on: the login flow plus the
+// genuinely-static assets the browser fetches around login. Everything else —
+// crucially every /api/* route — is gated.
+//
+// Deliberately NOT extension-based: /api/files/<path> serves files whose URL
+// ends in the file's own extension (…/secret.png), so skipping by extension
+// would leak allowed-root images/svgs/fonts to unauthenticated callers.
+const PUBLIC_EXACT = new Set([
+  "/login",
+  "/api/auth/gate",
+  "/icon.svg",
+  "/favicon.ico",
+  "/apple-icon.png",
+  "/manifest.webmanifest",
+]);
+const PUBLIC_PREFIXES = ["/icons/"];
+
+export function isPublicGatePath(pathname: string): boolean {
+  return PUBLIC_EXACT.has(pathname) || PUBLIC_PREFIXES.some((p) => pathname.startsWith(p));
+}
+
 /** Is the gate switched on? (i.e. a password is configured) */
 export function gateEnabled(): boolean {
   return !!process.env.PIWEB_ACCESS_PASSWORD;

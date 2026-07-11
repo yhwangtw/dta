@@ -58,7 +58,17 @@ export interface SessionTreeNode {
   children: SessionTreeNode[];
 }
 
-export function buildSessionTree(sessions: SessionInfo[]): SessionTreeNode[] {
+export type SessionSortMode = "recent" | "name" | "messages";
+
+const SORT_COMPARATORS: Record<SessionSortMode, (a: SessionTreeNode, b: SessionTreeNode) => number> = {
+  recent: (a, b) => b.session.modified.localeCompare(a.session.modified),
+  name: (a, b) => (a.session.name || a.session.firstMessage || a.session.id)
+    .localeCompare(b.session.name || b.session.firstMessage || b.session.id, undefined, { sensitivity: "base" }),
+  messages: (a, b) => (b.session.messageCount - a.session.messageCount)
+    || b.session.modified.localeCompare(a.session.modified),
+};
+
+export function buildSessionTree(sessions: SessionInfo[], sortMode: SessionSortMode = "recent"): SessionTreeNode[] {
   const byId = new Map<string, SessionTreeNode>();
   for (const s of sessions) {
     byId.set(s.id, { session: s, children: [] });
@@ -93,11 +103,13 @@ export function buildSessionTree(sessions: SessionInfo[]): SessionTreeNode[] {
     }
   }
 
-  // Sort each level by modified desc
-  const sort = (nodes: SessionTreeNode[]) => {
-    nodes.sort((a, b) => b.session.modified.localeCompare(a.session.modified));
-    nodes.forEach((n) => sort(n.children));
+  // Roots follow the caller's sort mode; fork children always stay in
+  // recency order (they read as a chronological thread under the parent).
+  roots.sort(SORT_COMPARATORS[sortMode]);
+  const sortChildren = (nodes: SessionTreeNode[]) => {
+    nodes.sort(SORT_COMPARATORS.recent);
+    nodes.forEach((n) => sortChildren(n.children));
   };
-  sort(roots);
+  roots.forEach((n) => sortChildren(n.children));
   return roots;
 }

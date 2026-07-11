@@ -24,6 +24,16 @@ function getServerSnapshot(): Theme {
 
 type ToggleOrigin = { x: number; y: number };
 
+/**
+ * Origin for the theme reveal, taken from the clicked control's center rather
+ * than the pointer — so keyboard activation (which reports clientX/Y = 0)
+ * still expands from the button instead of the top-left corner.
+ */
+export function toggleOriginFromEvent(e: { currentTarget: Element }): ToggleOrigin {
+  const r = e.currentTarget.getBoundingClientRect();
+  return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+}
+
 export function useTheme() {
   const theme = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 

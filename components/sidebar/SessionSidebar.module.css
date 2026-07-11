@@ -83,8 +83,42 @@
   flex-shrink: 0;
 }
 
+.searchRow {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
 .searchContainer {
   position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Sort-mode cycle button (clock → A-Z → bars) */
+.sortButton {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 0;
+}
+
+.sortButton:hover {
+  color: var(--text);
+}
+
+/* Non-default sort mode gets a subtle "filter active" tint */
+.sortButtonActive {
+  color: var(--color-accent);
+  border-color: var(--color-accent-border-focus-strong);
 }
 
 .searchIcon {

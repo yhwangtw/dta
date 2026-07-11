@@ -5,6 +5,7 @@ import { getFileIcon, FolderIcon } from "./FileIcons";
 import { encodeFilePathForApi, getRelativeFilePath, joinFilePath } from "@/lib/file-paths";
 import styles from "./FileExplorer.module.css";
 import { useI18n } from "@/lib/i18n";
+import { saveTreeExpansion, loadTreeExpansion } from "@/lib/tree-expansion-memory";
 import { showToast } from "@/hooks/useToast";
 import { createFile, createDir, renameEntry, deleteEntry, uploadFiles } from "@/lib/file-ops-client";
 import { FileOpsDialog, type FileOpRequest } from "./FileOpsDialog";
@@ -130,15 +131,20 @@ function TreeNode({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshKey]);
 
+  // Load children whenever the node is open but not yet loaded. Clicks flow
+  // through here too, and it also covers dirs that *start* open — restored
+  // per-cwd expansions and reveal-from-search — which never get a click.
+  useEffect(() => {
+    if (open && !loaded && !loading) loadChildren();
+  }, [open, loaded, loading, loadChildren]);
+
   const handleClick = useCallback(() => {
     if (node.isDir) {
-      const next = !open;
-      onToggleExpanded(node.fullPath, next);
-      if (next && !loaded) loadChildren();
+      onToggleExpanded(node.fullPath, !open);
     } else {
       onOpenFile(node.fullPath, node.name);
     }
-  }, [node.isDir, node.fullPath, node.name, loaded, open, loadChildren, onOpenFile, onToggleExpanded]);
+  }, [node.isDir, node.fullPath, node.name, open, onOpenFile, onToggleExpanded]);
 
   const relative = getRelativeFilePath(node.fullPath, cwd);
   const fileStatus = node.isDir ? undefined : gitStatus.get(relative);
@@ -249,6 +255,16 @@ export function FileExplorer({ cwd, onOpenFile, refreshKey, onAtMention, onOpenD
     });
   }, []);
 
+  // Remember the expansion per cwd so switching projects and back keeps the
+  // tree open where it was (in-memory; a fresh page load starts collapsed).
+  // expansionCwdRef names the cwd the current state belongs to — it gates the
+  // save so a mount/switch (state still empty or from the old cwd) can't
+  // clobber the remembered set before the restore below has run.
+  const expansionCwdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (expansionCwdRef.current === cwd) saveTreeExpansion(cwd, expandedPaths);
+  }, [cwd, expandedPaths]);
+
   // Combined refresh: parent bumps (refreshKey) + local file-op bumps.
   const treeRefresh = (refreshKey ?? 0) + localRefresh;
 
@@ -256,9 +272,13 @@ export function FileExplorer({ cwd, onOpenFile, refreshKey, onAtMention, onOpenD
     const cwdChanged = prevCwdRef.current !== cwd;
     prevCwdRef.current = cwd;
 
-    // Reset expanded state only when cwd changes, not on refreshKey bumps
-    if (cwdChanged) setExpandedPaths(new Set());
-    if (cwdChanged) setFilterQuery("");
+    // On cwd change, restore that cwd's remembered expansion (empty for a
+    // never-visited cwd). refreshKey bumps leave the expansion alone.
+    if (cwdChanged) {
+      setExpandedPaths(loadTreeExpansion(cwd));
+      expansionCwdRef.current = cwd;
+      setFilterQuery("");
+    }
 
     setLoading(cwdChanged);
     setError(null);

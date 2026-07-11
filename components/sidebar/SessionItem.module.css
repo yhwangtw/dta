@@ -8,6 +8,12 @@
   border-radius: 8px;
   transition: background 0.1s;
   overflow: hidden;
+  outline: none;
+}
+
+/* Keyboard-focused row (roving focus from the list's arrow-key nav) */
+.item:focus-visible {
+  box-shadow: inset 0 0 0 1.5px var(--color-accent-border-focus-strong);
 }
 
 /* The grid lives inside the item and owns the multi-row layout:

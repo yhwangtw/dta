@@ -132,6 +132,10 @@ export function SessionItem({
       <div
         onClick={confirmDelete || renaming ? undefined : onClick}
         onContextMenu={handleContextMenu}
+        data-session-row={session.id}
+        tabIndex={-1}
+        role="option"
+        aria-selected={isSelected}
         className={["hover-group", !confirmDelete && !isSelected ? "hover-bg" : "", styles.item].filter(Boolean).join(" ")}
         style={{
           paddingLeft: depth > 0 ? depth * 12 + 14 : 14,

@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import type { SessionInfo } from "@/lib/types";
 import { FileExplorer } from "./FileExplorer";
-import { getRecentCwds, getSessionDateGroup, buildSessionTree } from "./session-utils";
+import { getRecentCwds, getSessionDateGroup, buildSessionTree, type SessionSortMode } from "./session-utils";
 import { PiAgentTitle } from "./PiAgentTitle";
 import { SessionTreeItem } from "./SessionTreeItem";
 import { CwdPicker } from "./CwdPicker";
@@ -17,6 +17,8 @@ import { SearchResults } from "./SearchResults";
 import { TagFilter } from "./TagFilter";
 import { SessionItemSkeleton } from "@/components/ui/Skeleton";
 import styles from "./SessionSidebar.module.css";
+
+const SORT_MODE_KEY = "pi-session-sort";
 
 interface Props {
   selectedSessionId: string | null;
@@ -120,6 +122,22 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  // ── Sort mode: recent (default) / name / messages, persisted locally ──
+  const [sortMode, setSortMode] = useState<SessionSortMode>("recent");
+  useEffect(() => {
+    try {
+      const v = localStorage.getItem(SORT_MODE_KEY);
+      if (v === "name" || v === "messages" || v === "recent") setSortMode(v);
+    } catch { /* private mode */ }
+  }, []);
+  const cycleSortMode = useCallback(() => {
+    setSortMode((m) => {
+      const next: SessionSortMode = m === "recent" ? "name" : m === "name" ? "messages" : "recent";
+      try { localStorage.setItem(SORT_MODE_KEY, next); } catch { /* private mode */ }
+      return next;
+    });
+  }, []);
+
   // Deep search mode: triggers when query length >= 2 (since 1 char is too noisy)
   const inSearchMode = searchQuery.trim().length >= 2;
 
@@ -157,7 +175,33 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
   }, [filteredSessions, searchQuery, inSearchMode]);
 
   // Build parent-child tree within the filtered set
-  const sessionTree = buildSessionTree(searchFilteredSessions);
+  const sessionTree = buildSessionTree(searchFilteredSessions, sortMode);
+
+  // ── Keyboard navigation: ↑/↓ roves focus over visible rows, Enter opens ──
+  // DOM order is the source of truth — collapsed fork children aren't
+  // rendered, so querying [data-session-row] always matches what's visible.
+  const listRef = useRef<HTMLDivElement>(null);
+  const moveRowFocus = useCallback((delta: 1 | -1) => {
+    const rows = Array.from(listRef.current?.querySelectorAll<HTMLElement>("[data-session-row]") ?? []);
+    if (!rows.length) return;
+    const cur = rows.indexOf(document.activeElement as HTMLElement);
+    const next = cur === -1
+      ? (delta > 0 ? 0 : rows.length - 1)
+      : Math.min(rows.length - 1, Math.max(0, cur + delta));
+    rows[next].focus();
+    rows[next].scrollIntoView({ block: "nearest" });
+  }, []);
+  const handleListKeyDown = useCallback((e: React.KeyboardEvent) => {
+    const target = e.target as HTMLElement;
+    // Inline rename/delete inputs keep their own arrow/Enter behavior.
+    if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
+    if (e.key === "ArrowDown") { e.preventDefault(); moveRowFocus(1); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); moveRowFocus(-1); }
+    else if ((e.key === "Enter" || e.key === " ") && target.dataset.sessionRow) {
+      e.preventDefault();
+      target.click();
+    }
+  }, [moveRowFocus]);
 
   // Split into pinned vs unpinned. Pinned sessions float to the top, preserving
   // their order in the pins file (most recently pinned first). Unpinned sessions
@@ -220,6 +264,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
       {/* Search — always visible when a search is active, otherwise only when >3 sessions */}
       {(filteredSessions.length > 3 || searchQuery.trim()) && (
         <div className={styles.searchWrapper}>
+          <div className={styles.searchRow}>
           <div className={styles.searchContainer}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={styles.searchIcon}>
               <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
@@ -231,7 +276,11 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
               aria-label="Search sessions"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Escape") { setSearchQuery(""); searchInputRef.current?.blur(); } }}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") { setSearchQuery(""); searchInputRef.current?.blur(); }
+                // ↓ hands focus to the first visible session row
+                else if (e.key === "ArrowDown") { e.preventDefault(); moveRowFocus(1); }
+              }}
               className={styles.searchInput}
               onFocus={(e) => { e.currentTarget.style.borderColor = "var(--color-accent-border-focus-strong)"; }}
               onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; }}
@@ -247,6 +296,31 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                 </svg>
               </button>
             )}
+          </div>
+          <button
+            onClick={cycleSortMode}
+            className={`${styles.sortButton} ${sortMode !== "recent" ? styles.sortButtonActive : ""} hover-bg-selected-accent`}
+            title={`${t("sidebar.sortBy")}: ${t(sortMode === "recent" ? "sidebar.sortRecent" : sortMode === "name" ? "sidebar.sortName" : "sidebar.sortMessages")}`}
+            aria-label="Sort sessions"
+          >
+            {sortMode === "recent" ? (
+              /* clock */
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15.5 14" />
+              </svg>
+            ) : sortMode === "name" ? (
+              /* A→Z */
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 18 8 6l4 12" /><line x1="5.3" y1="14" x2="10.7" y2="14" />
+                <polyline points="15 8 21 8 15 18 21 18" />
+              </svg>
+            ) : (
+              /* bars (count) */
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <line x1="4" y1="19" x2="4" y2="10" /><line x1="10" y1="19" x2="10" y2="5" /><line x1="16" y1="19" x2="16" y2="13" /><line x1="22" y1="19" x2="22" y2="8" />
+              </svg>
+            )}
+          </button>
           </div>
         </div>
       )}
@@ -269,10 +343,13 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
       ) : (
       /* Session list */
       <div
+        ref={listRef}
         role="listbox"
         aria-label="Sessions"
+        tabIndex={0}
+        onKeyDown={handleListKeyDown}
         className={styles.sessionList}
-        style={{ flex: showExplorer && explorerOpen && (selectedCwdProp || selectedCwd) ? "1 1 0" : "1 1 auto" }}
+        style={{ flex: showExplorer && explorerOpen && (selectedCwdProp || selectedCwd) ? "1 1 0" : "1 1 auto", outline: "none" }}
       >
         {/* Which project this list is scoped to — makes the picker's filtering visible */}
         {selectedCwd && !loading && !error && (
@@ -341,7 +418,8 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
         {unpinnedNodes.map((node, idx) => {
           const group = getSessionDateGroup(node.session.modified);
           const prevGroup = idx > 0 ? getSessionDateGroup(unpinnedNodes[idx - 1].session.modified) : null;
-          const showHeader = group !== prevGroup;
+          // Date headers only make sense when the list is in recency order.
+          const showHeader = sortMode === "recent" && group !== prevGroup;
           // First section never gets a divider (nothing to separate from). Pinned
           // section already adds its own divider; the first unpinned group is
           // the "first" only if there's no Pinned section above it.

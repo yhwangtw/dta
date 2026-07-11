@@ -4,6 +4,8 @@ All notable changes to tGD-pi-web are documented here.
 
 ## [Unreleased]
 
+## [2026.07.11-4] (PR #51)
+
 ### Added
 - **Session list keyboard navigation.** ↑/↓ roves a visible focus ring through the sidebar list (↓ from the search box drops into it) and Enter/Space opens the focused session; rows carry proper `option`/`aria-selected` semantics. Collapsed fork children are skipped automatically.
 - **Session sort toggle.** A button beside the session search cycles Recent activity → Name → Message count (persisted in `localStorage`); date group headers only show in recency order, and fork children always stay chronological under their parent. Non-default modes tint the button as a reminder.

@@ -4,6 +4,12 @@ All notable changes to tGD-pi-web are documented here.
 
 ## [Unreleased]
 
+## [2026.07.11-3] (PR #50)
+
+### Fixed
+- **Security: the access gate no longer skips API paths ending in an asset extension.** The middleware matcher excluded any URL ending in `.png/.jpg/.svg/.woff/etc` (so pre-auth CSS/fonts/images load), but that also matched `/api/files/<path>.png` — so with `PIWEB_ACCESS_PASSWORD` set, an unauthenticated caller could still read/download any image/svg/font under an allowed root, bypassing the gate. The matcher now only skips Next build internals; public assets (login, icon, favicon, manifest, `/icons/*`) are allow-listed in the middleware via `isPublicGatePath()`, and every `/api/*` route is gated regardless of URL suffix.
+
+
 ## [2026.07.11-2] (PR #49)
 
 ### Changed

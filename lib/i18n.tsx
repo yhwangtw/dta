@@ -145,6 +145,16 @@ const MESSAGES = {
   "toast.followOn": { en: "Always-follow output: on", zh: "自動跟隨輸出:開" },
   "toast.followOff": { en: "Always-follow output: off", zh: "自動跟隨輸出:關" },
 
+  // ── Changes panel (git) ──
+  "changes.commitPlaceholder": { en: "Commit message… (⌘↵ to commit)", zh: "Commit 訊息…(⌘↵ 送出)" },
+  "changes.commitAll": { en: "Commit all", zh: "全部 commit" },
+  "changes.committing": { en: "Committing…", zh: "Commit 中…" },
+  "changes.committed": { en: "Committed", zh: "已 commit" },
+  "changes.commitFailed": { en: "Commit failed", zh: "Commit 失敗" },
+  "changes.discard": { en: "Discard changes", zh: "捨棄變更" },
+  "changes.discardConfirm": { en: "Discard changes to {path}? This cannot be undone.", zh: "捨棄 {path} 的變更?此操作無法復原。" },
+  "changes.discardFailed": { en: "Discard failed", zh: "捨棄失敗" },
+
   // ── System prompt panel ──
   "system.empty": { en: "System prompt is empty (tools are disabled)", zh: "系統提示為空(工具已停用)" },
   "system.notLoaded": { en: "Send a message to load the system prompt", zh: "傳送訊息後載入系統提示" },

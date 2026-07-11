@@ -220,3 +220,52 @@
   opacity: 0.5;
   cursor: default;
 }
+
+.discardBtn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.discardBtn:hover { color: var(--color-error); background: var(--bg-hover); }
+
+.commitBox {
+  border-top: 1px solid var(--border);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.commitInput {
+  width: 100%;
+  resize: vertical;
+  min-height: 40px;
+  padding: 6px 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text);
+  font-size: var(--text-sm);
+  font-family: inherit;
+  outline: none;
+}
+.commitInput:focus { border-color: var(--accent); }
+.commitBtn {
+  height: 30px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--accent);
+  color: #fff;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  cursor: pointer;
+}
+.commitBtn:hover { background: var(--accent-hover); }
+.commitBtn:disabled { opacity: 0.5; cursor: default; }

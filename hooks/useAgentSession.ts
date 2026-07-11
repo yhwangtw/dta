@@ -12,6 +12,7 @@ import type { SessionData, AgentEvent, AgentPhase, UseAgentSessionOptions, Think
 import { streamReducer, getRunError, computeSessionStats } from "./use-agent-session-types";
 import { useAgentEvents, useStallWatchdog } from "./use-agent-connection";
 import { useTranscriptScroll } from "./use-transcript-scroll";
+import { shouldResyncOnVisible } from "@/lib/wake-resync";
 import { useModelCatalog } from "./use-model-catalog";
 
 export type { SessionData, AgentPhase, ThinkingLevelOption, ChatInputHandle, AttachedImage };
@@ -688,6 +689,51 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ── Wake / reconnect resync ──────────────────────────────────────────────
+  // Mobile browsers freeze background tabs and drop the SSE stream. When the
+  // tab comes back (or the network returns), reload the session to backfill
+  // any messages missed while away, and reconnect the stream if a run is live.
+  const hiddenSinceRef = useRef<number | null>(null);
+  const resync = useCallback(() => {
+    const sid = sessionIdRef.current;
+    if (!sid) return;
+    loadSession(sid, false, true).then((agentState) => {
+      if (agentState?.state) {
+        if (agentState.state.contextUsage !== undefined) setContextUsage(agentState.state.contextUsage ?? null);
+        if (agentState.state.systemPrompt !== undefined) setSystemPrompt(agentState.state.systemPrompt ?? null);
+        if (agentState.state.isCompacting !== undefined) setIsCompacting(agentState.state.isCompacting);
+      }
+      if (agentState?.running && agentState.state?.isStreaming) {
+        setAgentRunning(true);
+        void connectEvents(sid);
+      } else if (agentRunningRef.current && !agentState?.running) {
+        // The run finished while we were away — the "end" event was lost, so
+        // reflect idle now instead of showing a stuck spinner.
+        setAgentRunning(false);
+        setAgentPhase(null);
+        dispatch({ type: "end" });
+      }
+    });
+  }, [loadSession, connectEvents]);
+
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") {
+        hiddenSinceRef.current = Date.now();
+        return;
+      }
+      if (shouldResyncOnVisible(hiddenSinceRef.current, Date.now())) resync();
+      hiddenSinceRef.current = null;
+    };
+    const onOnline = () => resync();
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("online", onOnline);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("online", onOnline);
+    };
+  }, [resync]);
 
   useEffect(() => {
     onSystemPromptChange?.(systemPrompt);

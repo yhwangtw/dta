@@ -4,6 +4,8 @@ All notable changes to tGD-pi-web are documented here.
 
 ## [Unreleased]
 
+## [2026.07.11-2] (PR #49)
+
 ### Changed
 - **Theme toggle now expands from the control you clicked.** The circular-reveal animation always had an origin parameter but no caller passed one, so it always grew from the screen center. The rail button and the Appearance-panel light/dark buttons now originate the reveal at the button (via a shared, keyboard-safe helper that uses the control's center, so Enter/Space activation doesn't start it from the corner). Reduced-motion and no-View-Transitions fallbacks are unchanged.
 

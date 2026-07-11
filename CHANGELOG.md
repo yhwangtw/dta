@@ -4,6 +4,11 @@ All notable changes to tGD-pi-web are documented here.
 
 ## [Unreleased]
 
+### Added
+- **Commit from the Changes panel.** A message box + **Commit all** button (Cmd/Ctrl+Enter) stages everything and commits via a new `POST /api/git/commit`; each changed file gets a hover **discard** button (revert a tracked file to HEAD, or remove an untracked one). Empty messages and empty commits are refused. No more dropping to bash mode to save a round of work.
+- **Wake / reconnect resync.** Mobile browsers freeze background tabs and drop the SSE stream — coming back used to leave the transcript frozen (a finished run never reconnected) or missing the messages that arrived while away. On `visibilitychange`->visible (after being hidden >=3s) and on `online`, the session reloads to backfill missed messages and the stream reconnects if a run is still live.
+
+
 ## [2026.07.10-7] (PR #47)
 
 ### Added

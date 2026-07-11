@@ -58,6 +58,9 @@ export function ChangesPanel({ cwd, sessionId, refreshKey, onOpenDiff, selectedP
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [snapsOpen, setSnapsOpen] = useState(false);
   const [restoringId, setRestoringId] = useState<string | null>(null);
+  const [commitMsg, setCommitMsg] = useState("");
+  const [committing, setCommitting] = useState(false);
+  const [discarding, setDiscarding] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!cwd) return;
@@ -114,6 +117,49 @@ export function ChangesPanel({ cwd, sessionId, refreshKey, onOpenDiff, selectedP
     }
   }, [cwd, sessionId, showToast, load]);
 
+  const commit = useCallback(async () => {
+    if (!cwd || committing) return;
+    const message = commitMsg.trim();
+    if (!message) return;
+    setCommitting(true);
+    try {
+      const res = await fetch("/api/git/commit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cwd, message }),
+      });
+      const d = await res.json() as { ok?: boolean; sha?: string; error?: string };
+      if (!res.ok || d.error) throw new Error(d.error ?? `HTTP ${res.status}`);
+      showToast(`${t("changes.committed")} ${d.sha ?? ""}`.trim(), { type: "success" });
+      setCommitMsg("");
+      await load();
+    } catch (e) {
+      showToast(`${t("changes.commitFailed")}: ${e instanceof Error ? e.message : e}`, { type: "error" });
+    } finally {
+      setCommitting(false);
+    }
+  }, [cwd, committing, commitMsg, showToast, t, load]);
+
+  const discard = useCallback(async (path: string) => {
+    if (!cwd) return;
+    if (!window.confirm(t("changes.discardConfirm").replace("{path}", path))) return;
+    setDiscarding(path);
+    try {
+      const res = await fetch("/api/git/commit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cwd, action: "discard", path }),
+      });
+      const d = await res.json() as { ok?: boolean; error?: string };
+      if (!res.ok || d.error) throw new Error(d.error ?? `HTTP ${res.status}`);
+      await load();
+    } catch (e) {
+      showToast(`${t("changes.discardFailed")}: ${e instanceof Error ? e.message : e}`, { type: "error" });
+    } finally {
+      setDiscarding(null);
+    }
+  }, [cwd, showToast, t, load]);
+
   if (!cwd) {
     return <div className={s.empty}>{t("sidebar.selectProjectFirst")}</div>;
   }
@@ -147,11 +193,13 @@ export function ChangesPanel({ cwd, sessionId, refreshKey, onOpenDiff, selectedP
       ) : (
         <div className={s.list}>
           {files.map((f) => (
-            <button
+            <div
               key={f.path}
               onClick={() => onOpenDiff(f.path)}
-              className={`${s.item} ${selectedPath === f.path ? s.itemSelected : ""}`}
+              className={`hover-group ${s.item} ${selectedPath === f.path ? s.itemSelected : ""}`}
               title={f.path}
+              role="button"
+              tabIndex={0}
             >
               <span className={`${s.status} ${s[STATUS_CLASS[f.status] ?? "statusM"]} chrome-mono`}>
                 {f.status === "??" ? "U" : f.status.slice(0, 1)}
@@ -163,8 +211,42 @@ export function ChangesPanel({ cwd, sessionId, refreshKey, onOpenDiff, selectedP
                   {f.deletions !== null && <span className={s.del}>−{f.deletions}</span>}
                 </span>
               )}
-            </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); void discard(f.path); }}
+                disabled={discarding === f.path}
+                className={`hover-reveal ${s.discardBtn}`}
+                title={t("changes.discard")}
+                aria-label={t("changes.discard")}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="1 4 1 10 7 10" />
+                  <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+                </svg>
+              </button>
+            </div>
           ))}
+        </div>
+      )}
+
+      {/* Commit box */}
+      {isGit && files.length > 0 && (
+        <div className={s.commitBox}>
+          <textarea
+            value={commitMsg}
+            onChange={(e) => setCommitMsg(e.target.value)}
+            onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") void commit(); }}
+            placeholder={t("changes.commitPlaceholder")}
+            className={s.commitInput}
+            rows={2}
+            spellCheck={false}
+          />
+          <button
+            onClick={() => void commit()}
+            disabled={committing || !commitMsg.trim()}
+            className={s.commitBtn}
+          >
+            {committing ? t("changes.committing") : `${t("changes.commitAll")} (${files.length})`}
+          </button>
         </div>
       )}
 

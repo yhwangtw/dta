@@ -1,8 +1,14 @@
 # Pi with tGD — Web Interface
 
-[繁體中文](./README.zh-TW.md)
+[繁體中文](./README.zh-TW.md) · [Report Bug](https://github.com/openclawyhwang-hub/tGD-pi-web/issues) · [Request Feature](https://github.com/openclawyhwang-hub/tGD-pi-web/issues)
 
-A web interface for [Pi Coding Agent](https://github.com/earendil-works/pi). Browse conversations, chat with the agent in real time, run shell commands, review what the agent changed, fork threads, and switch between message branches — all in the browser.
+A browser interface for the [Pi Coding Agent](https://github.com/earendil-works/pi). Browse conversations, chat with the agent in real time, run shell commands, review what the agent changed, fork threads, and switch between message branches — without leaving the browser.
+
+> **Why a web UI?** Pi's terminal is great for heads-down coding. This project adds what a terminal can't easily give you: a visual session browser, live streaming with honest status, a file tree with git-aware diffs, in-place file editing, command palette, and five switchable skins — so you can observe, steer, and review long-running agent work at a glance.
+
+![Hero — chat with live streaming](./docs/screenshots/02-hero-chat.png)
+
+---
 
 ## Quick Start
 
@@ -17,14 +23,31 @@ The server starts on [http://localhost:30141](http://localhost:30141) and opens 
 **For development** — clone and run from source:
 
 ```bash
-git clone https://github.com/openclawyhwang-hub/tGD-pi-web.git
+git clone https://github.com/openclowyhwang-hub/tGD-pi-web.git
 cd tGD-pi-web
-./setup.sh        # or: npm install && npm run dev
+./setup.sh        # checks Node/npm, installs deps, verifies Pi Agent is present
+# … or the manual equivalent:
+npm install && npm run dev
 ```
+
+`setup.sh` is a guided bootstrap: it checks Node ≥ 18, installs dependencies if `node_modules/` is missing, confirms `~/.pi/agent/` exists, and offers to launch the dev server. It does **not** mutate anything outside this repo.
 
 Requirements: Node.js ≥ 22 and a working [pi](https://github.com/earendil-works/pi) setup (`~/.pi/agent/`).
 
-## Features
+---
+
+## Highlights
+
+A few things this interface does that the terminal alone doesn't:
+
+- **Honest status** — live spinner + elapsed timer while running, stall warning when the model goes quiet, full error card (never a silent empty reply) with one-click **Retry** that rolls back and re-sends the same prompt.
+- **Two ways to branch** — **Fork** any user message into an independent new session, or use **in-session branches** to roll back to any node and continue; a branch navigator in the top bar shows siblings.
+- **Tool-call diff view** — `edit` calls expand into a real red/green diff; `write` calls show the file content. No more reading raw JSON arguments.
+- **Deep file search + git-aware tree** — typing 2+ chars searches the whole project (server-side, junk dirs skipped); modified/untracked files carry M/A/D/U badges.
+- **Five skins, light + dark each** — Editorial (warm paper, default), Terminal (emerald), Industrial (mono), Aurora (violet), Glass (frosted panels over an aurora gradient).
+
+<details>
+<summary><strong>Full feature list</strong></summary>
 
 ### Chat
 - **Live streaming** — SSE streaming, tokens appear as they're generated
@@ -33,7 +56,6 @@ Requirements: Node.js ≥ 22 and a working [pi](https://github.com/earendil-work
 - **Model switching** — Change model and thinking level mid-conversation
 - **Tool panel** — Control which tools the agent can use (none / preset / all)
 - **Compact session** — Summarize long threads to save context window
-- **Honest status** — Live spinner + elapsed timer while running; stall warning when the model stops responding; failed runs show the full error in a red card (never a silent empty reply) plus a one-click **Retry** that rolls back and re-sends the same prompt
 - **Context pressure nudge** — At 80%+ context usage a banner suggests compaction with a one-click Compact button
 - **Queue control** — Queued follow-ups are listed individually and can be cancelled one at a time (or all at once)
 - **Tool-call diff view** — `edit` tool calls expand into a real red/green diff and `write` calls show the written file content, instead of raw JSON arguments
@@ -90,6 +112,37 @@ Requirements: Node.js ≥ 22 and a working [pi](https://github.com/earendil-work
 - **Interface language** — English (default) ⇄ Traditional Chinese, globe button in the rail
 - **Typography** — Bundled Inter + JetBrains Mono, Traditional-Chinese-first fallback chain, zero network dependency
 
+</details>
+
+### Screenshots
+
+<details>
+<summary><strong>View all — command palette, dark mode, file panel & every skin</strong></summary>
+
+**Working views**
+
+| Chat with file panel | Command palette (⌘K) |
+|---|---|
+| ![Code session](./docs/screenshots/03-code-session.png) | ![Command palette](./docs/screenshots/04-command-palette.png) |
+
+| Dark mode | Empty state (no session) |
+|---|---|
+| ![Dark mode](./docs/screenshots/10-dark-mode.png) | ![Empty state](./docs/screenshots/01-empty-state.png) |
+
+**All five skins (light theme)**
+
+| Editorial (default) | Terminal | Aurora |
+|---|---|---|
+| ![Editorial skin](./docs/screenshots/05-skin-editorial.png) | ![Terminal skin](./docs/screenshots/06-skin-terminal.png) | ![Aurora skin](./docs/screenshots/07-skin-aurora.png) |
+
+| Industrial | Glass | |
+|---|---|---|
+| ![Industrial skin](./docs/screenshots/08-skin-industrial.png) | ![Glass skin](./docs/screenshots/09-skin-glass.png) | |
+
+</details>
+
+---
+
 ## Keyboard Shortcuts
 
 | Keys | Action |
@@ -104,6 +157,8 @@ Requirements: Node.js ≥ 22 and a working [pi](https://github.com/earendil-work
 | `↑` | Recall previous message (empty input) |
 | `Esc` | Close dialogs |
 
+---
+
 ## Configuration
 
 | Item | Description |
@@ -113,12 +168,16 @@ Requirements: Node.js ≥ 22 and a working [pi](https://github.com/earendil-work
 | API keys | Per-provider keys stored in `auth.json` |
 | Default directory | Set or customize via the CWD picker |
 
+---
+
 ## Offline / air-gapped deployment
 
 The app itself makes **zero external requests at runtime** (fonts bundled, no CDNs). Only the LLM endpoint needs to be reachable — point `models.json` at an internal gateway or a local model.
 
 - **Internal npm registry (Nexus etc.)**: build once (`npm ci && npm run build`), `npm publish --registry=<internal>`; users run `npx @agegr/pi-web` with their registry pointed internally
 - **Portable folder**: on a networked machine of the *same OS/arch*, `npm ci && npm run build`, copy the whole folder, run `npm run start`
+
+---
 
 ## Development
 
@@ -137,6 +196,8 @@ npm test                           # Unit tests (vitest)
 
 > ⚠️ **Never** run `next build` while the dev server is running — it pollutes `.next/` and breaks `npm run dev`.
 
+---
+
 ## Tech Stack
 
 | Layer | Technology |
@@ -148,6 +209,8 @@ npm test                           # Unit tests (vitest)
 | Diagrams | Mermaid (lazy-loaded) |
 | Code | react-syntax-highlighter (PrismAsync, lazy chunk) |
 | Fonts | Inter + JetBrains Mono (bundled .woff2) |
+
+---
 
 ## Architecture
 
@@ -164,6 +227,8 @@ Browser                Next.js Server              AgentSession (in-process)
   ├─ GET /api/git/changes ─▶ git status (allowed cwds only)│
   └─ GET /api/git/file-diff▶ HEAD vs worktree contents     │
 ```
+
+---
 
 ## Project Structure
 
@@ -195,6 +260,20 @@ hooks/              # useAgentSession (chat orchestration) + its extracted
                     # use-transcript-scroll, use-model-catalog;
                     # useAppShellState, useSessions, useRightPanelWidth, …
 ```
+
+---
+
+## Contributing
+
+Contributions are welcome! The easiest ways to help:
+
+- **Report bugs or request features** via [GitHub Issues](https://github.com/openclowyhwang-hub/tGD-pi-web/issues) — please include the session id, browser, and Pi version when reporting bugs.
+- **Improve translations** — English and Traditional Chinese strings live in `lib/i18n.tsx`.
+- **Add a skin** — each skin is a token-override block in `app/globals.css`; see `lib/skin.ts` for the registry.
+
+For code changes: fork → branch → run `node_modules/.bin/tsc --noEmit` and `npx eslint .` before opening a PR.
+
+---
 
 ## License
 

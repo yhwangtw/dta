@@ -23,7 +23,7 @@ The server starts on [http://localhost:30141](http://localhost:30141) and opens 
 **For development** — clone and run from source:
 
 ```bash
-git clone https://github.com/openclowyhwang-hub/tGD-pi-web.git
+git clone https://github.com/openclawyhwang-hub/tGD-pi-web.git
 cd tGD-pi-web
 ./setup.sh        # checks Node/npm, installs deps, verifies Pi Agent is present
 # … or the manual equivalent:
@@ -267,7 +267,7 @@ hooks/              # useAgentSession (chat orchestration) + its extracted
 
 Contributions are welcome! The easiest ways to help:
 
-- **Report bugs or request features** via [GitHub Issues](https://github.com/openclowyhwang-hub/tGD-pi-web/issues) — please include the session id, browser, and Pi version when reporting bugs.
+- **Report bugs or request features** via [GitHub Issues](https://github.com/openclawyhwang-hub/tGD-pi-web/issues) — please include the session id, browser, and Pi version when reporting bugs.
 - **Improve translations** — English and Traditional Chinese strings live in `lib/i18n.tsx`.
 - **Add a skin** — each skin is a token-override block in `app/globals.css`; see `lib/skin.ts` for the registry.
 

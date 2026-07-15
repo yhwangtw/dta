@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # tGD-pi-web — 一鍵安裝 + 啟動
-# 需要：Node.js 18+
+# 需要：Node.js 22+
 #
 set -e
 
@@ -27,14 +27,14 @@ if ! command -v node &>/dev/null; then
   echo ""
   echo "  安裝方式："
   echo "    macOS:   brew install node"
-  echo "    Ubuntu:  curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo apt install -y nodejs"
+  echo "    Ubuntu:  curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash - && sudo apt install -y nodejs"
   echo "    其他:    https://nodejs.org/"
   exit 1
 fi
 
 NODE_MAJOR=$(node -e "console.log(process.versions.node.split('.')[0])")
-if [ "$NODE_MAJOR" -lt 18 ]; then
-  echo -e "  ${RED}❌ Node.js 版本過舊 ($NODE_MAJOR.x)，需要 18+${NC}"
+if [ "$NODE_MAJOR" -lt 22 ]; then
+  echo -e "  ${RED}❌ Node.js 版本過舊 ($NODE_MAJOR.x)，需要 22+${NC}"
   exit 1
 fi
 echo -e "  ${GREEN}✅ Node.js $(node --version)${NC}"
@@ -54,7 +54,7 @@ if [ ! -d "node_modules" ]; then
   echo -e "  ${GREEN}✅ 依賴安裝完成${NC}"
 else
   echo -e "  ${YELLOW}⏭️  node_modules 已存在，跳過安裝${NC}"
-  echo -e "  ${YELLOW}   如需更新：npm update${NC}"
+  echo -e "  ${YELLOW}   如需同步依賴：npm install${NC}"
 fi
 
 # ── 檢查 Pi Agent ─────────────────────────────────────
@@ -90,11 +90,10 @@ echo -e "${GREEN}${BOLD}✅ 安裝完成！${NC}"
 echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 echo -e "  啟動開發模式：  ${BOLD}npm run dev${NC}"
-echo -e "  啟動生產模式：  ${BOLD}npm run build && npm start${NC}"
-echo -e "  直接 npx 運行： ${BOLD}npx @agegr/pi-web@latest${NC}"
+echo -e "  啟動生產模式：  ${BOLD}先停止 dev，再執行 npm run build && npm start${NC}"
+echo -e "  更新專案依賴：  ${BOLD}git pull && npm install${NC}"
 echo ""
 echo -e "  預設埠號：      ${BOLD}30141${NC}"
-echo -e "  自訂埠號：      ${BOLD}PORT=8080 npm run dev${NC}"
 echo ""
 
 # ── 詢問是否立即啟動 ──────────────────────────────────

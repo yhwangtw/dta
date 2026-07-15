@@ -1,27 +1,22 @@
 {
-  "name": "@agegr/pi-web",
+  "name": "tgd-pi-web",
+  "private": true,
   "version": "2026.07.14",
-  "description": "Web UI for the pi coding agent",
+  "description": "Web interface for Pi Coding Agent with tGD workflow integration",
   "license": "MIT",
-  "bin": {
-    "pi-web": "bin/pi-web.js"
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/openclawyhwang-hub/tGD-pi-web.git"
   },
-  "files": [
-    "bin",
-    ".next",
-    "!.next/cache",
-    "!.next/dev",
-    "!.next/**/*.js.map",
-    "public",
-    "next.config.ts",
-    "package.json"
-  ],
+  "homepage": "https://github.com/openclawyhwang-hub/tGD-pi-web#readme",
+  "bugs": {
+    "url": "https://github.com/openclawyhwang-hub/tGD-pi-web/issues"
+  },
   "scripts": {
     "dev": "next dev -p 30141",
     "build": "next build --webpack",
     "start": "next start -p 30141",
     "lint": "eslint .",
-    "release": "npm version patch --no-git-tag-version && npm run build && npm publish --access public",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",

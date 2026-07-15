@@ -1,280 +1,314 @@
-# Pi with tGD — Web Interface
+# tGD Pi Web
 
-[繁體中文](./README.zh-TW.md) · [Report Bug](https://github.com/openclawyhwang-hub/tGD-pi-web/issues) · [Request Feature](https://github.com/openclawyhwang-hub/tGD-pi-web/issues)
+<p align="center">
+  <a href="https://github.com/openclawyhwang-hub/tGD-pi-web/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/openclawyhwang-hub/tGD-pi-web?style=flat-square"></a>
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/openclawyhwang-hub/tGD-pi-web?style=flat-square"></a>
+  <a href="https://github.com/openclawyhwang-hub/tGD-pi-web/commits/main"><img alt="Last commit" src="https://img.shields.io/github/last-commit/openclawyhwang-hub/tGD-pi-web?style=flat-square"></a>
+  <img alt="Next.js 16" src="https://img.shields.io/badge/Next.js-16-000000?style=flat-square&logo=nextdotjs">
+  <img alt="React 19" src="https://img.shields.io/badge/React-19-149ECA?style=flat-square&logo=react">
+</p>
 
-A browser interface for the [Pi Coding Agent](https://github.com/earendil-works/pi). Browse conversations, chat with the agent in real time, run shell commands, review what the agent changed, fork threads, and switch between message branches — without leaving the browser.
+<p align="center">
+  <a href="README.md"><strong>English</strong></a> |
+  <a href="README.zh-TW.md">繁體中文</a> |
+  <a href="README.ja.md">日本語</a> |
+  <a href="README.de.md">Deutsch</a>
+</p>
 
-> **Why a web UI?** Pi's terminal is great for heads-down coding. This project adds what a terminal can't easily give you: a visual session browser, live streaming with honest status, a file tree with git-aware diffs, in-place file editing, command palette, and five switchable skins — so you can observe, steer, and review long-running agent work at a glance.
+<p align="center">
+  <a href="https://github.com/openclawyhwang-hub/tGD-pi-web/releases">Releases</a> ·
+  <a href="https://github.com/openclawyhwang-hub/tGD-pi-web/issues">Report a bug</a> ·
+  <a href="https://github.com/openclawyhwang-hub/tGD-pi-web/issues">Request a feature</a>
+</p>
 
-![Hero — chat with live streaming](./docs/screenshots/02-hero-chat.png)
+**A browser workspace for Pi Coding Agent and the complete tGD delivery workflow.**
 
----
+tGD Pi Web turns Pi's local sessions into a visual engineering cockpit: chat with the agent in real time, inspect files and git changes, move between branches, restore snapshots, and follow work from Map through Release without leaving the browser.
+
+![tGD Pi Web chat interface](./docs/screenshots/02-hero-chat.png)
+
+## Why tGD Pi Web?
+
+Pi's terminal experience is fast and focused. This project adds the visual context needed for longer or parallel work:
+
+- See live output, run state, elapsed time, errors, queued messages, and context pressure.
+- Browse every local Pi session without starting an agent process.
+- Review files, diffs, tool calls, and git changes beside the conversation.
+- Track tGD artifacts and the seven delivery phases in the same workspace.
+- Navigate long conversations with search, bookmarks, a minimap, and branches.
+- Keep everything local: the app makes no external runtime requests beyond the model endpoint you configure.
+
+## Who is this for?
+
+- Developers already using [Pi Coding Agent](https://github.com/earendil-works/pi).
+- Teams following the tGD workflow and storing artifacts in a sibling `<project>-tGD/` directory.
+- Engineers who want a browser-based review surface while the agent works locally.
+- Offline or enterprise environments using an internal model gateway and npm registry.
 
 ## Quick Start
 
-**For users** — run the prebuilt package (no clone, no build):
+### Requirements
 
-```bash
-npx @agegr/pi-web
-```
+- Node.js 22 or newer
+- npm
+- A working Pi setup with `~/.pi/agent/`
+- Git
 
-The server starts on [http://localhost:30141](http://localhost:30141) and opens your browser. Custom port: `npx @agegr/pi-web -p 8080`.
-
-**For development** — clone and run from source:
+This project is distributed from GitHub source and is **not published to npm**.
 
 ```bash
 git clone https://github.com/openclawyhwang-hub/tGD-pi-web.git
 cd tGD-pi-web
-./setup.sh        # checks Node/npm, installs deps, verifies Pi Agent is present
-# … or the manual equivalent:
-npm install && npm run dev
+bash setup.sh
 ```
 
-`setup.sh` is a guided bootstrap: it checks Node ≥ 18, installs dependencies if `node_modules/` is missing, confirms `~/.pi/agent/` exists, and offers to launch the dev server. It does **not** mutate anything outside this repo.
+The setup script checks Node.js and npm, installs dependencies, verifies the Pi agent directory, and can start the development server. It does not modify files outside this repository.
 
-Requirements: Node.js ≥ 22 and a working [pi](https://github.com/earendil-works/pi) setup (`~/.pi/agent/`).
+Manual setup:
 
----
+```bash
+npm install
+npm run dev
+```
 
-## Highlights
+Open [http://localhost:30141](http://localhost:30141).
 
-A few things this interface does that the terminal alone doesn't:
+### Update an existing checkout
 
-- **Honest status** — live spinner + elapsed timer while running, stall warning when the model goes quiet, full error card (never a silent empty reply) with one-click **Retry** that rolls back and re-sends the same prompt.
-- **Two ways to branch** — **Fork** any user message into an independent new session, or use **in-session branches** to roll back to any node and continue; a branch navigator in the top bar shows siblings.
-- **Tool-call diff view** — `edit` calls expand into a real red/green diff; `write` calls show the file content. No more reading raw JSON arguments.
-- **Deep file search + git-aware tree** — typing 2+ chars searches the whole project (server-side, junk dirs skipped); modified/untracked files carry M/A/D/U badges.
-- **Five skins, light + dark each** — Editorial (warm paper, default), Terminal (emerald), Industrial (mono), Aurora (violet), Glass (frosted panels over an aurora gradient).
+```bash
+git pull
+npm install
+npm run dev
+```
 
-<details>
-<summary><strong>Full feature list</strong></summary>
+## tGD Workflow in the Browser
 
-### Chat
-- **Live streaming** — SSE streaming, tokens appear as they're generated
-- **Steer / Follow-up** — Interrupt a running agent, or queue a message for after completion (queued follow-ups are visible and cancellable)
-- **Bash mode** — Type `!cmd` to run a shell command directly in the session cwd with streamed output; the result is recorded so the agent sees it. `!!cmd` keeps it out of the LLM context
-- **Model switching** — Change model and thinking level mid-conversation
-- **Tool panel** — Control which tools the agent can use (none / preset / all)
-- **Compact session** — Summarize long threads to save context window
-- **Context pressure nudge** — At 80%+ context usage a banner suggests compaction with a one-click Compact button
-- **Queue control** — Queued follow-ups are listed individually and can be cancelled one at a time (or all at once)
-- **Tool-call diff view** — `edit` tool calls expand into a real red/green diff and `write` calls show the written file content, instead of raw JSON arguments
-- **Message bookmarks** — Star any message (hover → ☆); bookmarks persist per session and show as amber markers on the minimap
+The phase bar remains visible above the active session:
 
-### Stay informed while it works
-- **Tab title** — `⏳ session` while running, flashes `✅` on completion (`⚠` on failure)
-- **Browser notification** — When the agent finishes and the tab is in the background
-- **Completion sound** — Optional, skipped on failure
+```text
+Map → Define → Plan → Develop → Verify → Review → Release
+```
 
-### Navigation
-- **⌘K command palette** — Search sessions, tags, files, and run commands (bilingual search)
-- **⌘F in-conversation find** — Match counter, Enter/⇧Enter to cycle, flash highlight; jumping into a collapsed message expands it
-- **⌥↑ / ⌥↓ turn navigation** — Walk between user messages turn by turn; the minimap also jumps on click
-- **Long-message collapse** — Historical messages taller than a screen clamp to a preview with a "Show full message" control; the latest exchange always renders in full
-- **Icon rail** — Sessions / Files / Changes / Search / Analytics views; Models / Skills / Language / Theme at the bottom
-- **Jump to bottom** — Floating button when scrolled up; while output streams it counts the new lines accumulating below (`↓ +N lines`); entering the tail engages sticky follow
-- **Always-follow mode** — ⌘K → "Toggle Always-Follow Output" pins the view to streaming output terminal-style (persisted, default off)
-- **Input history** — ↑ in an empty input recalls previous messages
+- **Artifact-backed status** — Map, Define, and Plan are completed from real files on disk, not optimistic UI state.
+- **Feature-aware progress** — the bar follows the feature named in the latest `/tgd-*` command, or the most recently updated feature.
+- **Artifact explorer** — browse curated phase documents or the complete sibling tGD directory, including scans, wiki pages, and prototypes.
+- **Prompt-first phase actions** — clicking a phase places the matching command in the composer so you can review it before sending.
+- **Git restore points** — the server captures a git-backed snapshot before each run without touching your index or `HEAD`.
 
-### Session Management
-- **Session browser** — Grouped by working directory, auto-detects recent projects
-- **Project picker** — Search projects, pin favorites, remove stale entries; browse the filesystem with breadcrumbs, or type a path with live autocomplete (Tab completes)
-- **Time grouping** — Today / Yesterday / This Week / Earlier
-- **Search, tags, pins** — Instant filter, colored tag chips, pinned sessions float to top
-- **Archive** — Hide finished sessions from the list without deleting them (right-click → Archive); an "Show archived (N)" toggle reveals them and Unarchive restores
-- **Auto-naming** — Generates a title after the first exchange
-- **Fork** — Branch off from any user message into an independent new session
-- **In-session branches** — Roll back to any node and continue; branch navigator in the top bar
-- **Export** — Standalone HTML or plain Markdown
-- **Analytics** — Token usage and cost report
+Expected artifact layout:
 
-### Files & Changes
-- **Files view** — Full-height file tree in the rail panel; a collapsible tree also lives under the session list (your choice persists)
-- **Deep file search** — Typing 2+ characters in the tree filter searches the whole project recursively (server-side, junk dirs skipped) and shows flat results; clicking a folder result reveals it in the tree
-- **Git-aware tree** — Modified/untracked files carry M/A/D/U badges; folders containing changes get a dot; right-click → view diff
-- **Context menu & keyboard** — Copy path / relative path / @ mention / view diff on right-click; navigate the tree with ↑ ↓ ← → and Enter
-- **Changes view** — Git working-tree status for the session cwd (branch, per-file status + stats), refreshed after every agent turn; click a file for a HEAD ↔ worktree diff
-- **File preview** — Source with highlighting, Markdown/HTML preview, images, diffs
-- **Resizable panel** — Drag the file panel's left edge to resize (persisted); double-click resets
-- **In-file find & go-to-line** — `find / :line` box in the viewer toolbar; matches highlight and center
-- **Edit in place** — Text files open in an editor with Save (⌘S) / Cancel; writes go through the same allowed-roots gate as reads
-- **@-mention** — Insert a file path into the chat input from the tree
+```text
+parent/
+├── your-project/
+└── your-project-tGD/
+    ├── CONTEXT.md
+    ├── TRACKING-PLAN.md
+    ├── wiki/
+    └── feature-name/
+        ├── PRD.md
+        ├── SPEC.md
+        ├── DESIGN.md
+        ├── TASKS.md
+        ├── METRICS.md
+        └── prototype/
+```
 
-### Rendering
-- **Markdown** — GFM, tables, task lists; KaTeX math; Mermaid diagrams
-- **Code** — Syntax highlighting + line numbers (highlighter loads lazily off the critical bundle)
-- **Provider icons** — Anthropic, OpenAI, Google, etc.
+Set `TGD_DIR` when your artifact directory lives elsewhere.
 
-### Appearance
-- **Five switchable skins** — Editorial (warm paper, default) / Terminal (emerald) / Industrial (mono) / Aurora (violet) / Glass (frosted panels over an aurora gradient), each with light + dark themes
-- **Appearance picker** — palette button in the rail opens a panel with light/dark toggle and swatch cards for every skin (live preview on click); also reachable via ⌘K
-- **Frosted floating chrome** — the command palette, dialogs, toasts, find bar, and jump button use backdrop-blur glass matched to every skin's palette
-- **Interface language** — English (default) ⇄ Traditional Chinese, globe button in the rail
-- **Typography** — Bundled Inter + JetBrains Mono, Traditional-Chinese-first fallback chain, zero network dependency
+## Interface Tour
 
-</details>
-
-### Screenshots
-
-<details>
-<summary><strong>View all — command palette, dark mode, file panel & every skin</strong></summary>
-
-**Working views**
-
-| Chat with file panel | Command palette (⌘K) |
+| Session and file workspace | Command palette |
 |---|---|
 | ![Code session](./docs/screenshots/03-code-session.png) | ![Command palette](./docs/screenshots/04-command-palette.png) |
 
-| Dark mode | Empty state (no session) |
+| Dark mode | Empty state |
 |---|---|
 | ![Dark mode](./docs/screenshots/10-dark-mode.png) | ![Empty state](./docs/screenshots/01-empty-state.png) |
 
-**All five skins (light theme)**
+<details>
+<summary><strong>View all five appearance skins</strong></summary>
 
-| Editorial (default) | Terminal | Aurora |
+| Editorial | Terminal | Aurora |
 |---|---|---|
 | ![Editorial skin](./docs/screenshots/05-skin-editorial.png) | ![Terminal skin](./docs/screenshots/06-skin-terminal.png) | ![Aurora skin](./docs/screenshots/07-skin-aurora.png) |
 
-| Industrial | Glass | |
-|---|---|---|
-| ![Industrial skin](./docs/screenshots/08-skin-industrial.png) | ![Glass skin](./docs/screenshots/09-skin-glass.png) | |
+| Industrial | Glass |
+|---|---|
+| ![Industrial skin](./docs/screenshots/08-skin-industrial.png) | ![Glass skin](./docs/screenshots/09-skin-glass.png) |
 
 </details>
 
----
+## Key Features
+
+### Agent chat
+
+- Live SSE streaming with connect-before-prompt delivery.
+- Prompt, steer, follow-up queue, retry, bash, and context compaction.
+- Direct shell mode with `!command`; use `!!command` to omit the result from model context.
+- Model and thinking-level switching during a session.
+- Per-run error cards, stall warnings, notifications, completion sound, and React-owned tab status.
+- Editable past turns, retry from the previous branch point, independent forks, and in-session branch navigation.
+
+### Sessions and navigation
+
+- Incremental, read-only session index over local Pi `.jsonl` files.
+- Search, tags, pins, archive, auto-naming, HTML/Markdown export, and usage analytics.
+- Conversation find, user-turn navigation, bookmarks, minimap, long-message collapse, and optional always-follow streaming.
+- Project switcher with recent projects, pins, discovery, filesystem completion, and linked git worktrees.
+- Reusable prompt templates alongside built-in `/tgd-*` commands.
+
+### Files and git
+
+- Project tree, recursive filename search, text editing, Markdown/HTML/image preview, and clickable file paths in chat.
+- Git-aware badges, working-tree summary, per-file statistics, and `HEAD` versus worktree diffs.
+- Tool-call presentation for `edit` and `write` operations instead of raw JSON.
+- Allowed-root checks, path guards, `execFile` git calls, and response-size limits on file and git APIs.
+- Snapshot restore applies a precise delta and never rewrites the user's index or `HEAD`.
+
+### Rendering and appearance
+
+- GitHub Flavored Markdown, tables, task lists, KaTeX, Mermaid, and lazy-loaded syntax highlighting.
+- Editorial, Terminal, Industrial, Aurora, and Glass skins, each in light and dark mode.
+- Bundled Inter, JetBrains Mono, and Noto Sans TC fonts with no CDN dependency.
+- Application UI languages: English and Traditional Chinese. These project documents are also available in Japanese and German.
 
 ## Keyboard Shortcuts
 
 | Keys | Action |
-|------|--------|
-| `⌘K` | Command palette (search & commands) |
-| `⌘F` | Find in conversation |
-| `⌥↑` / `⌥↓` | Previous / next user message |
-| `⇧⌘M` | Models |
-| `⌘/` | Skills |
-| `⌘B` | Toggle panel |
-| `⌘\` | Toggle file panel |
-| `↑` | Recall previous message (empty input) |
-| `Esc` | Close dialogs |
+|---|---|
+| `⌘/Ctrl + K` | Open command palette |
+| `⌘/Ctrl + P` | Open project switcher |
+| `⌘/Ctrl + F` | Find in the conversation |
+| `⌥ + ↑` / `⌥ + ↓` | Previous / next user turn |
+| `⇧⌘M` | Open Models |
+| `⌘/Ctrl + /` | Open Skills |
+| `⌘/Ctrl + B` | Toggle contextual panel |
+| `⌘/Ctrl + \` | Toggle right file panel |
+| `↑` in an empty composer | Recall the previous message |
+| `Esc` | Close the active dialog |
 
----
+## Commands
+
+| Command | Purpose |
+|---|---|
+| `bash setup.sh` | Validate the local environment and install dependencies |
+| `npm run dev` | Start development on port `30141` |
+| `node_modules/.bin/tsc --noEmit` | Typecheck |
+| `npx eslint .` | Lint |
+| `npm test` | Run Vitest unit tests |
+| `npm run test:e2e` | Build and run Playwright E2E on port `30177` |
+| `npm run build` | Create a production build |
+| `npm run start` | Start the production server |
+
+> [!WARNING]
+> Stop `npm run dev` before `npm run build` or `npm run test:e2e`. A concurrent Next.js build corrupts the running development server's `.next/` directory.
+
+Playwright is intentionally installed ad hoc and is not saved in `package.json`:
+
+```bash
+npm i -D --no-save @playwright/test
+npm run test:e2e
+```
+
+For a local container with a preinstalled Chromium:
+
+```bash
+PW_CHROMIUM_PATH=/opt/pw-browsers/chromium npm run test:e2e
+```
 
 ## Configuration
 
-| Item | Description |
-|------|-------------|
-| Session directory | Defaults to `~/.pi/agent/sessions/`; set `PI_CODING_AGENT_DIR` to override |
-| Model config | Reads `models.json`; editable via the Models panel (supports custom baseUrl — point it at an internal gateway or local model for offline networks) |
-| API keys | Per-provider keys stored in `auth.json` |
-| Default directory | Set or customize via the CWD picker |
+| Setting | Behavior |
+|---|---|
+| `PI_CODING_AGENT_DIR` | Overrides the default `~/.pi/agent` directory |
+| `TGD_DIR` | Overrides the sibling `<project>-tGD/` artifact directory |
+| `models.json` | Model/provider catalog, including custom `baseUrl` values |
+| `auth.json` | Per-provider API credentials managed by Pi |
+| Project picker | Selects and validates the active working directory |
 
----
+Session files remain in Pi's native format:
 
-## Offline / air-gapped deployment
-
-The app itself makes **zero external requests at runtime** (fonts bundled, no CDNs). Only the LLM endpoint needs to be reachable — point `models.json` at an internal gateway or a local model.
-
-- **Internal npm registry (Nexus etc.)**: build once (`npm ci && npm run build`), `npm publish --registry=<internal>`; users run `npx @agegr/pi-web` with their registry pointed internally
-- **Portable folder**: on a networked machine of the *same OS/arch*, `npm ci && npm run build`, copy the whole folder, run `npm run start`
-
----
-
-## Development
-
-```bash
-npm install
-npm run dev    # port 30141
+```text
+~/.pi/agent/sessions/<encoded-cwd>/<timestamp>_<uuid>.jsonl
 ```
-
-**Verification commands:**
-
-```bash
-node_modules/.bin/tsc --noEmit     # Typecheck
-npx eslint .                       # Lint
-npm test                           # Unit tests (vitest)
-```
-
-> ⚠️ **Never** run `next build` while the dev server is running — it pollutes `.next/` and breaks `npm run dev`.
-
----
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|------------|
-| Framework | Next.js 16 (App Router) |
-| UI | React 19 + CSS variables (design tokens; four skins are token-override blocks) |
-| Agent SDK | @earendil-works/pi-ai + pi-coding-agent |
-| Markdown | react-markdown + remark-gfm + rehype-katex |
-| Diagrams | Mermaid (lazy-loaded) |
-| Code | react-syntax-highlighter (PrismAsync, lazy chunk) |
-| Fonts | Inter + JetBrains Mono (bundled .woff2) |
-
----
 
 ## Architecture
 
-```
-Browser                Next.js Server              AgentSession (in-process)
-  │                        │                               │
-  ├─ GET /api/sessions ────▶ incremental cache over        │
-  │                        │  ~/.pi/agent/sessions/        │
-  ├─ send message ─────────▶ POST /api/agent/[id]          │
-  │                        │   startRpcSession() ─────────▶│ createAgentSession()
-  │                        │   session.send(cmd) ─────────▶│ prompt/steer/bash/…
-  ├─ SSE connect ──────────▶ GET /api/agent/[id]/events    │
-  │◀── data: {...} ─────────│   session.onEvent() ◀────────│ session.subscribe()
-  ├─ GET /api/git/changes ─▶ git status (allowed cwds only)│
-  └─ GET /api/git/file-diff▶ HEAD vs worktree contents     │
+```text
+Browser                    Next.js server                 AgentSession
+  │                              │                            │
+  ├─ GET /api/sessions ─────────▶│ incremental .jsonl cache   │
+  ├─ POST /api/agent/[id] ──────▶│ startRpcSession() ────────▶│
+  ├─ GET /events (SSE) ─────────▶│◀──── session events ───────│
+  ├─ GET /api/files/* ──────────▶│ allowed-root file access   │
+  ├─ GET /api/git/* ────────────▶│ guarded git inspection     │
+  └─ GET /api/tgd/artifacts ────▶│ sibling tGD directory      │
 ```
 
----
+Read-only browsing parses session files without creating an `AgentSession`. Sending a message creates one in-process wrapper per active session and streams events over SSE.
 
 ## Project Structure
 
-```
-app/api/
-  agent/            # send commands, SSE event stream, auto-naming, bash
-  sessions/         # read/write session files, export, search, tags, pins
-  files/            # file content read (stream, meta, preview, watch)
-  git/              # changes list + per-file diff for the session cwd
-  models*, auth/, skills/, cwd/   # config surfaces
-components/
-  layout/           # AppShell (layout wiring), IconRail, ShortcutsDialog,
-                    # FilesPanel, ChangesPanel, DiffPanel, FileViewer,
-                    # ErrorBoundary
-  chat/             # ChatWindow, ChatInput, MessageView, BashBlock,
-                    # BranchNavigator, ChatMinimap, MarkdownBody
-  sidebar/          # SessionSidebar, SessionItem, FileExplorer, CwdPicker
-  modals/           # ModelsConfig, SkillsConfig, AnalyticsModal, ToolPanel
-  ui/               # CommandPalette, Toast, Skeleton
-lib/
-  rpc-manager.ts    # AgentSession lifecycle + command dispatch (incl. bash)
-  session-reader.ts # incremental session listing + .jsonl parsing
-  i18n.tsx          # en/zh-TW string store
-  skin.ts           # appearance skin store
-  attention.ts      # tab title + notifications store
-  file-*.ts         # security / mime / streaming helpers
-hooks/              # useAgentSession (chat orchestration) + its extracted
-                    # pieces: use-agent-connection (SSE + stall watchdog),
-                    # use-transcript-scroll, use-model-catalog;
-                    # useAppShellState, useSessions, useRightPanelWidth, …
+```text
+app/api/        sessions, agent commands/events, files, git, tGD, config
+components/     layout, chat, sidebar, modals, and shared UI
+hooks/          agent orchestration, streaming, scrolling, sessions, theme
+lib/            RPC lifecycle, session parsing, security, i18n, snapshots
+e2e/            Playwright production-server scenarios
+docs/           screenshots and project documentation
+public/fonts/   bundled local fonts
 ```
 
----
+See [`AGENTS.md`](./AGENTS.md) for the detailed architecture, invariants, and development traps.
+
+## Offline and Air-Gapped Use
+
+The browser app itself makes no external runtime requests. Fonts and UI assets are bundled. Only the configured LLM endpoint must be reachable.
+
+- **Internal npm registry:** clone this repository or use a GitHub Release source archive, configure npm for the internal registry, then run `npm ci && npm run build`.
+- **Portable directory:** on a networked machine with the same OS and architecture, run `npm ci && npm run build`, copy the complete directory, then run `npm run start`.
+- **Internal or local model:** set a custom provider `baseUrl` in `models.json`.
+
+`npm ci` is retained for reproducible CI and offline builds; interactive development uses `npm install`.
+
+## FAQ
+
+### Is this published as an npm package?
+
+No. Install and update it from the GitHub repository or a GitHub Release source archive.
+
+### Does it replace Pi?
+
+No. It is a local browser interface over Pi's session files and agent runtime. Pi remains the underlying coding agent.
+
+### Does the app upload my sessions?
+
+The application does not include a hosted session backend. It reads local Pi files and contacts only the model/provider endpoints you configure.
+
+### Why is Playwright not in `package.json`?
+
+Its transitive postinstall may download browser binaries and break offline or Nexus-based `npm ci`. CI installs it with `--no-save` before E2E.
+
+### Why can a compacted session still be long?
+
+Compaction adds a summary and keeps a recent tail; it does not delete the original history from the `.jsonl` file. The UI follows Pi's active branch and compaction entry.
 
 ## Contributing
 
-Contributions are welcome! The easiest ways to help:
+Issues and pull requests are welcome.
 
-- **Report bugs or request features** via [GitHub Issues](https://github.com/openclawyhwang-hub/tGD-pi-web/issues) — please include the session id, browser, and Pi version when reporting bugs.
-- **Improve translations** — English and Traditional Chinese strings live in `lib/i18n.tsx`.
-- **Add a skin** — each skin is a token-override block in `app/globals.css`; see `lib/skin.ts` for the registry.
+1. Fork the repository and create a focused branch.
+2. Use `npm install` for development.
+3. Run typecheck, lint, and tests.
+4. Add or update tests for behavior changes.
+5. Keep all four README files aligned when changing user-facing setup or features.
 
-For code changes: fork → branch → run `node_modules/.bin/tsc --noEmit` and `npx eslint .` before opening a PR.
+Improve application translations in `lib/i18n.tsx`. New skins must use semantic design tokens rather than hardcoded component colors.
 
----
+## Release
+
+Tags matching `v*` trigger the GitHub Release workflow, which generates release notes and publishes a GitHub Release. The workflow does **not** publish to npm.
 
 ## License
 
-MIT
+MIT — see [`LICENSE`](./LICENSE).

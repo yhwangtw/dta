@@ -9,9 +9,6 @@
 #   3. Commit version bump + create git tag
 #   4. Push to origin
 #   5. GitHub Actions auto-creates Release with changelog
-#
-# For npm publish (npx @agegr/pi-web), run separately:
-#   npm publish --access public
 
 set -e
 
@@ -82,6 +79,3 @@ echo ""
 echo "✅ Done! Tag $TAG pushed."
 echo "   GitHub Actions will create the Release automatically."
 echo "   https://github.com/$(git remote get-url origin | sed 's|.*github.com/||; s|\.git$||')/releases"
-echo ""
-echo "📦 To publish to npm:"
-echo "   npm publish --access public"

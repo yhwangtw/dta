@@ -1,16 +1,60 @@
-# Pi with tGD — 網頁介面
+# tGD Pi Web
 
-[English](./README.md)
+<p align="center">
+  <a href="https://github.com/openclawyhwang-hub/tGD-pi-web/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/openclawyhwang-hub/tGD-pi-web?style=flat-square"></a>
+  <a href="LICENSE"><img alt="授權條款" src="https://img.shields.io/github/license/openclawyhwang-hub/tGD-pi-web?style=flat-square"></a>
+  <a href="https://github.com/openclawyhwang-hub/tGD-pi-web/commits/main"><img alt="最近提交" src="https://img.shields.io/github/last-commit/openclawyhwang-hub/tGD-pi-web?style=flat-square"></a>
+  <img alt="Next.js 16" src="https://img.shields.io/badge/Next.js-16-000000?style=flat-square&logo=nextdotjs">
+  <img alt="React 19" src="https://img.shields.io/badge/React-19-149ECA?style=flat-square&logo=react">
+</p>
 
-[Pi 編程智能體](https://github.com/earendil-works/pi) 的網頁介面。在瀏覽器中瀏覽會話、與智能體即時對話、直接執行 shell 指令、檢視智能體改了哪些檔案、分叉對話、切換訊息分支。
+<p align="center">
+  <a href="README.md">English</a> |
+  <a href="README.zh-TW.md"><strong>繁體中文</strong></a> |
+  <a href="README.ja.md">日本語</a> |
+  <a href="README.de.md">Deutsch</a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/openclawyhwang-hub/tGD-pi-web/releases">版本發布</a> ·
+  <a href="https://github.com/openclawyhwang-hub/tGD-pi-web/issues">回報錯誤</a> ·
+  <a href="https://github.com/openclawyhwang-hub/tGD-pi-web/issues">建議功能</a>
+</p>
+
+**為 Pi Coding Agent 與完整 tGD 交付流程打造的瀏覽器工作空間。**
+
+tGD Pi Web 將 Pi 的本機 session 轉成視覺化工程駕駛艙：即時與 agent 對話、檢查檔案與 git 變更、切換分支、還原快照，並在同一個瀏覽器介面追蹤從 Map 到 Release 的完整工作。
+
+![tGD Pi Web 對話介面](./docs/screenshots/02-hero-chat.png)
+
+## 為什麼需要 tGD Pi Web？
+
+Pi 的終端體驗快速而專注；這個專案補上長時間或多工作流任務所需要的視覺脈絡：
+
+- 同時看到串流內容、執行狀態、經過時間、錯誤、排隊訊息與 context 壓力。
+- 直接瀏覽所有本機 Pi session，不需要先建立 AgentSession。
+- 在對話旁檢查檔案、diff、tool call 與 git 變更。
+- 在同一工作空間追蹤 tGD artifacts 與七個交付階段。
+- 透過搜尋、書籤、minimap 與分支導覽長篇對話。
+- 保持本機優先：除了你設定的模型端點，應用程式執行時不會發出外部請求。
+
+## 適合誰？
+
+- 已經使用 [Pi Coding Agent](https://github.com/earendil-works/pi) 的開發者。
+- 採用 tGD 流程，並把 artifacts 放在相鄰 `<project>-tGD/` 目錄的團隊。
+- 希望 agent 在本機工作時，也能有瀏覽器檢視與控制介面的工程師。
+- 使用內部模型 gateway 與 npm registry 的離線或企業環境。
 
 ## 快速開始
 
-本專案透過 GitHub 發行，不發布為 npm 套件。
+### 系統需求
 
-前置需求：Node.js ≥ 22，以及可用的 [pi](https://github.com/earendil-works/pi) 環境（`~/.pi/agent/`）。
+- Node.js 22 以上
+- npm
+- 可正常運作的 Pi 環境與 `~/.pi/agent/`
+- Git
 
-clone repository 後執行引導式安裝：
+本專案只透過 GitHub 原始碼發布，**不發布至 npm**。
 
 ```bash
 git clone https://github.com/openclawyhwang-hub/tGD-pi-web.git
@@ -18,140 +62,253 @@ cd tGD-pi-web
 bash setup.sh
 ```
 
-也可以手動安裝並啟動：
+安裝腳本會檢查 Node.js 與 npm、安裝相依套件、確認 Pi agent 目錄，並可選擇啟動開發伺服器。它不會修改本 repository 以外的檔案。
+
+手動安裝：
 
 ```bash
 npm install
 npm run dev
 ```
 
-開發伺服器會啟動於 [http://localhost:30141](http://localhost:30141)。`setup.sh` 會檢查 Node/npm、安裝依賴、確認 `~/.pi/agent/` 存在，並詢問是否立即啟動；它不會修改 repository 以外的內容。
+開啟 [http://localhost:30141](http://localhost:30141)。
 
-## 功能
+### 更新現有 checkout
 
-### 對話
-- **即時串流** — SSE 串流,token 逐字顯示
-- **插話 / 追問** — 中斷執行中的智能體,或排隊等它完成(排隊中的追問可見、可取消)
-- **Bash 模式** — 輸入 `!指令` 直接在 session 的工作目錄執行,輸出即時串流,結果會記錄進 session 讓智能體看得到;`!!指令` 則不進入 LLM context
-- **模型切換** — 對話中途更換模型與思考等級
-- **工具面板** — 控制智能體可用的工具(無 / 預設 / 全部)
-- **壓縮 session** — 摘要長對話以節省 context
-- **誠實的狀態** — 執行中有轉圈 + 已耗時計時;模型停止回應時顯示停滯警告;失敗的執行以紅色錯誤卡顯示完整錯誤原因(絕不無聲失敗),並提供一鍵 **Retry** 自動回滾重送同一則 prompt
-- **Context 快滿提醒** — 用量達 80% 時出現提示條,一鍵壓縮
-- **佇列控制** — 排隊中的追問逐條列出,可以個別取消或全部取消
-- **工具呼叫 diff 視圖** — `edit` 工具呼叫展開後顯示紅綠對照的真 diff、`write` 顯示寫入的檔案內容,不再是純 JSON 參數
-- **訊息書籤** — 滑過訊息按 ☆ 加書籤;每個 session 各自記住,並在 minimap 上以琥珀色標記顯示
+```bash
+git pull
+npm install
+npm run dev
+```
 
-### 背景執行也不漏接
-- **分頁標題** — 執行中顯示 `⏳ session名稱`,完成閃 `✅`(失敗閃 `⚠`)
-- **瀏覽器通知** — 分頁在背景時,智能體完成會發通知
-- **完成音效** — 可選,失敗時不播
+## 瀏覽器內的 tGD 流程
 
-### 導航
-- **⌘K 指令面板** — 搜尋 session、標籤、檔案、執行指令(中英文皆可搜)
-- **⌘F 對話內搜尋** — 比對計數、Enter/⇧Enter 循環、目標閃光標示;跳到被收合的訊息會自動展開
-- **⌥↑ / ⌥↓ 回合導航** — 在使用者訊息之間逐回合跳轉;minimap 點擊也能跳
-- **長訊息自動收合** — 超過一個螢幕高的歷史訊息收成預覽 + 「展開完整訊息」按鈕;最新一輪永遠全文顯示
-- **圖示導航欄** — 對話 / 檔案 / 變更 / 搜尋 / 分析視圖;底部有模型 / 技能 / 語言 / 主題
-- **跳到底部** — 上捲時出現浮動按鈕;串流時會顯示底下累積了多少新內容(`↓ +N 行`);捲到尾端會啟用串流黏底跟隨
-- **總是跟隨模式** — ⌘K → "Toggle Always-Follow Output",terminal 式黏底跟隨(記住偏好,預設關)
-- **輸入歷史** — 輸入框空白時按 ↑ 叫回之前送過的訊息
+階段列會固定顯示在目前 session 上方：
 
-### Session 管理
-- **Session 瀏覽器** — 按工作目錄分組,自動偵測最近專案
-- **專案選擇器** — 可搜尋、釘選常用、移除不要的;內建檔案系統瀏覽(麵包屑導航),或直接打路徑享受即時自動補全(Tab 補齊)
-- **時間分組** — 今天 / 昨天 / 本週 / 更早
-- **搜尋、標籤、釘選** — 即時篩選、彩色標籤、釘選置頂
-- **封存** — 右鍵 → 封存,把做完的 session 從清單藏起來但不刪除;「顯示封存 (N)」可展開檢視,隨時取消封存
-- **自動命名** — 首輪對話後自動產生標題
-- **分叉** — 從任一使用者訊息分出獨立新 session
-- **Session 內分支** — 回滾到任意節點續寫;頂欄有分支導航器
-- **匯出** — 獨立 HTML 或純 Markdown
-- **分析** — Token 用量與成本報表
+```text
+Map → Define → Plan → Develop → Verify → Review → Release
+```
 
-### 檔案與變更
-- **檔案視圖** — 導航欄的全高檔案樹;session 列表下方也有可收合的檔案樹(偏好會記住)
-- **深度檔案搜尋** — 過濾框輸入 2 個字以上就遞迴搜整個專案(伺服器端,自動跳過 node_modules 等),顯示扁平結果;點資料夾結果會在樹中展開定位
-- **Git 感知檔案樹** — 修改/未追蹤的檔案顯示 M/A/D/U 彩色標記,含變更的資料夾有小圓點;右鍵直接看 diff
-- **右鍵選單與鍵盤** — 複製路徑 / 相對路徑 / @ 提及 / 檢視 diff;↑ ↓ ← → 與 Enter 操作整棵樹
-- **變更視圖** — session 工作目錄的 git 狀態(分支、逐檔狀態與行數統計),每輪智能體執行後自動刷新;點檔案看 HEAD ↔ 工作區 diff
-- **檔案預覽** — 語法高亮原始碼、Markdown/HTML 預覽、圖片、diff
-- **面板可調寬度** — 拖曳檔案面板左緣調整大小(記住偏好),雙擊重設
-- **檔內搜尋與跳行** — 檢視器工具列的 `find / :line` 輸入框,符合行高亮置中
-- **就地編輯** — 文字檔可直接編輯儲存(⌘S)/取消;寫入與讀取走同一套目錄權限閘
-- **@-提及** — 從檔案樹把路徑插入輸入框
+- **以 artifacts 為準的狀態** — Map、Define、Plan 依照磁碟上的真實檔案判斷完成狀態，不使用樂觀 UI 狀態。
+- **feature-aware 進度** — 階段列會追蹤最近 `/tgd-*` 指令指定的 feature；若沒有指定，則使用最近更新的 feature。
+- **Artifact explorer** — 可檢視依階段整理的文件，或完整瀏覽相鄰 tGD 目錄，包括 scans、wiki 與 prototypes。
+- **先預覽再送出的階段操作** — 點擊階段只會把對應指令填入輸入框，讓你確認後再送出。
+- **Git 還原點** — 每次執行前建立 git-backed snapshot，不會碰觸你的 index 或 `HEAD`。
 
-### 渲染
-- **Markdown** — GFM、表格、任務清單;KaTeX 數學;Mermaid 圖表
-- **程式碼** — 語法高亮 + 行號(高亮器延遲載入,不佔首屏)
-- **供應商圖示** — Anthropic、OpenAI、Google 等
+預期目錄結構：
 
-### 外觀
-- **五套可切換外觀** — Editorial 米紙暖色(預設)/ Terminal 翡翠綠 / Industrial 工業黑白 / Aurora 極光紫 / Glass 極光漸層磨砂玻璃,每套都有明暗主題
-- **外觀選擇器** — 導航欄的調色盤按鈕打開面板:明暗切換 + 五套皮膚色票卡,點了立即預覽;`⌘K` 也能開
-- **磨砂浮動元件** — 指令面板、對話框、toast、搜尋列、跳轉按鈕都是毛玻璃(backdrop-blur),顏色自動匹配每套外觀
-- **介面語言** — 英文(預設)⇄ 繁體中文,導航欄地球圖示切換
-- **字型** — 內建 Inter + JetBrains Mono,繁體中文優先的 fallback 鏈,零網路依賴
+```text
+parent/
+├── your-project/
+└── your-project-tGD/
+    ├── CONTEXT.md
+    ├── TRACKING-PLAN.md
+    ├── wiki/
+    └── feature-name/
+        ├── PRD.md
+        ├── SPEC.md
+        ├── DESIGN.md
+        ├── TASKS.md
+        ├── METRICS.md
+        └── prototype/
+```
+
+若 artifacts 位於其他位置，可設定 `TGD_DIR`。
+
+## 介面導覽
+
+| Session 與檔案工作區 | 指令面板 |
+|---|---|
+| ![程式碼 session](./docs/screenshots/03-code-session.png) | ![指令面板](./docs/screenshots/04-command-palette.png) |
+
+| 深色模式 | 空白狀態 |
+|---|---|
+| ![深色模式](./docs/screenshots/10-dark-mode.png) | ![空白狀態](./docs/screenshots/01-empty-state.png) |
+
+<details>
+<summary><strong>查看全部五種外觀 skin</strong></summary>
+
+| Editorial | Terminal | Aurora |
+|---|---|---|
+| ![Editorial skin](./docs/screenshots/05-skin-editorial.png) | ![Terminal skin](./docs/screenshots/06-skin-terminal.png) | ![Aurora skin](./docs/screenshots/07-skin-aurora.png) |
+
+| Industrial | Glass |
+|---|---|
+| ![Industrial skin](./docs/screenshots/08-skin-industrial.png) | ![Glass skin](./docs/screenshots/09-skin-glass.png) |
+
+</details>
+
+## 主要功能
+
+### Agent 對話
+
+- 透過 SSE 即時串流，並在送出 prompt 前先建立事件連線。
+- 支援 prompt、steer、follow-up queue、retry、bash 與 context compaction。
+- 使用 `!command` 直接執行 shell；使用 `!!command` 讓結果不進入模型 context。
+- 在 session 中途切換模型與 thinking level。
+- 每次執行都有錯誤卡、停滯警告、通知、完成音效與分頁狀態。
+- 可編輯過去的 turn、從先前分支點 retry、建立獨立 fork，或在 session 內切換分支。
+
+### Session 與導覽
+
+- 以增量、唯讀方式索引本機 Pi `.jsonl` session 檔。
+- 支援搜尋、標籤、釘選、封存、自動命名、HTML/Markdown 匯出與用量分析。
+- 提供對話搜尋、user turn 導覽、書籤、minimap、長訊息收合與 always-follow 串流模式。
+- Project switcher 支援最近專案、釘選、探索、檔案系統自動完成與 linked git worktrees。
+- 可重複使用的 prompt templates，並與內建 `/tgd-*` 指令整合。
+
+### 檔案與 git
+
+- 專案樹、遞迴檔名搜尋、文字編輯、Markdown/HTML/圖片預覽，以及對話內可點擊的檔案路徑。
+- Git 狀態 badge、working tree 摘要、逐檔統計，以及 `HEAD` 對 worktree diff。
+- 將 `edit`、`write` tool call 顯示為實際 diff 或檔案內容，不顯示難讀的原始 JSON。
+- 檔案與 git API 有 allowed-root、路徑防護、`execFile` 與回應大小限制。
+- Snapshot restore 只套用精確差異，不會改寫使用者的 index 或 `HEAD`。
+
+### 顯示與外觀
+
+- GitHub Flavored Markdown、表格、task list、KaTeX、Mermaid 與延遲載入的語法高亮。
+- Editorial、Terminal、Industrial、Aurora、Glass 五種 skin，各自支援亮色與暗色。
+- 內建 Inter、JetBrains Mono 與 Noto Sans TC，不依賴 CDN。
+- 應用程式介面語言目前為 English 與繁體中文；專案文件另外提供日本語與 Deutsch。
 
 ## 鍵盤快捷鍵
 
 | 按鍵 | 動作 |
-|------|------|
-| `⌘K` | 指令面板(搜尋與指令)|
-| `⌘F` | 對話內搜尋 |
-| `⌥↑` / `⌥↓` | 上一則 / 下一則使用者訊息 |
-| `⇧⌘M` | 模型設定 |
-| `⌘/` | 技能 |
-| `⌘B` | 切換側欄面板 |
-| `⌘\` | 切換檔案面板 |
-| `↑` | 叫回上一則訊息(輸入框空白時)|
-| `Esc` | 關閉對話框 |
+|---|---|
+| `⌘/Ctrl + K` | 開啟指令面板 |
+| `⌘/Ctrl + P` | 開啟 project switcher |
+| `⌘/Ctrl + F` | 搜尋目前對話 |
+| `⌥ + ↑` / `⌥ + ↓` | 上一個／下一個 user turn |
+| `⇧⌘M` | 開啟 Models |
+| `⌘/Ctrl + /` | 開啟 Skills |
+| `⌘/Ctrl + B` | 切換 contextual panel |
+| `⌘/Ctrl + \` | 切換右側檔案 panel |
+| 空白輸入框按 `↑` | 叫回上一則訊息 |
+| `Esc` | 關閉目前 dialog |
+
+## 指令
+
+| 指令 | 用途 |
+|---|---|
+| `bash setup.sh` | 驗證本機環境並安裝相依套件 |
+| `npm run dev` | 在 `30141` port 啟動開發環境 |
+| `node_modules/.bin/tsc --noEmit` | Typecheck |
+| `npx eslint .` | Lint |
+| `npm test` | 執行 Vitest unit tests |
+| `npm run test:e2e` | Build 並在 `30177` port 執行 Playwright E2E |
+| `npm run build` | 建立 production build |
+| `npm run start` | 啟動 production server |
+
+> [!WARNING]
+> 執行 `npm run build` 或 `npm run test:e2e` 前，必須先停止 `npm run dev`。同時執行 Next.js build 會污染開發伺服器使用中的 `.next/`。
+
+Playwright 刻意不儲存在 `package.json`，需要臨時安裝：
+
+```bash
+npm i -D --no-save @playwright/test
+npm run test:e2e
+```
+
+本機 container 若已預裝 Chromium：
+
+```bash
+PW_CHROMIUM_PATH=/opt/pw-browsers/chromium npm run test:e2e
+```
 
 ## 設定
 
-| 項目 | 說明 |
-|------|------|
-| Session 目錄 | 預設 `~/.pi/agent/sessions/`;可用 `PI_CODING_AGENT_DIR` 覆寫 |
-| 模型設定 | 讀取 `models.json`;可在模型面板編輯(支援自訂 baseUrl — 內網環境可指向內部 gateway 或本地模型)|
-| API 金鑰 | 各供應商金鑰存於 `auth.json` |
-| 預設目錄 | 透過 CWD 選擇器設定 |
+| 設定 | 行為 |
+|---|---|
+| `PI_CODING_AGENT_DIR` | 覆寫預設的 `~/.pi/agent` 目錄 |
+| `TGD_DIR` | 覆寫相鄰的 `<project>-tGD/` artifact 目錄 |
+| `models.json` | 模型與 provider 清單，包含自訂 `baseUrl` |
+| `auth.json` | 由 Pi 管理的各 provider API credential |
+| Project picker | 選擇並驗證目前 working directory |
 
-## 離線 / 內網部署
+Session 仍使用 Pi 原生格式：
 
-應用程式本身**執行期零外部請求**（字型內建、無 CDN），只有 LLM endpoint 需要可達；把 `models.json` 指向內部 gateway 或本地模型即可。tGD-pi-web 本身從 GitHub 原始碼安裝，不透過 npm 套件發行。
-
-- **內部依賴 registry（Nexus 等）**：clone repository 或下載 GitHub Release 的原始碼壓縮檔，將 npm 指向內部 registry，再執行 `npm ci && npm run build`
-- **整包搬移**：在*相同作業系統與架構*的聯網機器上執行 `npm ci && npm run build`，複製整個資料夾後執行 `npm run start`
-
-## 開發
-
-```bash
-npm install
-npm run dev    # 連接埠 30141
+```text
+~/.pi/agent/sessions/<encoded-cwd>/<timestamp>_<uuid>.jsonl
 ```
 
-**驗證指令:**
+## 架構
 
-```bash
-node_modules/.bin/tsc --noEmit     # 型別檢查
-npx eslint .                       # Lint
-npm test                           # 單元測試(vitest)
+```text
+Browser                    Next.js server                 AgentSession
+  │                              │                            │
+  ├─ GET /api/sessions ─────────▶│ incremental .jsonl cache   │
+  ├─ POST /api/agent/[id] ──────▶│ startRpcSession() ────────▶│
+  ├─ GET /events (SSE) ─────────▶│◀──── session events ───────│
+  ├─ GET /api/files/* ──────────▶│ allowed-root file access   │
+  ├─ GET /api/git/* ────────────▶│ guarded git inspection     │
+  └─ GET /api/tgd/artifacts ────▶│ sibling tGD directory      │
 ```
 
-> ⚠️ dev server 執行中**絕對不要**跑 `next build` — 會污染 `.next/` 並使 `npm run dev` 壞掉。
+唯讀瀏覽只解析 session 檔，不會建立 `AgentSession`。送出訊息時，伺服器才會為每個 active session 建立一個 in-process wrapper，並透過 SSE 串流事件。
 
-## 技術棧
+## 專案結構
 
-| 層級 | 技術 |
-|------|------|
-| 框架 | Next.js 16(App Router)|
-| UI | React 19 + CSS 變數(設計 token;四套外觀是 token 覆寫區塊)|
-| Agent SDK | @earendil-works/pi-ai + pi-coding-agent |
-| Markdown | react-markdown + remark-gfm + rehype-katex |
-| 圖表 | Mermaid(延遲載入)|
-| 程式碼 | react-syntax-highlighter(PrismAsync,延遲 chunk)|
-| 字型 | Inter + JetBrains Mono(內建 .woff2)|
+```text
+app/api/        sessions、agent commands/events、files、git、tGD、config
+components/     layout、chat、sidebar、modals 與共用 UI
+hooks/          agent orchestration、streaming、scrolling、sessions、theme
+lib/            RPC lifecycle、session parsing、security、i18n、snapshots
+e2e/            Playwright production-server scenarios
+docs/           screenshots 與專案文件
+public/fonts/   內建本機字型
+```
+
+詳細架構、不變量與開發陷阱請參考 [`AGENTS.md`](./AGENTS.md)。
+
+## 離線與隔離網路環境
+
+瀏覽器應用程式本身不會在 runtime 發出外部請求，字型與 UI assets 都已內建；只有設定的 LLM endpoint 必須可連線。
+
+- **內部 npm registry：** clone repository 或使用 GitHub Release 原始碼壓縮檔，設定內部 registry，再執行 `npm ci && npm run build`。
+- **可攜式目錄：** 在相同 OS 與架構的連網機器執行 `npm ci && npm run build`，複製完整目錄後執行 `npm run start`。
+- **內部或本機模型：** 在 `models.json` 為 provider 設定自訂 `baseUrl`。
+
+`npm ci` 保留給可重現的 CI 與離線 build；互動式開發使用 `npm install`。
+
+## 常見問題
+
+### 這個專案有發布成 npm package 嗎？
+
+沒有。請從 GitHub repository 或 GitHub Release 原始碼壓縮檔安裝與更新。
+
+### 它會取代 Pi 嗎？
+
+不會。它是 Pi session 檔與 agent runtime 的本機瀏覽器介面；底層 coding agent 仍然是 Pi。
+
+### 應用程式會上傳我的 session 嗎？
+
+本專案沒有 hosted session backend。它讀取本機 Pi 檔案，並且只連線到你設定的模型或 provider endpoint。
+
+### 為什麼 `package.json` 沒有 Playwright？
+
+Playwright 的 transitive postinstall 可能下載瀏覽器 binary，導致離線或 Nexus 環境的 `npm ci` 失敗。因此 CI 會在 E2E 前用 `--no-save` 臨時安裝。
+
+### 為什麼 compact 後的 session 檔仍然很長？
+
+Compaction 會加入摘要並保留最近的訊息尾端，不會從 `.jsonl` 刪除原始歷史。介面會依照 Pi 的 active branch 與 compaction entry 顯示 context。
+
+## 參與貢獻
+
+歡迎 issue 與 pull request。
+
+1. Fork repository 並建立範圍明確的 branch。
+2. 開發時使用 `npm install`。
+3. 執行 typecheck、lint 與 tests。
+4. 行為改動需要新增或更新 tests。
+5. 修改使用者可見的安裝方式或功能時，請同步四份 README。
+
+應用程式翻譯位於 `lib/i18n.tsx`。新增 skin 時必須使用 semantic design tokens，不能在 component 硬編碼顏色。
+
+## 發布
+
+符合 `v*` 的 tag 會觸發 GitHub Release workflow，自動產生 release notes 並建立 GitHub Release。這個流程**不會發布至 npm**。
 
 ## 授權
 
-MIT
+MIT — 詳見 [`LICENSE`](./LICENSE)。

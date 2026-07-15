@@ -21,17 +21,17 @@ Clone the repository and run the guided setup:
 ```bash
 git clone https://github.com/openclawyhwang-hub/tGD-pi-web.git
 cd tGD-pi-web
-./setup.sh
+bash setup.sh
 ```
 
 Or install and start it manually:
 
 ```bash
-npm ci
+npm install
 npm run dev
 ```
 
-The development server starts on [http://localhost:30141](http://localhost:30141). `setup.sh` checks Node/npm, installs locked dependencies, confirms `~/.pi/agent/` exists, and offers to launch the server. It does **not** mutate anything outside this repository.
+The development server starts on [http://localhost:30141](http://localhost:30141). `setup.sh` checks Node/npm, installs dependencies, confirms `~/.pi/agent/` exists, and offers to launch the server. It does **not** mutate anything outside this repository.
 
 ---
 
@@ -181,7 +181,7 @@ The app itself makes **zero external requests at runtime** (fonts bundled, no CD
 ## Development
 
 ```bash
-npm ci
+npm install
 npm run dev    # port 30141
 ```
 

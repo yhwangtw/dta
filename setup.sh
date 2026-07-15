@@ -50,11 +50,11 @@ echo -e "  ${GREEN}✅ npm $(npm --version)${NC}"
 echo ""
 echo -e "${BOLD}📦 安裝依賴...${NC}"
 if [ ! -d "node_modules" ]; then
-  npm ci
+  npm install
   echo -e "  ${GREEN}✅ 依賴安裝完成${NC}"
 else
   echo -e "  ${YELLOW}⏭️  node_modules 已存在，跳過安裝${NC}"
-  echo -e "  ${YELLOW}   如需依 lockfile 重新安裝：npm ci${NC}"
+  echo -e "  ${YELLOW}   如需同步依賴：npm install${NC}"
 fi
 
 # ── 檢查 Pi Agent ─────────────────────────────────────
@@ -91,7 +91,7 @@ echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━
 echo ""
 echo -e "  啟動開發模式：  ${BOLD}npm run dev${NC}"
 echo -e "  啟動生產模式：  ${BOLD}先停止 dev，再執行 npm run build && npm start${NC}"
-echo -e "  更新專案依賴：  ${BOLD}git pull && npm ci${NC}"
+echo -e "  更新專案依賴：  ${BOLD}git pull && npm install${NC}"
 echo ""
 echo -e "  預設埠號：      ${BOLD}30141${NC}"
 echo ""

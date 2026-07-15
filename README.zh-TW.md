@@ -15,17 +15,17 @@ clone repository 後執行引導式安裝：
 ```bash
 git clone https://github.com/openclawyhwang-hub/tGD-pi-web.git
 cd tGD-pi-web
-./setup.sh
+bash setup.sh
 ```
 
 也可以手動安裝並啟動：
 
 ```bash
-npm ci
+npm install
 npm run dev
 ```
 
-開發伺服器會啟動於 [http://localhost:30141](http://localhost:30141)。`setup.sh` 會檢查 Node/npm、安裝 lockfile 指定的依賴、確認 `~/.pi/agent/` 存在，並詢問是否立即啟動；它不會修改 repository 以外的內容。
+開發伺服器會啟動於 [http://localhost:30141](http://localhost:30141)。`setup.sh` 會檢查 Node/npm、安裝依賴、確認 `~/.pi/agent/` 存在，並詢問是否立即啟動；它不會修改 repository 以外的內容。
 
 ## 功能
 
@@ -126,7 +126,7 @@ npm run dev
 ## 開發
 
 ```bash
-npm ci
+npm install
 npm run dev    # 連接埠 30141
 ```
 

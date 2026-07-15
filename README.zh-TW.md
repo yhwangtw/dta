@@ -6,23 +6,26 @@
 
 ## 快速開始
 
-**一般使用者** — 直接執行打包好的版本(免 clone、免 build):
+本專案透過 GitHub 發行，不發布為 npm 套件。
 
-```bash
-npx @agegr/pi-web
-```
+前置需求：Node.js ≥ 22，以及可用的 [pi](https://github.com/earendil-works/pi) 環境（`~/.pi/agent/`）。
 
-伺服器啟動於 [http://localhost:30141](http://localhost:30141) 並自動開啟瀏覽器。自訂連接埠:`npx @agegr/pi-web -p 8080`。
-
-**開發者** — 從原始碼執行:
+clone repository 後執行引導式安裝：
 
 ```bash
 git clone https://github.com/openclawyhwang-hub/tGD-pi-web.git
 cd tGD-pi-web
-./setup.sh        # 或:npm install && npm run dev
+./setup.sh
 ```
 
-前置需求:Node.js ≥ 22,以及可用的 [pi](https://github.com/earendil-works/pi) 環境(`~/.pi/agent/`)。
+也可以手動安裝並啟動：
+
+```bash
+npm ci
+npm run dev
+```
+
+開發伺服器會啟動於 [http://localhost:30141](http://localhost:30141)。`setup.sh` 會檢查 Node/npm、安裝 lockfile 指定的依賴、確認 `~/.pi/agent/` 存在，並詢問是否立即啟動；它不會修改 repository 以外的內容。
 
 ## 功能
 
@@ -115,15 +118,15 @@ cd tGD-pi-web
 
 ## 離線 / 內網部署
 
-應用程式本身**執行期零外部請求**(字型內建、無 CDN),只有 LLM endpoint 需要可達 — 把 `models.json` 指向內部 gateway 或本地模型即可。
+應用程式本身**執行期零外部請求**（字型內建、無 CDN），只有 LLM endpoint 需要可達；把 `models.json` 指向內部 gateway 或本地模型即可。tGD-pi-web 本身從 GitHub 原始碼安裝，不透過 npm 套件發行。
 
-- **內部 npm registry(Nexus 等)**:建置一次(`npm ci && npm run build`)後 `npm publish --registry=<內部位址>`;使用者把 registry 指向內部後執行 `npx @agegr/pi-web`
-- **整包搬移**:在*相同作業系統與架構*的聯網機器上 `npm ci && npm run build`,複製整個資料夾,執行 `npm run start`
+- **內部依賴 registry（Nexus 等）**：clone repository 或下載 GitHub Release 的原始碼壓縮檔，將 npm 指向內部 registry，再執行 `npm ci && npm run build`
+- **整包搬移**：在*相同作業系統與架構*的聯網機器上執行 `npm ci && npm run build`，複製整個資料夾後執行 `npm run start`
 
 ## 開發
 
 ```bash
-npm install
+npm ci
 npm run dev    # 連接埠 30141
 ```
 

@@ -12,27 +12,26 @@ A browser interface for the [Pi Coding Agent](https://github.com/earendil-works/
 
 ## Quick Start
 
-**For users** — run the prebuilt package (no clone, no build):
+This project is distributed from GitHub and is not published to npm.
 
-```bash
-npx @agegr/pi-web
-```
+Requirements: Node.js ≥ 22 and a working [pi](https://github.com/earendil-works/pi) setup (`~/.pi/agent/`).
 
-The server starts on [http://localhost:30141](http://localhost:30141) and opens your browser. Custom port: `npx @agegr/pi-web -p 8080`.
-
-**For development** — clone and run from source:
+Clone the repository and run the guided setup:
 
 ```bash
 git clone https://github.com/openclawyhwang-hub/tGD-pi-web.git
 cd tGD-pi-web
-./setup.sh        # checks Node/npm, installs deps, verifies Pi Agent is present
-# … or the manual equivalent:
-npm install && npm run dev
+./setup.sh
 ```
 
-`setup.sh` is a guided bootstrap: it checks Node ≥ 18, installs dependencies if `node_modules/` is missing, confirms `~/.pi/agent/` exists, and offers to launch the dev server. It does **not** mutate anything outside this repo.
+Or install and start it manually:
 
-Requirements: Node.js ≥ 22 and a working [pi](https://github.com/earendil-works/pi) setup (`~/.pi/agent/`).
+```bash
+npm ci
+npm run dev
+```
+
+The development server starts on [http://localhost:30141](http://localhost:30141). `setup.sh` checks Node/npm, installs locked dependencies, confirms `~/.pi/agent/` exists, and offers to launch the server. It does **not** mutate anything outside this repository.
 
 ---
 
@@ -172,17 +171,17 @@ A few things this interface does that the terminal alone doesn't:
 
 ## Offline / air-gapped deployment
 
-The app itself makes **zero external requests at runtime** (fonts bundled, no CDNs). Only the LLM endpoint needs to be reachable — point `models.json` at an internal gateway or a local model.
+The app itself makes **zero external requests at runtime** (fonts bundled, no CDNs). Only the LLM endpoint needs to be reachable — point `models.json` at an internal gateway or a local model. tGD-pi-web itself is installed from GitHub source, not an npm package.
 
-- **Internal npm registry (Nexus etc.)**: build once (`npm ci && npm run build`), `npm publish --registry=<internal>`; users run `npx @agegr/pi-web` with their registry pointed internally
-- **Portable folder**: on a networked machine of the *same OS/arch*, `npm ci && npm run build`, copy the whole folder, run `npm run start`
+- **Internal dependency registry (Nexus etc.)**: clone or download a GitHub Release source archive, point npm at the internal registry, then run `npm ci && npm run build`
+- **Portable folder**: on a networked machine of the *same OS/arch*, run `npm ci && npm run build`, copy the whole folder, then run `npm run start`
 
 ---
 
 ## Development
 
 ```bash
-npm install
+npm ci
 npm run dev    # port 30141
 ```
 

@@ -1,7 +1,8 @@
-import { SessionManager, buildSessionContext as piBuildSessionContext, getAgentDir, parseSessionEntries } from "@earendil-works/pi-coding-agent";
-import type { SessionEntry, SessionInfo, SessionContext, SessionTreeNode, AssistantMessage } from "./types";
+import { buildSessionContext as piBuildSessionContext, getAgentDir, migrateSessionEntries, parseSessionEntries } from "@earendil-works/pi-coding-agent";
+import type { SessionEntry, SessionHeader, SessionInfo, SessionContext, SessionTreeNode, AssistantMessage } from "./types";
 import type { SessionEntry as PiSessionEntry } from "@earendil-works/pi-coding-agent";
 import { normalizeToolCalls } from "./normalize";
+import { readFileSync } from "fs";
 import { readdir, readFile, stat } from "fs/promises";
 import { join } from "path";
 
@@ -216,9 +217,19 @@ export function invalidateSessionPathCache(sessionId: string): void {
   getPathCache().delete(sessionId);
 }
 
+export function readSessionFile(filePath: string): { header: SessionHeader | null; entries: SessionEntry[] } {
+  const parsed = parseSessionEntries(readFileSync(filePath, "utf8")) as unknown as Array<SessionHeader | SessionEntry>;
+  // Pi's migrations mutate the parsed objects. Running them on this in-memory
+  // array keeps legacy sessions readable without rewriting the user's JSONL.
+  migrateSessionEntries(parsed as never);
+  return {
+    header: (parsed.find((entry) => entry.type === "session") as SessionHeader | undefined) ?? null,
+    entries: parsed.filter((entry): entry is SessionEntry => entry.type !== "session"),
+  };
+}
+
 export function getSessionEntries(filePath: string): SessionEntry[] {
-  const entries = SessionManager.open(filePath).getEntries();
-  return entries as unknown as SessionEntry[];
+  return readSessionFile(filePath).entries;
 }
 
 export function buildTree(entries: SessionEntry[]): SessionTreeNode[] {
@@ -295,6 +306,8 @@ export function buildSessionContext(entries: SessionEntry[], leafId?: string | n
   }
 
   const entryIds: string[] = [];
+  const contributesMessage = (entry: SessionEntry) =>
+    entry.type === "message" || entry.type === "custom_message" || entry.type === "branch_summary";
   if (compactionId) {
     // The first message in piCtx.messages is the synthetic compaction summary — map to compaction entry id
     entryIds.push(compactionId);
@@ -304,14 +317,14 @@ export function buildSessionContext(entries: SessionEntry[], leafId?: string | n
       : -1;
     const startIdx = firstKeptIdx >= 0 ? firstKeptIdx : compactionIdx;
     for (let i = startIdx; i < compactionIdx; i++) {
-      if (path[i].type === "message") entryIds.push(path[i].id);
+      if (contributesMessage(path[i])) entryIds.push(path[i].id);
     }
     for (let i = compactionIdx + 1; i < path.length; i++) {
-      if (path[i].type === "message") entryIds.push(path[i].id);
+      if (contributesMessage(path[i])) entryIds.push(path[i].id);
     }
   } else {
     for (const e of path) {
-      if (e.type === "message") entryIds.push(e.id);
+      if (contributesMessage(e)) entryIds.push(e.id);
     }
   }
 
@@ -341,6 +354,4 @@ export function getLeafId(entries: SessionEntry[]): string | null {
   if (entries.length === 0) return null;
   return entries[entries.length - 1].id;
 }
-
-
 

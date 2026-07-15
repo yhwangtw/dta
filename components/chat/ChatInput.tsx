@@ -36,6 +36,9 @@ interface Props {
   onAbortCompaction?: () => void;
   isCompacting?: boolean;
   compactError?: string | null;
+  autoCompactionEnabled?: boolean | null;
+  autoCompactionUpdating?: boolean;
+  onAutoCompactionChange?: (enabled: boolean) => void;
   toolPreset?: "none" | "default" | "full";
   onToolPresetChange?: (preset: "none" | "default" | "full") => void;
   thinkingLevel?: "auto" | "off" | "minimal" | "low" | "medium" | "high" | "xhigh";
@@ -83,7 +86,7 @@ export interface ChatInputHandle {
 
 export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
   onSend, onAbort, onSteer, onFollowUp, isStreaming, model, modelNames, modelList, onModelChange,
-  onCompact, onAbortCompaction, isCompacting, compactError, toolPreset, onToolPresetChange,
+  onCompact, onAbortCompaction, isCompacting, compactError, autoCompactionEnabled, autoCompactionUpdating, onAutoCompactionChange, toolPreset, onToolPresetChange,
   thinkingLevel, onThinkingLevelChange, availableThinkingLevels, thinkingLevelMap,
   retryInfo,
   soundEnabled, onSoundToggle,
@@ -778,27 +781,42 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
             />
 
             {!isStreaming && onCompact && (
-              <div className={styles.compactWrapper}>
-                {compactError && (
-                  <div className={styles.compactErrorTooltip}>
-                    {compactError}
-                  </div>
+              <div className={styles.compactControls}>
+                {autoCompactionEnabled !== null && autoCompactionEnabled !== undefined && onAutoCompactionChange && (
+                  <button
+                    type="button"
+                    onClick={() => onAutoCompactionChange(!autoCompactionEnabled)}
+                    disabled={isCompacting || autoCompactionUpdating}
+                    aria-label={`${t("chat.autoCompact")} ${autoCompactionEnabled ? t("chat.on") : t("chat.off")}`}
+                    aria-pressed={autoCompactionEnabled}
+                    title={autoCompactionEnabled ? t("chat.autoCompactOnTitle") : t("chat.autoCompactOffTitle")}
+                    className={autoCompactionEnabled ? styles.autoCompactButtonOn : styles.autoCompactButtonOff}
+                  >
+                    <span className={styles.autoCompactDot} aria-hidden />
+                    {t("chat.autoCompactShort")}
+                  </button>
                 )}
-                <button
-                  onClick={isCompacting ? onAbortCompaction : onCompact}
-                  disabled={isStreaming && !isCompacting}
-                  className={isCompacting ? styles.compactButtonCompacting : (isStreaming && !isCompacting) ? styles.compactButtonDisabled : styles.compactButtonIdle}
-                  title={isCompacting ? "停止压缩" : "压缩上下文"}
-                >
-                  {isCompacting ? (
-                    <><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect x="2" y="2" width="6" height="6" rx="1" fill="currentColor" /></svg>Compacting…</>
-                  ) : (
-                    <><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="4 14 10 14 10 20" /><polyline points="20 10 14 10 14 4" />
-                      <line x1="10" y1="14" x2="3" y2="21" /><line x1="21" y1="3" x2="14" y2="10" />
-                    </svg>Compact</>
+                <div className={styles.compactWrapper}>
+                  {compactError && (
+                    <div className={styles.compactErrorTooltip}>
+                      {compactError}
+                    </div>
                   )}
-                </button>
+                  <button
+                    onClick={isCompacting ? onAbortCompaction : onCompact}
+                    className={isCompacting ? styles.compactButtonCompacting : styles.compactButtonIdle}
+                    title={isCompacting ? t("chat.stopCompaction") : t("chat.compactTitle")}
+                  >
+                    {isCompacting ? (
+                      <><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect x="2" y="2" width="6" height="6" rx="1" fill="currentColor" /></svg>{t("chat.compacting")}</>
+                    ) : (
+                      <><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="4 14 10 14 10 20" /><polyline points="20 10 14 10 14 4" />
+                        <line x1="10" y1="14" x2="3" y2="21" /><line x1="21" y1="3" x2="14" y2="10" />
+                      </svg>{t("chat.compactNow")}</>
+                    )}
+                  </button>
+                </div>
               </div>
             )}
 

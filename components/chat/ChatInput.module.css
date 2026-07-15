@@ -268,8 +268,52 @@
 }
 
 /* Compact section */
+.compactControls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
 .compactWrapper {
   position: relative;
+}
+
+.autoCompactButton {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.autoCompactButtonOn {
+  composes: autoCompactButton;
+  background: var(--color-accent-bg-subtle);
+  border-color: var(--color-accent-border-subtle);
+  color: var(--accent);
+}
+
+.autoCompactButtonOff {
+  composes: autoCompactButton;
+  background: none;
+  color: var(--text-dim);
+}
+
+.autoCompactButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.autoCompactDot {
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: currentColor;
 }
 
 .compactErrorTooltip {

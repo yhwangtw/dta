@@ -49,13 +49,10 @@ echo -e "  ${GREEN}✅ npm $(npm --version)${NC}"
 # ── 安裝依賴 ──────────────────────────────────────────
 echo ""
 echo -e "${BOLD}📦 安裝依賴...${NC}"
-if [ ! -d "node_modules" ]; then
-  npm install
-  echo -e "  ${GREEN}✅ 依賴安裝完成${NC}"
-else
-  echo -e "  ${YELLOW}⏭️  node_modules 已存在，跳過安裝${NC}"
-  echo -e "  ${YELLOW}   如需同步依賴：npm install${NC}"
-fi
+# `node_modules` existing does not mean it matches package-lock.json. Always
+# reconcile it so upgrades (especially Pi runtime fixes) are not silently skipped.
+npm install
+echo -e "  ${GREEN}✅ 依賴已與 package-lock.json 同步${NC}"
 
 # ── 檢查 Pi Agent ─────────────────────────────────────
 echo ""

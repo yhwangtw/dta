@@ -178,13 +178,13 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
     loading, error, messages, entryIds, streamState,
     agentRunning, modelNames, modelList, modelThinkingLevels, modelThinkingLevelMaps, toolPreset, thinkingLevel,
     retryInfo, contextUsage, forkingEntryId,
-    isCompacting, compactError, displayModel: displayModelValue, sessionStats,
+    isCompacting, compactError, autoCompactionEnabled, autoCompactionUpdating, displayModel: displayModelValue, sessionStats,
     agentPhase, agentStartedAt, queuedFollowUps, bashRun, stalledSecs,
     isNew,
     messagesEndRef, scrollContainerRef,
     lastUserMsgRef,
     handleSend, handleAbort, handleFork, handleNavigate, handleModelChange,
-    handleCompact, handleSteer, handleFollowUp, handleAbortCompaction,
+    handleCompact, handleAutoCompactionChange, handleSteer, handleFollowUp, handleAbortCompaction,
     handleToolPresetChange, handleThinkingLevelChange, handleClearQueue, handleRemoveQueued, handleRetry, handleEditRerun, handleAbortBash, handleAgentEventRef,
   } = useAgentSession({
     session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked,
@@ -624,10 +624,13 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
       modelNames={modelNames}
       modelList={modelList}
       onModelChange={handleModelChange}
-      onCompact={session || isNew ? handleCompact : undefined}
+      onCompact={session ? handleCompact : undefined}
       onAbortCompaction={handleAbortCompaction}
       isCompacting={isCompacting}
       compactError={compactError}
+      autoCompactionEnabled={session ? autoCompactionEnabled : null}
+      autoCompactionUpdating={autoCompactionUpdating}
+      onAutoCompactionChange={session ? handleAutoCompactionChange : undefined}
       toolPreset={toolPreset}
       onToolPresetChange={session || isNew ? handleToolPresetChange : undefined}
       thinkingLevel={thinkingLevel}

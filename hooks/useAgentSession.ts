@@ -8,14 +8,28 @@ import { showToast } from "@/hooks/useToast";
 import { translate } from "@/lib/i18n";
 import { setIdleTitle, setRunningTitle, setDoneTitle, setErrorTitle, notifyDone, requestNotifyPermission } from "@/lib/attention";
 import type { ToolEntry } from "@/components/modals/ToolPanel";
-import type { SessionData, AgentEvent, AgentPhase, UseAgentSessionOptions, ThinkingLevelOption, ChatInputHandle, AttachedImage } from "./use-agent-session-types";
-import { streamReducer, getRunError, computeSessionStats } from "./use-agent-session-types";
+import type { SessionData, AgentEvent, AgentPhase, UseAgentSessionOptions, ThinkingLevelOption, ChatInputHandle, AttachedImage, CompactResult } from "./use-agent-session-types";
+import { streamReducer, getRunError, computeSessionStats, isCompactionCancellation } from "./use-agent-session-types";
 import { useAgentEvents, useStallWatchdog } from "./use-agent-connection";
 import { useTranscriptScroll } from "./use-transcript-scroll";
 import { shouldResyncOnVisible } from "@/lib/wake-resync";
 import { useModelCatalog } from "./use-model-catalog";
 
 export type { SessionData, AgentPhase, ThinkingLevelOption, ChatInputHandle, AttachedImage };
+
+interface LiveAgentState {
+  isStreaming?: boolean;
+  isCompacting?: boolean;
+  autoCompactionEnabled?: boolean;
+  contextUsage?: { percent: number | null; contextWindow: number; tokens: number | null } | null;
+  systemPrompt?: string;
+  thinkingLevel?: string;
+}
+
+interface AgentStateEnvelope {
+  running: boolean;
+  state?: LiveAgentState;
+}
 
 export function useAgentSession(opts: UseAgentSessionOptions) {
   const {
@@ -43,6 +57,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const [pendingModel, setPendingModel] = useState<{ provider: string; modelId: string } | null>(null);
   const [isCompacting, setIsCompacting] = useState(false);
   const [compactError, setCompactError] = useState<string | null>(null);
+  const [autoCompactionEnabled, setAutoCompactionEnabled] = useState<boolean | null>(null);
+  const [autoCompactionUpdating, setAutoCompactionUpdating] = useState(false);
   const [agentPhase, setAgentPhase] = useState<AgentPhase>(null);
   const [agentStartedAt, setAgentStartedAt] = useState<number | null>(null);
   const [queuedFollowUps, setQueuedFollowUps] = useState<string[]>([]);
@@ -94,13 +110,17 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         return null;
       }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const d = await res.json() as SessionData & { agentState?: { running: boolean; state?: { isStreaming?: boolean; isCompacting?: boolean; contextUsage?: { percent: number | null; contextWindow: number; tokens: number | null } | null; systemPrompt?: string; thinkingLevel?: string } } };
+      const d = await res.json() as SessionData & { agentState?: AgentStateEnvelope };
       setData(d);
       const info = (d as { info?: { name?: string } }).info;
       if (info?.name) sessionNameRef.current = info.name;
       setActiveLeafId(d.leafId);
       setMessages(d.context.messages);
       setEntryIds(d.context.entryIds ?? []);
+      if (d.compactionSettings) setAutoCompactionEnabled(d.compactionSettings.enabled);
+      if (d.agentState?.state?.autoCompactionEnabled !== undefined) {
+        setAutoCompactionEnabled(d.agentState.state.autoCompactionEnabled);
+      }
       setCurrentModelOverride(null);
       setError(null);
       // If no live agent state, fall back to thinking level from session file
@@ -298,9 +318,28 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       case "compaction_end":
         setIsCompacting(false);
         if (event.errorMessage) {
-          setCompactError(event.errorMessage as string);
+          const message = event.errorMessage as string;
+          setCompactError(message);
+          if (event.reason !== "manual") {
+            showToast(`${translate("toast.compactFailed")}: ${message}`, { type: "error", duration: 8000 });
+          }
         } else if (!event.aborted) {
-          if (sessionIdRef.current) loadSession(sessionIdRef.current);
+          if (sessionIdRef.current) {
+            loadSession(sessionIdRef.current, false, true).then((agentState) => {
+              if (agentState?.state?.contextUsage !== undefined) {
+                setContextUsage(agentState.state.contextUsage ?? null);
+              }
+            });
+          }
+          if (event.reason !== "manual") {
+            const result = event.result as Partial<CompactResult> | undefined;
+            const message = result && Number.isFinite(result.tokensBefore) && Number.isFinite(result.estimatedTokensAfter)
+              ? translate("toast.compactDoneWithTokens")
+                  .replace("{before}", Number(result.tokensBefore).toLocaleString())
+                  .replace("{after}", Number(result.estimatedTokensAfter).toLocaleString())
+              : translate("toast.compactDone");
+            showToast(message, { type: "success", duration: 6000 });
+          }
         }
         break;
     }
@@ -499,14 +538,48 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     setIsCompacting(true);
     setCompactError(null);
     try {
-      await sendAgentCommand(sid, { type: "compact" });
-      await loadSession(sid, true);
+      const result = await sendAgentCommand<CompactResult>(sid, { type: "compact" });
+      const agentState = await loadSession(sid, true, true);
+      if (agentState?.state?.contextUsage !== undefined) {
+        setContextUsage(agentState.state.contextUsage ?? null);
+      }
+      const message = Number.isFinite(result?.tokensBefore) && Number.isFinite(result?.estimatedTokensAfter)
+        ? translate("toast.compactDoneWithTokens")
+            .replace("{before}", Number(result.tokensBefore).toLocaleString())
+            .replace("{after}", Number(result.estimatedTokensAfter).toLocaleString())
+        : translate("toast.compactDone");
+      showToast(message, { type: "success", duration: 6000 });
     } catch (e) {
-      setCompactError(e instanceof Error ? e.message : String(e));
+      const message = e instanceof Error ? e.message : String(e);
+      if (isCompactionCancellation(e)) {
+        setCompactError(null);
+        showToast(translate("toast.compactCancelled"), { type: "info" });
+        return;
+      }
+      setCompactError(message);
+      showToast(`${translate("toast.compactFailed")}: ${message}`, { type: "error", duration: 8000 });
     } finally {
       setIsCompacting(false);
     }
   }, [isCompacting, loadSession]);
+
+  const handleAutoCompactionChange = useCallback(async (enabled: boolean) => {
+    const sid = sessionIdRef.current;
+    if (!sid || autoCompactionUpdating) return;
+    const previous = autoCompactionEnabled;
+    setAutoCompactionUpdating(true);
+    setAutoCompactionEnabled(enabled);
+    try {
+      await sendAgentCommand(sid, { type: "set_auto_compaction", enabled });
+      showToast(translate(enabled ? "toast.autoCompactOn" : "toast.autoCompactOff"), { type: "success" });
+    } catch (e) {
+      setAutoCompactionEnabled(previous);
+      const message = e instanceof Error ? e.message : String(e);
+      showToast(`${translate("toast.autoCompactFailed")}: ${message}`, { type: "error", duration: 8000 });
+    } finally {
+      setAutoCompactionUpdating(false);
+    }
+  }, [autoCompactionEnabled, autoCompactionUpdating]);
 
   const handleSteer = useCallback(async (message: string, images?: AttachedImage[]) => {
     const sid = sessionIdRef.current;
@@ -677,6 +750,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         }
         if (agentState?.state) {
           if (agentState.state.isCompacting !== undefined) setIsCompacting(agentState.state.isCompacting);
+          if (agentState.state.autoCompactionEnabled !== undefined) setAutoCompactionEnabled(agentState.state.autoCompactionEnabled);
           if (agentState.state.contextUsage !== undefined) setContextUsage(agentState.state.contextUsage ?? null);
           if (agentState.state.systemPrompt !== undefined) setSystemPrompt(agentState.state.systemPrompt ?? null);
           if (agentState.state.thinkingLevel !== undefined) setThinkingLevel((agentState.state.thinkingLevel as ThinkingLevelOption) ?? "auto");
@@ -703,6 +777,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         if (agentState.state.contextUsage !== undefined) setContextUsage(agentState.state.contextUsage ?? null);
         if (agentState.state.systemPrompt !== undefined) setSystemPrompt(agentState.state.systemPrompt ?? null);
         if (agentState.state.isCompacting !== undefined) setIsCompacting(agentState.state.isCompacting);
+        if (agentState.state.autoCompactionEnabled !== undefined) setAutoCompactionEnabled(agentState.state.autoCompactionEnabled);
       }
       if (agentState?.running && agentState.state?.isStreaming) {
         setAgentRunning(true);
@@ -744,10 +819,10 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     onBranchDataChange(data?.tree ?? [], activeLeafId, handleLeafChange);
   }, [data?.tree, activeLeafId, handleLeafChange, onBranchDataChange]);
 
-  // Compact error auto-dismiss
+  // Keep the inline error around long enough to read; the toast mirrors it.
   useEffect(() => {
     if (!compactError) return;
-    const t = setTimeout(() => setCompactError(null), 3000);
+    const t = setTimeout(() => setCompactError(null), 8000);
     return () => clearTimeout(t);
   }, [compactError]);
 
@@ -756,7 +831,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     data, loading, error, activeLeafId, messages, entryIds, streamState,
     agentRunning, modelNames, modelList, modelThinkingLevels, modelThinkingLevelMaps, newSessionModel, toolPreset, thinkingLevel,
     retryInfo, contextUsage, systemPrompt, forkingEntryId,
-    isCompacting, compactError, currentModel, displayModel, sessionStats,
+    isCompacting, compactError, autoCompactionEnabled, autoCompactionUpdating, currentModel, displayModel, sessionStats,
     agentPhase, agentStartedAt, queuedFollowUps, bashRun, stalledSecs,
     isNew,
     // Refs
@@ -764,7 +839,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     lastUserMsgRef, pendingScrollToUserRef, initialScrollDoneRef,
     // Actions
     handleSend, handleAbort, handleFork, handleNavigate, handleModelChange,
-    handleCompact, handleSteer, handleFollowUp, handleAbortCompaction,
+    handleCompact, handleAutoCompactionChange, handleSteer, handleFollowUp, handleAbortCompaction,
     handleToolPresetChange, handleThinkingLevelChange, handleClearQueue, handleRemoveQueued, handleRetry, handleEditRerun, handleAbortBash, loadTools, setActiveLeafId, setData, setMessages,
     dispatch, setAgentRunning, setForkingEntryId,
     // Subscriptions

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getRunError } from "../use-agent-session-types";
+import { getRunError, isCompactionCancellation } from "../use-agent-session-types";
 
 describe("getRunError", () => {
   it("ignores non-agent_end events", () => {
@@ -47,5 +47,13 @@ describe("getRunError", () => {
         { role: "toolResult" },
       ],
     })).toBe("boom");
+  });
+});
+
+describe("isCompactionCancellation", () => {
+  it("recognizes Pi cancellation responses without hiding real failures", () => {
+    expect(isCompactionCancellation("Error: Compaction cancelled")).toBe(true);
+    expect(isCompactionCancellation(new Error("request aborted"))).toBe(true);
+    expect(isCompactionCancellation("Nothing to compact (session too small)")).toBe(false);
   });
 });

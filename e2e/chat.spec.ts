@@ -14,6 +14,28 @@ async function openMain(page: Page) {
 }
 
 test.describe("chat transcript", () => {
+  test("offers Compact only after a session has been persisted", async ({ page }) => {
+    await openMain(page);
+    await expect(page.getByRole("button", { name: "Compact", exact: true })).toBeVisible();
+
+    await page.getByRole("button", { name: "New", exact: true }).click();
+    await expect(page.locator("textarea").first()).toBeVisible();
+    await expect(page.getByRole("button", { name: "Compact", exact: true })).toHaveCount(0);
+  });
+
+  test("shows and persists the Auto compact setting for a saved session", async ({ page }) => {
+    await openMain(page);
+    const toggle = page.getByRole("button", { name: /Auto compact/ });
+    await expect(toggle).toHaveAttribute("aria-pressed", "true");
+
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-pressed", "false");
+
+    // Restore the fixture default so later specs are isolated.
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-pressed", "true");
+  });
+
   test("long history collapses behind a preview; latest turn stays expanded", async ({ page }) => {
     await openMain(page);
     const expand = page.getByRole("button", { name: /Show full message/ });

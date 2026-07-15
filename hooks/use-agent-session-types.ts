@@ -13,6 +13,11 @@ export interface SessionData {
     thinkingLevel: string;
     model: { provider: string; modelId: string } | null;
   };
+  compactionSettings?: {
+    enabled: boolean;
+    reserveTokens: number;
+    keepRecentTokens: number;
+  };
 }
 
 export interface StreamingState {
@@ -71,6 +76,19 @@ export type AgentPhase =
 export interface SessionStats {
   tokens: { input: number; output: number; cacheRead: number; cacheWrite: number };
   cost: number;
+}
+
+export interface CompactResult {
+  summary: string;
+  firstKeptEntryId: string;
+  tokensBefore: number;
+  estimatedTokensAfter: number;
+  details?: unknown;
+}
+
+export function isCompactionCancellation(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /compaction (?:cancelled|canceled)|aborted/i.test(message);
 }
 
 /** Sum token usage and cost across all assistant messages; null when empty. */

@@ -309,7 +309,13 @@ Issue と pull request を歓迎します。
 
 ## リリース
 
-`v*` に一致する tag は GitHub Release workflow を起動し、release notes と GitHub Release を作成します。このワークフローは **npm へ公開しません**。
+PR の CI が通過してマージされたら、次の高速リリースフローを使用します。
+
+```bash
+gh workflow run release.yml -f tag=vYYYY.MM.DD
+```
+
+1 つの workflow が `package.json` と `package-lock.json` を更新し、release commit と annotated tag を作成してから GitHub Release を公開します。認証済みの push で新たな CI は起動しません。バージョン更新済みの `v*` tag を push する従来の方法も利用できます。この workflow は **npm へ公開しません**。
 
 ## ライセンス
 

@@ -20,6 +20,13 @@ postinstall downloads browser binaries and would break offline/Nexus
 tsconfig/eslint for the same reason.  
 **Never run `next build` while the dev server is running** — pollutes `.next/` and breaks `npm run dev`.
 
+Release: after PR CI passes and the PR is merged, run
+`gh workflow run release.yml -f tag=vYYYY.MM.DD`. The workflow updates both
+package version files, creates the `[skip ci]` release commit and annotated tag,
+and publishes the GitHub Release in one run. Do not manually create a version
+commit or wait for duplicate main/version CI runs. A pre-versioned `v*` tag push
+remains a compatibility path. There is no npm publish step.
+
 E2E traps: transcript text offscreen is `content-visibility`-skipped and
 Playwright calls it *hidden* — anchor on sidebar text or use `toBeAttached`,
 scroll before visibility asserts. UI strings use the ellipsis character

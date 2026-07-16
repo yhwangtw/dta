@@ -309,7 +309,13 @@ Compaction 會加入摘要並保留最近的訊息尾端，不會從 `.jsonl` �
 
 ## 發布
 
-符合 `v*` 的 tag 會觸發 GitHub Release workflow，自動產生 release notes 並建立 GitHub Release。這個流程**不會發布至 npm**。
+PR 通過 CI 並合併後，使用快速發版流程：
+
+```bash
+gh workflow run release.yml -f tag=vYYYY.MM.DD
+```
+
+單一 workflow 會更新 `package.json` 與 `package-lock.json`、建立 release commit 與 annotated tag，接著發布 GitHub Release；它的驗證推送不會再啟動一輪 CI。既有的 `v*` tag 推送方式仍可使用。這個流程**不會發布至 npm**。
 
 ## 授權
 

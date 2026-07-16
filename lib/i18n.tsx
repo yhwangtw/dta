@@ -13,7 +13,7 @@ export type Locale = "en" | "zh";
 const MESSAGES = {
   // ── Top bar ──
   "topbar.search": { en: "Search…", zh: "搜尋…" },
-  "topbar.searchTitle": { en: "Search sessions, tags, files, or run a command (⌘K)", zh: "搜尋 session、標籤、檔案,或執行指令 (⌘K)" },
+  "topbar.searchTitle": { en: "Command palette (⌘K)", zh: "命令面板 (⌘K)" },
   "topbar.hideSidebar": { en: "Hide sidebar", zh: "隱藏側欄" },
   "topbar.showSidebar": { en: "Show sidebar", zh: "顯示側欄" },
   "topbar.lightMode": { en: "Switch to light mode", zh: "切換為淺色模式" },

@@ -397,6 +397,7 @@ export function AppShell() {
           parallelSessionIds={state.parallelSessions.map((s) => s.id)}
           activeTagFilter={activeTagFilter}
           onSelectTagFilter={setActiveTagFilter}
+          showExplorer={false}
         />
       ) : panelView === "files" ? (
         <FilesPanel

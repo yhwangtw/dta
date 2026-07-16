@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# tGD-pi-web — 一鍵安裝 + 啟動
+# tGD-pi-web — 一鍵安裝 + Production 啟動
 # 需要：Node.js 22+
 #
 set -e
@@ -102,8 +102,14 @@ echo -e "${BOLD}🔍 驗證...${NC}"
 if node_modules/.bin/tsc --noEmit 2>/dev/null; then
   echo -e "  ${GREEN}✅ TypeScript 編譯通過${NC}"
 else
-  echo -e "  ${YELLOW}⚠️  TypeScript 有警告（不影響運行）${NC}"
+  echo -e "  ${YELLOW}⚠️  TypeScript 檢查未通過，Production build 將顯示完整錯誤${NC}"
 fi
+
+# ── Production build ─────────────────────────────────
+echo ""
+echo -e "${BOLD}🏗️  建置 Production...${NC}"
+npm run build
+echo -e "  ${GREEN}✅ Production build 完成${NC}"
 
 # ── 啟動 ──────────────────────────────────────────────
 echo ""
@@ -111,16 +117,16 @@ echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━
 echo -e "${GREEN}${BOLD}✅ 安裝完成！${NC}"
 echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
-echo -e "  啟動開發模式：  ${BOLD}npm run dev${NC}"
-echo -e "  啟動生產模式：  ${BOLD}先停止 dev，再執行 npm run build && npm start${NC}"
-echo -e "  更新專案依賴：  ${BOLD}git pull && npm install${NC}"
+echo -e "  啟動 Production：${BOLD}npm start${NC}"
+echo -e "  重新建置：       ${BOLD}npm run build${NC}"
+echo -e "  更新並重新建置： ${BOLD}git pull && npm install && npm run build${NC}"
 echo ""
 echo -e "  預設埠號：      ${BOLD}30141${NC}"
 echo ""
 
 # ── 詢問是否立即啟動 ──────────────────────────────────
 if [ -t 0 ]; then
-  read -p "$(echo -e ${CYAN}是否立即啟動開發伺服器？[Y/n]${NC} )" choice
+  read -p "$(echo -e ${CYAN}是否立即啟動 Production 伺服器？[Y/n]${NC} )" choice
   case "$choice" in
     n|N)
       echo "bye 👋"
@@ -128,11 +134,11 @@ if [ -t 0 ]; then
       ;;
     *)
       echo ""
-      echo -e "${CYAN}啟動中...${NC}"
+      echo -e "${CYAN}啟動 Production...${NC}"
       echo -e "  打開 http://localhost:30141"
       echo -e "  Ctrl+C 停止"
       echo ""
-      exec npm run dev
+      exec npm start
       ;;
   esac
 fi

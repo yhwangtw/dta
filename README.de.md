@@ -62,13 +62,14 @@ cd tGD-pi-web
 bash setup.sh
 ```
 
-Das Setup-Skript prüft Node.js und npm, installiert Abhängigkeiten, validiert das Pi-Agentenverzeichnis und kann den Entwicklungsserver starten. Es verändert keine Dateien außerhalb dieses Repositorys.
+Das Setup-Skript prüft Node.js und npm, installiert Abhängigkeiten, validiert das Pi-Agentenverzeichnis, erstellt einen Production-Build und kann den Production-Server starten. Es verändert keine Dateien außerhalb dieses Repositorys.
 
 Manuelle Einrichtung:
 
 ```bash
 npm install
-npm run dev
+npm run build
+npm start
 ```
 
 Öffne [http://localhost:30141](http://localhost:30141).
@@ -78,7 +79,8 @@ npm run dev
 ```bash
 git pull
 npm install
-npm run dev
+npm run build
+npm start
 ```
 
 ## tGD-Workflow im Browser
@@ -191,8 +193,8 @@ Setze `TGD_DIR`, wenn das Artefaktverzeichnis an einem anderen Ort liegt.
 
 | Befehl | Zweck |
 |---|---|
-| `bash setup.sh` | Lokale Umgebung prüfen und Abhängigkeiten installieren |
-| `npm run dev` | Entwicklung auf Port `30141` starten |
+| `bash setup.sh` | Umgebung prüfen, Abhängigkeiten installieren und Production-Build erstellen |
+| `npm run dev` | Optional den Entwicklungsserver auf Port `30141` starten |
 | `node_modules/.bin/tsc --noEmit` | Typecheck |
 | `npx eslint .` | Lint |
 | `npm test` | Vitest Unit Tests ausführen |

@@ -62,13 +62,14 @@ cd tGD-pi-web
 bash setup.sh
 ```
 
-The setup script checks Node.js and npm, installs dependencies, verifies the Pi agent directory, and can start the development server. It does not modify files outside this repository.
+The setup script checks Node.js and npm, installs dependencies, verifies the Pi agent directory, creates a production build, and can start the production server. It does not modify files outside this repository.
 
 Manual setup:
 
 ```bash
 npm install
-npm run dev
+npm run build
+npm start
 ```
 
 Open [http://localhost:30141](http://localhost:30141).
@@ -78,7 +79,8 @@ Open [http://localhost:30141](http://localhost:30141).
 ```bash
 git pull
 npm install
-npm run dev
+npm run build
+npm start
 ```
 
 ## tGD Workflow in the Browser
@@ -191,8 +193,8 @@ Set `TGD_DIR` when your artifact directory lives elsewhere.
 
 | Command | Purpose |
 |---|---|
-| `bash setup.sh` | Validate the local environment and install dependencies |
-| `npm run dev` | Start development on port `30141` |
+| `bash setup.sh` | Validate the environment, install dependencies, and build production |
+| `npm run dev` | Optionally start the development server on port `30141` |
 | `node_modules/.bin/tsc --noEmit` | Typecheck |
 | `npx eslint .` | Lint |
 | `npm test` | Run Vitest unit tests |

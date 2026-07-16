@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
-import { buildSessionContext, buildTree, getLeafId, getSessionEntries } from "../session-reader";
+import { buildSessionContext, buildTree, getLeafId, getSessionEntries, readSessionCwd } from "../session-reader";
 import type { SessionEntry } from "../types";
 
 // Helper to create a minimal SessionEntry
@@ -157,6 +157,26 @@ describe("getSessionEntries", () => {
 
       expect(entries).toHaveLength(1);
       expect(entries[0].id).toBeTruthy();
+      expect(readFileSync(file, "utf8")).toBe(original);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("readSessionCwd", () => {
+  it("reads the session header without rewriting the source JSONL", () => {
+    const dir = mkdtempSync(join(tmpdir(), "pi-session-cwd-"));
+    const file = join(dir, "session.jsonl");
+    const original = [
+      JSON.stringify({ type: "session", version: 3, id: "session-id", timestamp: "2026-01-01T00:00:00Z", cwd: "/tmp/project" }),
+      "{invalid trailing line",
+      "",
+    ].join("\n");
+    writeFileSync(file, original);
+
+    try {
+      expect(readSessionCwd(file)).toBe("/tmp/project");
       expect(readFileSync(file, "utf8")).toBe(original);
     } finally {
       rmSync(dir, { recursive: true, force: true });

@@ -29,17 +29,21 @@ export function useModelCatalog(
 
   useEffect(() => {
     if (!sessionId && !cwd) return;
+    let cancelled = false;
+    const controller = new AbortController();
     const request = sessionId
-      ? fetch(`/api/models?sessionId=${encodeURIComponent(sessionId)}`)
+      ? fetch(`/api/models?sessionId=${encodeURIComponent(sessionId)}`, { signal: controller.signal })
       : fetch("/api/models", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ cwd }),
+          signal: controller.signal,
         });
     request.then((r) => {
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       return r.json();
     }).then((d: { models: Record<string, string>; modelList?: { id: string; name: string; provider: string }[]; defaultModel?: ModelRef | null; thinkingLevels?: Record<string, string[]>; thinkingLevelMaps?: Record<string, Record<string, string | null>> }) => {
+      if (cancelled) return;
       setModelNames(d.models);
       if (d.thinkingLevels) setModelThinkingLevels(d.thinkingLevels);
       if (d.thinkingLevelMaps) setModelThinkingLevelMaps(d.thinkingLevelMaps);
@@ -55,6 +59,10 @@ export function useModelCatalog(
         }
       }
     }).catch(() => {});
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
   }, [isNew, modelsRefreshKey, setNewSessionModel, sessionId, cwd]);
 
   return { modelNames, modelList, modelThinkingLevels, modelThinkingLevelMaps, newSessionModel, setNewSessionModel };

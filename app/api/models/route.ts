@@ -63,11 +63,10 @@ async function catalogResponse(sessionId: string | null, cwd: string): Promise<R
 async function storedSessionCwd(sessionId: string): Promise<string | null> {
   const active = getRpcSession(sessionId);
   if (active?.isAlive()) return active.cwd;
-  const { resolveSessionPath } = await import("@/lib/session-reader");
+  const { readSessionCwd, resolveSessionPath } = await import("@/lib/session-reader");
   const filePath = await resolveSessionPath(sessionId);
   if (!filePath) return null;
-  const { SessionManager } = await import("@earendil-works/pi-coding-agent");
-  return SessionManager.open(filePath).getHeader()?.cwd ?? null;
+  return readSessionCwd(filePath);
 }
 
 // GET /api/models?sessionId=

@@ -30,6 +30,7 @@ describe("AgentSessionWrapper compact command", () => {
         getCompactionSettings: () => ({ enabled: true, reserveTokens: 16_384, keepRecentTokens: 20_000 }),
       },
       compact,
+      dispose: vi.fn(),
     } as unknown as AgentSessionLike;
     const wrapper = new AgentSessionWrapper(inner);
 

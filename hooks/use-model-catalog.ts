@@ -17,6 +17,8 @@ export function useModelCatalog(
   isNew: boolean,
   modelsRefreshKey: number | undefined,
   overrideSetNewSessionModel?: (model: ModelRef | null) => void,
+  sessionId?: string | null,
+  cwd?: string | null,
 ) {
   const [modelNames, setModelNames] = useState<Record<string, string>>({});
   const [modelList, setModelList] = useState<{ id: string; name: string; provider: string }[]>([]);
@@ -26,7 +28,14 @@ export function useModelCatalog(
   const setNewSessionModel = overrideSetNewSessionModel ?? setNewSessionModelState;
 
   useEffect(() => {
-    fetch("/api/models").then((r) => r.json()).then((d: { models: Record<string, string>; modelList?: { id: string; name: string; provider: string }[]; defaultModel?: ModelRef | null; thinkingLevels?: Record<string, string[]>; thinkingLevelMaps?: Record<string, Record<string, string | null>> }) => {
+    const params = new URLSearchParams();
+    if (sessionId) params.set("sessionId", sessionId);
+    if (cwd) params.set("cwd", cwd);
+    const suffix = params.size > 0 ? `?${params.toString()}` : "";
+    fetch(`/api/models${suffix}`).then((r) => {
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json();
+    }).then((d: { models: Record<string, string>; modelList?: { id: string; name: string; provider: string }[]; defaultModel?: ModelRef | null; thinkingLevels?: Record<string, string[]>; thinkingLevelMaps?: Record<string, Record<string, string | null>> }) => {
       setModelNames(d.models);
       if (d.thinkingLevels) setModelThinkingLevels(d.thinkingLevels);
       if (d.thinkingLevelMaps) setModelThinkingLevelMaps(d.thinkingLevelMaps);
@@ -42,7 +51,7 @@ export function useModelCatalog(
         }
       }
     }).catch(() => {});
-  }, [isNew, modelsRefreshKey, setNewSessionModel]);
+  }, [isNew, modelsRefreshKey, setNewSessionModel, sessionId, cwd]);
 
   return { modelNames, modelList, modelThinkingLevels, modelThinkingLevelMaps, newSessionModel, setNewSessionModel };
 }

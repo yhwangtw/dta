@@ -1,5 +1,12 @@
-import type { SessionManager, SettingsManager, AgentSessionEvent } from "@earendil-works/pi-coding-agent";
-import type { ExtensionRunner } from "@earendil-works/pi-coding-agent";
+import type {
+  AgentSessionEvent,
+  ExtensionError,
+  ExtensionRunner,
+  ModelRegistry,
+  ResourceLoader,
+  SessionManager,
+  SettingsManager,
+} from "@earendil-works/pi-coding-agent";
 
 export interface ContextUsage {
   percent: number | null;
@@ -31,7 +38,7 @@ export interface AgentSessionLike {
   readonly autoCompactionEnabled: boolean;
   readonly autoRetryEnabled: boolean;
   readonly model: ModelLike | undefined;
-  readonly modelRegistry: { find: (provider: string, modelId: string) => ModelLike | undefined };
+  readonly modelRegistry: ModelRegistry;
   readonly sessionManager: SessionManager;
   readonly settingsManager: SettingsManager;
   readonly agent: { state?: { systemPrompt?: string; thinkingLevel?: string } };
@@ -58,9 +65,9 @@ export interface AgentSessionLike {
   ): Promise<{ output: string; exitCode: number | undefined; cancelled: boolean; truncated: boolean }>;
   abortBash(): void;
   getContextUsage(): ContextUsage | undefined;
+  bindExtensions(bindings: { mode?: "rpc"; onError?: (error: ExtensionError) => void }): Promise<void>;
+  dispose(): void;
   readonly extensionRunner: ExtensionRunner | undefined;
-  /** Loader that discovered extensions/skills — carries the load errors. */
-  readonly resourceLoader?: {
-    getExtensions(): { errors: Array<{ path: string; error: string }> };
-  };
+  /** Loader that discovered extensions and extension-contributed resources. */
+  readonly resourceLoader?: ResourceLoader;
 }

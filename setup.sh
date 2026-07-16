@@ -19,6 +19,31 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
+# ── 檢查 Next.js workspace root 衝突 ────────────────
+# Next.js searches ancestor directories for lockfiles. A stray lockfile in
+# $HOME can make builds trace the whole home directory and appear to hang.
+ANCESTOR_LOCKFILES="$(
+  parent_dir="$(dirname "$SCRIPT_DIR")"
+  while [ "$parent_dir" != "/" ]; do
+    for lock_name in package-lock.json pnpm-lock.yaml yarn.lock bun.lock bun.lockb; do
+      if [ -f "$parent_dir/$lock_name" ]; then
+        printf '%s\n' "$parent_dir/$lock_name"
+      fi
+    done
+    parent_dir="$(dirname "$parent_dir")"
+  done
+)"
+
+if [ -n "$ANCESTOR_LOCKFILES" ]; then
+  echo ""
+  echo -e "${YELLOW}${BOLD}⚠️  偵測到上層 lockfile：${NC}"
+  while IFS= read -r lockfile; do
+    echo "  $lockfile"
+  done <<< "$ANCESTOR_LOCKFILES"
+  echo -e "  ${GREEN}✅ Next.js workspace root 已固定為 $SCRIPT_DIR${NC}"
+  echo "  setup.sh 不會刪除或修改上層 lockfile。"
+fi
+
 # ── 檢查 Node.js ──────────────────────────────────────
 echo ""
 echo -e "${BOLD}📦 檢查 Node.js...${NC}"

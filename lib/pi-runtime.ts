@@ -5,6 +5,7 @@ import {
   createAgentSessionServices,
   getAgentDir,
   type AgentSessionServices,
+  type ExtensionCommandContextActions,
   type ExtensionError,
   type LoadExtensionsResult,
   type ProviderConfig,
@@ -33,19 +34,28 @@ interface TrackedProvider {
 
 export class ExtensionProviderTracker {
   private readonly providers = new Map<string, TrackedProvider>();
+  private reloadSeen: Set<string> | null = null;
+  private reloadSources: Map<string, Set<string>> | null = null;
 
   constructor(private readonly registry: TrackableModelRegistry) {}
 
   discover(name: string, source: string): void {
+    if (this.reloadSeen) {
+      this.reloadSeen.add(name);
+      const sources = this.reloadSources?.get(name) ?? new Set<string>();
+      sources.add(source);
+      this.reloadSources?.set(name, sources);
+    }
     const existing = this.providers.get(name);
     if (existing) {
-      existing.sources.add(source);
+      if (!this.reloadSeen) existing.sources.add(source);
       return;
     }
     this.providers.set(name, { sources: new Set([source]), status: "registered" });
   }
 
   registered(name: string): void {
+    this.reloadSeen?.add(name);
     const existing = this.providers.get(name) ?? {
       sources: new Set(["<runtime>"]),
       status: "registered" as const,
@@ -56,6 +66,7 @@ export class ExtensionProviderTracker {
   }
 
   failed(name: string, error: unknown): void {
+    this.reloadSeen?.add(name);
     const existing = this.providers.get(name) ?? {
       sources: new Set(["<runtime>"]),
       status: "error" as const,
@@ -67,6 +78,36 @@ export class ExtensionProviderTracker {
 
   unregistered(name: string): void {
     this.providers.delete(name);
+  }
+
+  beginReload(): void {
+    this.reloadSeen = new Set();
+    this.reloadSources = new Map();
+  }
+
+  finishReload(): void {
+    if (!this.reloadSeen) return;
+    const seen = this.reloadSeen;
+    const sources = this.reloadSources ?? new Map<string, Set<string>>();
+    this.reloadSeen = null;
+    this.reloadSources = null;
+
+    for (const [name, tracked] of [...this.providers]) {
+      if (seen.has(name)) {
+        const currentSources = sources.get(name);
+        if (currentSources?.size) tracked.sources = currentSources;
+        if (tracked.status !== "error") continue;
+      }
+      this.registry.unregisterProvider(name);
+      if (seen.has(name) && tracked.status === "error") {
+        this.providers.set(name, tracked);
+      }
+    }
+  }
+
+  abortReload(): void {
+    this.reloadSeen = null;
+    this.reloadSources = null;
   }
 
   snapshot(): ExtensionProviderInfo[] {
@@ -143,11 +184,52 @@ export async function createTrackedAgentServices(cwd: string): Promise<{
 }
 
 export async function bindWebExtensions(
-  session: { bindExtensions(bindings: { mode: "rpc"; onError: (error: ExtensionError) => void }): Promise<void> },
+  session: {
+    bindExtensions(bindings: {
+      mode: "rpc";
+      commandContextActions: ExtensionCommandContextActions;
+      onError: (error: ExtensionError) => void;
+    }): Promise<void>;
+    waitForIdle(): Promise<void>;
+    navigateTree(targetId: string, options?: {
+      summarize?: boolean;
+      customInstructions?: string;
+      replaceInstructions?: boolean;
+      label?: string;
+    }): Promise<{ cancelled: boolean }>;
+    reload(): Promise<void>;
+  },
   onError: (error: ExtensionError) => void,
 ): Promise<void> {
   // SDK hosts must bind extensions after session creation. This emits
   // session_start and resources_discover and installs runtime error handling.
   // Source: https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/sdk.md
-  await session.bindExtensions({ mode: "rpc", onError });
+  const unsupported = (action: string) => async () => {
+    throw new Error(`Extension command action "${action}" is not supported by Pi Web`);
+  };
+  const commandContextActions: ExtensionCommandContextActions = {
+    waitForIdle: () => session.waitForIdle(),
+    navigateTree: (targetId, options) => session.navigateTree(targetId, options),
+    reload: () => session.reload(),
+    newSession: unsupported("newSession"),
+    fork: unsupported("fork"),
+    switchSession: unsupported("switchSession"),
+  };
+  await session.bindExtensions({ mode: "rpc", commandContextActions, onError });
+}
+
+export async function emitWebBeforeFork(
+  runner: {
+    hasHandlers(event: "session_before_fork"): boolean;
+    emit(event: { type: "session_before_fork"; entryId: string; position: "before" }): Promise<{ cancel?: boolean } | undefined>;
+  } | undefined,
+  entryId: string,
+): Promise<boolean> {
+  if (!runner?.hasHandlers("session_before_fork")) return true;
+  const result = await runner.emit({
+    type: "session_before_fork",
+    entryId,
+    position: "before",
+  });
+  return result?.cancel !== true;
 }

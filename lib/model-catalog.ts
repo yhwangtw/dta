@@ -31,6 +31,15 @@ export interface ModelCatalogResponse {
   diagnostics: Array<{ type: string; message: string }>;
 }
 
+export function resolveModelCatalogCwd(options: {
+  method: "GET" | "POST";
+  requestedCwd: string | null;
+  sessionCwd: string | null;
+}): string | null {
+  if (options.method === "POST" && options.requestedCwd) return options.requestedCwd;
+  return options.sessionCwd;
+}
+
 export function buildModelCatalog(
   registry: CatalogRegistryLike,
   settings: CatalogSettingsLike,

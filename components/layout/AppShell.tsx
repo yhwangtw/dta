@@ -865,7 +865,11 @@ export function AppShell() {
       <Suspense fallback={null}><SkillsConfig cwd={(state.activeCwd ?? state.selectedSession?.cwd ?? state.newSessionCwd)!} onClose={() => setSkillsConfigOpen(false)} /></Suspense>
     )}
     {extensionsConfigOpen && (
-      <Suspense fallback={null}><ExtensionsConfig sessionId={state.selectedSession?.id ?? null} onClose={() => setExtensionsConfigOpen(false)} /></Suspense>
+      <Suspense fallback={null}><ExtensionsConfig
+        sessionId={state.selectedSession?.id ?? null}
+        onClose={() => setExtensionsConfigOpen(false)}
+        onReload={() => setModelsRefreshKey((key) => key + 1)}
+      /></Suspense>
     )}
     {analyticsOpen && <Suspense fallback={null}><AnalyticsModal open={analyticsOpen} onClose={() => setAnalyticsOpen(false)} /></Suspense>}
     {appearanceOpen && <AppearancePanel onClose={() => setAppearanceOpen(false)} />}

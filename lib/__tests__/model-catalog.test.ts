@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { buildModelCatalog, resolveModelCatalogSource } from "../model-catalog";
+import { buildModelCatalog, resolveModelCatalogCwd, resolveModelCatalogSource } from "../model-catalog";
 
 const extensionModel = {
   id: "team-fast",
@@ -63,5 +63,26 @@ describe("model catalog", () => {
 
     expect(source).toBe(cwdSource);
     expect(createCwdSource).toHaveBeenCalledWith("/workspace");
+  });
+
+  it("never trusts a cwd supplied to the read-only GET endpoint", () => {
+    expect(resolveModelCatalogCwd({
+      method: "GET",
+      requestedCwd: "/tmp/untrusted",
+      sessionCwd: null,
+    })).toBeNull();
+  });
+
+  it("uses session-owned cwd for GET and explicit cwd for POST", () => {
+    expect(resolveModelCatalogCwd({
+      method: "GET",
+      requestedCwd: "/tmp/untrusted",
+      sessionCwd: "/work/session-project",
+    })).toBe("/work/session-project");
+    expect(resolveModelCatalogCwd({
+      method: "POST",
+      requestedCwd: "/work/new-project",
+      sessionCwd: null,
+    })).toBe("/work/new-project");
   });
 });

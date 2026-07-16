@@ -84,6 +84,10 @@ export interface ExtensionsReport {
   diagnostics: ExtensionDiagnosticInfo[];
   compatibility: {
     providers: ExtensionWebSupport;
+    commands: ExtensionWebSupport;
+    tools: ExtensionWebSupport;
+    flags: ExtensionWebSupport;
+    commandContext: ExtensionWebSupport;
     shortcuts: ExtensionWebSupport;
     events: ExtensionWebSupport;
     renderers: ExtensionWebSupport;
@@ -247,6 +251,10 @@ export function buildExtensionsReport(
     diagnostics,
     compatibility: {
       providers: "supported",
+      commands: "supported",
+      tools: "supported",
+      flags: "supported",
+      commandContext: "partial",
       shortcuts: "unsupported",
       events: "partial",
       renderers: "unsupported",

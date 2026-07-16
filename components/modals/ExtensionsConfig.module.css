@@ -121,6 +121,13 @@
 .diagBadgeWarning { color: var(--color-warning-text-strong, #b45309); }
 
 .section { margin-bottom: 18px; }
+.sectionHeading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.sectionHeading .sectionTitle { margin-bottom: 0; }
 .sectionTitle {
   font-size: 11px;
   font-weight: 700;
@@ -130,6 +137,53 @@
   margin-bottom: 6px;
 }
 .sectionEmpty { font-size: 12px; color: var(--text-dim); }
+
+.supportGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+.supportItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.supportBadge,
+.statusOk,
+.statusError {
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  padding: 1px 6px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+.supportBadge[data-support="supported"],
+.statusOk {
+  color: var(--color-success);
+  border-color: var(--color-success-border);
+  background: var(--color-success-bg);
+}
+.supportBadge[data-support="partial"] {
+  color: var(--color-warning-text);
+  border-color: var(--color-warning-border);
+  background: var(--color-warning-bg);
+}
+.supportBadge[data-support="unsupported"],
+.statusError {
+  color: var(--color-error-text);
+  border-color: var(--color-error-border);
+  background: var(--color-error-bg);
+}
 
 .row {
   display: flex;
@@ -212,3 +266,10 @@
   outline: none;
 }
 .flagInput:focus { border-color: var(--accent); }
+
+@media (max-width: 560px) {
+  .modal { height: 86vh; }
+  .supportGrid { grid-template-columns: 1fr; }
+  .row { align-items: flex-start; flex-wrap: wrap; }
+  .rowSource { margin-left: 0; max-width: 100%; }
+}

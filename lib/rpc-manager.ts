@@ -2,7 +2,7 @@ import { createAgentSessionFromServices, SessionManager, type ExtensionError } f
 import { cacheSessionPath } from "./session-reader";
 import { createSnapshot } from "./git-snapshot";
 import type { AgentSessionLike, ToolInfo } from "./pi-types";
-import { bindWebExtensions, createTrackedAgentServices, type ExtensionProviderTracker } from "./pi-runtime";
+import { bindWebExtensions, createTrackedAgentServices, emitWebBeforeFork, type ExtensionProviderTracker } from "./pi-runtime";
 import type { ExtensionDiagnosticInfo, ExtensionProviderInfo } from "./extensions-info";
 
 // ============================================================================
@@ -15,6 +15,7 @@ export interface AgentEvent {
 }
 
 type EventListener = (event: AgentEvent) => void;
+type SessionShutdownReason = "quit" | "reload" | "new" | "resume" | "fork";
 
 // ============================================================================
 // AgentSessionWrapper
@@ -64,7 +65,7 @@ export class AgentSessionWrapper {
 
   private resetIdleTimer(): void {
     if (this.idleTimer) clearTimeout(this.idleTimer);
-    this.idleTimer = setTimeout(() => this.destroy(), 10 * 60 * 1000);
+    this.idleTimer = setTimeout(() => void this.shutdown("quit"), 10 * 60 * 1000);
   }
 
   onEvent(listener: EventListener): () => void {
@@ -157,6 +158,9 @@ export class AgentSessionWrapper {
 
         const entry = sessionManager.getEntry(entryId);
         if (!entry) throw new Error("Invalid entry ID for forking");
+        if (!(await emitWebBeforeFork(this.inner.extensionRunner, entryId))) {
+          return { cancelled: true };
+        }
 
         const sessionDir = sessionManager.getSessionDir();
         let newSessionFile: string;
@@ -176,7 +180,7 @@ export class AgentSessionWrapper {
 
         const newSessionId = SessionManager.open(newSessionFile, sessionDir).getSessionId();
         cacheSessionPath(newSessionId, newSessionFile);
-        this.destroy();
+        await this.shutdown("fork", newSessionFile);
         return { cancelled: false, newSessionId };
       }
 
@@ -295,6 +299,38 @@ export class AgentSessionWrapper {
     this.unsubscribe?.();
     this.inner.dispose();
     this.onDestroyCallback?.();
+  }
+
+  async shutdown(reason: SessionShutdownReason, targetSessionFile?: string): Promise<void> {
+    if (!this._alive) return;
+    try {
+      await this.inner.extensionRunner?.emit({
+        type: "session_shutdown",
+        reason,
+        ...(targetSessionFile ? { targetSessionFile } : {}),
+      });
+    } catch (error) {
+      this.extensionDiagnostics.push({
+        type: "error",
+        message: `[session_shutdown] ${String(error)}`,
+      });
+    } finally {
+      this.destroy();
+    }
+  }
+
+  async reloadExtensions(): Promise<void> {
+    if (this.inner.isStreaming || this.inner.isCompacting) {
+      throw new Error("Session must be idle before reloading extensions");
+    }
+    this.providerTracker?.beginReload();
+    try {
+      await this.inner.reload();
+      this.providerTracker?.finishReload();
+    } catch (error) {
+      this.providerTracker?.abortReload();
+      throw error;
+    }
   }
 }
 

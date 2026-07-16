@@ -114,7 +114,15 @@ describe("buildExtensionsReport", () => {
     ]));
     expect(r.resources[0]).toMatchObject({ type: "skill", name: "team-review" });
     expect(r.diagnostics).toContainEqual(expect.objectContaining({ message: "[register_provider] invalid model" }));
-    expect(r.compatibility).toMatchObject({ providers: "supported", shortcuts: "unsupported", renderers: "unsupported" });
+    expect(r.compatibility).toMatchObject({
+      providers: "supported",
+      commands: "supported",
+      tools: "supported",
+      flags: "supported",
+      commandContext: "partial",
+      shortcuts: "unsupported",
+      renderers: "unsupported",
+    });
   });
 
   it("collects resources contributed by extensions only", () => {

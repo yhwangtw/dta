@@ -28,11 +28,15 @@ export function useModelCatalog(
   const setNewSessionModel = overrideSetNewSessionModel ?? setNewSessionModelState;
 
   useEffect(() => {
-    const params = new URLSearchParams();
-    if (sessionId) params.set("sessionId", sessionId);
-    if (cwd) params.set("cwd", cwd);
-    const suffix = params.size > 0 ? `?${params.toString()}` : "";
-    fetch(`/api/models${suffix}`).then((r) => {
+    if (!sessionId && !cwd) return;
+    const request = sessionId
+      ? fetch(`/api/models?sessionId=${encodeURIComponent(sessionId)}`)
+      : fetch("/api/models", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ cwd }),
+        });
+    request.then((r) => {
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       return r.json();
     }).then((d: { models: Record<string, string>; modelList?: { id: string; name: string; provider: string }[]; defaultModel?: ModelRef | null; thinkingLevels?: Record<string, string[]>; thinkingLevelMaps?: Record<string, Record<string, string | null>> }) => {

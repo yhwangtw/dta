@@ -46,6 +46,7 @@ export interface AgentSessionLike {
   subscribe(listener: (event: AgentSessionEvent) => void): () => void;
   prompt(text: string, options?: { images?: Array<{ type: "image"; data: string; mimeType: string }> }): Promise<void>;
   abort(): Promise<void>;
+  waitForIdle(): Promise<void>;
   setModel(model: ModelLike): Promise<void>;
   navigateTree(targetId: string, options?: { summarize?: boolean }): Promise<NavigateTreeResult>;
   setThinkingLevel(level: string): void;
@@ -66,6 +67,7 @@ export interface AgentSessionLike {
   abortBash(): void;
   getContextUsage(): ContextUsage | undefined;
   bindExtensions(bindings: { mode?: "rpc"; onError?: (error: ExtensionError) => void }): Promise<void>;
+  reload(options?: { beforeSessionStart?: () => void | Promise<void> }): Promise<void>;
   dispose(): void;
   readonly extensionRunner: ExtensionRunner | undefined;
   /** Loader that discovered extensions and extension-contributed resources. */

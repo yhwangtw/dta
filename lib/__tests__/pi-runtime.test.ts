@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { bindWebExtensions, trackExtensionProviders } from "../pi-runtime";
+import { bindWebExtensions, emitWebBeforeFork, trackExtensionProviders } from "../pi-runtime";
 
 describe("Pi Web runtime integration", () => {
   it("tracks successful and failed extension provider registrations", () => {
@@ -37,14 +37,49 @@ describe("Pi Web runtime integration", () => {
       }),
       expect.objectContaining({ name: "broken", status: "error", error: "invalid provider" }),
     ]));
+
+    tracker.beginReload();
+    tracker.discover("next-ai", "/ext/next-provider.ts");
+    registry.registerProvider("next-ai", { models: [{ id: "next-fast", name: "Next Fast" }] });
+    tracker.finishReload();
+
+    expect(tracker.snapshot().map((provider) => provider.name)).toEqual(["next-ai"]);
+    expect(models.map((model) => model.provider)).toEqual(["next-ai"]);
   });
 
   it("binds the AgentSession extension lifecycle in RPC mode", async () => {
     const bindExtensions = vi.fn().mockResolvedValue(undefined);
+    const waitForIdle = vi.fn().mockResolvedValue(undefined);
+    const navigateTree = vi.fn().mockResolvedValue({ cancelled: false });
+    const reload = vi.fn().mockResolvedValue(undefined);
     const onError = vi.fn();
 
-    await bindWebExtensions({ bindExtensions }, onError);
+    await bindWebExtensions({ bindExtensions, waitForIdle, navigateTree, reload }, onError);
 
-    expect(bindExtensions).toHaveBeenCalledWith(expect.objectContaining({ mode: "rpc", onError }));
+    expect(bindExtensions).toHaveBeenCalledWith(expect.objectContaining({
+      mode: "rpc",
+      onError,
+      commandContextActions: expect.any(Object),
+    }));
+    const bindings = bindExtensions.mock.calls[0][0];
+    await bindings.commandContextActions.waitForIdle();
+    await bindings.commandContextActions.navigateTree("entry-1", { summarize: true });
+    await bindings.commandContextActions.reload();
+    expect(waitForIdle).toHaveBeenCalledOnce();
+    expect(navigateTree).toHaveBeenCalledWith("entry-1", { summarize: true });
+    expect(reload).toHaveBeenCalledOnce();
+    await expect(bindings.commandContextActions.newSession()).rejects.toThrow("not supported by Pi Web");
+  });
+
+  it("lets session_before_fork handlers cancel a Web fork", async () => {
+    const emit = vi.fn().mockResolvedValue({ cancel: true });
+    const runner = { hasHandlers: vi.fn().mockReturnValue(true), emit };
+
+    await expect(emitWebBeforeFork(runner, "entry-1")).resolves.toBe(false);
+    expect(emit).toHaveBeenCalledWith({
+      type: "session_before_fork",
+      entryId: "entry-1",
+      position: "before",
+    });
   });
 });

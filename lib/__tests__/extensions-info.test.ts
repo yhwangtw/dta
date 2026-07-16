@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { buildExtensionsReport, type RunnerLike } from "../extensions-info";
+import {
+  buildExtensionsReport,
+  collectExtensionResources,
+  type ExtensionLoadResultLike,
+  type RunnerLike,
+} from "../extensions-info";
 
 function fakeRunner(overrides: Partial<RunnerLike> = {}): RunnerLike {
   return {
@@ -59,5 +64,85 @@ describe("buildExtensionsReport", () => {
     }));
     expect(r.diagnostics).toHaveLength(2);
     expect(r.diagnostics[0]).toMatchObject({ type: "error", message: "SyntaxError in foo.ts" });
+  });
+
+  it("reports every observable extension registration surface", () => {
+    const loadResult: ExtensionLoadResultLike = {
+      errors: [],
+      extensions: [{
+        path: "/ext/full.ts",
+        handlers: new Map([
+          ["session_start", [() => undefined]],
+          ["tool_call", [() => undefined, () => undefined]],
+        ]),
+        shortcuts: new Map([
+          ["ctrl+g", { shortcut: "ctrl+g", description: "Go", extensionPath: "/ext/full.ts" }],
+        ]),
+        messageRenderers: new Map([["notice", () => ({})]]),
+        entryRenderers: new Map([["checkpoint", () => ({})]]),
+      }],
+    };
+
+    const r = buildExtensionsReport(fakeRunner(), {
+      loadResult,
+      providers: [{
+        name: "team-ai",
+        displayName: "Team AI",
+        status: "registered",
+        modelCount: 2,
+        availableModelCount: 1,
+        modelIds: ["team-fast", "team-large"],
+        sources: ["/ext/full.ts"],
+      }],
+      resources: [
+        { type: "skill", name: "team-review", path: "/ext/skills/review/SKILL.md", source: "extension:full" },
+      ],
+      runtimeDiagnostics: [
+        { type: "error", message: "[register_provider] invalid model", path: "/ext/full.ts" },
+      ],
+    });
+
+    expect(r.providers[0]).toMatchObject({ name: "team-ai", modelCount: 2, availableModelCount: 1 });
+    expect(r.shortcuts[0]).toMatchObject({ shortcut: "ctrl+g", source: "/ext/full.ts" });
+    expect(r.events).toEqual(expect.arrayContaining([
+      expect.objectContaining({ name: "session_start", handlerCount: 1, source: "/ext/full.ts" }),
+      expect.objectContaining({ name: "tool_call", handlerCount: 2, source: "/ext/full.ts" }),
+    ]));
+    expect(r.renderers).toEqual(expect.arrayContaining([
+      expect.objectContaining({ type: "message", customType: "notice" }),
+      expect.objectContaining({ type: "entry", customType: "checkpoint" }),
+    ]));
+    expect(r.resources[0]).toMatchObject({ type: "skill", name: "team-review" });
+    expect(r.diagnostics).toContainEqual(expect.objectContaining({ message: "[register_provider] invalid model" }));
+    expect(r.compatibility).toMatchObject({
+      providers: "supported",
+      commands: "supported",
+      tools: "supported",
+      flags: "supported",
+      commandContext: "partial",
+      shortcuts: "unsupported",
+      renderers: "unsupported",
+    });
+  });
+
+  it("collects resources contributed by extensions only", () => {
+    const resources = collectExtensionResources({
+      getSkills: () => ({ skills: [
+        { name: "ext-skill", filePath: "/ext/skill.md", sourceInfo: { source: "extension:full" } },
+        { name: "user-skill", filePath: "/user/skill.md", sourceInfo: { source: "user" } },
+      ] }),
+      getPrompts: () => ({ prompts: [
+        { name: "ext-prompt", filePath: "/ext/prompt.md", sourceInfo: { source: "extension:full" } },
+      ] }),
+      getThemes: () => ({ themes: [
+        { name: "ext-theme", sourcePath: "/ext/theme.json", sourceInfo: { source: "extension:full" } },
+      ] }),
+    });
+
+    expect(resources.map((r) => `${r.type}:${r.name}`)).toEqual([
+      "skill:ext-skill",
+      "prompt:ext-prompt",
+      "theme:ext-theme",
+    ]);
   });
 });

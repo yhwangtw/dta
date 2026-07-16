@@ -15,6 +15,13 @@ try {
 } catch { /* package not found, use default */ }
 
 const nextConfig: NextConfig = {
+  // Never infer the workspace from lockfiles in parent directories. Without
+  // these roots, a stray ~/package-lock.json can make output tracing scan the
+  // entire home directory and make builds appear to hang.
+  outputFileTracingRoot: __dirname,
+  turbopack: {
+    root: __dirname,
+  },
   // The dev-tools badge floats bottom-left, exactly over the icon rail's
   // bottom buttons (Models/Theme) — disable it.
   devIndicators: false,

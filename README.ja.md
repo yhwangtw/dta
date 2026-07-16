@@ -62,13 +62,14 @@ cd tGD-pi-web
 bash setup.sh
 ```
 
-セットアップスクリプトは Node.js と npm を確認し、依存関係をインストールし、Pi agent ディレクトリを検証します。必要であれば開発サーバーも起動できます。このリポジトリ外のファイルは変更しません。
+セットアップスクリプトは Node.js と npm を確認し、依存関係をインストールし、Pi agent ディレクトリを検証して production build を作成します。必要であれば production server も起動できます。このリポジトリ外のファイルは変更しません。
 
 手動セットアップ：
 
 ```bash
 npm install
-npm run dev
+npm run build
+npm start
 ```
 
 [http://localhost:30141](http://localhost:30141) を開きます。
@@ -78,7 +79,8 @@ npm run dev
 ```bash
 git pull
 npm install
-npm run dev
+npm run build
+npm start
 ```
 
 ## ブラウザ内の tGD ワークフロー
@@ -191,8 +193,8 @@ artifacts が別の場所にある場合は `TGD_DIR` を設定してくださ�
 
 | コマンド | 用途 |
 |---|---|
-| `bash setup.sh` | ローカル環境を検証して依存関係をインストール |
-| `npm run dev` | ポート `30141` で開発サーバーを起動 |
+| `bash setup.sh` | 環境を検証し、依存関係をインストールして production build を作成 |
+| `npm run dev` | 必要に応じてポート `30141` で開発サーバーを起動 |
 | `node_modules/.bin/tsc --noEmit` | Typecheck |
 | `npx eslint .` | Lint |
 | `npm test` | Vitest unit tests を実行 |

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getRpcSession, startRpcSession, type AgentSessionWrapper } from "@/lib/rpc-manager";
-import { buildExtensionsReport } from "@/lib/extensions-info";
+import { buildExtensionsReport, collectExtensionResources } from "@/lib/extensions-info";
 
 export const dynamic = "force-dynamic";
 
@@ -30,11 +30,14 @@ export async function GET(
     if (!session) return NextResponse.json({ error: "Session not found" }, { status: 404 });
     const runner = session.inner.extensionRunner;
     if (!runner) return NextResponse.json({ error: "Extensions not loaded" }, { status: 500 });
-    let loadErrors: Array<{ path: string; error: string }> = [];
-    try {
-      loadErrors = session.inner.resourceLoader?.getExtensions().errors ?? [];
-    } catch { /* loader unavailable — report without load errors */ }
-    return NextResponse.json(buildExtensionsReport(runner, loadErrors));
+    const loader = session.inner.resourceLoader;
+    const loadResult = loader?.getExtensions();
+    return NextResponse.json(buildExtensionsReport(runner, {
+      loadResult,
+      providers: session.getExtensionProviders(),
+      resources: loader ? collectExtensionResources(loader) : [],
+      runtimeDiagnostics: session.getExtensionDiagnostics(),
+    }));
   } catch (error) {
     return NextResponse.json({ error: String(error) }, { status: 500 });
   }
@@ -42,9 +45,9 @@ export async function GET(
 
 // POST /api/agent/[id]/extensions
 //   { action: "set_flag", name, value }  — flip an extension CLI flag live
-//   { action: "reload" }                 — tear down and restart the in-process
-//                                          session, re-discovering extensions,
-//                                          skills, and prompts from disk
+//   { action: "reload" }                 — use Pi's native reload lifecycle to
+//                                          re-discover extensions, skills,
+//                                          prompts, and provider models
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -68,12 +71,10 @@ export async function POST(
     if (body.action === "reload") {
       const session = await ensureSession(id);
       if (!session) return NextResponse.json({ error: "Session not found" }, { status: 404 });
-      const { sessionFile, cwd } = session;
-      // Destroy → registry drops it → restart re-runs extension/skill/prompt
-      // discovery from disk. The session transcript itself lives in the file,
-      // so nothing conversational is lost.
-      session.destroy();
-      await startRpcSession(id, sessionFile, cwd);
+      // Pi emits session_shutdown(reload), reloads all resources/providers,
+      // rebuilds the extension runtime, then emits session_start(reload) and
+      // resources_discover while preserving this wrapper's SSE listeners.
+      await session.reloadExtensions();
       return NextResponse.json({ ok: true, reloaded: true });
     }
 

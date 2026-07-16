@@ -84,7 +84,13 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const {
     modelNames, modelList, modelThinkingLevels, modelThinkingLevelMaps,
     newSessionModel, setNewSessionModel,
-  } = useModelCatalog(isNew, modelsRefreshKey, opts.setNewSessionModel);
+  } = useModelCatalog(
+    isNew,
+    modelsRefreshKey,
+    opts.setNewSessionModel,
+    session?.id ?? null,
+    session?.cwd ?? newSessionCwd,
+  );
 
   const setToolPresetState = opts.setToolPreset ?? setToolPreset;
 

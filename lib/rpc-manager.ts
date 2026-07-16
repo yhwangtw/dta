@@ -1,7 +1,9 @@
-import { createAgentSession, SessionManager } from "@earendil-works/pi-coding-agent";
+import { createAgentSessionFromServices, SessionManager, type ExtensionError } from "@earendil-works/pi-coding-agent";
 import { cacheSessionPath } from "./session-reader";
 import { createSnapshot } from "./git-snapshot";
 import type { AgentSessionLike, ToolInfo } from "./pi-types";
+import { bindWebExtensions, createTrackedAgentServices, emitWebBeforeFork, type ExtensionProviderTracker } from "./pi-runtime";
+import type { ExtensionDiagnosticInfo, ExtensionProviderInfo } from "./extensions-info";
 
 // ============================================================================
 // Types
@@ -13,6 +15,7 @@ export interface AgentEvent {
 }
 
 type EventListener = (event: AgentEvent) => void;
+type SessionShutdownReason = "quit" | "reload" | "new" | "resume" | "fork";
 
 // ============================================================================
 // AgentSessionWrapper
@@ -25,8 +28,20 @@ export class AgentSessionWrapper {
   private idleTimer: ReturnType<typeof setTimeout> | null = null;
   private onDestroyCallback: (() => void) | null = null;
   private _alive = true;
+  private readonly extensionDiagnostics: ExtensionDiagnosticInfo[];
 
-  constructor(public readonly inner: AgentSessionLike, public readonly cwd: string = "") {}
+  constructor(
+    public readonly inner: AgentSessionLike,
+    public readonly cwd: string = "",
+    private readonly providerTracker?: ExtensionProviderTracker,
+    initialDiagnostics: Array<{ type: string; message: string }> = [],
+  ) {
+    this.extensionDiagnostics = initialDiagnostics.map((diagnostic) => ({
+      type: diagnostic.type === "info" || diagnostic.type === "warning" ? diagnostic.type : "error",
+      message: diagnostic.message,
+      path: diagnostic.message.match(/Extension "([^"]+)"/)?.[1],
+    }));
+  }
 
   get sessionId(): string {
     return this.inner.sessionId;
@@ -50,7 +65,7 @@ export class AgentSessionWrapper {
 
   private resetIdleTimer(): void {
     if (this.idleTimer) clearTimeout(this.idleTimer);
-    this.idleTimer = setTimeout(() => this.destroy(), 10 * 60 * 1000);
+    this.idleTimer = setTimeout(() => void this.shutdown("quit"), 10 * 60 * 1000);
   }
 
   onEvent(listener: EventListener): () => void {
@@ -63,6 +78,22 @@ export class AgentSessionWrapper {
 
   onDestroy(cb: () => void): void {
     this.onDestroyCallback = cb;
+  }
+
+  recordExtensionError(error: ExtensionError): void {
+    this.extensionDiagnostics.push({
+      type: "error",
+      message: `[${error.event}] ${error.error}`,
+      path: error.extensionPath,
+    });
+  }
+
+  getExtensionDiagnostics(): ExtensionDiagnosticInfo[] {
+    return [...this.extensionDiagnostics];
+  }
+
+  getExtensionProviders(): ExtensionProviderInfo[] {
+    return this.providerTracker?.snapshot() ?? [];
   }
 
   async send(command: Record<string, unknown>): Promise<unknown> {
@@ -127,6 +158,9 @@ export class AgentSessionWrapper {
 
         const entry = sessionManager.getEntry(entryId);
         if (!entry) throw new Error("Invalid entry ID for forking");
+        if (!(await emitWebBeforeFork(this.inner.extensionRunner, entryId))) {
+          return { cancelled: true };
+        }
 
         const sessionDir = sessionManager.getSessionDir();
         let newSessionFile: string;
@@ -146,7 +180,7 @@ export class AgentSessionWrapper {
 
         const newSessionId = SessionManager.open(newSessionFile, sessionDir).getSessionId();
         cacheSessionPath(newSessionId, newSessionFile);
-        this.destroy();
+        await this.shutdown("fork", newSessionFile);
         return { cancelled: false, newSessionId };
       }
 
@@ -263,7 +297,40 @@ export class AgentSessionWrapper {
     this._alive = false;
     if (this.idleTimer) clearTimeout(this.idleTimer);
     this.unsubscribe?.();
+    this.inner.dispose();
     this.onDestroyCallback?.();
+  }
+
+  async shutdown(reason: SessionShutdownReason, targetSessionFile?: string): Promise<void> {
+    if (!this._alive) return;
+    try {
+      await this.inner.extensionRunner?.emit({
+        type: "session_shutdown",
+        reason,
+        ...(targetSessionFile ? { targetSessionFile } : {}),
+      });
+    } catch (error) {
+      this.extensionDiagnostics.push({
+        type: "error",
+        message: `[session_shutdown] ${String(error)}`,
+      });
+    } finally {
+      this.destroy();
+    }
+  }
+
+  async reloadExtensions(): Promise<void> {
+    if (this.inner.isStreaming || this.inner.isCompacting) {
+      throw new Error("Session must be idle before reloading extensions");
+    }
+    this.providerTracker?.beginReload();
+    try {
+      await this.inner.reload();
+      this.providerTracker?.finishReload();
+    } catch (error) {
+      this.providerTracker?.abortReload();
+      throw error;
+    }
   }
 }
 
@@ -317,9 +384,6 @@ export async function startRpcSession(
   if (inflight) return inflight;
 
   const starting = (async () => {
-    const { SessionManager, getAgentDir } = await import("@earendil-works/pi-coding-agent");
-    const agentDir = getAgentDir();
-
     const sessionManager = sessionFile
       ? SessionManager.open(sessionFile, undefined)
       : SessionManager.create(cwd, undefined);
@@ -333,9 +397,9 @@ export async function startRpcSession(
       toolsOption = toolNames.length === 0 ? [] : allCodingToolNames;
     }
 
-    const { session: inner } = await createAgentSession({
-      cwd,
-      agentDir,
+    const { services, providerTracker } = await createTrackedAgentServices(cwd);
+    const { session: inner } = await createAgentSessionFromServices({
+      services,
       sessionManager,
       ...(toolsOption !== undefined ? { tools: toolsOption } : {}),
     });
@@ -352,8 +416,14 @@ export async function startRpcSession(
       inner.agent.state.systemPrompt = "";
     }
 
-    const wrapper = new AgentSessionWrapper(inner, cwd);
+    const wrapper = new AgentSessionWrapper(inner, cwd, providerTracker, services.diagnostics);
     wrapper.start();
+    try {
+      await bindWebExtensions(inner, (error) => wrapper.recordExtensionError(error));
+    } catch (error) {
+      wrapper.destroy();
+      throw error;
+    }
 
     const realSessionId = inner.sessionId as string;
     const realSessionFile = inner.sessionFile as string | undefined;

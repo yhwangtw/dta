@@ -2,9 +2,17 @@ import { test, expect, type Page } from "@playwright/test";
 
 const MAIN = "/?session=aaaa1111-2222-3333-4444-555566667777";
 
+async function openFiles(page: Page) {
+  const explorerButton = page.getByRole("button", { name: "Explorer", exact: true });
+  await expect(explorerButton).toBeVisible();
+  await explorerButton.click();
+  await expect(page.getByPlaceholder("Filter files…")).toBeVisible();
+}
+
 async function openReadme(page: Page) {
   await page.goto(MAIN);
   await expect(page.getByText("專案架構分析").first()).toBeVisible({ timeout: 20_000 });
+  await openFiles(page);
   await page.getByText("README.md").first().click();
   await expect(page.locator(".right-panel-container.right-panel-open")).toBeVisible({ timeout: 10_000 });
 }
@@ -62,6 +70,7 @@ test.describe("file viewer", () => {
   test("large files fall back to plain rendering with working go-to-line", async ({ page }) => {
     await page.goto(MAIN);
     await expect(page.getByText("專案架構分析").first()).toBeVisible({ timeout: 20_000 });
+    await openFiles(page);
     await page.getByText("big-file.ts").first().click();
     // Plain mode by default: toolbar badge present, zero Prism tokens
     await expect(page.getByText("plain·large")).toBeVisible({ timeout: 15_000 });

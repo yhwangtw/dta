@@ -62,13 +62,14 @@ cd tGD-pi-web
 bash setup.sh
 ```
 
-安裝腳本會檢查 Node.js 與 npm、安裝相依套件、確認 Pi agent 目錄，並可選擇啟動開發伺服器。它不會修改本 repository 以外的檔案。
+安裝腳本會檢查 Node.js 與 npm、安裝相依套件、確認 Pi agent 目錄、建立 production build，並可選擇啟動 production server。它不會修改本 repository 以外的檔案。
 
 手動安裝：
 
 ```bash
 npm install
-npm run dev
+npm run build
+npm start
 ```
 
 開啟 [http://localhost:30141](http://localhost:30141)。
@@ -78,7 +79,8 @@ npm run dev
 ```bash
 git pull
 npm install
-npm run dev
+npm run build
+npm start
 ```
 
 ## 瀏覽器內的 tGD 流程
@@ -191,8 +193,8 @@ parent/
 
 | 指令 | 用途 |
 |---|---|
-| `bash setup.sh` | 驗證本機環境並安裝相依套件 |
-| `npm run dev` | 在 `30141` port 啟動開發環境 |
+| `bash setup.sh` | 驗證環境、安裝相依套件並建立 production build |
+| `npm run dev` | 視需要在 `30141` port 啟動開發環境 |
 | `node_modules/.bin/tsc --noEmit` | Typecheck |
 | `npx eslint .` | Lint |
 | `npm test` | 執行 Vitest unit tests |

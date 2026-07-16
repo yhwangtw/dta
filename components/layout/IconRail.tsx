@@ -58,6 +58,7 @@ export function IconRail({
       <button
         onClick={() => onSelectView("files")}
         title={t("sidebar.explorer")}
+        aria-label={t("sidebar.explorer")}
         aria-pressed={panelView === "files" && sidebarOpen}
         className={`${s.railButton} ${panelView === "files" && sidebarOpen ? s.railButtonActive : ""}`}
       >
@@ -68,6 +69,7 @@ export function IconRail({
       <button
         onClick={() => onSelectView("search")}
         title={t("search.title")}
+        aria-label={t("search.title")}
         aria-pressed={panelView === "search" && sidebarOpen}
         className={`${s.railButton} ${panelView === "search" && sidebarOpen ? s.railButtonActive : ""}`}
       >
@@ -97,9 +99,16 @@ export function IconRail({
           <line x1="9" y1="13" x2="15" y2="13" /><line x1="9" y1="17" x2="13" y2="17" />
         </svg>
       </button>
-      <button onClick={onOpenPalette} title={`${t("topbar.searchTitle")}`} className={s.railButton}>
+      <button
+        onClick={onOpenPalette}
+        title={t("topbar.searchTitle")}
+        aria-label={t("topbar.searchTitle")}
+        className={s.railButton}
+      >
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+          <rect x="3" y="4" width="18" height="16" rx="2" />
+          <polyline points="8 9 11 12 8 15" />
+          <line x1="14" y1="15" x2="17" y2="15" />
         </svg>
       </button>
       <button onClick={onOpenAnalytics} title={t("topbar.analyticsTitle")} className={s.railButton}>

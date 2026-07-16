@@ -1,8 +1,8 @@
 // ============================================================================
-// Serialize a pi ExtensionRunner into a JSON-safe report for the Extensions
-// management panel: what loaded, what it registered (commands/tools/flags),
-// and — crucially — the load diagnostics that are otherwise invisible in the
-// web UI (a broken extension currently fails silently).
+// Serialize Pi's extension runtime into a JSON-safe inventory. The report is
+// intentionally additive: existing paths/commands/tools/flags/diagnostics
+// consumers keep working while newer Web surfaces can inspect every observable
+// registration type and see which Pi TUI capabilities are unsupported here.
 // ============================================================================
 
 export interface ExtensionCommandInfo {
@@ -28,21 +28,95 @@ export interface ExtensionFlagInfo {
 }
 
 export interface ExtensionDiagnosticInfo {
-  type: "warning" | "error" | "collision";
+  type: "info" | "warning" | "error" | "collision";
   message: string;
   path?: string;
 }
+
+export interface ExtensionProviderInfo {
+  name: string;
+  displayName: string;
+  status: "registered" | "error";
+  modelCount: number;
+  availableModelCount: number;
+  modelIds: string[];
+  sources: string[];
+  error?: string;
+}
+
+export interface ExtensionShortcutInfo {
+  shortcut: string;
+  description?: string;
+  source?: string;
+}
+
+export interface ExtensionEventInfo {
+  name: string;
+  handlerCount: number;
+  source: string;
+}
+
+export interface ExtensionRendererInfo {
+  type: "message" | "entry";
+  customType: string;
+  source: string;
+}
+
+export interface ExtensionResourceInfo {
+  type: "skill" | "prompt" | "theme";
+  name: string;
+  path?: string;
+  source: string;
+}
+
+export type ExtensionWebSupport = "supported" | "partial" | "unsupported";
 
 export interface ExtensionsReport {
   paths: string[];
   commands: ExtensionCommandInfo[];
   tools: ExtensionToolInfo[];
   flags: ExtensionFlagInfo[];
+  providers: ExtensionProviderInfo[];
+  shortcuts: ExtensionShortcutInfo[];
+  events: ExtensionEventInfo[];
+  renderers: ExtensionRendererInfo[];
+  resources: ExtensionResourceInfo[];
   diagnostics: ExtensionDiagnosticInfo[];
+  compatibility: {
+    providers: ExtensionWebSupport;
+    commands: ExtensionWebSupport;
+    tools: ExtensionWebSupport;
+    flags: ExtensionWebSupport;
+    commandContext: ExtensionWebSupport;
+    shortcuts: ExtensionWebSupport;
+    events: ExtensionWebSupport;
+    renderers: ExtensionWebSupport;
+    resources: ExtensionWebSupport;
+    tuiUi: ExtensionWebSupport;
+  };
 }
 
-// The slice of pi's ExtensionRunner this module reads. Structural, so tests
-// can pass a plain object and the route can pass the real runner.
+export interface ExtensionLike {
+  path: string;
+  handlers: Map<string, unknown[]>;
+  shortcuts: Map<string, { shortcut: string; description?: string; extensionPath?: string }>;
+  messageRenderers: Map<string, unknown>;
+  entryRenderers?: Map<string, unknown>;
+}
+
+export interface ExtensionLoadResultLike {
+  extensions: ExtensionLike[];
+  errors: Array<{ path: string; error: string }>;
+}
+
+export interface ResourceLoaderLike {
+  getSkills(): { skills: Array<{ name: string; filePath?: string; sourceInfo?: { source?: string } }> };
+  getPrompts(): { prompts: Array<{ name: string; filePath?: string; sourceInfo?: { source?: string } }> };
+  getThemes(): { themes: Array<{ name?: string; sourcePath?: string; sourceInfo?: { source?: string } }> };
+}
+
+// The slice of Pi's ExtensionRunner this module reads. Structural, so tests can
+// pass a plain object and the API route can pass the real runner.
 export interface RunnerLike {
   getExtensionPaths(): string[];
   getRegisteredCommands(): Array<{
@@ -67,11 +141,44 @@ export interface RunnerLike {
   getShortcutDiagnostics(): Array<{ type: "warning" | "error" | "collision"; message: string; path?: string }>;
 }
 
+export interface BuildExtensionsReportOptions {
+  loadResult?: ExtensionLoadResultLike;
+  providers?: ExtensionProviderInfo[];
+  resources?: ExtensionResourceInfo[];
+  runtimeDiagnostics?: ExtensionDiagnosticInfo[];
+}
+
+export function collectExtensionResources(loader: ResourceLoaderLike): ExtensionResourceInfo[] {
+  const resources: ExtensionResourceInfo[] = [];
+  const add = (
+    type: ExtensionResourceInfo["type"],
+    item: { name?: string; filePath?: string; sourcePath?: string; sourceInfo?: { source?: string } },
+  ) => {
+    const source = item.sourceInfo?.source;
+    if (!source?.startsWith("extension:")) return;
+    resources.push({
+      type,
+      name: item.name ?? item.filePath ?? item.sourcePath ?? "unnamed",
+      path: item.filePath ?? item.sourcePath,
+      source,
+    });
+  };
+
+  for (const skill of loader.getSkills().skills) add("skill", skill);
+  for (const prompt of loader.getPrompts().prompts) add("prompt", prompt);
+  for (const theme of loader.getThemes().themes) add("theme", theme);
+  return resources;
+}
+
 export function buildExtensionsReport(
   runner: RunnerLike,
-  /** Extension files that failed to load at all (from the resource loader). */
-  loadErrors: Array<{ path: string; error: string }> = [],
+  optionsOrLoadErrors: BuildExtensionsReportOptions | Array<{ path: string; error: string }> = {},
 ): ExtensionsReport {
+  // Preserve the old internal call shape while routes/tests migrate to options.
+  const options: BuildExtensionsReportOptions = Array.isArray(optionsOrLoadErrors)
+    ? { loadResult: { extensions: [], errors: optionsOrLoadErrors } }
+    : optionsOrLoadErrors;
+  const loadResult = options.loadResult ?? { extensions: [], errors: [] };
   const flagValues = runner.getFlagValues();
   const flags: ExtensionFlagInfo[] = [...runner.getFlags().values()].map((f) => ({
     name: f.name,
@@ -82,24 +189,45 @@ export function buildExtensionsReport(
     source: f.extensionPath,
   }));
 
-  // Command + shortcut diagnostics can overlap (same broken file reported by
-  // both loaders) — dedupe on type+message+path.
+  const shortcuts: ExtensionShortcutInfo[] = [];
+  const events: ExtensionEventInfo[] = [];
+  const renderers: ExtensionRendererInfo[] = [];
+  for (const extension of loadResult.extensions) {
+    for (const shortcut of extension.shortcuts.values()) {
+      shortcuts.push({
+        shortcut: shortcut.shortcut,
+        description: shortcut.description,
+        source: shortcut.extensionPath ?? extension.path,
+      });
+    }
+    for (const [name, handlers] of extension.handlers) {
+      events.push({ name, handlerCount: handlers.length, source: extension.path });
+    }
+    for (const customType of extension.messageRenderers.keys()) {
+      renderers.push({ type: "message", customType, source: extension.path });
+    }
+    for (const customType of extension.entryRenderers?.keys() ?? []) {
+      renderers.push({ type: "entry", customType, source: extension.path });
+    }
+  }
+
+  // Command + shortcut diagnostics can overlap; runtime errors can repeat a
+  // loader diagnostic. Keep the first occurrence of each exact issue.
   const seen = new Set<string>();
   const diagnostics: ExtensionDiagnosticInfo[] = [];
-  // Hard load failures first — a broken extension file never reaches the
-  // runner, so its error only exists in the resource loader's result.
-  for (const e of loadErrors) {
-    const key = `error|${e.error}|${e.path}`;
-    if (seen.has(key)) continue;
+  const addDiagnostic = (d: ExtensionDiagnosticInfo) => {
+    const key = `${d.type}|${d.message}|${d.path ?? ""}`;
+    if (seen.has(key)) return;
     seen.add(key);
-    diagnostics.push({ type: "error", message: e.error, path: e.path });
+    diagnostics.push(d);
+  };
+  for (const e of loadResult.errors) {
+    addDiagnostic({ type: "error", message: e.error, path: e.path });
   }
   for (const d of [...runner.getCommandDiagnostics(), ...runner.getShortcutDiagnostics()]) {
-    const key = `${d.type}|${d.message}|${d.path ?? ""}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    diagnostics.push({ type: d.type, message: d.message, path: d.path });
+    addDiagnostic(d);
   }
+  for (const d of options.runtimeDiagnostics ?? []) addDiagnostic(d);
 
   return {
     paths: runner.getExtensionPaths(),
@@ -115,6 +243,23 @@ export function buildExtensionsReport(
       source: t.sourceInfo?.path,
     })),
     flags,
+    providers: options.providers ?? [],
+    shortcuts,
+    events,
+    renderers,
+    resources: options.resources ?? [],
     diagnostics,
+    compatibility: {
+      providers: "supported",
+      commands: "supported",
+      tools: "supported",
+      flags: "supported",
+      commandContext: "partial",
+      shortcuts: "unsupported",
+      events: "partial",
+      renderers: "unsupported",
+      resources: "partial",
+      tuiUi: "unsupported",
+    },
   };
 }

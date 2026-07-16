@@ -228,6 +228,17 @@ export function readSessionFile(filePath: string): { header: SessionHeader | nul
   };
 }
 
+/** Read only the immutable first-line session header without opening or rewriting the file. */
+export function readSessionCwd(filePath: string): string | null {
+  try {
+    const firstLine = readFileSync(filePath, "utf8").split(/\r?\n/, 1)[0];
+    const header = JSON.parse(firstLine) as { type?: unknown; cwd?: unknown };
+    return header.type === "session" && typeof header.cwd === "string" ? header.cwd : null;
+  } catch {
+    return null;
+  }
+}
+
 export function getSessionEntries(filePath: string): SessionEntry[] {
   return readSessionFile(filePath).entries;
 }
@@ -354,4 +365,3 @@ export function getLeafId(entries: SessionEntry[]): string | null {
   if (entries.length === 0) return null;
   return entries[entries.length - 1].id;
 }
-

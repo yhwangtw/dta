@@ -4,12 +4,14 @@ import { useState, useEffect, useCallback } from "react";
 import type { ExtensionsReport, ExtensionFlagInfo } from "@/lib/extensions-info";
 import { showToast } from "@/hooks/useToast";
 import { useI18n } from "@/lib/i18n";
+import { ExtensionInventoryDetails } from "./ExtensionInventoryDetails";
 import styles from "./ExtensionsConfig.module.css";
 
 interface Props {
   /** Session whose runner we're inspecting (extensions are per-session). */
   sessionId: string | null;
   onClose: () => void;
+  onReload?: () => void;
 }
 
 const tail = (p?: string) => (p ? p.split("/").slice(-2).join("/") : "");
@@ -18,9 +20,9 @@ const tail = (p?: string) => (p ? p.split("/").slice(-2).join("/") : "");
  * Extensions management panel: what the session's pi extensions loaded and
  * registered (slash commands, tools, flags), the load diagnostics that were
  * previously invisible in the web UI, live flag toggles, and a reload button
- * that restarts the in-process session to re-discover everything from disk.
+ * that uses Pi's native lifecycle to re-discover everything from disk.
  */
-export function ExtensionsConfig({ sessionId, onClose }: Props) {
+export function ExtensionsConfig({ sessionId, onClose, onReload }: Props) {
   const { t } = useI18n();
   const [report, setReport] = useState<ExtensionsReport | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
@@ -85,13 +87,14 @@ export function ExtensionsConfig({ sessionId, onClose }: Props) {
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       showToast(t("extensions.reloaded"));
+      onReload?.();
       await load();
     } catch (e) {
       showToast(`Reload failed: ${e instanceof Error ? e.message : e}`, { type: "error" });
     } finally {
       setReloading(false);
     }
-  }, [sessionId, reloading, load, t]);
+  }, [sessionId, reloading, load, t, onReload]);
 
   const hasErrors = report?.diagnostics.some((d) => d.type === "error");
 
@@ -134,6 +137,8 @@ export function ExtensionsConfig({ sessionId, onClose }: Props) {
                   ))}
                 </div>
               )}
+
+              <ExtensionInventoryDetails report={report} />
 
               <div className={styles.section}>
                 <div className={styles.sectionTitle}>{t("extensions.commands")} ({report.commands.length})</div>

@@ -10,9 +10,29 @@ async function openMain(page: Page) {
   await expect(page.getByText("專案架構分析").first()).toBeVisible({ timeout: 20_000 });
 }
 
+async function openFiles(page: Page) {
+  const explorerButton = page.getByRole("button", { name: "Explorer", exact: true });
+  await expect(explorerButton).toBeVisible();
+  await explorerButton.click();
+  await expect(page.getByPlaceholder("Filter files…")).toBeVisible();
+}
+
+test.describe("left rail", () => {
+  test("separates project search from the command palette and scopes file search to Explorer", async ({ page }) => {
+    await openMain(page);
+
+    await expect(page.getByRole("button", { name: "Search", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Command palette (⌘K)", exact: true })).toBeVisible();
+    await expect(page.getByPlaceholder("Filter files…")).toHaveCount(0);
+
+    await openFiles(page);
+  });
+});
+
 test.describe("file explorer", () => {
   test("git badges on modified/untracked files and dirty-dir dots", async ({ page }) => {
     await openMain(page);
+    await openFiles(page);
     // src is committed but contains a modified file → dirty dot on the dir;
     // expanding shows index.ts with an M badge; untracked files show U.
     await page.getByText("src", { exact: true }).first().click();
@@ -22,6 +42,7 @@ test.describe("file explorer", () => {
 
   test("deep search finds nested files and shows relative paths", async ({ page }) => {
     await openMain(page);
+    await openFiles(page);
     await page.getByPlaceholder("Filter files…").fill("index");
     const hit = page.locator("[data-fx-row]").filter({ hasText: "index.ts" }).first();
     await expect(hit).toBeVisible({ timeout: 10_000 });
@@ -30,6 +51,7 @@ test.describe("file explorer", () => {
 
   test("context menu: copy relative path / mention / diff entries", async ({ page }) => {
     await openMain(page);
+    await openFiles(page);
     await page.getByPlaceholder("Filter files…").fill("index");
     const hit = page.locator("[data-fx-row]").filter({ hasText: "index.ts" }).first();
     await expect(hit).toBeVisible({ timeout: 10_000 });
@@ -48,6 +70,7 @@ test.describe("file explorer", () => {
 
   test("keyboard navigation moves focus across rows", async ({ page }) => {
     await openMain(page);
+    await openFiles(page);
     const first = page.locator("[data-fx-row]").first();
     await first.click();
     await page.keyboard.press("ArrowDown");

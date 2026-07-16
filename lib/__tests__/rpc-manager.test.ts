@@ -30,6 +30,7 @@ describe("AgentSessionWrapper compact command", () => {
         getCompactionSettings: () => ({ enabled: true, reserveTokens: 16_384, keepRecentTokens: 20_000 }),
       },
       compact,
+      dispose: vi.fn(),
     } as unknown as AgentSessionLike;
     const wrapper = new AgentSessionWrapper(inner);
 
@@ -39,6 +40,57 @@ describe("AgentSessionWrapper compact command", () => {
       expect(compact).toHaveBeenCalledWith("focus on decisions");
     } finally {
       wrapper.destroy();
+    }
+  });
+});
+
+describe("AgentSessionWrapper extension lifecycle", () => {
+  it("emits session_shutdown before disposing the session", async () => {
+    const calls: string[] = [];
+    const emit = vi.fn(async (event: { type: string; reason: string }) => {
+      calls.push(`${event.type}:${event.reason}`);
+      return [];
+    });
+    const inner = {
+      sessionId: "session-1",
+      sessionFile: "/tmp/session-1.jsonl",
+      extensionRunner: { emit },
+      dispose: vi.fn(() => calls.push("dispose")),
+    } as unknown as AgentSessionLike;
+    const wrapper = new AgentSessionWrapper(inner);
+
+    await wrapper.shutdown("reload");
+
+    expect(emit).toHaveBeenCalledWith({ type: "session_shutdown", reason: "reload" });
+    expect(calls).toEqual(["session_shutdown:reload", "dispose"]);
+    expect(wrapper.isAlive()).toBe(false);
+  });
+
+  it("reloads extensions only while the session is idle", async () => {
+    const reload = vi.fn().mockResolvedValue(undefined);
+    const busyInner = {
+      sessionId: "session-busy",
+      sessionFile: "/tmp/session-busy.jsonl",
+      isStreaming: true,
+      isCompacting: false,
+      reload,
+      dispose: vi.fn(),
+    } as unknown as AgentSessionLike;
+    const idleInner = {
+      ...busyInner,
+      sessionId: "session-idle",
+      isStreaming: false,
+    } as unknown as AgentSessionLike;
+
+    const busy = new AgentSessionWrapper(busyInner);
+    const idle = new AgentSessionWrapper(idleInner);
+    try {
+      await expect(busy.reloadExtensions()).rejects.toThrow("idle");
+      await expect(idle.reloadExtensions()).resolves.toBeUndefined();
+      expect(reload).toHaveBeenCalledOnce();
+    } finally {
+      busy.destroy();
+      idle.destroy();
     }
   });
 });

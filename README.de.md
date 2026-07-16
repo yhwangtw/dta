@@ -309,7 +309,13 @@ Issues und Pull Requests sind willkommen.
 
 ## Release
 
-Tags nach dem Muster `v*` starten den GitHub-Release-Workflow. Er erzeugt Release Notes und veröffentlicht ein GitHub Release. Der Workflow veröffentlicht **nicht auf npm**.
+Nachdem ein PR die CI bestanden hat und gemergt wurde, wird der schnelle Release-Ablauf gestartet:
+
+```bash
+gh workflow run release.yml -f tag=vYYYY.MM.DD
+```
+
+Ein einzelner Workflow aktualisiert `package.json` und `package-lock.json`, erstellt den Release-Commit und ein annotiertes Tag und veröffentlicht anschließend das GitHub Release. Sein authentifizierter Push startet keinen weiteren CI-Lauf. Das Pushen eines bereits versionierten `v*`-Tags wird weiterhin unterstützt. Der Workflow veröffentlicht **nicht auf npm**.
 
 ## Lizenz
 

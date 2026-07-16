@@ -309,7 +309,13 @@ Improve application translations in `lib/i18n.tsx`. New skins must use semantic 
 
 ## Release
 
-Tags matching `v*` trigger the GitHub Release workflow, which generates release notes and publishes a GitHub Release. The workflow does **not** publish to npm.
+After a PR passes CI and is merged, use the fast release path:
+
+```bash
+gh workflow run release.yml -f tag=vYYYY.MM.DD
+```
+
+One workflow updates `package.json` and `package-lock.json`, creates the release commit and annotated tag, then publishes the GitHub Release. Its authenticated push does not start another CI cycle. Pushing an already-versioned `v*` tag remains supported. The workflow does **not** publish to npm.
 
 ## License
 

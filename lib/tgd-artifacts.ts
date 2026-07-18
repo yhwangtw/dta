@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, statSync } from "fs";
-import { join, dirname, basename } from "path";
+import { join, dirname, basename, sep } from "path";
 
 // ============================================================================
 // tGD artifacts live in a SIBLING directory of the code repo — `$TGD_DIR`,
@@ -60,9 +60,41 @@ const DOC_PHASE: Record<string, string> = {
   "METRICS.md": "plan",
 };
 const FEATURE_DOC_ORDER = ["PRD.md", "SPEC.md", "DESIGN.md", "TASKS.md", "METRICS.md"];
+const PROTOTYPE_SCAN_MAX_DEPTH = 8;
+const PROTOTYPE_SCAN_MAX_DIRS = 200;
 
 function isFeatureDir(dir: string): boolean {
   return existsSync(join(dir, "PRD.md")) || existsSync(join(dir, "SPEC.md"));
+}
+
+function readPrototypeFiles(protoDir: string): TgdArtifactFile[] {
+  const prototypes: TgdArtifactFile[] = [];
+  const pending = [{ relativeDir: "", depth: 0 }];
+
+  for (let index = 0; index < pending.length && index < PROTOTYPE_SCAN_MAX_DIRS; index++) {
+    const { relativeDir, depth } = pending[index];
+    let entries;
+    try {
+      entries = readdirSync(join(protoDir, relativeDir), { withFileTypes: true });
+    } catch {
+      continue;
+    }
+
+    for (const entry of entries) {
+      const relativePath = join(relativeDir, entry.name);
+      if (entry.isDirectory() && depth < PROTOTYPE_SCAN_MAX_DEPTH) {
+        pending.push({ relativeDir: relativePath, depth: depth + 1 });
+      } else if (entry.isFile() && entry.name.endsWith(".html")) {
+        prototypes.push({
+          name: relativePath.split(sep).join("/"),
+          path: join(protoDir, relativePath),
+          phase: "define",
+        });
+      }
+    }
+  }
+
+  return prototypes.sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export function readTgdArtifacts(cwd: string): TgdArtifacts {
@@ -99,15 +131,8 @@ export function readTgdArtifacts(cwd: string): TgdArtifacts {
         try { mtimeMs = Math.max(mtimeMs, statSync(p).mtimeMs); } catch { /* ignore */ }
       }
     }
-    const prototypes: TgdArtifactFile[] = [];
     const protoDir = join(dir, "prototype");
-    if (existsSync(protoDir)) {
-      try {
-        for (const f of readdirSync(protoDir).sort()) {
-          if (f.endsWith(".html")) prototypes.push({ name: f, path: join(protoDir, f), phase: "define" });
-        }
-      } catch { /* ignore */ }
-    }
+    const prototypes = existsSync(protoDir) ? readPrototypeFiles(protoDir) : [];
     features.push({ name, path: dir, docs, prototypes, phasesDone: [...phasesDone], mtimeMs });
   }
 

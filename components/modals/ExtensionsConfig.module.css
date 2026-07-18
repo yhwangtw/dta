@@ -178,6 +178,10 @@
   border-color: var(--color-warning-border);
   background: var(--color-warning-bg);
 }
+.supportBadge[data-support="notApplicable"] {
+  color: var(--text-dim);
+  background: var(--bg-elev-1);
+}
 .supportBadge[data-support="unsupported"],
 .statusError {
   color: var(--color-error-text);

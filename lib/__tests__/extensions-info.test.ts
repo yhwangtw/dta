@@ -2,9 +2,18 @@ import { describe, it, expect } from "vitest";
 import {
   buildExtensionsReport,
   collectExtensionResources,
+  displayExtensionSupport,
   type ExtensionLoadResultLike,
   type RunnerLike,
 } from "../extensions-info";
+
+describe("displayExtensionSupport", () => {
+  it("shows unsupported surfaces as not applicable until an extension registers one", () => {
+    expect(displayExtensionSupport("unsupported", 0)).toBe("notApplicable");
+    expect(displayExtensionSupport("unsupported", 1)).toBe("unsupported");
+    expect(displayExtensionSupport("partial", 0)).toBe("partial");
+  });
+});
 
 function fakeRunner(overrides: Partial<RunnerLike> = {}): RunnerLike {
   return {

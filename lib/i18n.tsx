@@ -123,6 +123,7 @@ const MESSAGES = {
   "extensions.supported": { en: "Supported", zh: "支援" },
   "extensions.partial": { en: "Partial", zh: "部分支援" },
   "extensions.unsupported": { en: "Unsupported", zh: "不支援" },
+  "extensions.notApplicable": { en: "N/A", zh: "不適用" },
   "extensions.modelsAvailable": { en: "models available", zh: "個模型可用" },
   "extensions.handlers": { en: "handlers", zh: "個 handler" },
   "extensions.loadedFrom": { en: "Loaded from", zh: "載入來源" },

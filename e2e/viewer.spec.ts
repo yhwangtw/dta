@@ -81,6 +81,42 @@ test.describe("file viewer", () => {
     await expect(page.locator("[data-active-line]").first()).toContainText("item1498");
   });
 
+  test("keeps the HTML preview action inside a narrow right panel", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto(MAIN);
+    await expect(page.getByText("專案架構分析").first()).toBeVisible({ timeout: 20_000 });
+    await page.getByRole("button", { name: "tGD artifacts" }).click();
+    await page.getByText("variant-a.html").click();
+
+    const panel = page.locator(".right-panel-container.right-panel-open");
+    const preview = page.getByRole("button", { name: "Preview", exact: true });
+    await expect(panel).toBeVisible();
+    await expect(preview).toBeVisible();
+
+    const expectPreviewInsideView = async () => {
+      await expect
+        .poll(async () => {
+          const width = await panel.evaluate((el) => Math.round(el.getBoundingClientRect().width));
+          await page.waitForTimeout(120);
+          const nextWidth = await panel.evaluate((el) => Math.round(el.getBoundingClientRect().width));
+          return width === nextWidth ? width : -1;
+        })
+        .toBeGreaterThan(0);
+      const panelBox = (await panel.boundingBox())!;
+      const previewBox = (await preview.boundingBox())!;
+      const viewportWidth = page.viewportSize()!.width;
+      expect(previewBox.x + previewBox.width).toBeLessThanOrEqual(panelBox.x + panelBox.width);
+      expect(previewBox.x + previewBox.width).toBeLessThanOrEqual(viewportWidth);
+    };
+
+    await expectPreviewInsideView();
+    await page.setViewportSize({ width: 1024, height: 800 });
+    await expectPreviewInsideView();
+
+    await preview.click();
+    await expect(page.locator('iframe[title="HTML preview"]')).toBeVisible();
+  });
+
   test("edit → save writes the file to disk", async ({ page }) => {
     await openReadme(page);
     await page.getByRole("button", { name: "Raw", exact: true }).click();

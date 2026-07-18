@@ -28,8 +28,10 @@
 /* Status bar */
 .statusBar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
+  column-gap: 8px;
+  row-gap: 4px;
   padding: 4px 16px;
   border-bottom: 1px solid var(--border);
   font-size: 11px;
@@ -54,11 +56,16 @@
 }
 
 .filePath {
+  flex: 1 1 180px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-family: var(--font-mono);
 }
 
 .language {
-  margin-left: auto;
+  flex-shrink: 0;
 }
 
 /* Watch indicator */
@@ -100,6 +107,7 @@
 /* Toggle button group */
 .toggleGroup {
   display: flex;
+  flex-shrink: 0;
   border-radius: 5px;
   overflow: hidden;
   border: 1px solid var(--border);
@@ -173,9 +181,9 @@
 /* In-file find */
 .findWrap {
   display: inline-flex;
+  flex-shrink: 0;
   align-items: center;
   gap: 4px;
-  margin-left: auto;
 }
 
 .findInput {

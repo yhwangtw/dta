@@ -60,30 +60,37 @@ const DOC_PHASE: Record<string, string> = {
   "METRICS.md": "plan",
 };
 const FEATURE_DOC_ORDER = ["PRD.md", "SPEC.md", "DESIGN.md", "TASKS.md", "METRICS.md"];
+const PROTOTYPE_SCAN_MAX_DEPTH = 8;
+const PROTOTYPE_SCAN_MAX_DIRS = 200;
 
 function isFeatureDir(dir: string): boolean {
   return existsSync(join(dir, "PRD.md")) || existsSync(join(dir, "SPEC.md"));
 }
 
-function readPrototypeFiles(protoDir: string, relativeDir = ""): TgdArtifactFile[] {
+function readPrototypeFiles(protoDir: string): TgdArtifactFile[] {
   const prototypes: TgdArtifactFile[] = [];
-  let entries;
-  try {
-    entries = readdirSync(join(protoDir, relativeDir), { withFileTypes: true });
-  } catch {
-    return prototypes;
-  }
+  const pending = [{ relativeDir: "", depth: 0 }];
 
-  for (const entry of entries) {
-    const relativePath = join(relativeDir, entry.name);
-    if (entry.isDirectory()) {
-      prototypes.push(...readPrototypeFiles(protoDir, relativePath));
-    } else if (entry.isFile() && entry.name.endsWith(".html")) {
-      prototypes.push({
-        name: relativePath.split(sep).join("/"),
-        path: join(protoDir, relativePath),
-        phase: "define",
-      });
+  for (let index = 0; index < pending.length && index < PROTOTYPE_SCAN_MAX_DIRS; index++) {
+    const { relativeDir, depth } = pending[index];
+    let entries;
+    try {
+      entries = readdirSync(join(protoDir, relativeDir), { withFileTypes: true });
+    } catch {
+      continue;
+    }
+
+    for (const entry of entries) {
+      const relativePath = join(relativeDir, entry.name);
+      if (entry.isDirectory() && depth < PROTOTYPE_SCAN_MAX_DEPTH) {
+        pending.push({ relativeDir: relativePath, depth: depth + 1 });
+      } else if (entry.isFile() && entry.name.endsWith(".html")) {
+        prototypes.push({
+          name: relativePath.split(sep).join("/"),
+          path: join(protoDir, relativePath),
+          phase: "define",
+        });
+      }
     }
   }
 

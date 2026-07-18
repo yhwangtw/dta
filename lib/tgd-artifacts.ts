@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, statSync } from "fs";
-import { join, dirname, basename } from "path";
+import { join, dirname, basename, sep } from "path";
 
 // ============================================================================
 // tGD artifacts live in a SIBLING directory of the code repo — `$TGD_DIR`,
@@ -65,6 +65,31 @@ function isFeatureDir(dir: string): boolean {
   return existsSync(join(dir, "PRD.md")) || existsSync(join(dir, "SPEC.md"));
 }
 
+function readPrototypeFiles(protoDir: string, relativeDir = ""): TgdArtifactFile[] {
+  const prototypes: TgdArtifactFile[] = [];
+  let entries;
+  try {
+    entries = readdirSync(join(protoDir, relativeDir), { withFileTypes: true });
+  } catch {
+    return prototypes;
+  }
+
+  for (const entry of entries) {
+    const relativePath = join(relativeDir, entry.name);
+    if (entry.isDirectory()) {
+      prototypes.push(...readPrototypeFiles(protoDir, relativePath));
+    } else if (entry.isFile() && entry.name.endsWith(".html")) {
+      prototypes.push({
+        name: relativePath.split(sep).join("/"),
+        path: join(protoDir, relativePath),
+        phase: "define",
+      });
+    }
+  }
+
+  return prototypes.sort((a, b) => a.name.localeCompare(b.name));
+}
+
 export function readTgdArtifacts(cwd: string): TgdArtifacts {
   const tgdDir = resolveTgdDir(cwd);
   if (!tgdDir) return { exists: false, tgdDir: null, top: [], features: [] };
@@ -99,15 +124,8 @@ export function readTgdArtifacts(cwd: string): TgdArtifacts {
         try { mtimeMs = Math.max(mtimeMs, statSync(p).mtimeMs); } catch { /* ignore */ }
       }
     }
-    const prototypes: TgdArtifactFile[] = [];
     const protoDir = join(dir, "prototype");
-    if (existsSync(protoDir)) {
-      try {
-        for (const f of readdirSync(protoDir).sort()) {
-          if (f.endsWith(".html")) prototypes.push({ name: f, path: join(protoDir, f), phase: "define" });
-        }
-      } catch { /* ignore */ }
-    }
+    const prototypes = existsSync(protoDir) ? readPrototypeFiles(protoDir) : [];
     features.push({ name, path: dir, docs, prototypes, phasesDone: [...phasesDone], mtimeMs });
   }
 

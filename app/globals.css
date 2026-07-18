@@ -926,7 +926,10 @@ span.linenumber {
     flex-shrink: 0;
   }
   .right-panel-container.right-panel-open {
-    width: 100%;
+    /* The 44px icon rail remains visible at tablet/mobile widths. A full
+       viewport-wide panel here overflowed past the right edge by that same
+       amount, which could hide trailing file-viewer actions. */
+    width: calc(100% - 44px);
     min-width: 0;
   }
   .right-panel-container.right-panel-closed {

@@ -449,7 +449,6 @@ export function AppShell() {
         onOpenSkills={() => setSkillsConfigOpen(true)}
         skillsDisabled={!panelCwd}
         onOpenExtensions={() => setExtensionsConfigOpen(true)}
-        extensionsDisabled={!state.selectedSession}
         appearanceOpen={appearanceOpen}
         onToggleAppearance={() => setAppearanceOpen((v) => !v)}
       />

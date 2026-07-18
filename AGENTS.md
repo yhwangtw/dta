@@ -238,10 +238,13 @@ inside cwd. Dedup by tree sha; cap 20/session. Git repos only.
 The tGD workflow writes its docs to a **sibling** `<project>-tGD/` dir (or
 `$TGD_DIR`), *outside* the code repo — `CONTEXT.md`, `TRACKING-PLAN.md`, `wiki/`,
 and per-feature dirs (a "feature" = a dir with `PRD.md` or `SPEC.md`) holding
-PRD/SPEC/DESIGN/TASKS/METRICS + `prototype/*.html`. `resolveTgdDir(cwd)` finds it;
+PRD/SPEC/DESIGN/TASKS/TEST-REPORT/REVIEW/METRICS + `prototype/*.html`; release
+also maintains top-level `CHANGELOG.md` and optional `REGRESSION-CATALOG.md`.
+`resolveTgdDir(cwd)` finds it;
 `getAllowedRoots()` adds it so the file viewer can open those docs. The `tgd`
-rail view lists them and maps docs → phases (PRD/SPEC→define, TASKS→plan) for the
-pipeline echo. `.scans/` and dot-dirs are infra, excluded. API: `GET /api/tgd/artifacts`.
+rail view lists them and maps docs → phases (PRD/SPEC→define, TASKS→plan,
+TEST-REPORT→verify, REVIEW→review, METRICS→release) for the pipeline echo.
+`.scans/` and dot-dirs are infra, excluded. API: `GET /api/tgd/artifacts`.
 The panel has two views (toggle persisted in `localStorage["pi-tgd-artifacts-view"]`):
 **Artifacts** (the curated per-feature/phase view above) and **Files** — a lazy
 tree of the *whole* tGD dir (nothing excluded: `.scans/`, `wiki/docs/`, prototypes),
@@ -254,9 +257,10 @@ Always-visible phase bar at the top of the session view. `PHASE_ACTIONS`
 fetches `/api/tgd/artifacts?cwd=` and marks `map`/`define`/`plan` done from real
 on-disk artifacts (same truth as the artifacts panel — `map` = CONTEXT/wiki
 exists, `define`/`plan` = the current feature's `phasesDone`, plan also if
-`TRACKING-PLAN.md` exists); `develop`/`verify`/`review`/`release` have no tGD
-artifact so they stay transcript-driven (union with the session's invoked
-`/tgd-*`). `current` = the last `/tgd-*` typed this session, else the next phase
+`TRACKING-PLAN.md` exists). Verify/review/release also use the current feature's
+TEST-REPORT/REVIEW/METRICS evidence; `develop` remains transcript-driven because
+it produces code rather than a tGD document. Disk evidence is unioned with the
+session's invoked `/tgd-*`. `current` = the last `/tgd-*` typed this session, else the next phase
 after the furthest with evidence (so a fresh project highlights `map`). The bar
 is **feature-aware**: the tracked feature is the one named in the last `/tgd-*`
 command if it matches a feature dir, else the most-recently-touched feature

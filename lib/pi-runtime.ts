@@ -4,6 +4,7 @@ import {
   ModelRegistry,
   createAgentSessionServices,
   getAgentDir,
+  initTheme,
   type AgentSessionServices,
   type ExtensionCommandContextActions,
   type ExtensionError,
@@ -152,6 +153,17 @@ export function trackExtensionProviders<T extends TrackableModelRegistry>(regist
   return tracker;
 }
 
+export function initializeWebTheme(
+  settings: { getTheme(): string | undefined },
+  initialize: (themeName?: string, enableWatcher?: boolean) => void = initTheme,
+): void {
+  // SDK hosts do not initialize Pi's TUI theme automatically. Extensions can
+  // still read ctx.ui.theme in RPC mode, so initialize the shared theme once
+  // services have resolved the effective settings. A watcher is unnecessary
+  // for the long-lived Web server and would leak across recreated services.
+  initialize(settings.getTheme(), false);
+}
+
 export async function createTrackedAgentServices(cwd: string): Promise<{
   services: AgentSessionServices;
   providerTracker: ExtensionProviderTracker;
@@ -179,6 +191,7 @@ export async function createTrackedAgentServices(cwd: string): Promise<{
       },
     },
   });
+  initializeWebTheme(services.settingsManager);
 
   return { services, providerTracker };
 }

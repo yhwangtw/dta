@@ -1,7 +1,20 @@
 import { describe, expect, it, vi } from "vitest";
-import { bindWebExtensions, emitWebBeforeFork, trackExtensionProviders } from "../pi-runtime";
+import {
+  bindWebExtensions,
+  emitWebBeforeFork,
+  initializeWebTheme,
+  trackExtensionProviders,
+} from "../pi-runtime";
 
 describe("Pi Web runtime integration", () => {
+  it("initializes Pi's extension theme from the session settings without a watcher", () => {
+    const initialize = vi.fn();
+
+    initializeWebTheme({ getTheme: () => "dark" }, initialize);
+
+    expect(initialize).toHaveBeenCalledWith("dark", false);
+  });
+
   it("tracks successful and failed extension provider registrations", () => {
     const models: Array<{ id: string; name: string; provider: string }> = [];
     const registry = {

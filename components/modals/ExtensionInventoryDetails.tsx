@@ -1,25 +1,30 @@
 "use client";
 
-import type { ExtensionsReport, ExtensionWebSupport } from "@/lib/extensions-info";
+import {
+  displayExtensionSupport,
+  type ExtensionSupportDisplay,
+  type ExtensionsReport,
+} from "@/lib/extensions-info";
 import { useI18n, type MsgKey } from "@/lib/i18n";
 import styles from "./ExtensionsConfig.module.css";
 
 const tail = (path?: string) => (path ? path.split("/").slice(-2).join("/") : "");
 
-const SUPPORT_LABELS: Record<ExtensionWebSupport, MsgKey> = {
+const SUPPORT_LABELS: Record<ExtensionSupportDisplay, MsgKey> = {
   supported: "extensions.supported",
   partial: "extensions.partial",
   unsupported: "extensions.unsupported",
+  notApplicable: "extensions.notApplicable",
 };
 
-function SupportBadge({ value }: { value: ExtensionWebSupport }) {
+function SupportBadge({ value }: { value: ExtensionSupportDisplay }) {
   const { t } = useI18n();
   return <span className={styles.supportBadge} data-support={value}>{t(SUPPORT_LABELS[value])}</span>;
 }
 
 export function ExtensionInventoryDetails({ report }: { report: ExtensionsReport }) {
   const { t } = useI18n();
-  const compatibility: Array<[MsgKey, ExtensionWebSupport]> = [
+  const compatibility: Array<[MsgKey, ExtensionSupportDisplay]> = [
     ["extensions.providers", report.compatibility.providers],
     ["extensions.commands", report.compatibility.commands],
     ["extensions.tools", report.compatibility.tools],
@@ -27,8 +32,8 @@ export function ExtensionInventoryDetails({ report }: { report: ExtensionsReport
     ["extensions.commandContext", report.compatibility.commandContext],
     ["extensions.events", report.compatibility.events],
     ["extensions.resources", report.compatibility.resources],
-    ["extensions.shortcuts", report.compatibility.shortcuts],
-    ["extensions.renderers", report.compatibility.renderers],
+    ["extensions.shortcuts", displayExtensionSupport(report.compatibility.shortcuts, report.shortcuts.length)],
+    ["extensions.renderers", displayExtensionSupport(report.compatibility.renderers, report.renderers.length)],
     ["extensions.tuiUi", report.compatibility.tuiUi],
   ];
 
@@ -71,7 +76,7 @@ export function ExtensionInventoryDetails({ report }: { report: ExtensionsReport
       <div className={styles.section}>
         <div className={styles.sectionHeading}>
           <span className={styles.sectionTitle}>{t("extensions.shortcuts")} ({report.shortcuts.length})</span>
-          <SupportBadge value={report.compatibility.shortcuts} />
+          <SupportBadge value={displayExtensionSupport(report.compatibility.shortcuts, report.shortcuts.length)} />
         </div>
         {report.shortcuts.length === 0 && <div className={styles.sectionEmpty}>{t("extensions.none")}</div>}
         {report.shortcuts.map((shortcut, index) => (
@@ -101,7 +106,7 @@ export function ExtensionInventoryDetails({ report }: { report: ExtensionsReport
       <div className={styles.section}>
         <div className={styles.sectionHeading}>
           <span className={styles.sectionTitle}>{t("extensions.renderers")} ({report.renderers.length})</span>
-          <SupportBadge value={report.compatibility.renderers} />
+          <SupportBadge value={displayExtensionSupport(report.compatibility.renderers, report.renderers.length)} />
         </div>
         {report.renderers.length === 0 && <div className={styles.sectionEmpty}>{t("extensions.none")}</div>}
         {report.renderers.map((renderer, index) => (

@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/useToast";
 import { useI18n, translate, type MsgKey } from "@/lib/i18n";
 import { SearchResults } from "./SearchResults";
 import { TagFilter } from "./TagFilter";
+import { resolveSessionForRestore } from "./session-restore";
 import { SessionItemSkeleton } from "@/components/ui/Skeleton";
 import styles from "./SessionSidebar.module.css";
 
@@ -56,7 +57,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
   const activeTagFilter = activeTagFilterProp ?? localActiveTagFilter;
   const setActiveTagFilter = onSelectTagFilter ?? setLocalActiveTagFilter;
 
-  const restoredRef = useRef(false);
+  const restoredSessionIdRef = useRef<string | null>(null);
 
   // Follow the active session's cwd. Selecting a session from another project
   // (e.g. via the ⌘K palette) must move the whole sidebar — project picker and
@@ -70,27 +71,45 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCwdProp]);
 
-  // Auto-select cwd and restore session from URL on first load
+  // Auto-select cwd and restore the session selected by the URL. The list is
+  // incremental and can briefly miss a newly-created session, so fall back to
+  // its detail endpoint instead of permanently abandoning the restore.
   useEffect(() => {
-    if (allSessions.length === 0) return;
+    if (loading) return;
 
-    if (selectedCwd === null) {
-      // If restoring a session, set cwd to match that session
-      if (initialSessionId && !restoredRef.current) {
-        restoredRef.current = true;
-        const target = allSessions.find((s) => s.id === initialSessionId);
+    if (initialSessionId) {
+      if (selectedSessionId === initialSessionId) {
+        restoredSessionIdRef.current = initialSessionId;
+        return;
+      }
+      if (restoredSessionIdRef.current === initialSessionId) return;
+
+      let cancelled = false;
+      void resolveSessionForRestore(initialSessionId, allSessions).then((target) => {
+        if (cancelled) return;
+        restoredSessionIdRef.current = initialSessionId;
         if (target) {
           setSelectedCwd(target.cwd);
           onSelectSession(target, true);
           return;
         }
-        // Session not found — notify parent so it can show the placeholder
         onInitialRestoreDone?.();
-      }
+        if (selectedCwd === null) {
+          const cwds = getRecentCwds(allSessions);
+          if (cwds.length > 0) setSelectedCwd(cwds[0]);
+        }
+      }).catch(() => {
+        if (!cancelled) onInitialRestoreDone?.();
+      });
+      return () => { cancelled = true; };
+    }
+
+    restoredSessionIdRef.current = null;
+    if (selectedCwd === null) {
       const cwds = getRecentCwds(allSessions);
       if (cwds.length > 0) setSelectedCwd(cwds[0]);
     }
-  }, [allSessions, selectedCwd, initialSessionId, onSelectSession, onInitialRestoreDone, setSelectedCwd]);
+  }, [allSessions, loading, selectedCwd, selectedSessionId, initialSessionId, onSelectSession, onInitialRestoreDone, setSelectedCwd]);
 
   const handleNewSession = useCallback(() => {
     if (!selectedCwd) return;
@@ -257,7 +276,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
           refs={cwdRefs}
           projects={projects}
           initialSessionId={initialSessionId ?? null}
-          isRestoring={restoredRef.current}
+          isRestoring={restoredSessionIdRef.current === initialSessionId}
         />
       </div>
 

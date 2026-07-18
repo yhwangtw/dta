@@ -16,7 +16,6 @@ interface IconRailProps {
   onOpenSkills: () => void;
   skillsDisabled: boolean;
   onOpenExtensions: () => void;
-  extensionsDisabled: boolean;
   appearanceOpen: boolean;
   onToggleAppearance: () => void;
 }
@@ -36,7 +35,6 @@ export function IconRail({
   onOpenSkills,
   skillsDisabled,
   onOpenExtensions,
-  extensionsDisabled,
   appearanceOpen,
   onToggleAppearance,
 }: IconRailProps) {
@@ -138,8 +136,8 @@ export function IconRail({
       </button>
       <button
         onClick={onOpenExtensions}
-        disabled={extensionsDisabled}
         title={t("extensions.title")}
+        aria-label={t("extensions.title")}
         className={s.railButton}
       >
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">

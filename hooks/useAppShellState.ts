@@ -89,13 +89,24 @@ export function useAppShellState(): {
   const [sessionKey, setSessionKey] = useState(0);
   const [explorerRefreshKey, setExplorerRefreshKey] = useState(0);
   const [activeCwd, setActiveCwd] = useState<string | null>(null);
-  const [initialSessionId] = useState<string | null>(() => searchParams.get("session"));
+  const initialSessionId = searchParams.get("session");
   const [initialSessionRestored, setInitialSessionRestored] = useState<boolean>(
     () => !searchParams.get("session"),
   );
   const suppressCwdBumpRef = useRef(false);
   const selectedSessionRef = useRef<SessionInfo | null>(null);
   selectedSessionRef.current = selectedSession;
+
+  // Back/forward navigation can change the URL without remounting AppShell.
+  // Keep the restore gate aligned with that live route instead of only reading
+  // the initial URL once.
+  useEffect(() => {
+    if (!initialSessionId) {
+      setInitialSessionRestored(true);
+    } else if (selectedSession?.id !== initialSessionId) {
+      setInitialSessionRestored(false);
+    }
+  }, [initialSessionId, selectedSession?.id]);
 
   // Top panel state
   const [branchTree, setBranchTree] = useState<SessionTreeNode[]>([]);

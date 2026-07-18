@@ -70,6 +70,14 @@ export interface ExtensionResourceInfo {
 }
 
 export type ExtensionWebSupport = "supported" | "partial" | "unsupported";
+export type ExtensionSupportDisplay = ExtensionWebSupport | "notApplicable";
+
+export function displayExtensionSupport(
+  support: ExtensionWebSupport,
+  registrationCount?: number,
+): ExtensionSupportDisplay {
+  return support === "unsupported" && registrationCount === 0 ? "notApplicable" : support;
+}
 
 export interface ExtensionsReport {
   paths: string[];

@@ -110,8 +110,8 @@ function FileTree({ root, onOpenFile }: { root: string; onOpenFile: Props["onOpe
 }
 
 /**
- * tGD artifacts view — the PRD/SPEC/DESIGN/TASKS/METRICS docs, CONTEXT and wiki
- * that the tGD workflow writes into the sibling `<project>-tGD/` directory.
+ * tGD artifacts view — curated Map through Release lifecycle documents and
+ * prototypes written into the sibling `<project>-tGD/` directory.
  * Two views: "Artifacts" (curated per-feature/phase) and "Files" (the whole
  * tGD dir as a tree, nothing hidden). Clicking a file opens it in the right
  * panel (markdown / HTML preview).

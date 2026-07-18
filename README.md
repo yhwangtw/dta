@@ -105,12 +105,16 @@ parent/
 └── your-project-tGD/
     ├── CONTEXT.md
     ├── TRACKING-PLAN.md
+    ├── CHANGELOG.md
+    ├── REGRESSION-CATALOG.md
     ├── wiki/
     └── feature-name/
         ├── PRD.md
         ├── SPEC.md
         ├── DESIGN.md
         ├── TASKS.md
+        ├── TEST-REPORT.md
+        ├── REVIEW.md
         ├── METRICS.md
         └── prototype/
 ```

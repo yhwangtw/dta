@@ -97,6 +97,21 @@ interface TgdArtifactsClient {
   features: { name: string; phasesDone: string[]; mtimeMs: number }[];
 }
 
+export function artifactPhaseCommands(
+  top: { name: string; phase?: string }[],
+  currentFeature: { phasesDone: string[] } | null,
+): Set<string> {
+  const evidence = new Set<string>();
+  if (top.some((file) => file.phase === "map")) evidence.add("/tgd-map");
+  if (top.some((file) => file.name === "TRACKING-PLAN.md")) evidence.add("/tgd-plan");
+
+  for (const phase of currentFeature?.phasesDone ?? []) {
+    if (phase !== "develop") evidence.add(`/tgd-${phase}`);
+  }
+
+  return new Set(CMD_ORDER.filter((command) => evidence.has(command)));
+}
+
 const TYPEWRITER_PHRASES = [
   "ready when you are.",
   "ask me anything.",
@@ -257,15 +272,11 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
     return features.reduce((a, b) => (b.mtimeMs > a.mtimeMs ? b : a));
   }, [tgdArtifacts, tgdState.featureToken]);
 
-  // Phases with real on-disk evidence (map/define/plan) for the current feature.
+  // Phases with real on-disk evidence for the current feature. Develop remains
+  // transcript-driven because it produces code rather than a tGD document.
   const diskDone = useMemo(() => {
-    const done = new Set<string>();
     const top = tgdArtifacts?.top ?? [];
-    if (top.some((f) => f.phase === "map")) done.add("/tgd-map");
-    const hasTrackingPlan = top.some((f) => f.name === "TRACKING-PLAN.md");
-    if (currentFeature?.phasesDone.includes("define")) done.add("/tgd-define");
-    if (currentFeature?.phasesDone.includes("plan") || hasTrackingPlan) done.add("/tgd-plan");
-    return done;
+    return artifactPhaseCommands(top, currentFeature);
   }, [tgdArtifacts, currentFeature]);
 
   const phaseStatusOf = useCallback((cmd: string): PhaseStatus => {

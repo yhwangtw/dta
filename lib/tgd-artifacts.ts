@@ -9,10 +9,13 @@ import { join, dirname, basename, sep } from "path";
 //   <project>-tGD/                ← $TGD_DIR
 //   ├── CONTEXT.md                ← /tgd-map
 //   ├── TRACKING-PLAN.md          ← /tgd-plan
+//   ├── CHANGELOG.md              ← /tgd-release
+//   ├── REGRESSION-CATALOG.md     ← /tgd-release (when regression ACs exist)
 //   ├── wiki/wiki.html            ← /tgd-map (infra)
 //   ├── .scans/                   ← /tgd-map (infra — excluded)
 //   └── <feature-name>/           ← a "feature" = dir with PRD.md or SPEC.md
-//       ├── PRD.md  SPEC.md  DESIGN.md  TASKS.md  METRICS.md
+//       ├── PRD.md  SPEC.md  DESIGN.md  TASKS.md
+//       ├── TEST-REPORT.md  REVIEW.md  METRICS.md
 //       └── prototype/*.html
 // ============================================================================
 
@@ -46,7 +49,7 @@ export interface TgdFeature {
 export interface TgdArtifacts {
   exists: boolean;
   tgdDir: string | null;
-  /** top-level docs (CONTEXT.md, TRACKING-PLAN.md, wiki) */
+  /** top-level project docs (CONTEXT, tracking, release catalog, wiki) */
   top: TgdArtifactFile[];
   features: TgdFeature[];
 }
@@ -57,9 +60,19 @@ const DOC_PHASE: Record<string, string> = {
   "SPEC.md": "define",
   "DESIGN.md": "define",
   "TASKS.md": "plan",
-  "METRICS.md": "plan",
+  "TEST-REPORT.md": "verify",
+  "REVIEW.md": "review",
+  "METRICS.md": "release",
 };
-const FEATURE_DOC_ORDER = ["PRD.md", "SPEC.md", "DESIGN.md", "TASKS.md", "METRICS.md"];
+const FEATURE_DOC_ORDER = [
+  "PRD.md",
+  "SPEC.md",
+  "DESIGN.md",
+  "TASKS.md",
+  "TEST-REPORT.md",
+  "REVIEW.md",
+  "METRICS.md",
+];
 const PROTOTYPE_SCAN_MAX_DEPTH = 8;
 const PROTOTYPE_SCAN_MAX_DIRS = 200;
 
@@ -102,7 +115,12 @@ export function readTgdArtifacts(cwd: string): TgdArtifacts {
   if (!tgdDir) return { exists: false, tgdDir: null, top: [], features: [] };
 
   const top: TgdArtifactFile[] = [];
-  for (const [name, phase] of [["CONTEXT.md", "map"], ["TRACKING-PLAN.md", "plan"]] as const) {
+  for (const [name, phase] of [
+    ["CONTEXT.md", "map"],
+    ["TRACKING-PLAN.md", "plan"],
+    ["CHANGELOG.md", "release"],
+    ["REGRESSION-CATALOG.md", "release"],
+  ] as const) {
     if (existsSync(join(tgdDir, name))) top.push({ name, path: join(tgdDir, name), phase });
   }
   const wiki = join(tgdDir, "wiki", "wiki.html");

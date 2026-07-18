@@ -76,6 +76,17 @@
   margin-bottom: 10px;
 }
 
+.fontFamilyRow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 3px;
+  margin-bottom: 10px;
+}
+
+.fontFamilyRow [data-family="sans"] { font-family: var(--font-sans); }
+.fontFamilyRow [data-family="mono"] { font-family: var(--font-mono); }
+.fontFamilyRow [data-family="system"] { font-family: var(--font-system); }
+
 .fontSizeBtn {
   min-width: 0;
   padding: 6px 2px;

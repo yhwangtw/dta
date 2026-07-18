@@ -5,6 +5,7 @@ import { SKINS, SKIN_LABELS, SKIN_PREVIEWS, useSkin } from "@/lib/skin";
 import { useTheme, toggleOriginFromEvent } from "@/hooks/useTheme";
 import { useI18n } from "@/lib/i18n";
 import { FONT_SIZES, useFontSize } from "@/lib/font-size";
+import { FONT_FAMILIES, useFontFamily } from "@/lib/font-family";
 import styles from "./AppearancePanel.module.css";
 
 interface Props {
@@ -20,6 +21,7 @@ export function AppearancePanel({ onClose }: Props) {
   const { skin, setSkin } = useSkin();
   const { isDark, toggleTheme } = useTheme();
   const { fontSize, setFontSize } = useFontSize();
+  const { fontFamily, setFontFamily } = useFontFamily();
   const { t } = useI18n();
   const ref = useRef<HTMLDivElement | null>(null);
 
@@ -98,6 +100,22 @@ export function AppearancePanel({ onClose }: Props) {
             onClick={() => setFontSize(size)}
           >
             {t(`appearance.fontSize.${size}`)}
+          </button>
+        ))}
+      </div>
+
+      <div className={styles.sectionLabel}>{t("appearance.fontFamily")}</div>
+      <div className={styles.fontFamilyRow} role="group" aria-label={t("appearance.fontFamily")}>
+        {FONT_FAMILIES.map((family) => (
+          <button
+            key={family}
+            type="button"
+            data-family={family}
+            className={`${styles.fontSizeBtn} ${family === fontFamily ? styles.fontSizeBtnActive : ""}`}
+            aria-pressed={family === fontFamily}
+            onClick={() => setFontFamily(family)}
+          >
+            {t(`appearance.fontFamily.${family}`)}
           </button>
         ))}
       </div>

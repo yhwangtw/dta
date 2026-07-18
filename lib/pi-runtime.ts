@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import { statSync } from "node:fs";
 import {
   AuthStorage,
   ModelRegistry,
@@ -164,9 +165,42 @@ export function initializeWebTheme(
   initialize(settings.getTheme(), false);
 }
 
+interface ModelCatalogRefreshServices {
+  agentDir: string;
+  authStorage: { reload(): void };
+  modelRegistry: { refresh(): void };
+}
+
+function modelsConfigVersion(agentDir: string): string | null {
+  try {
+    const stats = statSync(join(agentDir, "models.json"));
+    return `${stats.mtimeMs}:${stats.ctimeMs}:${stats.size}`;
+  } catch {
+    return null;
+  }
+}
+
+export function createAgentModelCatalogRefresher(
+  services: ModelCatalogRefreshServices,
+  readModelsVersion: () => string | null = () => modelsConfigVersion(services.agentDir),
+): () => void {
+  let lastModelsVersion = readModelsVersion();
+  return () => {
+    // Auth routes persist through separate AuthStorage instances, so credentials
+    // must always be reloaded. Avoid resetting Pi's process-wide dynamic provider
+    // registrations unless models.json actually changed.
+    services.authStorage.reload();
+    const nextModelsVersion = readModelsVersion();
+    if (nextModelsVersion === lastModelsVersion) return;
+    services.modelRegistry.refresh();
+    lastModelsVersion = nextModelsVersion;
+  };
+}
+
 export async function createTrackedAgentServices(cwd: string): Promise<{
   services: AgentSessionServices;
   providerTracker: ExtensionProviderTracker;
+  refreshModelCatalog: () => void;
 }> {
   const agentDir = getAgentDir();
   const authStorage = AuthStorage.create(join(agentDir, "auth.json"));
@@ -193,7 +227,11 @@ export async function createTrackedAgentServices(cwd: string): Promise<{
   });
   initializeWebTheme(services.settingsManager);
 
-  return { services, providerTracker };
+  return {
+    services,
+    providerTracker,
+    refreshModelCatalog: createAgentModelCatalogRefresher(services),
+  };
 }
 
 export async function bindWebExtensions(

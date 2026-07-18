@@ -44,6 +44,37 @@ describe("AgentSessionWrapper compact command", () => {
   });
 });
 
+describe("AgentSessionWrapper model catalog refresh", () => {
+  it("refreshes persisted auth and models before resolving a model change", async () => {
+    const model = { id: "gpt-5.6-luna", provider: "openai-codex" };
+    let refreshed = false;
+    const find = vi.fn(() => refreshed ? model : undefined);
+    const setModel = vi.fn().mockResolvedValue(undefined);
+    const inner = {
+      sessionId: "session-1",
+      sessionFile: "/tmp/session-1.jsonl",
+      modelRegistry: { find },
+      setModel,
+      dispose: vi.fn(),
+    } as unknown as AgentSessionLike;
+    const refreshModels = vi.fn(() => { refreshed = true; });
+    const wrapper = new AgentSessionWrapper(inner, "", undefined, [], refreshModels);
+
+    try {
+      await expect(wrapper.send({
+        type: "set_model",
+        provider: "openai-codex",
+        modelId: "gpt-5.6-luna",
+      })).resolves.toEqual(model);
+      expect(refreshModels).toHaveBeenCalledOnce();
+      expect(find).toHaveBeenCalledWith("openai-codex", "gpt-5.6-luna");
+      expect(setModel).toHaveBeenCalledWith(model);
+    } finally {
+      wrapper.destroy();
+    }
+  });
+});
+
 describe("AgentSessionWrapper extension lifecycle", () => {
   it("emits session_shutdown before disposing the session", async () => {
     const calls: string[] = [];

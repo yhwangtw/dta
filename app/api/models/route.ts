@@ -14,6 +14,7 @@ export const dynamic = "force-dynamic";
 function activeSessionSource(sessionId: string): ModelCatalogSource | null {
   const session = getRpcSession(sessionId);
   if (!session?.isAlive()) return null;
+  session.refreshModels();
   return {
     registry: session.inner.modelRegistry,
     settings: session.inner.settingsManager,

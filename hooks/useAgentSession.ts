@@ -9,7 +9,7 @@ import { translate } from "@/lib/i18n";
 import { setIdleTitle, setRunningTitle, setDoneTitle, setErrorTitle, notifyDone, requestNotifyPermission } from "@/lib/attention";
 import type { ToolEntry } from "@/components/modals/ToolPanel";
 import type { SessionData, AgentEvent, AgentPhase, UseAgentSessionOptions, ThinkingLevelOption, ChatInputHandle, AttachedImage, CompactResult } from "./use-agent-session-types";
-import { streamReducer, getRunError, computeSessionStats, isCompactionCancellation } from "./use-agent-session-types";
+import { streamReducer, getRunError, computeSessionStats, isCompactionCancellation, shouldApplySessionLoad } from "./use-agent-session-types";
 import { useAgentEvents, useStallWatchdog } from "./use-agent-connection";
 import { useTranscriptScroll } from "./use-transcript-scroll";
 import { shouldResyncOnVisible } from "@/lib/wake-resync";
@@ -74,6 +74,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   // Already-named sessions never need auto-naming — skip the summarize call
   const hasSummarizedRef = useRef(Boolean(session?.name));
   const sessionNameRef = useRef<string | undefined>(session?.name);
+  const sessionLoadRequestRef = useRef(0);
 
   const { eventSourceRef, lastEventAtRef, connectEvents } = useAgentEvents(agentRunningRef, handleAgentEventRef);
   const { stalledSecs, setStalledSecs } = useStallWatchdog(agentRunning, agentPhaseRef, lastEventAtRef);
@@ -100,6 +101,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const sessionStats = computeSessionStats(messages);
 
   const loadSession = useCallback(async (sid: string, showLoading = false, includeState = false) => {
+    const requestId = ++sessionLoadRequestRef.current;
     try {
       if (showLoading) setLoading(true);
       const url = includeState
@@ -107,7 +109,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         : `/api/sessions/${encodeURIComponent(sid)}`;
       const res = await fetch(url);
       if (res.status === 404) {
-        if (showLoading) {
+        if (showLoading && shouldApplySessionLoad(requestId, sessionLoadRequestRef.current)) {
           setData(null);
           setActiveLeafId(null);
           setMessages([]);
@@ -117,6 +119,9 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const d = await res.json() as SessionData & { agentState?: AgentStateEnvelope };
+      if (!shouldApplySessionLoad(requestId, sessionLoadRequestRef.current)) {
+        return d.agentState ?? null;
+      }
       setData(d);
       const info = (d as { info?: { name?: string } }).info;
       if (info?.name) sessionNameRef.current = info.name;
@@ -135,7 +140,9 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       }
       return d.agentState ?? null;
     } catch (e) {
-      setError(String(e));
+      if (shouldApplySessionLoad(requestId, sessionLoadRequestRef.current)) {
+        setError(String(e));
+      }
       return null;
     } finally {
       if (showLoading) setLoading(false);
@@ -532,6 +539,9 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     if (!sid) return;
     try {
       await sendAgentCommand(sid, { type: "set_model", provider, modelId });
+      // Any session fetch already in flight was started before this model
+      // change and must not overwrite the optimistic selection when it lands.
+      sessionLoadRequestRef.current += 1;
       setCurrentModelOverride({ provider, modelId });
     } catch (e) {
       console.error("Failed to set model:", e);

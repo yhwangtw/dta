@@ -91,6 +91,10 @@ export function isCompactionCancellation(error: unknown): boolean {
   return /compaction (?:cancelled|canceled)|aborted/i.test(message);
 }
 
+export function shouldApplySessionLoad(requestId: number, latestRequestId: number): boolean {
+  return requestId === latestRequestId;
+}
+
 /** Sum token usage and cost across all assistant messages; null when empty. */
 export function computeSessionStats(messages: AgentMessage[]): SessionStats | null {
   const tokens = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };

@@ -35,6 +35,7 @@ export class AgentSessionWrapper {
     public readonly cwd: string = "",
     private readonly providerTracker?: ExtensionProviderTracker,
     initialDiagnostics: Array<{ type: string; message: string }> = [],
+    private readonly refreshModelCatalog?: () => void,
   ) {
     this.extensionDiagnostics = initialDiagnostics.map((diagnostic) => ({
       type: diagnostic.type === "info" || diagnostic.type === "warning" ? diagnostic.type : "error",
@@ -96,6 +97,10 @@ export class AgentSessionWrapper {
     return this.providerTracker?.snapshot() ?? [];
   }
 
+  refreshModels(): void {
+    this.refreshModelCatalog?.();
+  }
+
   async send(command: Record<string, unknown>): Promise<unknown> {
     this.resetIdleTimer();
     const type = command.type as string;
@@ -141,6 +146,7 @@ export class AgentSessionWrapper {
 
       case "set_model": {
         const { provider, modelId } = command as { provider: string; modelId: string };
+        this.refreshModels();
         const registry = this.inner.modelRegistry;
         const model = registry.find(provider, modelId);
         if (!model) throw new Error(`Model not found: ${provider}/${modelId}`);
@@ -397,7 +403,7 @@ export async function startRpcSession(
       toolsOption = toolNames.length === 0 ? [] : allCodingToolNames;
     }
 
-    const { services, providerTracker } = await createTrackedAgentServices(cwd);
+    const { services, providerTracker, refreshModelCatalog } = await createTrackedAgentServices(cwd);
     const { session: inner } = await createAgentSessionFromServices({
       services,
       sessionManager,
@@ -416,7 +422,13 @@ export async function startRpcSession(
       inner.agent.state.systemPrompt = "";
     }
 
-    const wrapper = new AgentSessionWrapper(inner, cwd, providerTracker, services.diagnostics);
+    const wrapper = new AgentSessionWrapper(
+      inner,
+      cwd,
+      providerTracker,
+      services.diagnostics,
+      refreshModelCatalog,
+    );
     wrapper.start();
     try {
       await bindWebExtensions(inner, (error) => wrapper.recordExtensionError(error));

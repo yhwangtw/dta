@@ -1,12 +1,30 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   bindWebExtensions,
+  createAgentModelCatalogRefresher,
   emitWebBeforeFork,
   initializeWebTheme,
   trackExtensionProviders,
 } from "../pi-runtime";
 
 describe("Pi Web runtime integration", () => {
+  it("reloads auth on every read and refreshes models only after models.json changes", () => {
+    const calls: string[] = [];
+    let modelsVersion = "v1";
+    const services = {
+      agentDir: "/agent",
+      authStorage: { reload: vi.fn(() => calls.push("auth")) },
+      modelRegistry: { refresh: vi.fn(() => calls.push("models")) },
+    };
+    const refresh = createAgentModelCatalogRefresher(services, () => modelsVersion);
+
+    refresh();
+    modelsVersion = "v2";
+    refresh();
+
+    expect(calls).toEqual(["auth", "auth", "models"]);
+  });
+
   it("initializes Pi's extension theme from the session settings without a watcher", () => {
     const initialize = vi.fn();
 

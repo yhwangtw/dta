@@ -56,7 +56,7 @@ export function DownloadLink({ filePath, label = "Download" }: { filePath: strin
         border: "1px solid var(--border)",
         borderRadius: 5,
         padding: "2px 8px",
-        fontSize: 11,
+        fontSize: "calc(11px * var(--font-scale))",
         lineHeight: 1.4,
         background: "var(--bg-hover)",
         flexShrink: 0,

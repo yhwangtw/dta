@@ -11,7 +11,7 @@
   display: flex;
   flex-direction: column;
   gap: 1px;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale));
   user-select: none;
   animation: contextMenuIn 0.1s ease-out;
 }
@@ -33,7 +33,7 @@
   border-radius: 5px;
   color: var(--text);
   font-family: inherit;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale));
   text-align: left;
   cursor: pointer;
   white-space: nowrap;
@@ -95,7 +95,7 @@
   outline: none;
   color: var(--text);
   font-family: inherit;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale));
 }
 
 .tagInput::placeholder {
@@ -114,7 +114,7 @@
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  font-size: 10.5px;
+  font-size: calc(10.5px * var(--font-scale));
   line-height: 1.2;
   padding: 2px 7px;
   border-radius: 999px;
@@ -126,7 +126,7 @@
   background: none;
   border: none;
   color: inherit;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale));
   line-height: 1;
   padding: 0 0 0 2px;
   cursor: pointer;

@@ -35,10 +35,10 @@
   background: none;
   outline: none;
   color: var(--text);
-  font-size: 14px;
+  font-size: calc(14px * var(--font-scale));
   font-family: inherit;
 }
-.inputMono { font-family: var(--font-mono); font-size: 13px; }
+.inputMono { font-family: var(--font-mono); font-size: calc(13px * var(--font-scale)); }
 .input::placeholder { color: var(--text-dim); }
 
 .body {
@@ -49,7 +49,7 @@
 }
 
 .groupLabel {
-  font-size: 9.5px;
+  font-size: calc(9.5px * var(--font-scale));
   letter-spacing: 0.08em;
   color: var(--text-dim);
   font-family: var(--font-mono);
@@ -63,7 +63,7 @@
   gap: 9px;
   padding: 7px 10px;
   border-radius: 8px;
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale));
   cursor: pointer;
 }
 .rowActive { background: var(--bg-selected); }
@@ -74,11 +74,11 @@
 
 .rowName { font-weight: 600; white-space: nowrap; flex-shrink: 0; }
 .hl { color: var(--color-accent); font-weight: 700; }
-.pinDot { color: var(--accent); font-size: 10px; }
+.pinDot { color: var(--accent); font-size: calc(10px * var(--font-scale)); }
 
 .rowPath {
   color: var(--text-dim);
-  font-size: 10.5px;
+  font-size: calc(10.5px * var(--font-scale));
   font-family: var(--font-mono);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -88,7 +88,7 @@
 
 .countChip, .gitChip, .branchChip {
   flex-shrink: 0;
-  font-size: 9.5px;
+  font-size: calc(9.5px * var(--font-scale));
   padding: 1px 7px;
   border-radius: 999px;
   font-family: var(--font-mono);
@@ -117,8 +117,8 @@
 }
 .rowActionBtn:hover { color: var(--text); background: var(--bg-hover); }
 
-.emptyNote { padding: 16px 12px; font-size: 12px; color: var(--text-dim); text-align: center; }
-.error { padding: 10px 12px; font-size: 11.5px; color: var(--color-error, #c0392b); }
+.emptyNote { padding: 16px 12px; font-size: calc(12px * var(--font-scale)); color: var(--text-dim); text-align: center; }
+.error { padding: 10px 12px; font-size: calc(11.5px * var(--font-scale)); color: var(--color-error, #c0392b); }
 
 .footer {
   display: flex;
@@ -126,7 +126,7 @@
   gap: 14px;
   padding: 8px 14px;
   border-top: 1px solid var(--border);
-  font-size: 10.5px;
+  font-size: calc(10.5px * var(--font-scale));
   color: var(--text-dim);
   background: var(--bg-panel);
   flex-shrink: 0;
@@ -137,7 +137,7 @@
   border: 1px solid var(--border);
   border-radius: 4px;
   padding: 0 4px;
-  font-size: 9.5px;
+  font-size: calc(9.5px * var(--font-scale));
 }
 .footHint { margin-left: auto; }
 .defaultBtn {
@@ -145,7 +145,7 @@
   background: none;
   border: none;
   color: var(--text-dim);
-  font-size: 10.5px;
+  font-size: calc(10.5px * var(--font-scale));
   cursor: pointer;
   padding: 2px 4px;
 }

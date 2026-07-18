@@ -38,13 +38,13 @@
 }
 
 .title {
-  font-size: 15px;
+  font-size: calc(15px * var(--font-scale));
   font-weight: 700;
   color: var(--text);
 }
 
 .configPath {
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale));
   color: var(--text-muted);
   font-family: var(--font-mono);
 }
@@ -54,7 +54,7 @@
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 20px;
+  font-size: calc(20px * var(--font-scale));
   line-height: 1;
   padding: 2px 6px;
 }
@@ -84,7 +84,7 @@
 
 .loadingText {
   padding: 10px 8px;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale));
   color: var(--text-muted);
 }
 
@@ -110,7 +110,7 @@
 }
 
 .treeItemText {
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale));
   color: var(--text);
   flex: 1;
   overflow: hidden;
@@ -142,7 +142,7 @@
 }
 
 .providerName {
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale));
   font-weight: 400;
   color: var(--text);
   font-family: var(--font-mono);
@@ -171,7 +171,7 @@
 }
 
 .modelName {
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale));
   font-family: var(--font-mono);
   color: var(--text-muted);
   flex: 1;
@@ -185,7 +185,7 @@
 }
 
 .reasoningBadge {
-  font-size: 9px;
+  font-size: calc(9px * var(--font-scale));
   padding: 1px 4px;
   background: var(--color-project-bg);
   color: var(--color-project-text);
@@ -204,7 +204,7 @@
 }
 
 .addModelText {
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale));
 }
 
 .addProviderWrapper {
@@ -224,7 +224,7 @@
   border-radius: 5px;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale));
   transition: border-color 0.12s, color 0.12s;
 }
 
@@ -242,7 +242,7 @@
   align-items: center;
   justify-content: center;
   color: var(--text-dim);
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale));
 }
 
 /* ── Detail Sections (ProviderDetail / ModelDetail) ──────────────────────── */
@@ -266,7 +266,7 @@
   border-radius: 4px;
   color: var(--color-error);
   cursor: pointer;
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale));
 }
 
 .renameButton {
@@ -277,12 +277,12 @@
   border-radius: 4px;
   color: var(--color-white);
   cursor: pointer;
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale));
   align-self: flex-start;
 }
 
 .helperText {
-  font-size: 10.5px;
+  font-size: calc(10.5px * var(--font-scale));
   color: var(--text-dim);
   margin-top: 2px;
 }
@@ -305,7 +305,7 @@
   padding: 0 8px;
   border-radius: 4px;
   color: var(--text);
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale));
   display: inline-flex;
   align-items: center;
   white-space: nowrap;
@@ -337,7 +337,7 @@
   border-radius: 4px;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale));
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -364,7 +364,7 @@
   border-radius: 4px;
   color: var(--color-error);
   cursor: pointer;
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale));
   box-sizing: border-box;
 }
 
@@ -399,7 +399,7 @@
 }
 
 .clearAllButton {
-  font-size: 10.5px;
+  font-size: calc(10.5px * var(--font-scale));
   padding: 2px 7px;
   background: none;
   border: 1px solid var(--border);
@@ -440,7 +440,7 @@
 }
 
 .levelLabel {
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale));
   font-family: var(--font-mono);
 }
 
@@ -464,7 +464,7 @@
 
 .thinkingBtn {
   padding: 4px 10px;
-  font-size: 10.5px;
+  font-size: calc(10.5px * var(--font-scale));
   border: none;
   cursor: pointer;
   font-weight: 400;
@@ -515,7 +515,7 @@
   border: none;
   outline: none;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale));
   padding: 4px 7px;
   transition: background 0.1s, color 0.1s;
 }
@@ -543,7 +543,7 @@
 }
 
 .saveErrorText {
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale));
   color: var(--color-error-text);
   flex: 1;
 }
@@ -555,7 +555,7 @@
   border-radius: 6px;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale));
 }
 
 .saveButton {
@@ -564,7 +564,7 @@
   min-width: 92px;
   border: none;
   border-radius: 6px;
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale));
   font-weight: 600;
   display: inline-flex;
   align-items: center;

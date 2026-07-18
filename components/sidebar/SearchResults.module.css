@@ -11,7 +11,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 8px 12px 6px;
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale));
   color: var(--text-dim);
   border-bottom: 1px solid var(--border);
   position: sticky;
@@ -52,7 +52,7 @@
   padding: 16px 12px;
   text-align: center;
   color: var(--text-dim);
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale));
 }
 
 .error {
@@ -61,7 +61,7 @@
 
 .truncated {
   padding: 6px 12px;
-  font-size: 10.5px;
+  font-size: calc(10.5px * var(--font-scale));
   color: var(--text-dim);
   font-style: italic;
   text-align: center;
@@ -91,7 +91,7 @@
 }
 
 .hitName {
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale));
   font-weight: 500;
   color: var(--text);
   flex: 1 1 auto;
@@ -106,20 +106,20 @@
 }
 
 .hitMeta {
-  font-size: 10.5px;
+  font-size: calc(10.5px * var(--font-scale));
   color: var(--text-dim);
   flex-shrink: 0;
   white-space: nowrap;
 }
 
 .matchedIn {
-  font-size: 10.5px;
+  font-size: calc(10.5px * var(--font-scale));
   color: var(--color-accent);
   font-style: italic;
 }
 
 .snippet {
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale));
   color: var(--text-dim);
   line-height: 1.45;
   overflow: hidden;
@@ -130,7 +130,7 @@
 }
 
 .role {
-  font-size: 10.5px;
+  font-size: calc(10.5px * var(--font-scale));
 }
 
 .mark {

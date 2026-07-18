@@ -47,7 +47,7 @@
 /* Marker on user prompt-template entries (vs built-in tGD commands) */
 .templateTag {
   margin-left: 6px;
-  font-size: 9px;
+  font-size: calc(9px * var(--font-scale));
   font-weight: 500;
   padding: 1px 5px;
   border-radius: 999px;

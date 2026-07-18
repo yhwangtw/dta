@@ -85,6 +85,8 @@ lib/
   session-reader.ts   incremental listing (stat cache) + context building
   i18n.tsx            en/zh-TW strings — module store, useI18n()/translate()
   skin.ts             appearance skins — html[data-skin] token overrides
+  font-size.ts        persisted UI font scale — html[data-font-size]
+  font-family.ts      persisted UI typeface — html[data-font-family]
   prefs.ts            small persisted UI prefs (always-follow stream)
   attention.ts        tab title store (React-rendered <title>) + notifications
   file-security.ts / file-mime.ts / file-stream.ts / file-paths.ts
@@ -120,12 +122,25 @@ hooks/    useAgentSession (chat orchestration; extracted pieces live in
 
 ## Key Design Decisions & Traps
 
-### Module-level stores (theme / toast / i18n / skin / attention)
+### Module-level stores (theme / toast / i18n / skin / typography / attention)
 Cross-cutting client state uses module-level stores + `useSyncExternalStore`
 — no context providers. **Do not** create per-instance state for these:
 `useToast` was once per-instance and SessionSidebar's toasts silently never
 rendered (its container wasn't mounted). One store, one `<ToastContainer />`
 at the app root.
+
+### Font-size preference
+Appearance offers Small / Default / Large / XL through the module-level store
+in `lib/font-size.ts`. The preference is persisted as `pi-font-size` and applied
+to `<html data-font-size>` by both the store and the no-flash script in
+`layout.tsx`. `--font-scale` in `globals.css` drives all UI typography; fixed
+CSS and inline pixel sizes use `calc(<size> * var(--font-scale))`. New font-size
+declarations must use an existing `--text-*` token or the same calculation so
+they participate in the preference.
+
+Typeface selection follows the same pattern in `lib/font-family.ts`, persisted
+as `pi-font-family`. `--font-ui` selects the bundled sans stack, bundled mono
+stack, or system stack; code remains on `--font-mono` regardless of UI choice.
 
 ### React 19 owns `<title>` — never write `document.title`
 Layout metadata is hoisted by React; raw `document.title` writes get

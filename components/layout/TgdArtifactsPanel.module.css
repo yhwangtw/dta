@@ -12,7 +12,7 @@
   gap: 8px;
   padding: 8px 12px;
   border-bottom: 1px solid var(--border);
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale));
 }
 .brand {
   font-weight: 700;
@@ -33,7 +33,7 @@
   cursor: pointer;
   padding: 2px 8px;
   border-radius: 6px;
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale));
   font-family: inherit;
 }
 .viewTab { color: var(--text-dim); }
@@ -53,13 +53,13 @@
   color: var(--text-muted);
   cursor: pointer;
   text-align: left;
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--font-scale));
 }
 .dirRow:hover { background: var(--bg-hover); color: var(--text); }
 .dirName { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .treeChevron { flex-shrink: 0; transition: transform 0.12s; }
 .treeChevron[data-open] { transform: rotate(90deg); }
-.treeLoading { padding: 8px 14px; font-size: 11px; color: var(--text-dim); }
+.treeLoading { padding: 8px 14px; font-size: calc(11px * var(--font-scale)); color: var(--text-dim); }
 .refresh {
   background: none;
   border: none;
@@ -81,7 +81,7 @@
 
 .section { padding: 4px 0 8px; }
 .sectionTitle {
-  font-size: 10px;
+  font-size: calc(10px * var(--font-scale));
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-dim);
@@ -99,7 +99,7 @@
   color: var(--text);
   cursor: pointer;
   text-align: left;
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--font-scale));
 }
 .fileRow:hover { background: var(--bg-hover); }
 .fileIcon { display: inline-flex; color: var(--text-muted); flex-shrink: 0; }
@@ -111,7 +111,7 @@
 }
 .featureHead { padding: 0 12px 4px; }
 .featureName {
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--font-scale));
   font-weight: 600;
   color: var(--text);
   font-family: var(--font-mono);
@@ -124,7 +124,7 @@
   padding: 2px 12px 6px;
 }
 .phaseChip {
-  font-size: 9px;
+  font-size: calc(9px * var(--font-scale));
   padding: 1px 6px;
   border-radius: 999px;
   border: 1px solid transparent;
@@ -143,14 +143,14 @@
 .protoGroup { padding: 2px 0 0 12px; }
 .protoLabel {
   display: block;
-  font-size: 9.5px;
+  font-size: calc(9.5px * var(--font-scale));
   color: var(--text-dim);
   padding: 2px 0;
 }
 .protoGroup .fileRow { padding-left: 4px; }
 
 .noFeatures {
-  font-size: 11.5px;
+  font-size: calc(11.5px * var(--font-scale));
   color: var(--text-dim);
   padding: 10px 12px;
   border-top: 1px solid var(--border);
@@ -170,6 +170,6 @@
   padding: 24px;
   text-align: center;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale));
 }
-.emptyHint { font-size: 11.5px; color: var(--text-dim); max-width: 220px; line-height: 1.5; }
+.emptyHint { font-size: calc(11.5px * var(--font-scale)); color: var(--text-dim); max-width: 220px; line-height: 1.5; }

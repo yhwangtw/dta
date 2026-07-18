@@ -2,7 +2,7 @@
   margin: 0;
   padding: 12px 0;
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale));
   line-height: 1.6;
   background: var(--bg);
   color: var(--text);

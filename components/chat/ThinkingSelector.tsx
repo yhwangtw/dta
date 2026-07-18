@@ -46,7 +46,7 @@ export function ThinkingSelector({
           border: "none", borderRadius: 9,
           color: "var(--text-muted)",
           cursor: isStreaming ? "not-allowed" : "pointer",
-          fontSize: 12, opacity: isStreaming ? 0.5 : 1,
+          fontSize: "calc(12px * var(--font-scale))", opacity: isStreaming ? 0.5 : 1,
           transition: "background 0.12s, color 0.12s",
         }}
       >
@@ -89,7 +89,7 @@ export function ThinkingSelector({
                   width: "100%", padding: "7px 12px",
                   border: "none",
                   color: isActive ? "var(--text)" : "var(--text-muted)",
-                  cursor: "pointer", fontSize: 12, textAlign: "left",
+                  cursor: "pointer", fontSize: "calc(12px * var(--font-scale))", textAlign: "left",
                   fontWeight: isActive ? 600 : 400, whiteSpace: "nowrap",
                 }}
               >
@@ -98,9 +98,9 @@ export function ThinkingSelector({
                   : <span style={{ width: 10, flexShrink: 0 }} />}
                 <span style={{ flex: 1 }}>
                   {displayLabel}
-                  {showOriginal && <span style={{ fontSize: 10, color: "var(--text-dim)", fontFamily: "var(--font-mono)", marginLeft: 5 }}>({lvl})</span>}
+                  {showOriginal && <span style={{ fontSize: "calc(10px * var(--font-scale))", color: "var(--text-dim)", fontFamily: "var(--font-mono)", marginLeft: 5 }}>({lvl})</span>}
                 </span>
-                <span style={{ fontSize: 11, color: "var(--text-dim)", marginLeft: 8 }}>{desc}</span>
+                <span style={{ fontSize: "calc(11px * var(--font-scale))", color: "var(--text-dim)", marginLeft: 8 }}>{desc}</span>
               </button>
             );
           })}

@@ -32,7 +32,7 @@
 }
 
 .statusText {
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale));
 }
 
 .statusTextConnected {
@@ -49,14 +49,14 @@
 
 .messageText {
   margin: 0;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale));
   color: var(--text-muted);
   line-height: 1.5;
 }
 
 .messageTextSimple {
   margin: 0;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale));
   color: var(--text-muted);
 }
 
@@ -79,13 +79,13 @@
   border-radius: 5px;
   color: var(--text);
   cursor: pointer;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale));
   text-align: left;
 }
 
 .helpText {
   margin: 0;
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale));
   color: var(--text-dim);
   line-height: 1.5;
 }
@@ -107,7 +107,7 @@
   border: 1px solid var(--border);
   border-radius: 5px;
   color: var(--text);
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale));
   outline: none;
   font-family: var(--font-mono);
   box-sizing: border-box;
@@ -117,7 +117,7 @@
   padding: 6px 12px;
   border: none;
   border-radius: 5px;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale));
   font-weight: 600;
   flex-shrink: 0;
 }
@@ -140,7 +140,7 @@
   border: 1px solid var(--border);
   border-radius: 5px;
   color: var(--text);
-  font-size: 16px;
+  font-size: calc(16px * var(--font-scale));
   font-weight: 700;
   font-family: var(--font-mono);
   letter-spacing: 0;
@@ -148,13 +148,13 @@
 
 .successMessage {
   margin: 0;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale));
   color: var(--color-success);
 }
 
 .errorMessage {
   margin: 0;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale));
   color: var(--color-error-text);
 }
 
@@ -170,7 +170,7 @@
   border-radius: 5px;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale));
 }
 
 .loginBtn {
@@ -180,7 +180,7 @@
   border-radius: 5px;
   color: var(--color-white);
   cursor: pointer;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale));
   font-weight: 600;
 }
 
@@ -191,5 +191,5 @@
   border-radius: 5px;
   color: var(--color-error);
   cursor: pointer;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale));
 }

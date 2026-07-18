@@ -31,7 +31,7 @@
 
 .header h2 {
   margin: 0;
-  font-size: 14px;
+  font-size: calc(14px * var(--font-scale));
   font-weight: 600;
 }
 
@@ -55,7 +55,7 @@
   padding: 40px;
   text-align: center;
   color: var(--text-dim);
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale));
 }
 
 .error {
@@ -87,7 +87,7 @@
 }
 
 .statLabel {
-  font-size: 10.5px;
+  font-size: calc(10.5px * var(--font-scale));
   color: var(--text-dim);
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -95,14 +95,14 @@
 }
 
 .statValue {
-  font-size: 18px;
+  font-size: calc(18px * var(--font-scale));
   font-weight: 600;
   color: var(--text);
   font-variant-numeric: tabular-nums;
 }
 
 .section h3 {
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale));
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-dim);
@@ -121,7 +121,7 @@
   grid-template-columns: 70px 1fr 70px 1fr;
   align-items: center;
   gap: 10px;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale));
 }
 
 .barLabel {
@@ -151,7 +151,7 @@
 
 .barMeta {
   color: var(--text-dim);
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale));
   text-align: right;
 }
 
@@ -170,12 +170,12 @@
   align-items: center;
   gap: 10px;
   padding: 8px 12px;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale));
 }
 
 .tableHeader {
   background: var(--bg-elev-1);
-  font-size: 10.5px;
+  font-size: calc(10.5px * var(--font-scale));
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-dim);
@@ -216,15 +216,15 @@
   background: var(--bg-elev-1);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale));
 }
 
 .providerChip strong {
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale));
   color: var(--text);
 }
 
 .providerChip .dim {
   color: var(--text-dim);
-  font-size: 10.5px;
+  font-size: calc(10.5px * var(--font-scale));
 }

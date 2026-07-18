@@ -328,7 +328,7 @@ function CodeBlock({ code, lang, headerAction, plain }: { code: string; lang: st
         customStyle={{
           margin: 0,
           padding: "10px 12px",
-          fontSize: 12.5,
+          fontSize: "calc(12.5px * var(--font-scale))",
           lineHeight: 1.6,
           borderRadius: 0,
           // Both forms: the highlighter themes mix `background` (vscDarkPlus)

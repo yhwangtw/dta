@@ -17,7 +17,7 @@
   background: linear-gradient(135deg, var(--accent), var(--accent-hover));
   color: var(--bg);
   font-family: var(--font-mono);
-  font-size: 19px;
+  font-size: calc(19px * var(--font-scale));
   font-weight: 700;
   line-height: 1;
   padding-bottom: 2px;
@@ -34,7 +34,7 @@
 }
 
 .name {
-  font-size: 15px;
+  font-size: calc(15px * var(--font-scale));
   font-weight: 700;
   letter-spacing: -0.015em;
   line-height: 1.1;
@@ -44,7 +44,7 @@
 
 .tagline {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: calc(9px * var(--font-scale));
   font-weight: 500;
   letter-spacing: 0.09em;
   text-transform: uppercase;

@@ -102,6 +102,11 @@ const MESSAGES = {
   "appearance.title": { en: "Appearance", zh: "外觀" },
   "appearance.light": { en: "Light", zh: "淺色" },
   "appearance.dark": { en: "Dark", zh: "深色" },
+  "appearance.fontSize": { en: "Font size", zh: "字型大小" },
+  "appearance.fontSize.small": { en: "Small", zh: "小" },
+  "appearance.fontSize.default": { en: "Default", zh: "標準" },
+  "appearance.fontSize.large": { en: "Large", zh: "大" },
+  "appearance.fontSize.xlarge": { en: "XL", zh: "特大" },
   "appearance.logout": { en: "Log out", zh: "登出" },
 
   // ── Composer ──

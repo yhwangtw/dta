@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { SKINS, SKIN_LABELS, SKIN_PREVIEWS, useSkin } from "@/lib/skin";
 import { useTheme, toggleOriginFromEvent } from "@/hooks/useTheme";
 import { useI18n } from "@/lib/i18n";
+import { FONT_SIZES, useFontSize } from "@/lib/font-size";
 import styles from "./AppearancePanel.module.css";
 
 interface Props {
@@ -11,13 +12,14 @@ interface Props {
 }
 
 /**
- * Appearance picker popover (rail → palette icon): theme toggle + the five
- * skins as swatch cards. Skins apply instantly on click so users can preview
- * live; Esc or clicking outside closes.
+ * Appearance picker popover (rail → palette icon): theme, font size, and the
+ * five skins as swatch cards. Changes apply instantly for live preview; Esc
+ * or clicking outside closes.
  */
 export function AppearancePanel({ onClose }: Props) {
   const { skin, setSkin } = useSkin();
   const { isDark, toggleTheme } = useTheme();
+  const { fontSize, setFontSize } = useFontSize();
   const { t } = useI18n();
   const ref = useRef<HTMLDivElement | null>(null);
 
@@ -83,6 +85,21 @@ export function AppearancePanel({ onClose }: Props) {
           </svg>
           {t("appearance.dark")}
         </button>
+      </div>
+
+      <div className={styles.sectionLabel}>{t("appearance.fontSize")}</div>
+      <div className={styles.fontSizeRow} role="group" aria-label={t("appearance.fontSize")}>
+        {FONT_SIZES.map((size) => (
+          <button
+            key={size}
+            type="button"
+            className={`${styles.fontSizeBtn} ${size === fontSize ? styles.fontSizeBtnActive : ""}`}
+            aria-pressed={size === fontSize}
+            onClick={() => setFontSize(size)}
+          >
+            {t(`appearance.fontSize.${size}`)}
+          </button>
+        ))}
       </div>
 
       <div className={styles.skinList}>

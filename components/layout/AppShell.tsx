@@ -60,7 +60,7 @@ export function AppShell() {
   const { toggleTheme } = useTheme();
   const { locale, t } = useI18n();
   const { state, actions, refs, topBarRef } = useAppShellState();
-  const { fileTabs, activeFileTabId, rightPanelOpen, setRightPanelOpen, setActiveFileTabId, handleOpenFile, handleCloseFileTab, handleCloseOthers, handleCloseAll, handleReorderTabs } = useFileTabs();
+  const { fileTabs, activeFileTabId, rightPanelOpen, setRightPanelOpen, setActiveFileTabId, handleOpenFile: openFileTab, handleCloseFileTab, handleCloseOthers, handleCloseAll, handleReorderTabs } = useFileTabs();
 
   const [modelsConfigOpen, setModelsConfigOpen] = useState(false);
   const [modelsRefreshKey, setModelsRefreshKey] = useState(0);
@@ -125,6 +125,11 @@ export function AppShell() {
   const closeSidebarIfOverlay = useCallback(() => {
     if (window.matchMedia("(max-width: 1024px)").matches) setSidebarOpen(false);
   }, []);
+
+  const handleOpenFile = useCallback((filePath: string, fileName: string, gotoLine?: number) => {
+    openFileTab(filePath, fileName, gotoLine);
+    closeSidebarIfOverlay();
+  }, [closeSidebarIfOverlay, openFileTab]);
 
   const handleSelectSessionFromSidebar = useCallback((session: SessionInfo, isRestore?: boolean) => {
     actions.handleSelectSession(session, isRestore);

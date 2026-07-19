@@ -119,4 +119,31 @@ test.describe("responsive shell", () => {
     await expect(page.getByTestId("app-shell")).toHaveCSS("padding", "11px 12px 13px 14px");
     await expectNoPageOverflow(page);
   });
+
+  test("AC-RWD-5: opening a file on mobile dismisses Explorer and keeps the viewer in the viewport", async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 800 });
+    await openSession(page);
+
+    await page.getByRole("button", { name: "Explorer", exact: true }).click();
+    const sidebar = page.locator(".sidebar-container");
+    await expect(sidebar).toHaveClass(/sidebar-open/);
+    await expect(page.getByRole("textbox", { name: "Filter files" })).toBeVisible();
+
+    await page.getByText("README.md", { exact: true }).click();
+
+    const viewer = page.locator(".right-panel-container");
+    await expect(sidebar).toHaveClass(/sidebar-closed/);
+    await expect(viewer).toHaveClass(/right-panel-open/);
+    await expect(page.getByText("E2E fixture.", { exact: true })).toBeVisible();
+
+    const viewerBox = await viewer.boundingBox();
+    expect(viewerBox).not.toBeNull();
+    expect(viewerBox!.x).toBeGreaterThanOrEqual(44);
+    expect(viewerBox!.x + viewerBox!.width).toBeLessThanOrEqual(320);
+    await expectNoPageOverflow(page);
+
+    await page.getByRole("button", { name: "Explorer", exact: true }).click();
+    await expect(sidebar).toHaveClass(/sidebar-open/);
+    await expect(page.getByRole("textbox", { name: "Filter files" })).toBeVisible();
+  });
 });

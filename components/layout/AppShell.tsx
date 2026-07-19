@@ -29,6 +29,7 @@ import { useI18n, translate } from "@/lib/i18n";
 import { toggleAlwaysFollow } from "@/lib/prefs";
 import { useTabTitle } from "@/lib/attention";
 import { setSkin } from "@/lib/skin";
+import { resolveAppShellCenterView } from "./app-shell-view";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { CommandPalette } from "../ui/CommandPalette";
 import type { SessionInfo, SessionTreeNode } from "@/lib/types";
@@ -367,10 +368,16 @@ export function AppShell() {
     return () => document.removeEventListener("mousedown", close);
   }, [exportMenuOpen]);
 
-  // Show chat area if a session is selected, or if we have a cwd to start a new session in
-  const effectiveNewSessionCwd = state.newSessionCwd ?? (state.selectedSession === null && state.activeCwd ? state.activeCwd : null);
-  const showChat = state.selectedSession !== null || effectiveNewSessionCwd !== null;
-  const showPlaceholder = state.initialSessionRestored && !showChat;
+  const centerView = resolveAppShellCenterView({
+    initialized: state.initialSessionRestored,
+    hasSelectedSession: state.selectedSession !== null,
+    hasNewSessionCwd: state.newSessionCwd !== null,
+    hasActiveCwd: state.activeCwd !== null,
+  });
+  const effectiveNewSessionCwd = centerView === "new"
+    ? state.newSessionCwd
+    : null;
+  const showChat = centerView === "session" || centerView === "new";
 
   const activeFileTab = fileTabs.find((t) => t.id === activeFileTabId) ?? null;
 
@@ -737,8 +744,7 @@ export function AppShell() {
               onContextUsageChange={actions.setContextUsage}
               onSessionNamed={actions.bumpRefreshKey}
             />
-          ) : showPlaceholder ? (
-            state.activeCwd ? (
+          ) : centerView === "project" ? (
               <div className={s.placeholderContainer}>
                 <div className={s.placeholderIconBg}>
                   <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={s.placeholderIcon}>
@@ -752,7 +758,7 @@ export function AppShell() {
                   </div>
                 </div>
               </div>
-            ) : (
+          ) : centerView === "welcome" ? (
               <div className={s.welcomeContainer}>
                 <div className={s.welcomeIconBg}>
                   <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -784,7 +790,6 @@ export function AppShell() {
                   </div>
                 </div>
               </div>
-            )
           ) : null}
         </div>
       </div>

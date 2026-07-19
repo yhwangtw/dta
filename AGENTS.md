@@ -21,7 +21,9 @@ tsconfig/eslint for the same reason.
 **Never run `next build` while the dev server is running** — pollutes `.next/` and breaks `npm run dev`.
 
 Release: after PR CI passes and the PR is merged, run
-`gh workflow run release.yml -f tag=vYYYY.MM.DD`. The workflow updates both
+`gh workflow run release.yml -f tag=vYYYY.MM.DD`. New tags must use the current
+UTC date; for another release on the same date, append a sequence such as
+`vYYYY.MM.DD-1`. The workflow updates both
 package version files, creates the `[skip ci]` release commit and annotated tag,
 and publishes the GitHub Release in one run. Do not manually create a version
 commit or wait for duplicate main/version CI runs. A pre-versioned `v*` tag push

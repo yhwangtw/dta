@@ -557,22 +557,28 @@ export function ModelsConfig({ onClose }: { onClose: () => void }) {
     <>
     <div className={styles.overlay}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className={styles.modal}>
+      <div
+        className={styles.modal}
+        data-testid="models-config-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="models-config-title"
+      >
 
         {/* Header */}
         <div className={styles.header}>
           <div className={styles.headerLeft}>
-            <span className={styles.title}>Models</span>
+            <span id="models-config-title" className={styles.title}>Models</span>
             <code className={styles.configPath}>~/.pi/agent/models.json</code>
           </div>
-          <button onClick={onClose} className={styles.closeButton}>×</button>
+          <button onClick={onClose} className={styles.closeButton} aria-label="Close Models">×</button>
         </div>
 
         {/* Body */}
         <div className={styles.body}>
 
           {/* Left: tree */}
-          <div className={styles.sidebar}>
+          <div className={styles.sidebar} data-testid="models-config-nav">
             <div className={styles.sidebarScroll}>
               {/* Active OAuth subscriptions */}
               {activeOAuth.map((p) => {
@@ -676,7 +682,7 @@ export function ModelsConfig({ onClose }: { onClose: () => void }) {
           </div>
 
           {/* Right: detail */}
-          <div className={styles.rightPanel}>
+          <div className={styles.rightPanel} data-testid="models-config-detail">
             {loading ? null : detailContent ?? (
               <div className={styles.emptyState}>
                 Select a provider or model

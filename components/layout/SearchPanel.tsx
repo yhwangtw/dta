@@ -1,157 +1,164 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
-import { useI18n } from "@/lib/i18n";
-import { getFileName } from "@/lib/file-paths";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { CommandPaletteApi, PaletteResult } from "@/hooks/useCommandPalette";
+import { useUnifiedSearchResults, type SearchScope } from "@/hooks/useUnifiedSearchResults";
+import { useI18n, type MsgKey } from "@/lib/i18n";
 import styles from "./SearchPanel.module.css";
-
-interface GrepMatch {
-  relative: string;
-  full: string;
-  line: number;
-  col: number;
-  text: string;
-}
+import { UnifiedSearchResults } from "./UnifiedSearchResults";
 
 interface Props {
   cwd: string | null;
-  /** Open a file at a line (search hit). */
+  palette: CommandPaletteApi;
+  focusSignal: number;
+  onSelectSession: (sessionId: string) => void;
+  onSelectTag: (tag: string) => void;
   onOpenFile: (filePath: string, fileName: string, line?: number) => void;
 }
 
-// Split a line around the match [col, col+len) so the hit can be highlighted.
-// col is 1-based; len is the query length. Best-effort — rg/js both report the
-// first match's column, which is what we highlight.
-function highlight(text: string, col: number, len: number) {
-  const start = Math.max(0, col - 1);
-  if (len <= 0 || start >= text.length) return text;
-  return (
-    <>
-      {text.slice(0, start)}
-      <span className={styles.mark}>{text.slice(start, start + len)}</span>
-      {text.slice(start + len)}
-    </>
-  );
-}
+const SCOPES: SearchScope[] = ["all", "sessions", "files", "content", "commands"];
 
 /**
- * Full-text project search. Debounced query → GET /api/files/grep; results are
- * grouped by file, and clicking a hit opens the file at that line in the
- * right-panel viewer.
+ * One search surface for sessions, recursive file names, file contents, tags,
+ * and commands. The rail Search button and Command-K both focus this panel.
  */
-export function SearchPanel({ cwd, onOpenFile }: Props) {
+export function SearchPanel({ cwd, palette, focusSignal, onSelectSession, onSelectTag, onOpenFile }: Props) {
   const { t } = useI18n();
-  const [query, setQuery] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [scope, setScope] = useState<SearchScope>("all");
   const [caseSensitive, setCaseSensitive] = useState(false);
-  const [matches, setMatches] = useState<GrepMatch[]>([]);
-  const [state, setState] = useState<"idle" | "loading" | "done" | "error">("idle");
-  const [truncated, setTruncated] = useState(false);
-  const seqRef = useRef(0);
+  const query = palette.query;
+  const trimmed = query.trim();
+  const { sessionHits, fileHits, contentHits, loading, error } = useUnifiedSearchResults(
+    cwd,
+    trimmed,
+    scope,
+    caseSensitive,
+  );
 
   useEffect(() => {
-    const q = query.trim();
-    if (!cwd || q.length < 2) {
-      setMatches([]);
-      setState("idle");
-      return;
-    }
-    const seq = ++seqRef.current;
-    setState("loading");
-    const timer = setTimeout(async () => {
-      try {
-        const params = new URLSearchParams({ cwd, q, ...(caseSensitive ? { case: "1" } : {}) });
-        const res = await fetch(`/api/files/grep?${params.toString()}`);
-        const d = (await res.json()) as { matches?: GrepMatch[]; truncated?: boolean; error?: string };
-        if (seqRef.current !== seq) return; // stale
-        if (!res.ok || d.error) { setState("error"); setMatches([]); return; }
-        setMatches(d.matches ?? []);
-        setTruncated(!!d.truncated);
-        setState("done");
-      } catch {
-        if (seqRef.current === seq) { setState("error"); setMatches([]); }
-      }
-    }, 250);
-    return () => clearTimeout(timer);
-  }, [query, cwd, caseSensitive]);
+    const id = requestAnimationFrame(() => inputRef.current?.focus());
+    return () => cancelAnimationFrame(id);
+  }, [focusSignal]);
 
-  // Group hits by file, preserving encounter order.
-  const groups = useMemo(() => {
-    const byFile = new Map<string, { relative: string; full: string; hits: GrepMatch[] }>();
-    for (const m of matches) {
-      let g = byFile.get(m.full);
-      if (!g) { g = { relative: m.relative, full: m.full, hits: [] }; byFile.set(m.full, g); }
-      g.hits.push(m);
-    }
-    return [...byFile.values()];
-  }, [matches]);
+  const commandResults = useMemo(
+    () => palette.results.filter((result) => result.kind === "action"),
+    [palette.results],
+  );
+  const tagResults = useMemo(
+    () => palette.results.filter((result) => result.kind === "tag"),
+    [palette.results],
+  );
 
-  const qlen = query.trim().length;
+  const showSessions = scope === "all" || scope === "sessions";
+  const showFiles = scope === "all" || scope === "files";
+  const showContent = scope === "all" || scope === "content";
+  const showCommands = scope === "all" || scope === "commands";
+  const visibleResultCount =
+    (showSessions ? sessionHits.length + tagResults.length : 0)
+    + (showFiles ? fileHits.length : 0)
+    + (showContent ? contentHits.length : 0)
+    + (showCommands ? commandResults.length : 0);
+
+  const runPaletteResult = (result: PaletteResult) => {
+    if (result.kind === "tag") onSelectTag((result.data as { tag: string }).tag);
+    else if (result.kind === "action") palette.runAction(result);
+  };
 
   return (
-    <div className={styles.root}>
+    <section className={styles.root} data-testid="unified-search">
       <div className={styles.header}>
-        <div className={styles.title}>{t("search.title")}</div>
+        <div className={`${styles.title} chrome-mono`}>{t("search.unifiedTitle")}</div>
         <div className={styles.inputRow}>
+          <span className={styles.searchIcon} aria-hidden>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+          </span>
           <input
+            ref={inputRef}
             className={styles.input}
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={t("search.placeholder")}
+            onChange={(e) => palette.setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                palette.setQuery("");
+                return;
+              }
+              if (e.key === "ArrowDown" || e.key === "Enter") {
+                e.preventDefault();
+                const firstResult = inputRef.current
+                  ?.closest("[data-testid='unified-search']")
+                  ?.querySelector<HTMLButtonElement>("[data-unified-results] [data-search-result]");
+                if (e.key === "Enter") firstResult?.click();
+                else firstResult?.focus();
+              }
+            }}
+            placeholder={t("search.unifiedPlaceholder")}
             spellCheck={false}
-            autoFocus
-            aria-label={t("search.title")}
+            autoComplete="off"
+            aria-label="Unified search"
           />
+          {query && (
+            <button className={styles.clearButton} onClick={() => palette.setQuery("")} aria-label={t("search.clear")}>
+              ×
+            </button>
+          )}
+        </div>
+        <div className={styles.scopes} aria-label={t("search.scopes")}>
+          {SCOPES.map((item) => (
+            <button
+              key={item}
+              className={`${styles.scope} ${scope === item ? styles.scopeActive : ""}`}
+              onClick={() => setScope(item)}
+              aria-pressed={scope === item}
+            >
+              {t(`search.scope.${item}` as MsgKey)}
+            </button>
+          ))}
+        </div>
+        {(scope === "all" || scope === "content") && (
           <button
-            className={`${styles.caseBtn} ${caseSensitive ? styles.caseBtnActive : ""}`}
-            onClick={() => setCaseSensitive((v) => !v)}
-            title={t("search.caseSensitive")}
+            className={`${styles.caseButton} ${caseSensitive ? styles.caseButtonActive : ""}`}
+            onClick={() => setCaseSensitive((value) => !value)}
             aria-pressed={caseSensitive}
+            title={t("search.caseSensitive")}
           >
             Aa
           </button>
-        </div>
+        )}
       </div>
 
-      {!cwd ? (
-        <div className={styles.status}>{t("search.noProject")}</div>
-      ) : state === "loading" ? (
-        <div className={styles.status}>{t("search.searching")}</div>
-      ) : state === "error" ? (
-        <div className={styles.status}>{t("search.error")}</div>
-      ) : state === "done" && matches.length === 0 ? (
-        <div className={styles.status}>{t("search.noMatches")}</div>
-      ) : (
-        <>
-          {state === "done" && (
-            <div className={styles.status}>
-              {matches.length} {matches.length === 1 ? t("search.hit") : t("search.hits")} · {groups.length} {t("search.files")}
-              {truncated ? ` (${t("search.truncated")})` : ""}
-            </div>
-          )}
-          <div className={styles.results}>
-            {groups.map((g) => (
-              <div key={g.full} className={styles.fileGroup}>
-                <div className={styles.fileHeader} title={g.full}>
-                  <span className={styles.fileName}>{getFileName(g.relative)}</span>
-                  <span className={styles.fileDir}>{g.relative}</span>
-                  <span className={styles.fileCount}>{g.hits.length}</span>
-                </div>
-                {g.hits.map((m, i) => (
-                  <button
-                    key={`${m.line}:${m.col}:${i}`}
-                    className={styles.hit}
-                    onClick={() => onOpenFile(m.full, getFileName(m.full), m.line)}
-                    title={`${g.relative}:${m.line}`}
-                  >
-                    <span className={styles.lineNo}>{m.line}</span>
-                    <span className={styles.lineText}>{highlight(m.text, m.col, qlen)}</span>
-                  </button>
-                ))}
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-    </div>
+      <div className={styles.status} role="status">
+        {loading
+          ? t("search.searching")
+          : error
+            ? t("search.partialError")
+            : trimmed.length === 1 && scope !== "commands"
+              ? t("search.minChars")
+              : trimmed.length >= 2
+                ? `${visibleResultCount} ${t("search.results")}`
+                : t("search.startTyping")}
+      </div>
+
+      <UnifiedSearchResults
+        query={trimmed}
+        loading={loading}
+        visibleResultCount={visibleResultCount}
+        showSessions={showSessions}
+        showFiles={showFiles}
+        showContent={showContent}
+        showCommands={showCommands}
+        sessionHits={sessionHits}
+        fileHits={fileHits}
+        contentHits={contentHits}
+        tagResults={tagResults}
+        commandResults={commandResults}
+        inputRef={inputRef}
+        onPaletteResult={runPaletteResult}
+        onSelectSession={onSelectSession}
+        onOpenFile={onOpenFile}
+      />
+    </section>
   );
 }

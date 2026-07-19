@@ -14,18 +14,54 @@ async function openFiles(page: Page) {
   const explorerButton = page.getByRole("button", { name: "Explorer", exact: true });
   await expect(explorerButton).toBeVisible();
   await explorerButton.click();
-  await expect(page.getByPlaceholder("Filter files…")).toBeVisible();
+  await expect(page.getByText("README.md", { exact: true })).toBeVisible();
 }
 
 test.describe("left rail", () => {
-  test("separates project search from the command palette and scopes file search to Explorer", async ({ page }) => {
+  test("uses one Search entry and opens the same panel with Command-K", async ({ page }) => {
     await openMain(page);
 
     await expect(page.getByRole("button", { name: "Search", exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Command palette (⌘K)", exact: true })).toBeVisible();
-    await expect(page.getByPlaceholder("Filter files…")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Command palette (⌘K)", exact: true })).toHaveCount(0);
+
+    await page.getByRole("button", { name: "Search", exact: true }).click();
+    const search = page.getByTestId("unified-search");
+    await expect(search).toBeVisible();
+    await expect(search.getByRole("textbox", { name: "Unified search" })).toBeFocused();
+    for (const scope of ["All", "Sessions", "Files", "Content", "Commands"]) {
+      await expect(search.getByRole("button", { name: scope, exact: true })).toBeVisible();
+    }
 
     await openFiles(page);
+    await expect(page.getByPlaceholder("Filter files…")).toHaveCount(0);
+
+    await page.keyboard.press(process.platform === "darwin" ? "Meta+K" : "Control+K");
+    await expect(search).toBeVisible();
+    await expect(search.getByRole("textbox", { name: "Unified search" })).toBeFocused();
+    await expect(page.getByRole("dialog", { name: "Command palette" })).toHaveCount(0);
+  });
+
+  test("groups session, filename, content, and command results in one panel", async ({ page }) => {
+    await openMain(page);
+    await page.getByRole("button", { name: "Search", exact: true }).click();
+    const search = page.getByTestId("unified-search");
+    const input = search.getByRole("textbox", { name: "Unified search" });
+
+    await input.fill("index");
+    await search.getByRole("button", { name: "Files", exact: true }).click();
+    await expect(search.getByText("src/index.ts", { exact: true })).toBeVisible({ timeout: 10_000 });
+
+    await search.getByRole("button", { name: "Content", exact: true }).click();
+    await input.fill("answer");
+    await expect(search.getByText(/export const answer/).first()).toBeVisible({ timeout: 10_000 });
+
+    await search.getByRole("button", { name: "Sessions", exact: true }).click();
+    await input.fill("God class");
+    await expect(search.getByText("專案架構分析", { exact: true })).toBeVisible({ timeout: 10_000 });
+
+    await search.getByRole("button", { name: "Commands", exact: true }).click();
+    await input.fill("Models");
+    await expect(search.getByRole("button", { name: /Open Models/ })).toBeVisible();
   });
 });
 
@@ -40,19 +76,19 @@ test.describe("file explorer", () => {
     await expect(page.locator("text=/^U$/").first()).toBeVisible();
   });
 
-  test("deep search finds nested files and shows relative paths", async ({ page }) => {
+  test("unified search finds nested files and shows relative paths", async ({ page }) => {
     await openMain(page);
-    await openFiles(page);
-    await page.getByPlaceholder("Filter files…").fill("index");
-    const hit = page.locator("[data-fx-row]").filter({ hasText: "index.ts" }).first();
-    await expect(hit).toBeVisible({ timeout: 10_000 });
-    await expect(hit).toContainText("src/index.ts");
+    await page.getByRole("button", { name: "Search", exact: true }).click();
+    const search = page.getByTestId("unified-search");
+    await search.getByRole("textbox", { name: "Unified search" }).fill("index");
+    await search.getByRole("button", { name: "Files", exact: true }).click();
+    await expect(search.getByText("src/index.ts", { exact: true })).toBeVisible({ timeout: 10_000 });
   });
 
   test("context menu: copy relative path / mention / diff entries", async ({ page }) => {
     await openMain(page);
     await openFiles(page);
-    await page.getByPlaceholder("Filter files…").fill("index");
+    await page.getByText("src", { exact: true }).first().click();
     const hit = page.locator("[data-fx-row]").filter({ hasText: "index.ts" }).first();
     await expect(hit).toBeVisible({ timeout: 10_000 });
     await hit.click({ button: "right" });

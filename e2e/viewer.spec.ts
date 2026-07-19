@@ -6,7 +6,7 @@ async function openFiles(page: Page) {
   const explorerButton = page.getByRole("button", { name: "Explorer", exact: true });
   await expect(explorerButton).toBeVisible();
   await explorerButton.click();
-  await expect(page.getByPlaceholder("Filter files…")).toBeVisible();
+  await expect(page.getByText("README.md", { exact: true })).toBeVisible();
 }
 
 async function openReadme(page: Page) {

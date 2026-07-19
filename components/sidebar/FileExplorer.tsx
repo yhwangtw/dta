@@ -31,13 +31,6 @@ interface FileNode {
   loaded?: boolean;
 }
 
-interface SearchHit {
-  name: string;
-  relative: string;
-  full: string;
-  isDir: boolean;
-}
-
 interface MenuTarget {
   x: number;
   y: number;
@@ -237,8 +230,6 @@ export function FileExplorer({ cwd, onOpenFile, refreshKey, onAtMention, onOpenD
   const [error, setError] = useState<string | null>(null);
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set());
   const prevCwdRef = useRef<string | null>(null);
-  const [filterQuery, setFilterQuery] = useState("");
-  const filterInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [localRefresh, setLocalRefresh] = useState(0);
   const bumpRefresh = useCallback(() => setLocalRefresh((n) => n + 1), []);
@@ -277,7 +268,6 @@ export function FileExplorer({ cwd, onOpenFile, refreshKey, onAtMention, onOpenD
     if (cwdChanged) {
       setExpandedPaths(loadTreeExpansion(cwd));
       expansionCwdRef.current = cwd;
-      setFilterQuery("");
     }
 
     setLoading(cwdChanged);
@@ -306,36 +296,7 @@ export function FileExplorer({ cwd, onOpenFile, refreshKey, onAtMention, onOpenD
     return () => { alive = false; };
   }, [cwd, treeRefresh]);
 
-  // ── Deep search (server-side, ≥2 chars) ─────────────────────────────────
-  const searchMode = filterQuery.trim().length >= 2;
-  const [searchResults, setSearchResults] = useState<SearchHit[]>([]);
-  const [searchTruncated, setSearchTruncated] = useState(false);
-  const [searching, setSearching] = useState(false);
-
-  useEffect(() => {
-    if (!searchMode) {
-      setSearchResults([]);
-      setSearching(false);
-      return;
-    }
-    setSearching(true);
-    const q = filterQuery.trim();
-    const timer = setTimeout(async () => {
-      try {
-        const res = await fetch(`/api/files/search?cwd=${encodeURIComponent(cwd)}&q=${encodeURIComponent(q)}`);
-        const data = await res.json() as { results?: SearchHit[]; truncated?: boolean };
-        setSearchResults(Array.isArray(data.results) ? data.results : []);
-        setSearchTruncated(!!data.truncated);
-      } catch {
-        setSearchResults([]);
-      } finally {
-        setSearching(false);
-      }
-    }, 220);
-    return () => clearTimeout(timer);
-  }, [filterQuery, cwd, searchMode, treeRefresh]);
-
-  /** Clicking a dir in search results reveals it in the tree. */
+  /** Expand every ancestor needed to reveal a path in the tree. */
   const revealInTree = useCallback((relative: string) => {
     setExpandedPaths((prev) => {
       const next = new Set(prev);
@@ -347,7 +308,6 @@ export function FileExplorer({ cwd, onOpenFile, refreshKey, onAtMention, onOpenD
       }
       return next;
     });
-    setFilterQuery("");
   }, [cwd]);
 
   // ── Reveal the active file when asked (tab "reveal in explorer") ──
@@ -474,23 +434,8 @@ export function FileExplorer({ cwd, onOpenFile, refreshKey, onAtMention, onOpenD
     >
       <input ref={uploadInputRef} type="file" multiple hidden onChange={onFileInputChange} />
       {dragOver && <div className={styles.dropHint}>{t("explorer.dropToUpload")}</div>}
-      {/* Filter / search input */}
-      <div className={styles.filterWrapper}>
-        <input
-          ref={filterInputRef}
-          type="text"
-          placeholder={t("sidebar.filterFiles")}
-          aria-label="Filter files"
-          value={filterQuery}
-          onChange={(e) => setFilterQuery(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Escape") { setFilterQuery(""); filterInputRef.current?.blur(); } }}
-          className={styles.filterInput}
-          onFocus={(e) => { e.currentTarget.style.borderColor = "var(--color-accent-border-focus-strong)"; }}
-          onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; }}
-        />
-      </div>
 
-      <div ref={containerRef} className={styles.filterResults} onKeyDown={onTreeKeyDown}
+      <div ref={containerRef} className={styles.treeContainer} onKeyDown={onTreeKeyDown}
         onContextMenu={(e) => {
           // Right-click on empty space → root-level ops.
           if ((e.target as HTMLElement).closest("[data-fx-row]")) return;
@@ -498,75 +443,24 @@ export function FileExplorer({ cwd, onOpenFile, refreshKey, onAtMention, onOpenD
           setMenu({ x: e.clientX, y: e.clientY, fullPath: cwd, relative: "", isDir: true, rootArea: true });
         }}
       >
-        {searchMode ? (
-          <>
-            {searching && searchResults.length === 0 && (
-              <div className={styles.noResults}>…</div>
-            )}
-            {searchResults.map((hit) => (
-              <div
-                key={hit.full}
-                onClick={() => hit.isDir ? revealInTree(hit.relative) : onOpenFile(hit.full, hit.name)}
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  setMenu({ x: e.clientX, y: e.clientY, fullPath: hit.full, relative: hit.relative, isDir: hit.isDir, gitStatus: gitStatus.get(hit.relative) });
-                }}
-                onMouseDown={(e) => (e.currentTarget as HTMLElement).focus()}
-                className={`hover-bg hover-group ${styles.searchHit}`}
-                title={hit.full}
-                tabIndex={-1}
-                data-fx-row
-                data-dir={hit.isDir ? "1" : "0"}
-                data-open="0"
-              >
-                <span className={styles.iconWrapper}>
-                  {hit.isDir ? <FolderIcon size={14} /> : getFileIcon(hit.name, 14)}
-                </span>
-                <span className={styles.hitText}>
-                  <span className={styles.fileName}>{hit.name}</span>
-                  <span className={styles.hitPath}>{hit.relative}</span>
-                </span>
-                {gitStatus.has(hit.relative) && <GitBadge status={gitStatus.get(hit.relative)!} />}
-                {onAtMention && !hit.isDir && (
-                  <button
-                    className={`hover-reveal ${styles.mentionButton}`}
-                    onClick={(e) => { e.stopPropagation(); onAtMention(hit.relative); }}
-                    title="Insert path into chat"
-                  >
-                    @
-                  </button>
-                )}
-              </div>
-            ))}
-            {!searching && searchResults.length === 0 && (
-              <div className={styles.noResults}>No matches</div>
-            )}
-            {searchTruncated && (
-              <div className={styles.noResults}>{t("explorer.truncated")}</div>
-            )}
-          </>
-        ) : (
-          <>
-            {roots.map((node) => (
-              <TreeNode
-                key={node.fullPath}
-                node={node}
-                depth={0}
-                cwd={cwd}
-                onOpenFile={onOpenFile}
-                onAtMention={onAtMention}
-                expandedPaths={expandedPaths}
-                onToggleExpanded={handleToggleExpanded}
-                refreshKey={treeRefresh}
-                gitStatus={gitStatus}
-                onContextMenu={setMenu}
-                activePath={activeFilePath}
-              />
-            ))}
-            {roots.length === 0 && (
-              <div className={styles.noResults}>No files found</div>
-            )}
-          </>
+        {roots.map((node) => (
+          <TreeNode
+            key={node.fullPath}
+            node={node}
+            depth={0}
+            cwd={cwd}
+            onOpenFile={onOpenFile}
+            onAtMention={onAtMention}
+            expandedPaths={expandedPaths}
+            onToggleExpanded={handleToggleExpanded}
+            refreshKey={treeRefresh}
+            gitStatus={gitStatus}
+            onContextMenu={setMenu}
+            activePath={activeFilePath}
+          />
+        ))}
+        {roots.length === 0 && (
+          <div className={styles.noResults}>No files found</div>
         )}
       </div>
 

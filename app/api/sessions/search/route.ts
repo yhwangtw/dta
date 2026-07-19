@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { existsSync } from "fs";
-import { SessionManager } from "@earendil-works/pi-coding-agent";
-import { resolveSessionPath, listAllSessions } from "@/lib/session-reader";
+import { resolveSessionPath, listAllSessions, getSessionEntries } from "@/lib/session-reader";
+import { searchSessionEntries, type SessionSearchMatch } from "@/lib/session-search";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +13,7 @@ interface SearchHit {
   modified: string;
   messageCount: number;
   matchedIn: "name" | "firstMessage" | "messages";
-  matches: Array<{ entryId: string; role: string; text: string; line: number }>;
+  matches: SessionSearchMatch[];
   totalMatches: number;
 }
 
@@ -42,9 +41,8 @@ export async function GET(req: Request) {
 
     for (const s of slice) {
       const filePath = await resolveSessionPath(s.id);
-      if (!filePath || !existsSync(filePath)) continue;
+      if (!filePath) continue;
 
-      const matches: SearchHit["matches"] = [];
       let matchedIn: SearchHit["matchedIn"] = "messages";
 
       // 1. Check session name
@@ -57,45 +55,15 @@ export async function GET(req: Request) {
         matchedIn = "firstMessage";
       }
 
-      // 3. Scan all message entries for matches
-      let sm: ReturnType<typeof SessionManager.open>;
+      // 3. Parse in memory and scan message entries. SessionManager.open() is
+      // deliberately avoided because it may rewrite empty/corrupted files.
+      let entries;
       try {
-        sm = SessionManager.open(filePath);
+        entries = getSessionEntries(filePath);
       } catch {
         continue;
       }
-
-      const entries = sm.getEntries() as Array<{ type: string; id: string; message?: { role: string; content: unknown } }>;
-      for (let i = 0; i < entries.length; i++) {
-        const e = entries[i];
-        if (e.type !== "message" || !e.message) continue;
-        const role = e.message.role;
-        if (role !== "user" && role !== "assistant") continue;
-
-        const c = e.message.content;
-        let text = "";
-        if (typeof c === "string") text = c;
-        else if (Array.isArray(c)) {
-          text = c
-            .map((b) => {
-              if (typeof b === "string") return b;
-              const o = b as { type: string; text?: string };
-              return o.type === "text" ? o.text ?? "" : "";
-            })
-            .join(" ");
-        }
-        if (!text) continue;
-
-        const idx = text.toLowerCase().indexOf(needle);
-        if (idx >= 0) {
-          // Capture ±40 chars of context around the match
-          const start = Math.max(0, idx - 40);
-          const end = Math.min(text.length, idx + needle.length + 60);
-          const snippet = (start > 0 ? "…" : "") + text.slice(start, end) + (end < text.length ? "…" : "");
-          matches.push({ entryId: e.id, role, text: snippet, line: i });
-          if (matches.length >= 8) break; // cap matches per session
-        }
-      }
+      const matches = searchSessionEntries(entries, needle);
 
       if (matches.length > 0 || matchedIn !== "messages") {
         hits.push({

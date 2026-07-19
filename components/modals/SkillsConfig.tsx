@@ -98,11 +98,17 @@ export function SkillsConfig({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className={styles.modal}>
+      <div
+        className={styles.modal}
+        data-testid="skills-config-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="skills-config-title"
+      >
         {/* Header */}
         <div className={styles.header}>
           <div className={styles.headerLeft}>
-            <span className={styles.title}>
+            <span id="skills-config-title" className={styles.title}>
               Skills
             </span>
             <code className={styles.cwdCode}>
@@ -112,6 +118,7 @@ export function SkillsConfig({
           <button
             onClick={onClose}
             className={styles.closeButton}
+            aria-label="Close Skills"
           >
             ×
           </button>
@@ -120,7 +127,7 @@ export function SkillsConfig({
         {/* Body */}
         <div className={styles.body}>
           {/* Left: skill list */}
-          <div className={styles.sidebar}>
+          <div className={styles.sidebar} data-testid="skills-config-nav">
             <div className={styles.sidebarScroll}>
               {loading ? (
                 <div className={styles.loadingText}>
@@ -205,7 +212,7 @@ export function SkillsConfig({
           </div>
 
           {/* Right: detail or add panel */}
-          <div className={styles.rightPanel}>
+          <div className={styles.rightPanel} data-testid="skills-config-detail">
             {addMode ? (
               <AddSkillPanel
                 cwd={cwd}

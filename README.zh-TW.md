@@ -319,7 +319,7 @@ PR 通過 CI 並合併後，使用快速發版流程：
 gh workflow run release.yml -f tag=vYYYY.MM.DD
 ```
 
-單一 workflow 會更新 `package.json` 與 `package-lock.json`、建立 release commit 與 annotated tag，接著發布 GitHub Release；它的驗證推送不會再啟動一輪 CI。既有的 `v*` tag 推送方式仍可使用。這個流程**不會發布至 npm**。
+請使用目前的 UTC 日期；同一天再次發布時，加入 `vYYYY.MM.DD-1` 這類流水號，未來日期會被拒絕。單一 workflow 會更新 `package.json` 與 `package-lock.json`、建立 release commit 與 annotated tag，接著發布 GitHub Release；它的驗證推送不會再啟動一輪 CI。既有的 `v*` tag 推送方式仍可使用。這個流程**不會發布至 npm**。
 
 ## 授權
 

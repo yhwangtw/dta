@@ -58,6 +58,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
   const setActiveTagFilter = onSelectTagFilter ?? setLocalActiveTagFilter;
 
   const restoredSessionIdRef = useRef<string | null>(null);
+  const restoreFallbackCwdRef = useRef<string | null>(null);
 
   // Follow the active session's cwd. Selecting a session from another project
   // (e.g. via the ⌘K palette) must move the whole sidebar — project picker and
@@ -80,24 +81,36 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
     if (initialSessionId) {
       if (selectedSessionId === initialSessionId) {
         restoredSessionIdRef.current = initialSessionId;
+        restoreFallbackCwdRef.current = null;
         return;
       }
-      if (restoredSessionIdRef.current === initialSessionId) return;
+      if (restoredSessionIdRef.current === initialSessionId) {
+        if (restoreFallbackCwdRef.current === selectedCwd) {
+          restoreFallbackCwdRef.current = null;
+          onInitialRestoreDone?.();
+        }
+        return;
+      }
 
       let cancelled = false;
       void resolveSessionForRestore(initialSessionId, allSessions).then((target) => {
         if (cancelled) return;
         restoredSessionIdRef.current = initialSessionId;
         if (target) {
+          restoreFallbackCwdRef.current = null;
           setSelectedCwd(target.cwd);
           onSelectSession(target, true);
           return;
         }
-        onInitialRestoreDone?.();
         if (selectedCwd === null) {
           const cwds = getRecentCwds(allSessions);
-          if (cwds.length > 0) setSelectedCwd(cwds[0]);
+          if (cwds.length > 0) {
+            restoreFallbackCwdRef.current = cwds[0];
+            setSelectedCwd(cwds[0]);
+            return;
+          }
         }
+        onInitialRestoreDone?.();
       }).catch(() => {
         if (!cancelled) onInitialRestoreDone?.();
       });
@@ -105,10 +118,15 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
     }
 
     restoredSessionIdRef.current = null;
+    restoreFallbackCwdRef.current = null;
     if (selectedCwd === null) {
       const cwds = getRecentCwds(allSessions);
-      if (cwds.length > 0) setSelectedCwd(cwds[0]);
+      if (cwds.length > 0) {
+        setSelectedCwd(cwds[0]);
+        return;
+      }
     }
+    onInitialRestoreDone?.();
   }, [allSessions, loading, selectedCwd, selectedSessionId, initialSessionId, onSelectSession, onInitialRestoreDone, setSelectedCwd]);
 
   const handleNewSession = useCallback(() => {

@@ -9,9 +9,9 @@ interface AppShellCenterState {
 
 /** Decide which center-panel experience should be visible for shell state. */
 export function resolveAppShellCenterView(state: AppShellCenterState): AppShellCenterView {
-  if (!state.initialized) return "loading";
   if (state.hasSelectedSession) return "session";
   if (state.hasNewSessionCwd) return "new";
+  if (!state.initialized) return "loading";
   if (state.hasActiveCwd) return "project";
   return "welcome";
 }

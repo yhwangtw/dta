@@ -29,6 +29,15 @@ describe("resolveAppShellCenterView", () => {
     })).toBe("new");
   });
 
+  it("keeps an explicit new composer visible while a stale session route clears", () => {
+    expect(resolveAppShellCenterView({
+      initialized: false,
+      hasSelectedSession: false,
+      hasNewSessionCwd: true,
+      hasActiveCwd: true,
+    })).toBe("new");
+  });
+
   it("keeps a selected project on the session-or-New placeholder", () => {
     expect(resolveAppShellCenterView({
       initialized: true,

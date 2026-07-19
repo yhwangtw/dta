@@ -144,6 +144,19 @@ const MESSAGES = {
 
   // ── Content search panel ──
   "search.title": { en: "Search", zh: "搜尋" },
+  "search.unifiedTitle": { en: "Unified search", zh: "全域搜尋" },
+  "search.unifiedPlaceholder": { en: "Search sessions, files, content, or commands…", zh: "搜尋 session、檔案、內容或指令…" },
+  "search.scopes": { en: "Search scopes", zh: "搜尋範圍" },
+  "search.scope.all": { en: "All", zh: "全部" },
+  "search.scope.sessions": { en: "Sessions", zh: "Sessions" },
+  "search.scope.files": { en: "Files", zh: "檔案" },
+  "search.scope.content": { en: "Content", zh: "內容" },
+  "search.scope.commands": { en: "Commands", zh: "指令" },
+  "search.clear": { en: "Clear search", zh: "清除搜尋" },
+  "search.minChars": { en: "Type at least 2 characters", zh: "請至少輸入 2 個字元" },
+  "search.results": { en: "results", zh: "個結果" },
+  "search.startTyping": { en: "Type to search · ⌘K", zh: "輸入以搜尋 · ⌘K" },
+  "search.partialError": { en: "Some search sources failed", zh: "部分搜尋來源失敗" },
   "search.placeholder": { en: "Search in files…", zh: "在檔案中搜尋…" },
   "search.caseSensitive": { en: "Match case", zh: "區分大小寫" },
   "search.searching": { en: "Searching…", zh: "搜尋中…" },
@@ -259,16 +272,6 @@ const MESSAGES = {
   "input.agentRunning": { en: "Agent is running…", zh: "Agent 執行中…" },
   "input.steerHint": { en: "Steer: interrupt & inject · Follow-up: queue after", zh: "插話:中斷並注入 · 追問:排在完成後" },
 
-  // ── Command palette ──
-  "palette.placeholder": { en: "Search sessions, tags, files, or run a command…", zh: "搜尋 session、標籤、檔案,或執行指令…" },
-  "palette.sessions": { en: "Sessions", zh: "Sessions" },
-  "palette.files": { en: "Files", zh: "檔案" },
-  "palette.tags": { en: "Tags", zh: "標籤" },
-  "palette.actions": { en: "Actions", zh: "指令" },
-  "palette.navigate": { en: "navigate", zh: "移動" },
-  "palette.select": { en: "select", zh: "選取" },
-  "palette.close": { en: "close", zh: "關閉" },
-  "palette.toggle": { en: "toggle", zh: "開關" },
 } as const;
 
 export type MsgKey = keyof typeof MESSAGES;

@@ -31,7 +31,6 @@ import { useTabTitle } from "@/lib/attention";
 import { setSkin } from "@/lib/skin";
 import { resolveAppShellCenterView } from "./app-shell-view";
 import { ErrorBoundary } from "./ErrorBoundary";
-import { CommandPalette } from "../ui/CommandPalette";
 import type { SessionInfo, SessionTreeNode } from "@/lib/types";
 import type { ChatInputHandle } from "../chat/ChatInput";
 import s from "./AppShell.module.css";
@@ -71,6 +70,7 @@ export function AppShell() {
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [panelView, setPanelView] = useState<PanelView>("sessions");
+  const [searchFocusSignal, setSearchFocusSignal] = useState(0);
   const [revealSignal, setRevealSignal] = useState(0);
   const revealInExplorer = useCallback((filePath: string) => {
     setActiveFileTabId(`file:${filePath}`);
@@ -107,6 +107,7 @@ export function AppShell() {
   // Rail behavior: clicking the active view collapses the panel; clicking the
   // other view switches to it (opening the panel if needed).
   const handleRailView = useCallback((view: PanelView) => {
+    if (view === "search") setSearchFocusSignal((signal) => signal + 1);
     if (view === panelView) {
       setSidebarOpen((open) => !open);
     } else {
@@ -145,42 +146,11 @@ export function AppShell() {
   const { allSessions } = useSessions(state.refreshKey);
   const { tags } = useTags();
   const { ToastContainer } = useToast();
-  const [paletteFiles, setPaletteFiles] = useState<{ name: string; path: string; isDir: boolean }[]>([]);
   const effectiveCwdForPalette = state.activeCwd ?? state.selectedSession?.cwd ?? state.newSessionCwd;
-
-  // Fetch a flat file list from the active cwd whenever it changes. Capped at
-  // ~80 entries; the FileExplorer is a deeper tree but the palette is a quick
-  // launcher, not a full browser.
-  useEffect(() => {
-    let cancelled = false;
-    if (!effectiveCwdForPalette) {
-      setPaletteFiles([]);
-      return () => { cancelled = true; };
-    }
-    (async () => {
-      try {
-        const encoded = encodeFilePathForApi(effectiveCwdForPalette);
-        const res = await fetch(`/api/files/${encoded}?type=list`);
-        if (!res.ok) return;
-        const data = await res.json() as { entries?: { name: string; isDir: boolean }[] };
-        if (cancelled) return;
-        const out = (data.entries ?? []).slice(0, 80).map((e) => ({
-          name: e.name,
-          path: `${effectiveCwdForPalette.replace(/\/$/, "")}/${e.name}`,
-          isDir: e.isDir,
-        }));
-        setPaletteFiles(out);
-      } catch {
-        // best-effort
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [effectiveCwdForPalette, state.explorerRefreshKey]);
 
   const palette = useCommandPalette({
     sessions: allSessions,
     tags,
-    files: paletteFiles,
     activeTag: activeTagFilter,
     onClearTag: () => setActiveTagFilter(null),
   });
@@ -219,21 +189,16 @@ export function AppShell() {
   // Global hotkeys. Every hint shown in the ⌘K palette must be bound here —
   // an advertised shortcut that does nothing reads as a broken app.
   useEffect(() => {
-    const isEditable = (el: EventTarget | null): boolean => {
-      if (!(el instanceof HTMLElement)) return false;
-      const tag = el.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
-      if (el.isContentEditable) return true;
-      return false;
-    };
     const onKey = (e: KeyboardEvent) => {
       if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
       const key = e.key.toLowerCase();
       if (key === "k" && !e.shiftKey) {
         e.preventDefault();
         e.stopPropagation();
-        if (isEditable(e.target)) return; // let normal typing happen
-        palette.toggle();
+        palette.open();
+        setPanelView("search");
+        setSidebarOpen(true);
+        setSearchFocusSignal((signal) => signal + 1);
         return;
       }
       // ⇧⌘M — Models (plain ⌘M is the macOS minimize shortcut, unreachable)
@@ -424,6 +389,13 @@ export function AppShell() {
       ) : panelView === "search" ? (
         <SearchPanel
           cwd={panelCwd}
+          palette={palette}
+          focusSignal={searchFocusSignal}
+          onSelectSession={handlePaletteSelectSession}
+          onSelectTag={(tag) => {
+            handlePaletteSelectTag(tag);
+            setPanelView("sessions");
+          }}
           onOpenFile={handleOpenFile}
         />
       ) : panelView === "tgd" ? (
@@ -455,7 +427,6 @@ export function AppShell() {
         panelView={panelView}
         sidebarOpen={sidebarOpen}
         onSelectView={handleRailView}
-        onOpenPalette={palette.open}
         onOpenAnalytics={() => setAnalyticsOpen(true)}
         onOpenModels={() => setModelsConfigOpen(true)}
         onOpenSkills={() => setSkillsConfigOpen(true)}
@@ -884,13 +855,6 @@ export function AppShell() {
     {analyticsOpen && <Suspense fallback={null}><AnalyticsModal open={analyticsOpen} onClose={() => setAnalyticsOpen(false)} /></Suspense>}
     {appearanceOpen && <AppearancePanel onClose={() => setAppearanceOpen(false)} />}
     {shortcutsOpen && <ShortcutsDialog onClose={() => setShortcutsOpen(false)} />}
-    {/* ⌘K Command Palette — last so it sits on top of every modal */}
-    <CommandPalette
-      palette={palette}
-      onSelectSession={handlePaletteSelectSession}
-      onSelectTag={handlePaletteSelectTag}
-      onOpenFile={handleOpenFile}
-    />
     {/* Toast notifications — mount once at app root */}
     <ToastContainer />
     </>

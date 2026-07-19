@@ -13,7 +13,6 @@ import { useExplorer } from "@/hooks/useExplorer";
 import { useTags } from "@/hooks/useTags";
 import { useToast } from "@/hooks/useToast";
 import { useI18n, translate, type MsgKey } from "@/lib/i18n";
-import { SearchResults } from "./SearchResults";
 import { TagFilter } from "./TagFilter";
 import { resolveSessionForRestore } from "./session-restore";
 import { SessionItemSkeleton } from "@/components/ui/Skeleton";
@@ -156,9 +155,6 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
       .sort((a, b) => b[1].latest.localeCompare(a[1].latest))
       .map(([cwd, { count }]) => ({ cwd, count }));
   }, [allSessions]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const searchInputRef = useRef<HTMLInputElement>(null);
-
   // ── Sort mode: recent (default) / name / messages, persisted locally ──
   const [sortMode, setSortMode] = useState<SessionSortMode>("recent");
   useEffect(() => {
@@ -174,9 +170,6 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
       return next;
     });
   }, []);
-
-  // Deep search mode: triggers when query length >= 2 (since 1 char is too noisy)
-  const inSearchMode = searchQuery.trim().length >= 2;
 
   const [showArchived, setShowArchived] = useState(false);
   const archivedSet = useMemo(() => new Set(archivedIds), [archivedIds]);
@@ -199,20 +192,8 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
     return list;
   }, [allSessions, selectedCwd, activeTagFilter, tags, showArchived, archivedSet]);
 
-  // Local filter: name + firstMessage (cheap, runs in sidebar)
-  const searchFilteredSessions = useMemo(() => {
-    if (inSearchMode) return []; // deep search bypasses local filter
-    if (!searchQuery.trim()) return filteredSessions;
-    const q = searchQuery.toLowerCase();
-    return filteredSessions.filter((s) => {
-      const name = s.name?.toLowerCase() ?? "";
-      const firstMsg = s.firstMessage?.toLowerCase() ?? "";
-      return name.includes(q) || firstMsg.includes(q);
-    });
-  }, [filteredSessions, searchQuery, inSearchMode]);
-
   // Build parent-child tree within the filtered set
-  const sessionTree = buildSessionTree(searchFilteredSessions, sortMode);
+  const sessionTree = buildSessionTree(filteredSessions, sortMode);
 
   // ── Keyboard navigation: ↑/↓ roves focus over visible rows, Enter opens ──
   // DOM order is the source of truth — collapsed fork children aren't
@@ -298,42 +279,10 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
         />
       </div>
 
-      {/* Search — always visible when a search is active, otherwise only when >3 sessions */}
-      {(filteredSessions.length > 3 || searchQuery.trim()) && (
-        <div className={styles.searchWrapper}>
-          <div className={styles.searchRow}>
-          <div className={styles.searchContainer}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={styles.searchIcon}>
-              <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-            <input
-              ref={searchInputRef}
-              type="text"
-              placeholder={inSearchMode ? "Deep search… (scans all sessions)" : "Search sessions…"}
-              aria-label="Search sessions"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Escape") { setSearchQuery(""); searchInputRef.current?.blur(); }
-                // ↓ hands focus to the first visible session row
-                else if (e.key === "ArrowDown") { e.preventDefault(); moveRowFocus(1); }
-              }}
-              className={styles.searchInput}
-              onFocus={(e) => { e.currentTarget.style.borderColor = "var(--color-accent-border-focus-strong)"; }}
-              onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; }}
-            />
-            {searchQuery && (
-              <button
-                onClick={() => { setSearchQuery(""); searchInputRef.current?.focus(); }}
-                className={styles.searchClear}
-                title="Clear"
-              >
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
-            )}
-          </div>
+      {/* Session-list controls; search lives in the global Search rail view. */}
+      <div className={styles.sessionToolbar}>
+        <div className={styles.sessionToolbarRow}>
+          <span className={`${styles.sessionListLabel} chrome-mono`}>{t("search.scope.sessions")}</span>
           <button
             onClick={cycleSortMode}
             className={`${styles.sortButton} ${sortMode !== "recent" ? styles.sortButtonActive : ""} hover-bg-selected-accent`}
@@ -358,9 +307,8 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
               </svg>
             )}
           </button>
-          </div>
         </div>
-      )}
+      </div>
 
       {/* Tag filter chips (visible when user has tagged any session) */}
       {Object.keys(tags).length > 0 && (
@@ -371,14 +319,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
         />
       )}
 
-      {inSearchMode ? (
-        <SearchResults
-          query={searchQuery}
-          onSelectSession={onSelectSession}
-          onClose={() => { setSearchQuery(""); searchInputRef.current?.focus(); }}
-        />
-      ) : (
-      /* Session list */
+      {/* Session list */}
       <div
         ref={listRef}
         role="listbox"
@@ -408,11 +349,6 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
         {!loading && !error && filteredSessions.length === 0 && (
           <div className={styles.emptyMessage}>
             No sessions found
-          </div>
-        )}
-        {!loading && !error && filteredSessions.length > 0 && searchFilteredSessions.length === 0 && searchQuery.trim() && (
-          <div className={styles.emptyMessage}>
-            No matches for &ldquo;{searchQuery}&rdquo;
           </div>
         )}
         {pinnedNodes.length > 0 && (
@@ -502,7 +438,6 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
           </button>
         )}
       </div>
-      )}
 
       {/* File Explorer section */}
       {showExplorer && (selectedCwdProp || selectedCwd) && (

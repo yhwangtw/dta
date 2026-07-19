@@ -127,7 +127,7 @@ test.describe("responsive shell", () => {
     await page.getByRole("button", { name: "Explorer", exact: true }).click();
     const sidebar = page.locator(".sidebar-container");
     await expect(sidebar).toHaveClass(/sidebar-open/);
-    await expect(page.getByRole("textbox", { name: "Filter files" })).toBeVisible();
+    await expect(page.getByText("README.md", { exact: true })).toBeVisible();
 
     await page.getByText("README.md", { exact: true }).click();
 
@@ -144,6 +144,6 @@ test.describe("responsive shell", () => {
 
     await page.getByRole("button", { name: "Explorer", exact: true }).click();
     await expect(sidebar).toHaveClass(/sidebar-open/);
-    await expect(page.getByRole("textbox", { name: "Filter files" })).toBeVisible();
+    await expect(sidebar.getByText("README.md", { exact: true })).toBeVisible();
   });
 });

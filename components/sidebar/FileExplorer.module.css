@@ -83,24 +83,7 @@
   color: var(--color-error-text);
 }
 
-/* ── Filter ── */
-.filterWrapper {
-  padding: 4px 6px;
-}
-
-.filterInput {
-  width: 100%;
-  padding: 4px 8px;
-  background: var(--bg-hover);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  color: var(--text);
-  font-size: calc(11px * var(--font-scale));
-  outline: none;
-  transition: border-color 0.15s;
-}
-
-.filterResults {
+.treeContainer {
   padding: 0 4px 2px;
 }
 
@@ -111,8 +94,7 @@
 }
 
 /* Keyboard-focused row */
-.treeNode:focus,
-.searchHit:focus {
+.treeNode:focus {
   outline: 1px solid var(--color-accent-border);
   outline-offset: -1px;
   border-radius: 4px;
@@ -134,32 +116,6 @@
   border-radius: 999px;
   background: var(--color-warning-text-strong, #d97706);
   opacity: 0.7;
-}
-
-/* Deep-search flat results */
-.searchHit {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
-  cursor: pointer;
-  border-radius: 4px;
-}
-
-.hitText {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-
-.hitPath {
-  font-size: calc(9.5px * var(--font-scale));
-  color: var(--text-dim);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 /* Context menu */

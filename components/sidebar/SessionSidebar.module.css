@@ -76,23 +76,25 @@
   color: var(--color-success);
 }
 
-/* ── Search ── */
-.searchWrapper {
+/* ── Session-list toolbar ── */
+.sessionToolbar {
   padding: 6px 10px;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
 
-.searchRow {
+.sessionToolbarRow {
   display: flex;
   align-items: center;
   gap: 5px;
 }
 
-.searchContainer {
-  position: relative;
-  flex: 1 1 auto;
-  min-width: 0;
+.sessionListLabel {
+  flex: 1;
+  color: var(--text-dim);
+  font-size: var(--text-xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 /* Sort-mode cycle button (clock → A-Z → bars) */
@@ -119,47 +121,6 @@
 .sortButtonActive {
   color: var(--color-accent);
   border-color: var(--color-accent-border-focus-strong);
-}
-
-.searchIcon {
-  position: absolute;
-  left: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  pointer-events: none;
-}
-
-.searchInput {
-  width: 100%;
-  padding: 5px 26px 5px 26px;
-  background: var(--bg-hover);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  color: var(--text);
-  font-size: calc(11px * var(--font-scale));
-  outline: none;
-  transition: border-color 0.15s;
-}
-
-.searchClear {
-  position: absolute;
-  right: 6px;
-  top: 50%;
-  transform: translateY(-50%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: none;
-  border: none;
-  color: var(--text-dim);
-  cursor: pointer;
-  padding: 3px;
-  border-radius: 4px;
-}
-
-.searchClear:hover {
-  color: var(--text);
-  background: var(--bg);
 }
 
 /* ── Session list ── */

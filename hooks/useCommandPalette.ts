@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import { useState, useCallback, useMemo, useRef } from "react";
 import type { SessionInfo } from "@/lib/types";
 import type { SessionTags } from "./useTags";
 
 // ── Result types ───────────────────────────────────────────────────────────
 
-export type PaletteResultKind = "session" | "tag" | "file" | "action";
+export type PaletteResultKind = "session" | "tag" | "action";
 
 export interface PaletteResult {
   id: string;
@@ -44,14 +44,9 @@ export type PaletteActionId =
   | "help:shortcuts";
 
 export interface CommandPaletteApi {
-  isOpen: boolean;
   open: () => void;
-  close: () => void;
-  toggle: () => void;
   query: string;
   setQuery: (q: string) => void;
-  selectedIndex: number;
-  setSelectedIndex: (i: number) => void;
   results: PaletteResult[];
   runAction: (r: PaletteResult) => void;
   // Wiring the action registry is the consumer's job; we only store the
@@ -276,8 +271,6 @@ function escapeRegex(s: string): string {
 export interface UseCommandPaletteArgs {
   sessions: SessionInfo[];
   tags: SessionTags;
-  /** Recent / cached list of files under active cwd. Optional. */
-  files?: { name: string; path: string; isDir: boolean }[];
   /**
    * Currently active tag filter. When set, the command palette exposes a
    * "Clear filter" action so users can reset it.
@@ -289,26 +282,15 @@ export interface UseCommandPaletteArgs {
 export function useCommandPalette({
   sessions,
   tags,
-  files = [],
   activeTag = null,
   onClearTag,
 }: UseCommandPaletteArgs): CommandPaletteApi {
-  const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [selectedIndex, setSelectedIndex] = useState(0);
   const cbRef = useRef<PaletteCallbacks | null>(null);
 
   const open = useCallback(() => {
-    setIsOpen(true);
     setQuery("");
-    setSelectedIndex(0);
   }, []);
-  const close = useCallback(() => {
-    setIsOpen(false);
-    setQuery("");
-    setSelectedIndex(0);
-  }, []);
-  const toggle = useCallback(() => setIsOpen((v) => !v), []);
 
   const register = useCallback((cbs: PaletteCallbacks) => {
     cbRef.current = cbs;
@@ -347,20 +329,6 @@ export function useCommandPalette({
       });
     }
 
-    // Files
-    for (const f of files) {
-      if (f.isDir) continue; // only show openable files
-      const title = f.name;
-      const sub = f.path;
-      all.push({
-        id: `file:${f.path}`,
-        kind: "file",
-        title,
-        subtitle: sub,
-        data: f,
-      });
-    }
-
     // Active-tag clear filter action (if a filter is active)
     if (activeTag) {
       all.push({
@@ -376,8 +344,13 @@ export function useCommandPalette({
     all.push(...ACTIONS_RESULTS);
 
     if (!query.trim()) {
-      // No query: keep the natural order, cap to ~50 results.
-      return all.slice(0, 50);
+      // The unified search panel uses this list for its Commands scope. Keep
+      // actions ahead of large session catalogs so they are always available
+      // before a query has been entered.
+      return [
+        ...all.filter((result) => result.kind === "action"),
+        ...all.filter((result) => result.kind !== "action"),
+      ].slice(0, 50);
     }
 
     // Score and filter
@@ -394,67 +367,45 @@ export function useCommandPalette({
       .slice(0, 50)
       .map(({ r }) => r);
     return scored;
-  }, [sessions, tags, files, query, activeTag]);
-
-  // Keep selectedIndex in range whenever the result list shrinks.
-  useEffect(() => {
-    if (selectedIndex >= results.length) setSelectedIndex(Math.max(0, results.length - 1));
-  }, [results.length, selectedIndex]);
+  }, [sessions, tags, query, activeTag]);
 
   const runAction = useCallback((r: PaletteResult) => {
     const cbs = cbRef.current;
-    if (r.kind === "session") {
-      // host binds the actual selection via onSelectSession — handled by caller
+    // Session and tag selection are handled by the unified search panel.
+    if (r.kind !== "action") return;
+    const action = (r.data as { action: PaletteActionId }).action;
+    if (action === "view:clear-tag") {
+      onClearTag?.();
       return;
     }
-    if (r.kind === "tag") {
-      // host binds tag filter
-      return;
-    }
-    if (r.kind === "file") {
-      // host binds file open
-      return;
-    }
-    if (r.kind === "action") {
-      const action = (r.data as { action: PaletteActionId }).action;
-      if (action === "view:clear-tag") {
-        onClearTag?.();
-        return;
-      }
-      if (!cbs) return;
-      switch (action) {
-        case "settings:models": cbs.openModels(); break;
-        case "settings:skills": cbs.openSkills(); break;
-        case "settings:extensions": cbs.openExtensions(); break;
-        case "settings:prompts": cbs.openPrompts(); break;
-        case "settings:analytics": cbs.openAnalytics(); break;
-        case "settings:appearance": cbs.openAppearance(); break;
-        case "view:toggle-theme": cbs.toggleTheme(); break;
-        case "view:toggle-sidebar": cbs.toggleSidebar(); break;
-        case "view:toggle-file-panel": cbs.toggleFilePanel(); break;
-        case "view:toggle-chat-width": cbs.toggleChatWidth(); break;
-        case "view:toggle-follow": cbs.toggleFollowStream(); break;
-        case "skin:terminal": cbs.setSkin("terminal"); break;
-        case "skin:industrial": cbs.setSkin("industrial"); break;
-        case "skin:aurora": cbs.setSkin("aurora"); break;
-        case "skin:editorial": cbs.setSkin("editorial"); break;
-        case "skin:glass": cbs.setSkin("glass"); break;
-        case "session:new": cbs.newSession(); break;
-        case "session:open-parallel": cbs.openParallelForActive(); break;
-        case "help:shortcuts": cbs.openHelp(); break;
-      }
+    if (!cbs) return;
+    switch (action) {
+      case "settings:models": cbs.openModels(); break;
+      case "settings:skills": cbs.openSkills(); break;
+      case "settings:extensions": cbs.openExtensions(); break;
+      case "settings:prompts": cbs.openPrompts(); break;
+      case "settings:analytics": cbs.openAnalytics(); break;
+      case "settings:appearance": cbs.openAppearance(); break;
+      case "view:toggle-theme": cbs.toggleTheme(); break;
+      case "view:toggle-sidebar": cbs.toggleSidebar(); break;
+      case "view:toggle-file-panel": cbs.toggleFilePanel(); break;
+      case "view:toggle-chat-width": cbs.toggleChatWidth(); break;
+      case "view:toggle-follow": cbs.toggleFollowStream(); break;
+      case "skin:terminal": cbs.setSkin("terminal"); break;
+      case "skin:industrial": cbs.setSkin("industrial"); break;
+      case "skin:aurora": cbs.setSkin("aurora"); break;
+      case "skin:editorial": cbs.setSkin("editorial"); break;
+      case "skin:glass": cbs.setSkin("glass"); break;
+      case "session:new": cbs.newSession(); break;
+      case "session:open-parallel": cbs.openParallelForActive(); break;
+      case "help:shortcuts": cbs.openHelp(); break;
     }
   }, [onClearTag]);
 
   return {
-    isOpen,
     open,
-    close,
-    toggle,
     query,
     setQuery,
-    selectedIndex,
-    setSelectedIndex,
     results,
     runAction,
     register,

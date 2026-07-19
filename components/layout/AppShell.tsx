@@ -444,7 +444,7 @@ export function AppShell() {
   return (
     <>
     <title>{tabTitle}</title>
-    <div className={s.container}>
+    <div className={s.container} data-testid="app-shell">
       {/* Icon rail — global navigation, always visible */}
       <IconRail
         panelView={panelView}
@@ -854,6 +854,7 @@ export function AppShell() {
     <button
       onClick={() => setRightPanelOpen((v) => !v)}
       title={rightPanelOpen ? t("topbar.hideFilePanel") : t("topbar.showFilePanel")}
+      aria-label={rightPanelOpen ? t("topbar.hideFilePanel") : t("topbar.showFilePanel")}
       className={`${s.filePanelToggle} hover-text`}
       style={{ color: rightPanelOpen ? "var(--text)" : "var(--text-muted)" }}
     >

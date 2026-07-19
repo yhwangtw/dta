@@ -413,3 +413,32 @@
   color: var(--text-dim);
   opacity: 0.55;
 }
+
+@media (pointer: coarse) {
+  .bottomBar {
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .bottomBar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .attachButton,
+  .soundButton {
+    width: 44px;
+    height: 44px;
+  }
+
+  .autoCompactButton,
+  .compactButton,
+  .stopButton {
+    height: 44px;
+  }
+
+  .sendButton,
+  .steerButton,
+  .followUpButton {
+    min-height: 44px;
+  }
+}

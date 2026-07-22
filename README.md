@@ -62,7 +62,10 @@ cd tGD-pi-web
 bash setup.sh
 ```
 
-The setup script checks Node.js and npm, installs dependencies, verifies the Pi agent directory, creates a production build, and can start the production server. It does not modify files outside this repository.
+The setup script is the supported one-step production path. In a Git checkout it first replaces local source changes with `origin/main`, then checks Node.js and npm, installs dependencies, runs TypeScript validation, creates a production build, and can start the production server. For source archives, known obsolete files are moved to `~/.tgd-pi-web-backups/` (override with `TGD_SETUP_BACKUP_DIR`) before the build.
+
+> [!WARNING]
+> `origin/main` is the source of truth for end-user Git installations. Running `bash setup.sh` discards local commits, tracked changes, and non-ignored untracked files with `git reset --hard origin/main` and `git clean -fd`. Ignored runtime state such as `.env`, `node_modules`, and `.next` is retained.
 
 Manual setup:
 
@@ -77,10 +80,15 @@ Open [http://localhost:30141](http://localhost:30141).
 ### Update an existing checkout
 
 ```bash
-git pull
-npm install
-npm run build
-npm start
+bash setup.sh
+```
+
+`setup.sh` stops immediately and prints the complete TypeScript error when validation fails. It never continues into a misleading partial build.
+
+For a deliberately offline Git checkout, skip remote synchronization explicitly:
+
+```bash
+TGD_SETUP_OFFLINE=1 bash setup.sh
 ```
 
 ## tGD Workflow in the Browser
@@ -152,6 +160,7 @@ Set `TGD_DIR` when your artifact directory lives elsewhere.
 - Prompt, steer, follow-up queue, retry, bash, and context compaction.
 - Direct shell mode with `!command`; use `!!command` to omit the result from model context.
 - Model and thinking-level switching during a session.
+- A built-in `ask_user` tool plus Pi extension dialogs (`select`, `confirm`, `input`, and `editor`), notifications, status indicators, and text widgets; pending decisions survive reconnects.
 - Per-run error cards, stall warnings, notifications, completion sound, and React-owned tab status.
 - Editable past turns, retry from the previous branch point, independent forks, and in-session branch navigation.
 
@@ -197,7 +206,7 @@ Set `TGD_DIR` when your artifact directory lives elsewhere.
 
 | Command | Purpose |
 |---|---|
-| `bash setup.sh` | Validate the environment, install dependencies, and build production |
+| `bash setup.sh` | Replace local source with `origin/main`, validate, install, build, and optionally start production |
 | `npm run dev` | Optionally start the development server on port `30141` |
 | `node_modules/.bin/tsc --noEmit` | Typecheck |
 | `npx eslint .` | Lint |
@@ -271,7 +280,7 @@ See [`AGENTS.md`](./AGENTS.md) for the detailed architecture, invariants, and de
 
 The browser app itself makes no external runtime requests. Fonts and UI assets are bundled. Only the configured LLM endpoint must be reachable.
 
-- **Internal npm registry:** clone this repository or use a GitHub Release source archive, configure npm for the internal registry, then run `npm ci && npm run build`.
+- **Internal npm registry:** clone this repository or extract a GitHub Release source archive into a clean directory, configure npm for the internal registry, then run `bash setup.sh`. Use `npm ci && npm run build` only when an immutable CI-style install is required.
 - **Portable directory:** on a networked machine with the same OS and architecture, run `npm ci && npm run build`, copy the complete directory, then run `npm run start`.
 - **Internal or local model:** set a custom provider `baseUrl` in `models.json`.
 

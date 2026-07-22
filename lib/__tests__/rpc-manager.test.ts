@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { AgentSessionWrapper } from "../rpc-manager";
 import type { AgentSessionLike } from "../pi-types";
+import { WebExtensionUIBridge } from "../web-extension-ui";
 
 describe("AgentSessionWrapper compact command", () => {
   it("delegates repeated-compaction eligibility to Pi", async () => {
@@ -76,6 +77,72 @@ describe("AgentSessionWrapper model catalog refresh", () => {
 });
 
 describe("AgentSessionWrapper extension lifecycle", () => {
+  it("replays pending Web UI requests and accepts a typed response", async () => {
+    const bridge = new WebExtensionUIBridge({ theme: {} as never });
+    const inner = {
+      sessionId: "session-ui",
+      sessionFile: "/tmp/session-ui.jsonl",
+      dispose: vi.fn(),
+    } as unknown as AgentSessionLike;
+    const wrapper = new AgentSessionWrapper(inner, "", undefined, [], undefined, bridge);
+    const answerPromise = bridge.select("Pick a target", ["A", "B"]);
+    const events: Array<{ type: string; id?: string; method?: string }> = [];
+
+    const unsubscribe = wrapper.onEvent((event) => events.push(event));
+    const request = events.find((event) => event.method === "select");
+    expect(request).toBeDefined();
+    await expect(wrapper.send({
+      type: "extension_ui_response",
+      id: request!.id,
+      value: "B",
+    })).resolves.toEqual({ accepted: true });
+    await expect(answerPromise).resolves.toBe("B");
+    expect(events.at(-1)).toMatchObject({ type: "extension_ui_closed", id: request!.id });
+
+    unsubscribe();
+    wrapper.destroy();
+  });
+
+  it("keeps ask_user active in non-empty tool presets and cancels questions on destroy", async () => {
+    const setActiveToolsByName = vi.fn();
+    const bridge = new WebExtensionUIBridge({ theme: {} as never });
+    const inner = {
+      sessionId: "session-ui",
+      sessionFile: "/tmp/session-ui.jsonl",
+      setActiveToolsByName,
+      dispose: vi.fn(),
+    } as unknown as AgentSessionLike;
+    const wrapper = new AgentSessionWrapper(inner, "", undefined, [], undefined, bridge);
+
+    await wrapper.send({ type: "set_tools", toolNames: ["read", "edit"] });
+    expect(setActiveToolsByName).toHaveBeenCalledWith(["read", "edit", "ask_user"]);
+
+    const answerPromise = bridge.input("Release note");
+    wrapper.destroy();
+    await expect(answerPromise).resolves.toBeUndefined();
+  });
+
+  it("does not replay setEditorText after it was delivered live", () => {
+    const bridge = new WebExtensionUIBridge({ theme: {} as never });
+    const inner = {
+      sessionId: "session-ui",
+      sessionFile: "/tmp/session-ui.jsonl",
+      dispose: vi.fn(),
+    } as unknown as AgentSessionLike;
+    const wrapper = new AgentSessionWrapper(inner, "", undefined, [], undefined, bridge);
+    const firstEvents: Array<{ type: string; method?: string }> = [];
+    const unsubscribe = wrapper.onEvent((event) => firstEvents.push(event));
+
+    bridge.setEditorText("prefill once");
+    expect(firstEvents).toEqual(expect.arrayContaining([expect.objectContaining({ method: "set_editor_text" })]));
+    unsubscribe();
+
+    const reconnectEvents: Array<{ type: string; method?: string }> = [];
+    wrapper.onEvent((event) => reconnectEvents.push(event));
+    expect(reconnectEvents).not.toEqual(expect.arrayContaining([expect.objectContaining({ method: "set_editor_text" })]));
+    wrapper.destroy();
+  });
+
   it("emits session_shutdown before disposing the session", async () => {
     const calls: string[] = [];
     const emit = vi.fn(async (event: { type: string; reason: string }) => {

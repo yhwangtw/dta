@@ -62,7 +62,10 @@ cd tGD-pi-web
 bash setup.sh
 ```
 
-安裝腳本會檢查 Node.js 與 npm、安裝相依套件、確認 Pi agent 目錄、建立 production build，並可選擇啟動 production server。它不會修改本 repository 以外的檔案。
+安裝腳本是正式支援的一步式 production 流程。Git checkout 會先用 `origin/main` 取代本地原始碼，再檢查 Node.js 與 npm、安裝相依套件、執行 TypeScript 驗證、建立 production build，並可選擇啟動 production server。若使用原始碼壓縮檔，已知的舊版殘留會先移至 `~/.tgd-pi-web-backups/`（可用 `TGD_SETUP_BACKUP_DIR` 覆寫）。
+
+> [!WARNING]
+> 一般使用者的 Git 安裝以 `origin/main` 為唯一真相。執行 `bash setup.sh` 會透過 `git reset --hard origin/main` 與 `git clean -fd` 放棄本地 commit、tracked 修改及未被 ignore 的 untracked 檔案；`.env`、`node_modules`、`.next` 等 ignored runtime 狀態會保留。
 
 手動安裝：
 
@@ -77,10 +80,15 @@ npm start
 ### 更新現有 checkout
 
 ```bash
-git pull
-npm install
-npm run build
-npm start
+bash setup.sh
+```
+
+TypeScript 驗證失敗時，`setup.sh` 會顯示完整錯誤並立即停止，不會繼續產生容易誤判的部分 build。
+
+若 Git checkout 必須刻意離線使用，可明確跳過遠端同步：
+
+```bash
+TGD_SETUP_OFFLINE=1 bash setup.sh
 ```
 
 ## 瀏覽器內的 tGD 流程
@@ -152,6 +160,7 @@ parent/
 - 支援 prompt、steer、follow-up queue、retry、bash 與 context compaction。
 - 使用 `!command` 直接執行 shell；使用 `!!command` 讓結果不進入模型 context。
 - 在 session 中途切換模型與 thinking level。
+- 內建 `ask_user` 工具，並支援 Pi extension 的 `select`、`confirm`、`input`、`editor` 對話框、通知、狀態與文字 Widget；等待中的決定可跨斷線重連保留。
 - 每次執行都有錯誤卡、停滯警告、通知、完成音效與分頁狀態。
 - 可編輯過去的 turn、從先前分支點 retry、建立獨立 fork，或在 session 內切換分支。
 
@@ -197,7 +206,7 @@ parent/
 
 | 指令 | 用途 |
 |---|---|
-| `bash setup.sh` | 驗證環境、安裝相依套件並建立 production build |
+| `bash setup.sh` | 以 `origin/main` 取代本地原始碼、驗證、安裝、build，並可選擇啟動 production |
 | `npm run dev` | 視需要在 `30141` port 啟動開發環境 |
 | `node_modules/.bin/tsc --noEmit` | Typecheck |
 | `npx eslint .` | Lint |
@@ -271,7 +280,7 @@ public/fonts/   內建本機字型
 
 瀏覽器應用程式本身不會在 runtime 發出外部請求，字型與 UI assets 都已內建；只有設定的 LLM endpoint 必須可連線。
 
-- **內部 npm registry：** clone repository 或使用 GitHub Release 原始碼壓縮檔，設定內部 registry，再執行 `npm ci && npm run build`。
+- **內部 npm registry：** clone repository，或把 GitHub Release 原始碼壓縮檔解壓到乾淨目錄，設定內部 registry，再執行 `bash setup.sh`。只有需要 immutable CI-style 安裝時才使用 `npm ci && npm run build`。
 - **可攜式目錄：** 在相同 OS 與架構的連網機器執行 `npm ci && npm run build`，複製完整目錄後執行 `npm run start`。
 - **內部或本機模型：** 在 `models.json` 為 provider 設定自訂 `baseUrl`。
 

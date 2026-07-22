@@ -6,7 +6,7 @@ import { normalizeToolCalls } from "@/lib/normalize";
 import { sendAgentCommand } from "@/lib/agent-client";
 import { showToast } from "@/hooks/useToast";
 import { translate } from "@/lib/i18n";
-import { setIdleTitle, setRunningTitle, setDoneTitle, setErrorTitle, notifyDone, requestNotifyPermission } from "@/lib/attention";
+import { setIdleTitle, setRunningTitle, setDoneTitle, setErrorTitle, setExtensionTitle, notifyDone, requestNotifyPermission } from "@/lib/attention";
 import type { ToolEntry } from "@/components/modals/ToolPanel";
 import type { SessionData, AgentEvent, AgentPhase, UseAgentSessionOptions, ThinkingLevelOption, ChatInputHandle, AttachedImage, CompactResult } from "./use-agent-session-types";
 import { streamReducer, getRunError, computeSessionStats, isCompactionCancellation, shouldApplySessionLoad } from "./use-agent-session-types";
@@ -14,6 +14,12 @@ import { useAgentEvents, useStallWatchdog } from "./use-agent-connection";
 import { useTranscriptScroll } from "./use-transcript-scroll";
 import { shouldResyncOnVisible } from "@/lib/wake-resync";
 import { useModelCatalog } from "./use-model-catalog";
+import { extensionUIReducer, initialExtensionUIState } from "./use-extension-ui";
+import {
+  isWebExtensionUIEvent,
+  type WebExtensionUIResponse,
+  type WebExtensionUIResponseResult,
+} from "@/lib/web-extension-ui-types";
 
 export type { SessionData, AgentPhase, ThinkingLevelOption, ChatInputHandle, AttachedImage };
 
@@ -63,6 +69,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const [agentStartedAt, setAgentStartedAt] = useState<number | null>(null);
   const [queuedFollowUps, setQueuedFollowUps] = useState<string[]>([]);
   const [bashRun, setBashRun] = useState<{ command: string; output: string; running: boolean } | null>(null);
+  const [extensionUIState, dispatchExtensionUI] = useReducer(extensionUIReducer, initialExtensionUIState);
   // Streaming-update throttle (see the message_update case)
   const pendingStreamMsgRef = useRef<AgentMessage | null>(null);
   const streamFlushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -77,7 +84,11 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const sessionLoadRequestRef = useRef(0);
 
   const { eventSourceRef, lastEventAtRef, connectEvents } = useAgentEvents(agentRunningRef, handleAgentEventRef);
-  const { stalledSecs, setStalledSecs } = useStallWatchdog(agentRunning, agentPhaseRef, lastEventAtRef);
+  const { stalledSecs, setStalledSecs } = useStallWatchdog(
+    agentRunning && extensionUIState.dialogs.length === 0,
+    agentPhaseRef,
+    lastEventAtRef,
+  );
   const {
     initialScrollDoneRef, lastUserMsgRef, pendingScrollToUserRef,
     messagesEndRef, scrollContainerRef,
@@ -182,6 +193,30 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   agentPhaseRef.current = agentPhase;
 
   const handleAgentEvent = useCallback((event: AgentEvent) => {
+    if (event.type === "connected") {
+      // The server immediately follows this with a complete Web UI snapshot.
+      // Reset first so status/widgets removed while this tab was offline do
+      // not survive the reconnect as stale client-only state.
+      dispatchExtensionUI({ type: "reset" });
+      return;
+    }
+    if (isWebExtensionUIEvent(event)) {
+      dispatchExtensionUI({ type: "event", event });
+      setStalledSecs(0);
+      if (event.type === "extension_ui_request") {
+        if (event.method === "notify") {
+          showToast(event.message, {
+            type: event.notifyType ?? "info",
+            duration: event.notifyType === "error" ? 8000 : 5000,
+          });
+        } else if (event.method === "setTitle") {
+          setExtensionTitle(event.title);
+        } else if (event.method === "set_editor_text") {
+          opts.chatInputRef?.current?.setText(event.text);
+        }
+      }
+      return;
+    }
     switch (event.type) {
       case "agent_start":
         setAgentRunning(true);
@@ -356,8 +391,27 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         }
         break;
     }
-  }, [loadSession, onAgentEnd, onSessionNamed, lastEventAtRef, setStalledSecs]);
+  }, [loadSession, onAgentEnd, onSessionNamed, lastEventAtRef, setStalledSecs, opts.chatInputRef]);
   handleAgentEventRef.current = handleAgentEvent;
+
+  const handleExtensionUIResponse = useCallback(async (response: WebExtensionUIResponse) => {
+    const sid = sessionIdRef.current;
+    if (!sid) throw new Error(translate("extensionUI.noSession"));
+    const result = await sendAgentCommand<WebExtensionUIResponseResult>(sid, response);
+    if (!result?.accepted) {
+      throw new Error(result?.reason === "not_found"
+        ? translate("extensionUI.expired")
+        : translate("extensionUI.invalidResponse"));
+    }
+    dispatchExtensionUI({
+      type: "event",
+      event: {
+        type: "extension_ui_closed",
+        id: response.id,
+        reason: "cancelled" in response ? "cancelled" : "answered",
+      },
+    });
+  }, []);
 
   // Shared by the tGD-command and plain-prompt paths of handleSend: create a
   // new agent session with the current model/tool/thinking selections, wire up
@@ -848,7 +902,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     agentRunning, modelNames, modelList, modelThinkingLevels, modelThinkingLevelMaps, newSessionModel, toolPreset, thinkingLevel,
     retryInfo, contextUsage, systemPrompt, forkingEntryId,
     isCompacting, compactError, autoCompactionEnabled, autoCompactionUpdating, currentModel, displayModel, sessionStats,
-    agentPhase, agentStartedAt, queuedFollowUps, bashRun, stalledSecs,
+    agentPhase, agentStartedAt, queuedFollowUps, bashRun, stalledSecs, extensionUIState,
     isNew,
     // Refs
     sessionIdRef, eventSourceRef, messagesEndRef, scrollContainerRef,
@@ -856,7 +910,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     // Actions
     handleSend, handleAbort, handleFork, handleNavigate, handleModelChange,
     handleCompact, handleAutoCompactionChange, handleSteer, handleFollowUp, handleAbortCompaction,
-    handleToolPresetChange, handleThinkingLevelChange, handleClearQueue, handleRemoveQueued, handleRetry, handleEditRerun, handleAbortBash, loadTools, setActiveLeafId, setData, setMessages,
+    handleToolPresetChange, handleThinkingLevelChange, handleClearQueue, handleRemoveQueued, handleRetry, handleEditRerun, handleAbortBash, handleExtensionUIResponse, loadTools, setActiveLeafId, setData, setMessages,
     dispatch, setAgentRunning, setForkingEntryId,
     // Subscriptions
     handleAgentEventRef,

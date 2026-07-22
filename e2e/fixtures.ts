@@ -22,6 +22,38 @@ export function createFixtures(root: string): { cwd: string } {
   // ── Demo git project ──────────────────────────────────────────────────
   writeFileSync(path.join(cwd, "README.md"), "# Demo project\n\nE2E fixture.\n");
   writeFileSync(path.join(cwd, "src/index.ts"), "export const answer = 42;\n");
+  mkdirSync(path.join(cwd, ".pi", "extensions"), { recursive: true });
+  writeFileSync(
+    path.join(cwd, ".pi", "extensions", "web-ui.js"),
+    [
+      "export default function webUiExtension(pi) {",
+      "  pi.on(\"session_start\", async (_event, ctx) => {",
+      "    ctx.ui.setTitle(\"Extension UI E2E\");",
+      "    ctx.ui.setStatus(\"e2e\", \"Extension loaded\");",
+      "    ctx.ui.setWidget(\"e2e\", [\"Browser-backed extension UI is ready.\"]);",
+      "  });",
+      "  pi.registerCommand(\"e2e-ui\", {",
+      "    description: \"Exercise browser-backed extension dialogs\",",
+      "    handler: async (_args, ctx) => {",
+      "      ctx.ui.setStatus(\"e2e\", \"Waiting for decisions\");",
+      "      const target = await ctx.ui.select(\"Choose a release target\", [\"Staging\", \"Production\"]);",
+      "      if (!target) return;",
+      "      const confirmed = await ctx.ui.confirm(\"Confirm release\", \"Continue with \" + target + \"?\");",
+      "      if (!confirmed) return;",
+      "      const owner = await ctx.ui.input(\"Release owner\", \"Type a name…\");",
+      "      if (!owner) return;",
+      "      const notes = await ctx.ui.editor(\"Release notes\", \"Validated in the web UI.\");",
+      "      if (!notes) return;",
+      "      ctx.ui.setStatus(\"e2e\", \"Complete\");",
+      "      ctx.ui.setWidget(\"e2e\", [target + \" · \" + owner], { placement: \"belowEditor\" });",
+      "      ctx.ui.setEditorText(\"Release \" + target.toLowerCase() + \" when ready.\");",
+      "      ctx.ui.notify(\"Saved \" + notes.split(\"\\n\").length + \" line(s) for \" + owner, \"info\");",
+      "    },",
+      "  });",
+      "}",
+      "",
+    ].join("\n"),
+  );
   const git = (args: string) =>
     execSync(`git -c user.email=e2e@test -c user.name=e2e ${args}`, { cwd, stdio: "pipe" });
   git("init -q");

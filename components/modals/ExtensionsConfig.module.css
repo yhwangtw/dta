@@ -137,6 +137,12 @@
   margin-bottom: 6px;
 }
 .sectionEmpty { font-size: calc(12px * var(--font-scale)); color: var(--text-dim); }
+.supportNote {
+  margin: 8px 0 0;
+  font-size: calc(11px * var(--font-scale));
+  line-height: 1.5;
+  color: var(--text-dim);
+}
 
 .supportGrid {
   display: grid;

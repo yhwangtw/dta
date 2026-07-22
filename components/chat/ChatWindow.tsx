@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AgentMessage, SessionInfo, SessionTreeNode, ToolResultMessage } from "@/lib/types";
 import { MessageView } from "./MessageView";
 import { ChatInput, type ChatInputHandle } from "./ChatInput";
+import { ExtensionUIPanel, ExtensionWidgets } from "./ExtensionUIPanel";
 import { ChatMinimap, useMessageRefs } from "./ChatMinimap";
 import { BashBlock } from "./BashBlock";
 import { CollapsibleMessage } from "./CollapsibleMessage";
@@ -194,16 +195,16 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
     agentRunning, modelNames, modelList, modelThinkingLevels, modelThinkingLevelMaps, toolPreset, thinkingLevel,
     retryInfo, contextUsage, forkingEntryId,
     isCompacting, compactError, autoCompactionEnabled, autoCompactionUpdating, displayModel: displayModelValue, sessionStats,
-    agentPhase, agentStartedAt, queuedFollowUps, bashRun, stalledSecs,
+    agentPhase, agentStartedAt, queuedFollowUps, bashRun, stalledSecs, extensionUIState,
     isNew,
     messagesEndRef, scrollContainerRef,
     lastUserMsgRef,
     handleSend, handleAbort, handleFork, handleNavigate, handleModelChange,
     handleCompact, handleAutoCompactionChange, handleSteer, handleFollowUp, handleAbortCompaction,
-    handleToolPresetChange, handleThinkingLevelChange, handleClearQueue, handleRemoveQueued, handleRetry, handleEditRerun, handleAbortBash, handleAgentEventRef,
+    handleToolPresetChange, handleThinkingLevelChange, handleClearQueue, handleRemoveQueued, handleRetry, handleEditRerun, handleAbortBash, handleExtensionUIResponse, handleAgentEventRef,
   } = useAgentSession({
     session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked,
-    modelsRefreshKey, onBranchDataChange, onSystemPromptChange, onSessionNamed,
+    modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionNamed,
   });
 
   const { t } = useI18n();
@@ -1057,7 +1058,13 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
           </div>
           </div>
         )}
+        <ExtensionUIPanel
+          state={extensionUIState}
+          onRespond={handleExtensionUIResponse}
+          wide={wideChat}
+        />
         {chatInputElement}
+        <ExtensionWidgets state={extensionUIState} placement="belowEditor" wide={wideChat} />
       </div>
       </>
       )}

@@ -105,6 +105,7 @@
   --text-muted: #5e6e66;
   --text-dim: #94a39b;
   --accent: #059669;
+  --accent-fg: #ffffff;
   --accent-hover: #047857;
   --user-bg: #e7f4ec;
   --assistant-bg: #fbfdfb;
@@ -206,6 +207,7 @@ html.dark {
   --text-muted: #8da39c;
   --text-dim: #5d6f69;
   --accent: #34d399;
+  --accent-fg: #052e1b;
   --accent-hover: #6ee7b7;
   --user-bg: #10241c;
   --assistant-bg: #0c0e10;
@@ -278,6 +280,7 @@ html[data-skin="industrial"] {
   --text-muted: #525252;
   --text-dim: #a3a3a3;
   --accent: #111111;
+  --accent-fg: #ffffff;
   --accent-hover: #3f3f3f;
   --user-bg: #f0f0f0;
   --assistant-bg: #ffffff;
@@ -304,6 +307,7 @@ html.dark[data-skin="industrial"] {
   --text-muted: #a3a3a3;
   --text-dim: #666666;
   --accent: #ededed;
+  --accent-fg: #0a0a0a;
   --accent-hover: #ffffff;
   --user-bg: #1c1c1c;
   --assistant-bg: #0a0a0a;
@@ -330,6 +334,7 @@ html[data-skin="aurora"] {
   --text-muted: #6b6485;
   --text-dim: #a29ac0;
   --accent: #7c3aed;
+  --accent-fg: #ffffff;
   --accent-hover: #6d28d9;
   --user-bg: #efe9fd;
   --assistant-bg: #fbfaff;
@@ -356,6 +361,7 @@ html.dark[data-skin="aurora"] {
   --text-muted: #a49cc8;
   --text-dim: #6f689a;
   --accent: #a78bfa;
+  --accent-fg: #131020;
   --accent-hover: #c4b5fd;
   --user-bg: #262052;
   --assistant-bg: #131020;
@@ -382,6 +388,7 @@ html[data-skin="editorial"] {
   --text-muted: #7a7060;
   --text-dim: #a89d89;
   --accent: #b45309;
+  --accent-fg: #ffffff;
   --accent-hover: #92400e;
   --user-bg: #f3e7d3;
   --assistant-bg: #faf6ee;
@@ -408,6 +415,7 @@ html.dark[data-skin="editorial"] {
   --text-muted: #a3987f;
   --text-dim: #6f6754;
   --accent: #e8963e;
+  --accent-fg: #171310;
   --accent-hover: #f5b569;
   --user-bg: #2b2114;
   --assistant-bg: #171310;
@@ -439,6 +447,7 @@ html[data-skin="glass"] {
   --text-muted: #565e7e;
   --text-dim: #9aa1bd;
   --accent: #5b5bd6;
+  --accent-fg: #ffffff;
   --accent-hover: #4a4ac4;
   --user-bg: rgba(255,255,255,0.62);
   --assistant-bg: transparent;
@@ -478,6 +487,7 @@ html.dark[data-skin="glass"] {
   --text-muted: #a6adcf;
   --text-dim: #676e96;
   --accent: #a5b4fc;
+  --accent-fg: #0b0e1e;
   --accent-hover: #c7d2fe;
   --user-bg: rgba(129,140,248,0.14);
   --assistant-bg: transparent;

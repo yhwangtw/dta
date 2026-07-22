@@ -9,6 +9,7 @@ import {
   type AgentSessionServices,
   type ExtensionCommandContextActions,
   type ExtensionError,
+  type ExtensionUIContext,
   type LoadExtensionsResult,
   type ProviderConfig,
 } from "@earendil-works/pi-coding-agent";
@@ -238,6 +239,7 @@ export async function bindWebExtensions(
   session: {
     bindExtensions(bindings: {
       mode: "rpc";
+      uiContext: ExtensionUIContext;
       commandContextActions: ExtensionCommandContextActions;
       onError: (error: ExtensionError) => void;
     }): Promise<void>;
@@ -251,6 +253,7 @@ export async function bindWebExtensions(
     reload(): Promise<void>;
   },
   onError: (error: ExtensionError) => void,
+  uiContext: ExtensionUIContext,
 ): Promise<void> {
   // SDK hosts must bind extensions after session creation. This emits
   // session_start and resources_discover and installs runtime error handling.
@@ -266,7 +269,7 @@ export async function bindWebExtensions(
     fork: unsupported("fork"),
     switchSession: unsupported("switchSession"),
   };
-  await session.bindExtensions({ mode: "rpc", commandContextActions, onError });
+  await session.bindExtensions({ mode: "rpc", uiContext, commandContextActions, onError });
 }
 
 export async function emitWebBeforeFork(

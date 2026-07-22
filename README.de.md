@@ -148,6 +148,7 @@ Setze `TGD_DIR`, wenn das Artefaktverzeichnis an einem anderen Ort liegt.
 - Prompt, Steer, Follow-up-Warteschlange, Retry, Bash und Context Compaction.
 - Direkter Shell-Modus mit `!command`; `!!command` lässt das Ergebnis aus dem Modellkontext.
 - Wechsel von Modell und Thinking Level während einer Session.
+- Integriertes `ask_user`-Tool sowie Pi-Extension-Dialoge (`select`, `confirm`, `input` und `editor`), Benachrichtigungen, Statusanzeigen und Text-Widgets; ausstehende Entscheidungen bleiben bei einer Neuverbindung erhalten.
 - Fehlerkarten pro Lauf, Stall-Warnungen, Benachrichtigungen, Abschlusston und Tab-Status.
 - Frühere Turns bearbeiten, vom vorherigen Verzweigungspunkt erneut ausführen, unabhängige Forks und In-Session-Branches.
 

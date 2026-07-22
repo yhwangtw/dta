@@ -13,11 +13,83 @@ CYAN='\033[0;36m'
 BOLD='\033[1m'
 NC='\033[0m'
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
+# ── Git checkout 以 origin/main 為唯一真相 ───────────
+# End-user installations are disposable checkouts. Always replace tracked
+# changes, local commits, and non-ignored untracked files with origin/main,
+# then restart the newly fetched script. Ignored runtime state such as .env,
+# node_modules, and .next remains untouched. Source archives have no .git and
+# skip this step; an offline Git checkout can explicitly opt out.
+if [ -e "$SCRIPT_DIR/.git" ] \
+  && [ "${TGD_SETUP_SOURCE_SYNCED:-0}" != "1" ] \
+  && [ "${TGD_SETUP_OFFLINE:-0}" != "1" ]; then
+  echo -e "${CYAN}${BOLD}♻️  同步遠端正式版 origin/main...${NC}"
+  echo -e "  ${YELLOW}本地 commit、tracked 修改與未追蹤程式碼將被放棄。${NC}"
+  git fetch --prune origin main
+  git reset --hard origin/main
+  git clean -fd
+  echo -e "  ${GREEN}✅ 本地程式碼已同步為 origin/main${NC}"
+  export TGD_SETUP_SOURCE_SYNCED=1
+  exec bash "$SCRIPT_DIR/setup.sh" "$@"
+fi
+
 echo -e "${CYAN}${BOLD}🚀 tGD-pi-web 一鍵安裝${NC}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
+if [ -e "$SCRIPT_DIR/.git" ] && [ "${TGD_SETUP_OFFLINE:-0}" = "1" ]; then
+  echo -e "${YELLOW}⚠️  離線模式：跳過 origin/main 同步，使用目前本地原始碼。${NC}"
+fi
+
+# ── 修復舊版覆蓋安裝殘留 ────────────────────────────
+# PR #65 replaced the old command-palette/search components. Extracting a
+# release archive over an existing directory does not remove files that no
+# longer ship, and TypeScript's **/*.tsx include then compiles both versions.
+# Move only these known-obsolete files out of the source tree. Keep a private
+# backup so locally modified copies are never destroyed.
+LEGACY_FILES=(
+  "components/ui/CommandPalette.tsx"
+  "components/ui/CommandPalette.module.css"
+  "components/sidebar/SearchResults.tsx"
+  "components/sidebar/SearchResults.module.css"
+)
+FOUND_LEGACY_FILES=()
+
+for relative_path in "${LEGACY_FILES[@]}"; do
+  candidate="$SCRIPT_DIR/$relative_path"
+  if [ -e "$candidate" ] || [ -L "$candidate" ]; then
+    if [ -d "$candidate" ] && [ ! -L "$candidate" ]; then
+      echo -e "${RED}❌ 預期為檔案但找到資料夾: $candidate${NC}"
+      echo "  為避免搬動未知資料，setup 已停止。"
+      exit 1
+    fi
+    FOUND_LEGACY_FILES+=("$relative_path")
+  fi
+done
+
+if [ "${#FOUND_LEGACY_FILES[@]}" -gt 0 ]; then
+  backup_root="${TGD_SETUP_BACKUP_DIR:-$HOME/.tgd-pi-web-backups}"
+  project_name="$(basename "$SCRIPT_DIR")"
+  backup_dir="$backup_root/${project_name}-$(date -u +%Y%m%dT%H%M%SZ)-$$"
+
+  for relative_path in "${FOUND_LEGACY_FILES[@]}"; do
+    source_path="$SCRIPT_DIR/$relative_path"
+    backup_path="$backup_dir/$relative_path"
+    (
+      umask 077
+      mkdir -p "$(dirname "$backup_path")"
+      mv "$source_path" "$backup_path"
+    )
+  done
+
+  echo ""
+  echo -e "${GREEN}${BOLD}✅ 已備份並移除舊版殘留檔案${NC}"
+  echo "  備份位置: $backup_dir"
+  for relative_path in "${FOUND_LEGACY_FILES[@]}"; do
+    echo "  - $relative_path"
+  done
+fi
 
 # ── 檢查 Next.js workspace root 衝突 ────────────────
 # Next.js searches ancestor directories for lockfiles. A stray lockfile in
@@ -99,10 +171,11 @@ fi
 # ── 驗證 ──────────────────────────────────────────────
 echo ""
 echo -e "${BOLD}🔍 驗證...${NC}"
-if node_modules/.bin/tsc --noEmit 2>/dev/null; then
+if node_modules/.bin/tsc --noEmit; then
   echo -e "  ${GREEN}✅ TypeScript 編譯通過${NC}"
 else
-  echo -e "  ${YELLOW}⚠️  TypeScript 檢查未通過，Production build 將顯示完整錯誤${NC}"
+  echo -e "  ${RED}❌ TypeScript 編譯失敗，已停止 Production build${NC}"
+  exit 1
 fi
 
 # ── Production build ─────────────────────────────────

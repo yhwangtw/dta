@@ -267,7 +267,7 @@ export function buildExtensionsReport(
       events: "partial",
       renderers: "unsupported",
       resources: "partial",
-      tuiUi: "unsupported",
+      tuiUi: "partial",
     },
   };
 }

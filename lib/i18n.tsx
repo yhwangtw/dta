@@ -127,7 +127,11 @@ const MESSAGES = {
   "extensions.events": { en: "Event handlers", zh: "事件處理器" },
   "extensions.renderers": { en: "Renderers", zh: "Renderer" },
   "extensions.resources": { en: "Resources", zh: "資源" },
-  "extensions.tuiUi": { en: "TUI UI", zh: "TUI 介面" },
+  "extensions.tuiUi": { en: "Interactive UI", zh: "互動介面" },
+  "extensions.interactiveUiNote": {
+    en: "Dialogs, notifications, status, widgets, titles, and editor text work on the web. Terminal-only components and renderers remain unavailable.",
+    zh: "Web 已支援對話框、通知、狀態、Widget、標題與編輯器文字；終端機專用元件與 Renderer 仍不可用。",
+  },
   "extensions.compatibility": { en: "Web compatibility", zh: "Web 相容性" },
   "extensions.supported": { en: "Supported", zh: "支援" },
   "extensions.partial": { en: "Partial", zh: "部分支援" },
@@ -141,6 +145,21 @@ const MESSAGES = {
   "extensions.reloading": { en: "Reloading…", zh: "重新載入中…" },
   "extensions.reloaded": { en: "Extensions reloaded", zh: "擴充功能已重新載入" },
   "extensions.noSession": { en: "Open a session first — extensions load per session.", zh: "請先開啟 session — 擴充功能隨 session 載入。" },
+
+  // ── Extension interaction ──
+  "extensionUI.waiting": { en: "Waiting for your decision", zh: "等待你的決定" },
+  "extensionUI.agentQuestion": { en: "The agent needs your input", zh: "Agent 需要你的回答" },
+  "extensionUI.submit": { en: "Continue", zh: "繼續" },
+  "extensionUI.cancel": { en: "Cancel", zh: "取消" },
+  "extensionUI.yes": { en: "Confirm", zh: "確認" },
+  "extensionUI.no": { en: "Not now", zh: "暫不" },
+  "extensionUI.other": { en: "Type another answer", zh: "輸入其他答案" },
+  "extensionUI.typeAnswer": { en: "Type your answer…", zh: "輸入你的回答…" },
+  "extensionUI.sending": { en: "Sending…", zh: "送出中…" },
+  "extensionUI.responseFailed": { en: "Could not send the answer", zh: "無法送出回答" },
+  "extensionUI.noSession": { en: "This session is no longer available", zh: "這個 session 已無法使用" },
+  "extensionUI.expired": { en: "This question has expired", zh: "這個問題已失效" },
+  "extensionUI.invalidResponse": { en: "The answer is not valid for this question", zh: "回答不符合這個問題的格式" },
 
   // ── Content search panel ──
   "search.title": { en: "Search", zh: "搜尋" },

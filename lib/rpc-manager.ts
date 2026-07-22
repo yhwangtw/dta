@@ -4,6 +4,14 @@ import { createSnapshot } from "./git-snapshot";
 import type { AgentSessionLike, ToolInfo } from "./pi-types";
 import { bindWebExtensions, createTrackedAgentServices, emitWebBeforeFork, type ExtensionProviderTracker } from "./pi-runtime";
 import type { ExtensionDiagnosticInfo, ExtensionProviderInfo } from "./extensions-info";
+import {
+  ASK_USER_TOOL_NAME,
+  WebExtensionUIBridge,
+  createAskUserTool,
+  withAskUserTool,
+  type WebExtensionUIEvent,
+  type WebExtensionUIResponse,
+} from "./web-extension-ui";
 
 // ============================================================================
 // Types
@@ -14,7 +22,7 @@ export interface AgentEvent {
   [key: string]: unknown;
 }
 
-type EventListener = (event: AgentEvent) => void;
+type EventListener = (event: AgentEvent | WebExtensionUIEvent) => void;
 type SessionShutdownReason = "quit" | "reload" | "new" | "resume" | "fork";
 
 // ============================================================================
@@ -36,12 +44,19 @@ export class AgentSessionWrapper {
     private readonly providerTracker?: ExtensionProviderTracker,
     initialDiagnostics: Array<{ type: string; message: string }> = [],
     private readonly refreshModelCatalog?: () => void,
+    private readonly webExtensionUI?: WebExtensionUIBridge,
   ) {
     this.extensionDiagnostics = initialDiagnostics.map((diagnostic) => ({
       type: diagnostic.type === "info" || diagnostic.type === "warning" ? diagnostic.type : "error",
       message: diagnostic.message,
       path: diagnostic.message.match(/Extension "([^"]+)"/)?.[1],
     }));
+    this.webExtensionUI?.setEmitter((event) => {
+      this.resetIdleTimer();
+      const deliveredLive = this.listeners.length > 0;
+      this.emitEvent(event);
+      if (deliveredLive) this.webExtensionUI?.acknowledgeDelivery(event.id);
+    });
   }
 
   get sessionId(): string {
@@ -59,7 +74,7 @@ export class AgentSessionWrapper {
   start(): void {
     this.unsubscribe = this.inner.subscribe((event: AgentEvent) => {
       this.resetIdleTimer();
-      for (const l of this.listeners) l(event);
+      this.emitEvent(event);
     });
     this.resetIdleTimer();
   }
@@ -71,10 +86,15 @@ export class AgentSessionWrapper {
 
   onEvent(listener: EventListener): () => void {
     this.listeners.push(listener);
+    for (const event of this.webExtensionUI?.snapshot() ?? []) listener(event);
     return () => {
       const i = this.listeners.indexOf(listener);
       if (i !== -1) this.listeners.splice(i, 1);
     };
+  }
+
+  private emitEvent(event: AgentEvent | WebExtensionUIEvent): void {
+    for (const listener of this.listeners) listener(event);
   }
 
   onDestroy(cb: () => void): void {
@@ -242,9 +262,14 @@ export class AgentSessionWrapper {
       }
 
       case "set_tools": {
-        this.inner.setActiveToolsByName(command.toolNames as string[]);
+        const toolNames = withAskUserTool(command.toolNames as string[]);
+        this.inner.setActiveToolsByName(toolNames);
         return null;
       }
+
+      case "extension_ui_response":
+        return this.webExtensionUI?.respond(command as unknown as WebExtensionUIResponse)
+          ?? { accepted: false, reason: "not_found" };
 
       case "bash": {
         // Direct shell execution (the ! input prefix). Output chunks stream to
@@ -252,9 +277,7 @@ export class AgentSessionWrapper {
         // records the result into the session so the agent sees it too.
         const bashCommand = command.command as string;
         const excludeFromContext = Boolean(command.excludeFromContext);
-        const emit = (event: AgentEvent) => {
-          for (const l of this.listeners) l(event);
-        };
+        const emit = (event: AgentEvent) => this.emitEvent(event);
         emit({ type: "bash_start", command: bashCommand });
         try {
           const result = await this.inner.executeBash(
@@ -301,6 +324,7 @@ export class AgentSessionWrapper {
   destroy(): void {
     if (!this._alive) return;
     this._alive = false;
+    this.webExtensionUI?.closeAll();
     if (this.idleTimer) clearTimeout(this.idleTimer);
     this.unsubscribe?.();
     this.inner.dispose();
@@ -398,21 +422,30 @@ export async function startRpcSession(
     // Since v0.68.0, createAgentSession expects string[] tool names instead of Tool[] instances.
     // Pass all built-in coding tool names by default; for "all off", pass empty array.
     const allCodingToolNames = ["read", "bash", "edit", "write", "grep", "find", "ls"];
+    const selectedToolNames = toolNames === undefined ? undefined : withAskUserTool(toolNames);
     let toolsOption: string[] | undefined;
-    if (toolNames !== undefined) {
-      toolsOption = toolNames.length === 0 ? [] : allCodingToolNames;
+    if (selectedToolNames !== undefined) {
+      toolsOption = selectedToolNames.length === 0 ? [] : [...allCodingToolNames, ASK_USER_TOOL_NAME];
     }
 
+    const webExtensionUI = new WebExtensionUIBridge({ acceptDialogs: false });
     const { services, providerTracker, refreshModelCatalog } = await createTrackedAgentServices(cwd);
     const { session: inner } = await createAgentSessionFromServices({
       services,
       sessionManager,
+      customTools: [createAskUserTool(webExtensionUI)],
       ...(toolsOption !== undefined ? { tools: toolsOption } : {}),
     });
 
+    const piTheme = inner.extensionRunner?.getUIContext().theme;
+    if (piTheme) webExtensionUI.setPiTheme(piTheme);
+    webExtensionUI.setRecorder((record) => {
+      inner.sessionManager.appendCustomEntry("web_ui_decision", record);
+    });
+
     // If specific tool names were requested (non-empty), narrow active tools now
-    if (toolNames && toolNames.length > 0) {
-      inner.setActiveToolsByName(toolNames);
+    if (selectedToolNames && selectedToolNames.length > 0) {
+      inner.setActiveToolsByName(selectedToolNames);
     }
 
     // When all tools are disabled, clear the system prompt entirely.
@@ -428,10 +461,15 @@ export async function startRpcSession(
       providerTracker,
       services.diagnostics,
       refreshModelCatalog,
+      webExtensionUI,
     );
     wrapper.start();
     try {
-      await bindWebExtensions(inner, (error) => wrapper.recordExtensionError(error));
+      await bindWebExtensions(inner, (error) => wrapper.recordExtensionError(error), webExtensionUI);
+      // Avoid a startup deadlock if an extension asks from session_start
+      // before the browser knows this session id. Dialogs are interactive from
+      // this point onward, including commands, hooks, and model tool calls.
+      webExtensionUI.enableDialogs();
     } catch (error) {
       wrapper.destroy();
       throw error;

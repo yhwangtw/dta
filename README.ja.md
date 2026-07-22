@@ -148,6 +148,7 @@ artifacts が別の場所にある場合は `TGD_DIR` を設定してくださ�
 - prompt、steer、follow-up queue、retry、bash、context compaction。
 - `!command` でシェルを直接実行。`!!command` では結果をモデルコンテキストに含めません。
 - セッション途中でモデルと thinking level を切り替え。
+- 組み込みの `ask_user` ツールに加え、Pi extension の `select`、`confirm`、`input`、`editor` ダイアログ、通知、ステータス、テキスト Widget に対応。保留中の回答は再接続後も維持されます。
 - 実行エラーカード、stall 警告、通知、完了音、タブ状態。
 - 過去 turn の編集、以前の分岐点からの retry、独立 fork、セッション内ブランチ移動。
 

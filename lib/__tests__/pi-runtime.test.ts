@@ -84,12 +84,14 @@ describe("Pi Web runtime integration", () => {
     const navigateTree = vi.fn().mockResolvedValue({ cancelled: false });
     const reload = vi.fn().mockResolvedValue(undefined);
     const onError = vi.fn();
+    const uiContext = { select: vi.fn() } as never;
 
-    await bindWebExtensions({ bindExtensions, waitForIdle, navigateTree, reload }, onError);
+    await bindWebExtensions({ bindExtensions, waitForIdle, navigateTree, reload }, onError, uiContext);
 
     expect(bindExtensions).toHaveBeenCalledWith(expect.objectContaining({
       mode: "rpc",
       onError,
+      uiContext,
       commandContextActions: expect.any(Object),
     }));
     const bindings = bindExtensions.mock.calls[0][0];

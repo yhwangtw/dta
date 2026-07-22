@@ -73,6 +73,15 @@ export function setErrorTitle(sessionName?: string | null): void {
   resetTimer = setTimeout(() => setIdleTitle(sessionName), 12000);
 }
 
+/** Apply a title requested by an extension through the Web UI bridge. */
+export function setExtensionTitle(title: string): void {
+  if (resetTimer) {
+    clearTimeout(resetTimer);
+    resetTimer = null;
+  }
+  set(title || BASE_TITLE);
+}
+
 /**
  * Ask for notification permission. Call from a user gesture (send click) —
  * requesting out of the blue gets auto-blocked by browsers.

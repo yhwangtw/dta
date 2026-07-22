@@ -49,6 +49,7 @@ export function ExtensionInventoryDetails({ report }: { report: ExtensionsReport
             </div>
           ))}
         </div>
+        <p className={styles.supportNote}>{t("extensions.interactiveUiNote")}</p>
       </div>
 
       <div className={styles.section}>

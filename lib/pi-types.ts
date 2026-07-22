@@ -1,7 +1,9 @@
 import type {
   AgentSessionEvent,
+  ExtensionCommandContextActions,
   ExtensionError,
   ExtensionRunner,
+  ExtensionUIContext,
   ModelRegistry,
   ResourceLoader,
   SessionManager,
@@ -66,7 +68,12 @@ export interface AgentSessionLike {
   ): Promise<{ output: string; exitCode: number | undefined; cancelled: boolean; truncated: boolean }>;
   abortBash(): void;
   getContextUsage(): ContextUsage | undefined;
-  bindExtensions(bindings: { mode?: "rpc"; onError?: (error: ExtensionError) => void }): Promise<void>;
+  bindExtensions(bindings: {
+    mode?: "rpc";
+    uiContext?: ExtensionUIContext;
+    commandContextActions?: ExtensionCommandContextActions;
+    onError?: (error: ExtensionError) => void;
+  }): Promise<void>;
   reload(options?: { beforeSessionStart?: () => void | Promise<void> }): Promise<void>;
   dispose(): void;
   readonly extensionRunner: ExtensionRunner | undefined;

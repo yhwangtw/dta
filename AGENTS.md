@@ -29,6 +29,14 @@ and publishes the GitHub Release in one run. Do not manually create a version
 commit or wait for duplicate main/version CI runs. A pre-versioned `v*` tag push
 remains a compatibility path. There is no npm publish step.
 
+Production setup: `bash setup.sh` treats `origin/main` as authoritative for Git
+checkouts. It runs `git fetch --prune origin main`, `git reset --hard
+origin/main`, and `git clean -fd`, then re-executes the fetched script. This
+intentionally discards local commits, tracked changes, and non-ignored untracked
+files; ignored runtime state remains. `TGD_SETUP_OFFLINE=1 bash setup.sh` is the
+explicit offline escape hatch. Source archives skip Git synchronization and
+back up known obsolete search files outside the source tree before building.
+
 E2E traps: transcript text offscreen is `content-visibility`-skipped and
 Playwright calls it *hidden* — anchor on sidebar text or use `toBeAttached`,
 scroll before visibility asserts. UI strings use the ellipsis character
@@ -83,7 +91,8 @@ app/api/
 
 lib/
   rpc-manager.ts      AgentSessionWrapper + registry + command dispatch
-                      (prompt/steer/follow_up/fork/bash/clear_queue/…)
+                      (prompt/steer/follow_up/fork/bash/clear_queue/…);
+                      owns the WebExtensionUIBridge and ask_user tool
   session-reader.ts   incremental listing (stat cache) + context building
   i18n.tsx            en/zh-TW strings — module store, useI18n()/translate()
   skin.ts             appearance skins — html[data-skin] token overrides
@@ -102,7 +111,8 @@ components/
   chat/     ChatWindow (find/⌘F, follow-mode scroll, ⌥↑/⌥↓ turn nav, status
             line, bookmarks), CollapsibleMessage (long-history clamp),
             turn-nav.ts, ChatInput (history ↑, bash prefix), MessageView,
-            BashBlock, AssistantMessageView (error card, edit/write tool
+            BashBlock, UserQuestionCard + ExtensionUIPanel (ask_user and
+            extension dialogs/status/widgets), AssistantMessageView (error card, edit/write tool
             diff view), BranchNavigator, ChatMinimap, MarkdownBody (lazy
             KaTeX/Mermaid/PrismAsync)
   sidebar/  SessionSidebar (+embedded explorer, showExplorer prop, archived
@@ -113,6 +123,7 @@ components/
 
 hooks/    useAgentSession (chat orchestration; extracted pieces live in
           use-agent-connection.ts — SSE + stall watchdog,
+          use-extension-ui.ts — reconnect-safe extension UI state,
           use-transcript-scroll.ts, use-model-catalog.ts, and
           use-agent-session-types.ts — reducer + computeSessionStats),
           useAppShellState, useRightPanelWidth, useCommandPalette,
@@ -305,6 +316,25 @@ hits `/api/files/search` (fuzzy, project-wide), `dir/` lists that directory;
 selecting a dir drills down (menu stays open), a file inserts `@<relative> `
 (quoted if the path has spaces). Don't re-loosen the slash trigger — a
 trailing `/` fires during `@src/` drill-down and mid-text paths.
+
+### Extension interactive UI and `ask_user`
+`lib/web-extension-ui.ts` implements Pi's standard RPC-safe UI surface for the
+browser: select/confirm/input/editor dialogs, notifications, status text,
+string widgets, title changes, and editor text. Requests travel over the
+session SSE stream; replies use the existing agent command endpoint with
+`type: "extension_ui_response"`. Pending dialogs and persistent status/widget/
+title state replay after reconnect. `setEditorText` is deliberately one-shot —
+replaying it would overwrite a draft typed after the original event.
+
+Every session also registers the `ask_user` custom tool. It accepts one to
+three structured questions and returns the answers to the model only after the
+user responds. Dialog outcomes are appended as `web_ui_decision` custom session
+entries. The stall watchdog pauses while a decision is pending. Dialogs raised
+during `session_start` degrade to their default value because no browser knows
+the new session id yet; later commands, hooks, and tool calls are interactive.
+Terminal component factories, custom renderers, footer/header replacements,
+and raw terminal input remain unsupported and must not be reported as fully
+Web-compatible.
 
 ### File-path links in chat (`lib/file-links.ts`)
 Inline code that passes `looksLikeFilePath` (conservative: bare names need a

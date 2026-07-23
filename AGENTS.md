@@ -56,6 +56,8 @@ Browser                Next.js Server              AgentSession (in-process)
   │                        │   session.send(cmd) ─────────▶│ prompt/steer/bash/…
   ├─ SSE connect ──────────▶ GET /api/agent/[id]/events    │
   │◀── data: {...} ─────────│   session.onEvent() ◀────────│ session.subscribe()
+  ├─ schedules ─────────────▶ GET/POST /api/schedules      │
+  │                        │   ScheduleRunner ────────────▶│ new normal session
   ├─ GET /api/git/changes ─▶ git status (allowed cwds)     │
   └─ GET /api/git/file-diff▶ HEAD vs worktree contents     │
 ```
@@ -65,7 +67,7 @@ Browser                Next.js Server              AgentSession (in-process)
 
 ### Layout (post-redesign)
 
-Icon rail (44px, `AppShell`) → contextual panel (Sessions | Files | Changes) → chat (session-scoped top bar + transcript + input) → right panel (file viewer / diff). Rail bottom: Models / Skills / Language / Theme. Global hotkeys live in one `AppShell` effect — **every hint shown in the ⌘K palette must be bound there**.
+Icon rail (44px, `AppShell`) → contextual panel (Sessions | Schedules | Files | Changes) → chat (session-scoped top bar + transcript + input) → right panel (file viewer / diff). Rail bottom: Models / Skills / Language / Theme. Global hotkeys live in one `AppShell` effect — **every hint shown in the ⌘K palette must be bound there**.
 
 ---
 
@@ -79,6 +81,9 @@ app/api/
   agent/[id]/route.ts             GET state | POST any command (see rpc-manager)
   agent/[id]/events/route.ts      GET SSE stream (30s comment heartbeats)
   agent/[id]/summarize/route.ts   POST — auto-naming (skips named sessions)
+  schedules/route.ts              GET list/history | POST create
+  schedules/[id]/route.ts         PATCH update/pause | DELETE
+  schedules/[id]/run/route.ts     POST — start an immediate run
   git/changes/route.ts            GET ?cwd= — status --porcelain + numstat
   git/file-diff/route.ts          GET ?cwd=&path= — HEAD vs worktree text
   files/search/route.ts           GET ?cwd=&q= — recursive filename search
@@ -93,6 +98,9 @@ lib/
   rpc-manager.ts      AgentSessionWrapper + registry + command dispatch
                       (prompt/steer/follow_up/fork/bash/clear_queue/…);
                       owns the WebExtensionUIBridge and ask_user tool
+  schedule-core.ts    timezone-aware once/daily/weekly/5-field-cron math
+  schedule-store.ts   atomic <agent-dir>/schedules.json persistence
+  schedule-runner.ts  process timer, run lifecycle, history + ask_user wait
   session-reader.ts   incremental listing (stat cache) + context building
   i18n.tsx            en/zh-TW strings — module store, useI18n()/translate()
   skin.ts             appearance skins — html[data-skin] token overrides
@@ -106,7 +114,7 @@ lib/
 
 components/
   layout/   AppShell (layout wiring + hotkeys), IconRail, ShortcutsDialog,
-            FilesPanel, ChangesPanel, DiffPanel, FileViewer, TabBar,
+            SchedulePanel, FilesPanel, ChangesPanel, DiffPanel, FileViewer, TabBar,
             ErrorBoundary, text-viewer/
   chat/     ChatWindow (find/⌘F, follow-mode scroll, ⌥↑/⌥↓ turn nav, status
             line, bookmarks), CollapsibleMessage (long-history clamp),
@@ -182,6 +190,30 @@ empty/corrupted files as a side effect. Cache lives on `globalThis`
 - `bash` command wraps `executeBash` and streams synthetic
   `bash_start/bash_chunk/bash_end` events through the wrapper's listeners →
   existing SSE channel. pi records the result itself (role `bashExecution`).
+
+### Scheduled agents (`lib/schedule-*.ts`, `instrumentation*.ts`)
+- Definitions and the newest 500 runs live in `<agent-dir>/schedules.json`;
+  writes use temp-file + rename. UI/API mutations never write project files.
+- `instrumentation.ts` must conditionally import `instrumentation.node.ts`
+  *inside* `process.env.NEXT_RUNTIME === "nodejs"`. Importing the runner at the
+  top level makes the Edge instrumentation bundle follow Pi's `fs` and
+  `child_process` dependencies and breaks production builds. Never start the
+  runner during `phase-production-build`.
+- The global `ScheduleRunner` owns one nearest-deadline timer. On restart it
+  marks persisted running/waiting runs failed, then applies each schedule's
+  catch-up-once or skip policy. A schedule can never have overlapping runs.
+- Once/daily/weekly/cron calculations are dependency-free and IANA-timezone
+  aware, including DST gaps/repeated minutes. Cron is the standard five-field
+  form; DOM/DOW use the usual OR rule when both fields are restricted.
+- A run creates a normal persisted Pi session with the configured cwd/model/
+  thinking/tools. The runner sends `prompt` with `awaitCompletion:true`; normal
+  browser prompts remain fire-and-forget. Do not remove that distinction — an
+  immediate model/setup rejection otherwise leaves a run stuck as `running`.
+- Dialog requests (`ask_user`, select/confirm/input/editor) change the run to
+  `waiting_for_input`. Opening its session replays the pending request; a
+  keepalive prevents the normal 10-minute idle shutdown while it waits.
+- This is an in-process local scheduler: the production Node server must stay
+  running for on-time execution. It is intentionally not an OS daemon.
 
 ### Scroll contract (ChatWindow + useAgentSession)
 - On send: user message anchors to the viewport top; a viewport-height spacer

@@ -9,6 +9,7 @@ import { FilesPanel } from "./FilesPanel";
 import { SearchPanel } from "./SearchPanel";
 import { ChangesPanel } from "./ChangesPanel";
 import { TgdArtifactsPanel } from "./TgdArtifactsPanel";
+import { SchedulePanel } from "./SchedulePanel";
 import { DiffPanel } from "./DiffPanel";
 import { AppearancePanel } from "./AppearancePanel";
 import { IconRail, type PanelView } from "./IconRail";
@@ -268,6 +269,24 @@ export function AppShell() {
     [allSessions, handleSelectSessionFromSidebar],
   );
 
+  const handleOpenScheduledSession = useCallback(async (sessionId: string) => {
+    const known = allSessions.find((session) => session.id === sessionId);
+    if (known) {
+      handleSelectSessionFromSidebar(known);
+      return;
+    }
+    try {
+      const response = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}`);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const payload = await response.json() as { info?: SessionInfo | null };
+      if (!payload.info) throw new Error("Session not found");
+      handleSelectSessionFromSidebar(payload.info);
+      actions.bumpRefreshKey();
+    } catch {
+      showToast(t("extensionUI.noSession"), { type: "warning" });
+    }
+  }, [actions, allSessions, handleSelectSessionFromSidebar, t]);
+
   const handlePaletteSelectTag = useCallback(
     (tag: string) => setActiveTagFilter(tag),
     [],
@@ -375,6 +394,11 @@ export function AppShell() {
           activeTagFilter={activeTagFilter}
           onSelectTagFilter={setActiveTagFilter}
           showExplorer={false}
+        />
+      ) : panelView === "schedule" ? (
+        <SchedulePanel
+          defaultCwd={panelCwd}
+          onOpenSession={handleOpenScheduledSession}
         />
       ) : panelView === "files" ? (
         <FilesPanel

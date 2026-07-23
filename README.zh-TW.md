@@ -164,6 +164,13 @@ parent/
 - 每次執行都有錯誤卡、停滯警告、通知、完成音效與分頁狀態。
 - 可編輯過去的 turn、從先前分支點 retry、建立獨立 fork，或在 session 內切換分支。
 
+### Agent 排程
+
+- 左側排程中心支援單次、每天、每週與標準五欄 cron，並明確指定 IANA 時區。
+- 可設定專案、Prompt、模型、thinking level、工具權限、漏跑策略與啟用狀態；同一處即可暫停、恢復、立即執行、重試與查看歷史。
+- 每次執行都會建立一般的本機 Pi session；若 `ask_user` 需要決定，狀態會變成**等待你的回答**，可直接開啟該 session 繼續。
+- 排程由本機 Node server 執行，server 必須保持運作。重啟後會依設定補跑一次或略過，且同一排程不會重疊執行。
+
 ### Session 與導覽
 
 - 以增量、唯讀方式索引本機 Pi `.jsonl` session 檔。
@@ -265,10 +272,10 @@ Browser                    Next.js server                 AgentSession
 ## 專案結構
 
 ```text
-app/api/        sessions、agent commands/events、files、git、tGD、config
+app/api/        sessions、agent commands/events、schedules、files、git、tGD、config
 components/     layout、chat、sidebar、modals 與共用 UI
 hooks/          agent orchestration、streaming、scrolling、sessions、theme
-lib/            RPC lifecycle、session parsing、security、i18n、snapshots
+lib/            RPC lifecycle、scheduling、session parsing、security、i18n、snapshots
 e2e/            Playwright production-server scenarios
 docs/           screenshots 與專案文件
 public/fonts/   內建本機字型
@@ -299,6 +306,10 @@ public/fonts/   內建本機字型
 ### 應用程式會上傳我的 session 嗎？
 
 本專案沒有 hosted session backend。它讀取本機 Pi 檔案，並且只連線到你設定的模型或 provider endpoint。
+
+### tGD Pi Web 關閉時，排程仍會執行嗎？
+
+不會。排程器位於本機 Node server 內；要準時執行需保持 `npm start` 運作。重新啟動後，每個排程會依設定選擇**補跑一次**或**略過**。
 
 ### 為什麼 `package.json` 沒有 Playwright？
 

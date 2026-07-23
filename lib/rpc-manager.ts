@@ -133,9 +133,13 @@ export class AgentSessionWrapper {
         if (this.cwd) {
           await createSnapshot(this.cwd, this.inner.sessionId, "Before run").catch(() => {});
         }
-        // Fire and forget — events come via subscribe
+        // Browser chat is fire-and-forget because events come via subscribe.
+        // Background schedulers can opt into awaiting the underlying Promise
+        // so an immediate setup/model rejection cannot leave a run stuck.
         const promptImages = command.images as Array<{ type: "image"; data: string; mimeType: string }> | undefined;
-        this.inner.prompt(command.message as string, promptImages?.length ? { images: promptImages } : undefined).catch(() => {});
+        const prompt = this.inner.prompt(command.message as string, promptImages?.length ? { images: promptImages } : undefined);
+        if (command.awaitCompletion === true) await prompt;
+        else prompt.catch(() => {});
         return null;
       }
 

@@ -152,6 +152,13 @@ Setze `TGD_DIR`, wenn das Artefaktverzeichnis an einem anderen Ort liegt.
 - Fehlerkarten pro Lauf, Stall-Warnungen, Benachrichtigungen, Abschlusston und Tab-Status.
 - Frühere Turns bearbeiten, vom vorherigen Verzweigungspunkt erneut ausführen, unabhängige Forks und In-Session-Branches.
 
+### Geplante Agenten
+
+- Das Schedule Center in der linken Leiste unterstützt einmalige, tägliche, wöchentliche und fünfteilige Cron-Zeitpläne mit expliziter IANA-Zeitzone.
+- Projekt, Prompt, Modell, Thinking Level, Tool-Zugriff, Verhalten bei verpassten Läufen und Aktivierung lassen sich festlegen; Pausieren, Fortsetzen, Sofortausführung, Wiederholung und Verlauf befinden sich in einem Panel.
+- Jeder Lauf erzeugt eine normale lokale Pi-Session. Benötigt `ask_user` eine Entscheidung, wechselt der Lauf auf **Wartet auf Eingabe** und öffnet direkt diese Session.
+- Der Scheduler läuft im lokalen Node-Server, der aktiv bleiben muss. Nach einem Neustart wird je nach Richtlinie einmal nachgeholt oder übersprungen; überlappende Läufe werden nie gestartet.
+
 ### Sessions und Navigation
 
 - Inkrementeller, schreibgeschützter Index lokaler Pi-`.jsonl`-Dateien.
@@ -253,10 +260,10 @@ Beim schreibgeschützten Browsen werden Session-Dateien analysiert, ohne eine `A
 ## Projektstruktur
 
 ```text
-app/api/        Sessions, Agent Commands/Events, Dateien, Git, tGD, Config
+app/api/        Sessions, Agent Commands/Events, Zeitpläne, Dateien, Git, tGD, Config
 components/     Layout, Chat, Sidebar, Modals und gemeinsame UI
 hooks/          Agent Orchestration, Streaming, Scrolling, Sessions, Theme
-lib/            RPC Lifecycle, Session Parsing, Security, i18n, Snapshots
+lib/            RPC Lifecycle, Scheduling, Session Parsing, Security, i18n, Snapshots
 e2e/            Playwright Production-Server-Szenarien
 docs/           Screenshots und Projektdokumentation
 public/fonts/   Mitgelieferte lokale Schriften
@@ -287,6 +294,10 @@ Nein. Es ist eine lokale Browser-Oberfläche über Pi-Session-Dateien und die Ag
 ### Lädt die Anwendung meine Sessions hoch?
 
 Das Projekt enthält kein gehostetes Session-Backend. Es liest lokale Pi-Dateien und kontaktiert nur die von dir konfigurierten Modell- oder Provider-Endpunkte.
+
+### Laufen Zeitpläne weiter, wenn tGD Pi Web beendet ist?
+
+Nein. Der Scheduler läuft im lokalen Node-Server. Für pünktliche Ausführungen muss `npm start` aktiv bleiben. Nach einem Neustart holt jeder Zeitplan gemäß seiner Richtlinie einmal nach oder überspringt den verpassten Lauf.
 
 ### Warum steht Playwright nicht in `package.json`?
 

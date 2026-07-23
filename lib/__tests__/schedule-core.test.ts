@@ -46,6 +46,16 @@ describe("schedule-core", () => {
     )).toBe("2026-07-27T09:00:00.000Z");
   });
 
+  it("treats stepped day fields as restricted for cron DOM/DOW OR semantics", () => {
+    // July 20 is Monday but not selected by the 1-based */2 DOM field.
+    // A restricted DOM and restricted DOW use OR, so Monday still runs.
+    expect(nextScheduleRunAt(
+      { kind: "cron", expression: "0 9 */2 * MON" },
+      "UTC",
+      new Date("2026-07-19T10:00:00.000Z"),
+    )).toBe("2026-07-20T09:00:00.000Z");
+  });
+
   it("handles DST gaps and repeated wall-clock minutes", () => {
     const gap = zonedDateTimeToInstants(
       { year: 2026, month: 3, day: 8, hour: 2, minute: 30 },
@@ -63,6 +73,14 @@ describe("schedule-core", () => {
     ]);
   });
 
+  it("runs a daily schedule only once across a repeated DST wall-clock minute", () => {
+    expect(nextScheduleRunAt(
+      { kind: "daily", time: "01:30" },
+      "America/New_York",
+      new Date("2026-11-01T05:30:00.000Z"),
+    )).toBe("2026-11-02T06:30:00.000Z");
+  });
+
   it("rejects nonexistent one-time local timestamps", () => {
     expect(() => validateScheduleTiming(
       { kind: "once", date: "2026-03-08", time: "02:30" },
@@ -76,4 +94,3 @@ describe("schedule-core", () => {
     expect(() => parseCronExpression("0 25 * * *")).toThrow(/outside/);
   });
 });
-

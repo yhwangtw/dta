@@ -72,4 +72,3 @@ export async function DELETE(
   ensureScheduleRunner().reschedule();
   return Response.json({ ok: true });
 }
-

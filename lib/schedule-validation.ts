@@ -37,10 +37,13 @@ function timingFromUnknown(value: unknown): ScheduleTiming {
   }
   if (timing.kind === "weekly") {
     if (!Array.isArray(timing.weekdays)) throw new ScheduleValidationError("weekdays are required");
+    if (timing.weekdays.some((day) => !Number.isInteger(day) || (day as number) < 0 || (day as number) > 6)) {
+      throw new ScheduleValidationError("weekdays must contain integers from 0 to 6");
+    }
     return {
       kind: "weekly",
       time: requiredString(timing.time, "time", 5),
-      weekdays: [...new Set(timing.weekdays.filter((day): day is number => typeof day === "number"))]
+      weekdays: [...new Set(timing.weekdays as number[])]
         .sort((a, b) => a - b),
     };
   }
@@ -130,4 +133,3 @@ export function initialNextRunAt(input: ScheduleInput, now = new Date()): string
   if (!next) throw new ScheduleValidationError("This schedule has no valid run time in the next 8 years");
   return next;
 }
-

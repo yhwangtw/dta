@@ -133,7 +133,10 @@ function parseCronField(
   normalize?: (value: number) => number,
 ): CronField {
   if (!raw || raw.length > 120) throw new Error("Invalid cron field");
-  const wildcard = raw === "*" || raw.startsWith("*/");
+  // Cron's DOM/DOW OR rule treats only a literal "*" as unrestricted.
+  // Step expressions such as "*/2" still restrict the field and therefore
+  // must participate in OR matching when the other day field is restricted.
+  const wildcard = raw === "*";
   const values = new Set<number>();
 
   const add = (value: number) => {
@@ -228,6 +231,7 @@ function nextCronRun(
   parsed: ParsedCronExpression,
   timeZone: string,
   after: Date,
+  allowRepeatedWallTime = true,
 ): Date | null {
   const localAfter = partsAt(after.getTime(), timeZone);
   const cursor = new Date(Date.UTC(localAfter.year, localAfter.month - 1, localAfter.day));
@@ -241,7 +245,11 @@ function nextCronRun(
     if (dayMatches(parsed, year, month, day)) {
       for (const hour of parsed.hour.values) {
         for (const minute of parsed.minute.values) {
-          const instants = zonedDateTimeToInstants({ year, month, day, hour, minute }, timeZone);
+          const resolved = zonedDateTimeToInstants({ year, month, day, hour, minute }, timeZone);
+          // Human-friendly daily and weekly schedules mean once per local
+          // calendar occurrence. Five-field cron retains its conventional
+          // instant-matching behavior and may run twice during a DST fallback.
+          const instants = allowRepeatedWallTime ? resolved : resolved.slice(0, 1);
           const next = instants.find((instant) => instant.getTime() > after.getTime());
           if (next) return next;
         }
@@ -304,7 +312,7 @@ export function nextScheduleRunAt(
       dayOfMonth: parseCronField("*", 1, 31),
       month: parseCronField("*", 1, 12),
       dayOfWeek: parseCronField("*", 0, 7, undefined, (value) => value === 7 ? 0 : value),
-    }, timeZone, after);
+    }, timeZone, after, false);
   } else if (timing.kind === "weekly") {
     const { hour, minute } = timeParts(timing.time);
     const weekdays = [...new Set(timing.weekdays)].sort((a, b) => a - b);
@@ -314,10 +322,9 @@ export function nextScheduleRunAt(
       dayOfMonth: parseCronField("*", 1, 31),
       month: parseCronField("*", 1, 12),
       dayOfWeek: { values: weekdays, allowed: new Set(weekdays), wildcard: false },
-    }, timeZone, after);
+    }, timeZone, after, false);
   } else {
     result = nextCronRun(parseCronExpression(timing.expression), timeZone, after);
   }
   return result?.toISOString() ?? null;
 }
-

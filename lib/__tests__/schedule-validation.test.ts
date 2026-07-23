@@ -43,6 +43,16 @@ describe("schedule validation", () => {
     await expect(validateScheduleInput({ ...base, provider: "custom" })).rejects.toThrow(/set together/);
   });
 
+  it("rejects malformed weekday values instead of silently dropping them", async () => {
+    await expect(validateScheduleInput({
+      name: "Weekly",
+      cwd: cwd(),
+      prompt: "Inspect",
+      timing: { kind: "weekly", time: "09:00", weekdays: [1, "2"] },
+      timezone: "UTC",
+    })).rejects.toThrow(/weekdays/);
+  });
+
   it("rejects one-time schedules that are already past", async () => {
     const input = await validateScheduleInput({
       name: "Past",
@@ -54,4 +64,3 @@ describe("schedule validation", () => {
     expect(() => initialNextRunAt(input, new Date("2026-07-23T00:00:00.000Z"))).toThrow(/future/);
   });
 });
-

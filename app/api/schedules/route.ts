@@ -47,4 +47,3 @@ export async function POST(req: Request): Promise<Response> {
     return Response.json({ error: error instanceof Error ? error.message : String(error) }, { status });
   }
 }
-

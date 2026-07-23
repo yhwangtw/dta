@@ -26,4 +26,3 @@ export async function POST(
     return Response.json({ error: error instanceof Error ? error.message : String(error) }, { status });
   }
 }
-

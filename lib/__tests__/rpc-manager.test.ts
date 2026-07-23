@@ -3,6 +3,43 @@ import { AgentSessionWrapper } from "../rpc-manager";
 import type { AgentSessionLike } from "../pi-types";
 import { WebExtensionUIBridge } from "../web-extension-ui";
 
+describe("AgentSessionWrapper prompt command", () => {
+  it("lets background callers observe an immediate prompt rejection", async () => {
+    const failure = new Error("No model configured");
+    const inner = {
+      sessionId: "session-background",
+      sessionFile: "/tmp/session-background.jsonl",
+      prompt: vi.fn().mockRejectedValue(failure),
+      dispose: vi.fn(),
+    } as unknown as AgentSessionLike;
+    const wrapper = new AgentSessionWrapper(inner);
+    try {
+      await expect(wrapper.send({
+        type: "prompt",
+        message: "scheduled task",
+        awaitCompletion: true,
+      })).rejects.toThrow("No model configured");
+    } finally {
+      wrapper.destroy();
+    }
+  });
+
+  it("preserves fire-and-forget behavior for interactive browser prompts", async () => {
+    const inner = {
+      sessionId: "session-browser",
+      sessionFile: "/tmp/session-browser.jsonl",
+      prompt: vi.fn().mockRejectedValue(new Error("reported over events")),
+      dispose: vi.fn(),
+    } as unknown as AgentSessionLike;
+    const wrapper = new AgentSessionWrapper(inner);
+    try {
+      await expect(wrapper.send({ type: "prompt", message: "interactive" })).resolves.toBeNull();
+    } finally {
+      wrapper.destroy();
+    }
+  });
+});
+
 describe("AgentSessionWrapper compact command", () => {
   it("delegates repeated-compaction eligibility to Pi", async () => {
     const compactResult = {

@@ -164,6 +164,13 @@ Set `TGD_DIR` when your artifact directory lives elsewhere.
 - Per-run error cards, stall warnings, notifications, completion sound, and React-owned tab status.
 - Editable past turns, retry from the previous branch point, independent forks, and in-session branch navigation.
 
+### Scheduled agents
+
+- The left-rail Schedule Center supports one-time, daily, weekly, and five-field cron schedules with an explicit IANA timezone.
+- Choose the project, prompt, model, thinking level, tool access, missed-run policy, and whether the schedule is active; pause, resume, run now, retry, or inspect run history from one panel.
+- Every run creates a normal local Pi session. If `ask_user` needs a decision, the run changes to **Waiting for input** and opens directly into that session.
+- Scheduling is provided by the local Node server, which must be running. On restart, each schedule either catches up once or skips the missed run according to its policy, and overlapping runs are never started.
+
 ### Sessions and navigation
 
 - Incremental, read-only session index over local Pi `.jsonl` files.
@@ -265,10 +272,10 @@ Read-only browsing parses session files without creating an `AgentSession`. Send
 ## Project Structure
 
 ```text
-app/api/        sessions, agent commands/events, files, git, tGD, config
+app/api/        sessions, agent commands/events, schedules, files, git, tGD, config
 components/     layout, chat, sidebar, modals, and shared UI
 hooks/          agent orchestration, streaming, scrolling, sessions, theme
-lib/            RPC lifecycle, session parsing, security, i18n, snapshots
+lib/            RPC lifecycle, scheduling, session parsing, security, i18n, snapshots
 e2e/            Playwright production-server scenarios
 docs/           screenshots and project documentation
 public/fonts/   bundled local fonts
@@ -299,6 +306,10 @@ No. It is a local browser interface over Pi's session files and agent runtime. P
 ### Does the app upload my sessions?
 
 The application does not include a hosted session backend. It reads local Pi files and contacts only the model/provider endpoints you configure.
+
+### Do schedules run while tGD Pi Web is stopped?
+
+No. The scheduler runs inside the local Node server. Keep `npm start` running for on-time execution; after a restart, each schedule applies its configured **run once** or **skip** missed-run policy.
 
 ### Why is Playwright not in `package.json`?
 

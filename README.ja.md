@@ -152,6 +152,13 @@ artifacts が別の場所にある場合は `TGD_DIR` を設定してくださ�
 - 実行エラーカード、stall 警告、通知、完了音、タブ状態。
 - 過去 turn の編集、以前の分岐点からの retry、独立 fork、セッション内ブランチ移動。
 
+### スケジュール Agent
+
+- 左レールの Schedule Center は、1 回、毎日、毎週、標準 5 フィールド cron と明示的な IANA タイムゾーンに対応します。
+- プロジェクト、Prompt、モデル、thinking level、ツール権限、未実行時の方針、有効状態を設定し、停止、再開、即時実行、再試行、履歴確認を 1 か所で行えます。
+- 各実行は通常のローカル Pi セッションを作成します。`ask_user` が判断を求めると **入力待ち** になり、そのセッションを直接開いて回答できます。
+- スケジューラはローカル Node server 内で動作するため、server の起動が必要です。再起動後は設定に従って 1 回補完実行するかスキップし、同一スケジュールは重複実行しません。
+
 ### セッションとナビゲーション
 
 - ローカル Pi `.jsonl` ファイルを増分・読み取り専用でインデックス。
@@ -253,10 +260,10 @@ Browser                    Next.js server                 AgentSession
 ## プロジェクト構成
 
 ```text
-app/api/        sessions、agent commands/events、files、git、tGD、config
+app/api/        sessions、agent commands/events、schedules、files、git、tGD、config
 components/     layout、chat、sidebar、modals、共有 UI
 hooks/          agent orchestration、streaming、scrolling、sessions、theme
-lib/            RPC lifecycle、session parsing、security、i18n、snapshots
+lib/            RPC lifecycle、scheduling、session parsing、security、i18n、snapshots
 e2e/            Playwright production-server scenarios
 docs/           screenshots とプロジェクト文書
 public/fonts/   同梱ローカルフォント
@@ -287,6 +294,10 @@ public/fonts/   同梱ローカルフォント
 ### セッションはアップロードされますか？
 
 本プロジェクトに hosted session backend はありません。ローカルの Pi ファイルを読み、設定したモデル／provider endpoint だけへ接続します。
+
+### tGD Pi Web を停止している間もスケジュールは動きますか？
+
+いいえ。スケジューラはローカル Node server 内で動作します。定刻実行には `npm start` を起動したままにしてください。再起動後は各スケジュールの設定に従い、1 回補完実行するかスキップします。
 
 ### なぜ Playwright が `package.json` にないのですか？
 

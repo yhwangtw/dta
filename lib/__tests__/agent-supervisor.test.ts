@@ -4,6 +4,7 @@ import type { AgentRunStore } from "../agent-run-types";
 const harness = vi.hoisted(() => ({
   store: { version: 1, runs: [] } as AgentRunStore,
   startRpcSession: vi.fn(),
+  trusted: true,
 }));
 
 vi.mock("../agent-run-store", () => ({
@@ -14,6 +15,10 @@ vi.mock("../agent-run-store", () => ({
 
 vi.mock("../rpc-manager", () => ({
   startRpcSession: harness.startRpcSession,
+}));
+
+vi.mock("../agent-run-workspace", () => ({
+  isTrustedAgentRunWorkspace: vi.fn(async () => harness.trusted),
 }));
 
 import { AgentRunSupervisor } from "../agent-run-supervisor";
@@ -51,6 +56,7 @@ function input(name: string) {
 beforeEach(() => {
   harness.store = { version: 1, runs: [] };
   harness.startRpcSession.mockReset();
+  harness.trusted = true;
 });
 
 describe("AgentRunSupervisor", () => {
@@ -65,7 +71,7 @@ describe("AgentRunSupervisor", () => {
     const run1 = supervisor.enqueue(input("One"));
     const run2 = supervisor.enqueue(input("Two"));
 
-    await vi.waitFor(() => expect(harness.store.runs.find((run) => run.id === run1.id)?.status).toBe("running"));
+    await vi.waitFor(() => expect(harness.store.runs.find((run) => run.id === run1.id)?.sessionId).toBe("session-1"));
     expect(harness.store.runs.find((run) => run.id === run2.id)?.status).toBe("queued");
     expect(harness.startRpcSession).toHaveBeenCalledTimes(1);
 
@@ -129,5 +135,17 @@ describe("AgentRunSupervisor", () => {
       trigger: "retry",
       status: "queued",
     });
+  });
+
+  it("AC-2.5: refuses queued work when its workspace trust was revoked", async () => {
+    harness.trusted = false;
+    const supervisor = new AgentRunSupervisor({ maxConcurrency: 1 });
+    const run = supervisor.enqueue(input("Revoked"));
+
+    await vi.waitFor(() => expect(harness.store.runs.find((item) => item.id === run.id)).toMatchObject({
+      status: "failed",
+      error: expect.stringMatching(/no longer trusted/),
+    }));
+    expect(harness.startRpcSession).not.toHaveBeenCalled();
   });
 });

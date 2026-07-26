@@ -13,6 +13,7 @@ import {
 } from "./agent-run-types";
 import type { WebExtensionUIEvent } from "./web-extension-ui";
 import { isWebExtensionUIDialogRequest, isWebExtensionUIEvent } from "./web-extension-ui-types";
+import { isTrustedAgentRunWorkspace } from "./agent-run-workspace";
 
 const DEFAULT_MAX_CONCURRENCY = 3;
 const KEEP_ALIVE_MS = 4 * 60_000;
@@ -188,6 +189,9 @@ export class AgentRunSupervisor {
     const active = this.active.get(run.id);
     if (!active) return;
     try {
+      if (!await isTrustedAgentRunWorkspace(run.cwd)) {
+        throw new Error("Workspace is no longer trusted; open it as a project before retrying");
+      }
       const started = await startRpcSession(`__daemon__${run.id}`, "", run.cwd, run.toolNames);
       if (!this.active.has(run.id)) {
         await started.session.send({ type: "abort" }).catch(() => {});

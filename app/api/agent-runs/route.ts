@@ -2,8 +2,10 @@ import { ensureAgentRunSupervisor } from "@/lib/agent-run-supervisor";
 import { readAgentRunStore } from "@/lib/agent-run-store";
 import type { AgentRunStatus } from "@/lib/agent-run-types";
 import { AgentRunValidationError, validateAgentRunInput } from "@/lib/agent-run-validation";
-import { inspectAgentRunWorkspace } from "@/lib/agent-run-workspace";
-import { getAllowedRoots, isPathAllowed } from "@/lib/file-security";
+import {
+  inspectAgentRunWorkspace,
+  isTrustedAgentRunWorkspace,
+} from "@/lib/agent-run-workspace";
 
 export const dynamic = "force-dynamic";
 
@@ -83,7 +85,7 @@ export async function POST(req: Request): Promise<Response> {
   if (invalidType) return invalidType;
   try {
     const input = await validateAgentRunInput(await req.json());
-    if (!isPathAllowed(input.cwd, await getAllowedRoots())) {
+    if (!await isTrustedAgentRunWorkspace(input.cwd)) {
       return Response.json({
         error: "Workspace is not trusted. Open it as a project before starting a background agent.",
       }, { status: 403 });

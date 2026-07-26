@@ -19,12 +19,8 @@ vi.mock("@/lib/agent-run-store", () => ({
   readAgentRunStore: vi.fn(() => ({ version: 1, runs: [] })),
 }));
 
-vi.mock("@/lib/file-security", () => ({
-  getAllowedRoots: vi.fn(async () => new Set(["/trusted"])),
-  isPathAllowed: vi.fn(() => harness.allowed),
-}));
-
 vi.mock("@/lib/agent-run-workspace", () => ({
+  isTrustedAgentRunWorkspace: vi.fn(async () => harness.allowed),
   inspectAgentRunWorkspace: vi.fn(async (cwd: string) => ({
     repoRoot: cwd,
     branch: "main",

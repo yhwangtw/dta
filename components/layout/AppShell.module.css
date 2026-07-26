@@ -197,7 +197,6 @@
    clipping — drop the session title and the (secondary) live stats. */
 @media (max-width: 640px) {
   .chatTitle { display: none; }
-  .sessionStats { display: none; }
 }
 
 .exportButton {
@@ -359,6 +358,11 @@
   display: flex;
   align-items: center;
   gap: 4px;
+}
+
+/* Keep this after the base .sessionStats rule so the mobile override wins. */
+@media (max-width: 640px) {
+  .sessionStats { display: none; }
 }
 
 /* ── Top panel dropdown ── */

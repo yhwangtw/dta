@@ -104,4 +104,17 @@ describe("ExtensionUIPanel", () => {
       answers: { target: "Production", note: "Roll out after smoke tests" },
     });
   });
+
+  it("hides the ambient Telegram connected status below the conversation", async () => {
+    const state: ExtensionUIState = {
+      dialogs: [],
+      statuses: { telegram: "telegram connected" },
+      widgets: {},
+    };
+
+    await render(state);
+
+    expect(container!.childElementCount).toBe(0);
+    expect(container!.textContent).not.toContain("telegram");
+  });
 });

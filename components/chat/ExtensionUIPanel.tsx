@@ -11,10 +11,19 @@ interface Props {
   wide?: boolean;
 }
 
+function visibleStatuses(statuses: ExtensionUIState["statuses"]) {
+  return Object.entries(statuses).filter(([key, text]) => {
+    if (key.toLocaleLowerCase() !== "telegram") return true;
+    const normalized = text.trim().replace(/\s+/g, " ").toLocaleLowerCase();
+    return normalized !== "connected" && normalized !== "telegram connected";
+  });
+}
+
 export function ExtensionUIPanel({ state, onRespond, wide = false }: Props) {
   const dialog = state.dialogs[0];
   const hasAboveWidgets = Object.values(state.widgets).some((widget) => widget.placement === "aboveEditor");
-  const hasStatuses = Object.keys(state.statuses).length > 0;
+  const statuses = visibleStatuses(state.statuses);
+  const hasStatuses = statuses.length > 0;
   if (!dialog && !hasAboveWidgets && !hasStatuses) return null;
 
   return (
@@ -23,7 +32,7 @@ export function ExtensionUIPanel({ state, onRespond, wide = false }: Props) {
         <ExtensionWidgets state={state} placement="aboveEditor" bare />
         {hasStatuses && (
           <div className={styles.statusRow} role="status">
-            {Object.entries(state.statuses).map(([key, text]) => (
+            {statuses.map(([key, text]) => (
               <span key={key} className={styles.statusChip}>
                 <span className={styles.statusDot} aria-hidden />
                 <span className={styles.statusKey}>{key}</span>

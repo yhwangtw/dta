@@ -11,6 +11,6 @@ export default defineConfig({
     globals: true,
     environment: "node",
     // Playwright specs live in e2e/ and run via `npm run test:e2e`
-    exclude: ["e2e/**", "node_modules/**", ".next/**"],
+    exclude: ["e2e/**", "node_modules/**", ".next/**", ".worktrees/**"],
   },
 });

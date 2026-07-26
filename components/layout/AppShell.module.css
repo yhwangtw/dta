@@ -602,20 +602,24 @@
 
 /* ── File panel toggle ── */
 .filePanelToggle {
-  position: fixed;
-  top: var(--safe-area-top);
-  right: var(--safe-area-right);
-  z-index: 300;
-  display: flex;
+  margin-left: auto;
+}
+
+.sessionStats + .filePanelToggle {
+  margin-left: 0;
+}
+
+.mobileFilePanelClose {
+  display: none;
   align-items: center;
   justify-content: center;
   width: 36px;
   height: 36px;
+  flex-shrink: 0;
   padding: 0;
   background: var(--bg-panel);
   border: none;
   border-left: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
   cursor: pointer;
 }
 
@@ -632,7 +636,7 @@
 
   .railButton,
   .topBarButton,
-  .filePanelToggle {
+  .mobileFilePanelClose {
     width: 44px;
     height: 44px;
   }
@@ -642,6 +646,21 @@
   .systemButton,
   .sidebarFooterButton {
     min-height: 44px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .filePanelToggleOpen {
+    display: none;
+  }
+
+  .rightPanelTabBar {
+    height: 44px;
+    padding-left: 0;
+  }
+
+  .mobileFilePanelClose {
+    display: flex;
   }
 }
 

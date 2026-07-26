@@ -190,4 +190,39 @@ test.describe("responsive shell", () => {
     await expect(page.getByText("最高強度推理", { exact: true })).toBeVisible();
     await expect(page.getByText(/切换|默认|关闭|强度|设置/)).toHaveCount(0);
   });
+
+  test("AC-RWD-8: mobile file-panel controls stay inside their own toolbars", async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 800 });
+    await openSession(page);
+
+    const topBar = page.getByTestId("top-bar");
+    const showPanel = topBar.getByRole("button", { name: "Show file panel", exact: true });
+    await expect(showPanel).toBeVisible();
+
+    const [topBarBox, showBox] = await Promise.all([
+      topBar.boundingBox(),
+      showPanel.boundingBox(),
+    ]);
+    expect(topBarBox).not.toBeNull();
+    expect(showBox).not.toBeNull();
+    expect(showBox!.x).toBeGreaterThanOrEqual(topBarBox!.x);
+    expect(showBox!.x + showBox!.width).toBeLessThanOrEqual(topBarBox!.x + topBarBox!.width);
+
+    await showPanel.click();
+    const viewer = page.locator(".right-panel-container.right-panel-open");
+    const panelBar = page.getByTestId("right-panel-tab-bar");
+    const hidePanel = panelBar.getByRole("button", { name: "Hide file panel", exact: true });
+    await expect(viewer).toBeVisible();
+    await expect(hidePanel).toBeVisible();
+
+    const [panelBarBox, hideBox] = await Promise.all([
+      panelBar.boundingBox(),
+      hidePanel.boundingBox(),
+    ]);
+    expect(panelBarBox).not.toBeNull();
+    expect(hideBox).not.toBeNull();
+    expect(hideBox!.x).toBeGreaterThanOrEqual(panelBarBox!.x);
+    expect(hideBox!.x + hideBox!.width).toBeLessThanOrEqual(panelBarBox!.x + panelBarBox!.width);
+    await expectNoPageOverflow(page);
+  });
 });

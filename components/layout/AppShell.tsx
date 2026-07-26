@@ -485,7 +485,7 @@ export function AppShell() {
       {/* Center: chat */}
       <div className={s.centerPanel}>
         {/* Top bar with sidebar toggle */}
-        <div ref={topBarRef} className={s.topBar}>
+        <div ref={topBarRef} className={s.topBar} data-testid="top-bar">
           <div className={`${s.chatTitle} chrome-mono`} title={state.selectedSession?.name ?? state.selectedSession?.id}>
             {state.selectedSession
               ? (state.selectedSession.name ?? state.selectedSession.id.slice(0, 8))
@@ -618,7 +618,6 @@ export function AppShell() {
               <div
                 title={tooltip}
                 className={s.sessionStats}
-                style={{ paddingRight: rightPanelOpen ? 12 : 48 }}
               >
                 {t && t.input > 0 && (
                   <span className={s.tokenStat}>
@@ -654,6 +653,18 @@ export function AppShell() {
               </div>
             );
           })()}
+          <button
+            type="button"
+            onClick={() => setRightPanelOpen((open) => !open)}
+            title={rightPanelOpen ? t("topbar.hideFilePanel") : t("topbar.showFilePanel")}
+            aria-label={rightPanelOpen ? t("topbar.hideFilePanel") : t("topbar.showFilePanel")}
+            className={`${s.topBarButton} ${s.filePanelToggle} ${rightPanelOpen ? s.filePanelToggleOpen : ""} hover-text`}
+            style={{ color: rightPanelOpen ? "var(--text)" : "var(--text-muted)" }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <rect x="3" y="3" width="18" height="18" rx="2" /><line x1="15" y1="3" x2="15" y2="21" />
+            </svg>
+          </button>
           {/* Top panel dropdown — shared, only one active at a time */}
           {state.activeTopPanel && state.topPanelPos && (
             <div
@@ -819,7 +830,7 @@ export function AppShell() {
           />
         )}
         {/* Right panel tab bar */}
-        <div className={s.rightPanelTabBar}>
+        <div className={s.rightPanelTabBar} data-testid="right-panel-tab-bar">
           <div className={s.rightPanelTabBarInner}>
             <TabBar
               tabs={fileTabs}
@@ -832,7 +843,17 @@ export function AppShell() {
               onReveal={revealInExplorer}
             />
           </div>
-
+          <button
+            type="button"
+            onClick={() => setRightPanelOpen(false)}
+            title={t("topbar.hideFilePanel")}
+            aria-label={t("topbar.hideFilePanel")}
+            className={`${s.mobileFilePanelClose} hover-text`}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <rect x="3" y="3" width="18" height="18" rx="2" /><line x1="15" y1="3" x2="15" y2="21" />
+            </svg>
+          </button>
         </div>
 
         {/* File content */}
@@ -856,18 +877,6 @@ export function AppShell() {
         </div>
       </div>
     </div>
-    {/* File panel toggle — always visible at top-right */}
-    <button
-      onClick={() => setRightPanelOpen((v) => !v)}
-      title={rightPanelOpen ? t("topbar.hideFilePanel") : t("topbar.showFilePanel")}
-      aria-label={rightPanelOpen ? t("topbar.hideFilePanel") : t("topbar.showFilePanel")}
-      className={`${s.filePanelToggle} hover-text`}
-      style={{ color: rightPanelOpen ? "var(--text)" : "var(--text-muted)" }}
-    >
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="3" y="3" width="18" height="18" rx="2" /><line x1="15" y1="3" x2="15" y2="21" />
-      </svg>
-    </button>
     {modelsConfigOpen && <Suspense fallback={null}><ModelsConfig onClose={() => { setModelsConfigOpen(false); setModelsRefreshKey((k) => k + 1); }} /></Suspense>}
     {promptsConfigOpen && (
       <Suspense fallback={null}><PromptsConfig onClose={() => setPromptsConfigOpen(false)} /></Suspense>

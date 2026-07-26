@@ -71,7 +71,8 @@
   background: var(--bg-elev-1);
 }
 .summary button,
-.summary > div {
+.summary > div,
+.summary > .concurrencyControl {
   min-width: 0;
   padding: 5px 3px;
   display: flex;
@@ -89,6 +90,26 @@
 .summary .summaryActive { background: var(--bg-hover); border-color: var(--border); color: var(--text-muted); }
 .summary strong { color: var(--text); font-size: calc(12px * var(--font-scale)); }
 .summary span { overflow: hidden; text-overflow: ellipsis; font-size: calc(8.5px * var(--font-scale)); white-space: nowrap; }
+.concurrencyControl select {
+  width: 44px;
+  min-height: 20px;
+  padding: 0 3px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: calc(12px * var(--font-scale));
+  font-weight: 700;
+  cursor: pointer;
+}
+.concurrencyControl select:hover,
+.concurrencyControl select:focus-visible {
+  border-color: var(--color-accent-border-focus);
+  background: var(--bg-hover);
+}
+.concurrencyControl select:disabled { opacity: 0.55; cursor: wait; }
 
 .filterBar {
   flex: 0 0 auto;

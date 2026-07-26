@@ -5,6 +5,9 @@ import { showToast } from "@/hooks/useToast";
 import { useI18n } from "@/lib/i18n";
 import {
   ACTIVE_AGENT_RUN_STATUSES,
+  isAgentRunConcurrency,
+  MAX_AGENT_RUN_CONCURRENCY,
+  MIN_AGENT_RUN_CONCURRENCY,
   TERMINAL_AGENT_RUN_STATUSES,
   type AgentRun,
   type AgentRunsResponse,
@@ -32,6 +35,7 @@ export function AgentDashboardPanel({ defaultCwd, onOpenSession }: Props) {
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [savingConcurrency, setSavingConcurrency] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -99,6 +103,31 @@ export function AgentDashboardPanel({ defaultCwd, onOpenSession }: Props) {
     }
   };
 
+  const updateConcurrency = async (nextValue: number) => {
+    if (savingConcurrency || nextValue === maxConcurrency) return;
+    setSavingConcurrency(true);
+    try {
+      const response = await fetch("/api/agent-runs", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ maxConcurrency: nextValue }),
+      });
+      const body = await response.json() as { maxConcurrency?: number; error?: string };
+      if (!response.ok || !isAgentRunConcurrency(body.maxConcurrency)) {
+        throw new Error(body.error || `HTTP ${response.status}`);
+      }
+      setMaxConcurrency(body.maxConcurrency);
+      showToast(t("agents.concurrencySaved"), { type: "success" });
+    } catch (cause) {
+      showToast(
+        cause instanceof Error ? cause.message : t("agents.concurrencyFailed"),
+        { type: "error" },
+      );
+    } finally {
+      setSavingConcurrency(false);
+    }
+  };
+
   if (editorOpen) {
     return (
       <AgentRunForm
@@ -143,7 +172,20 @@ export function AgentDashboardPanel({ defaultCwd, onOpenSession }: Props) {
         <button className={filter === "done" ? s.summaryActive : ""} onClick={() => setFilter(filter === "done" ? "all" : "done")}>
           <strong>{doneCount}</strong><span>{t("agents.done")}</span>
         </button>
-        <div><strong>{maxConcurrency}</strong><span>{t("agents.concurrency")}</span></div>
+        <label className={s.concurrencyControl}>
+          <select
+            aria-label={t("agents.concurrencyLabel")}
+            value={maxConcurrency}
+            disabled={savingConcurrency}
+            onChange={(event) => void updateConcurrency(Number(event.target.value))}
+          >
+            {Array.from(
+              { length: MAX_AGENT_RUN_CONCURRENCY - MIN_AGENT_RUN_CONCURRENCY + 1 },
+              (_, index) => MIN_AGENT_RUN_CONCURRENCY + index,
+            ).map((value) => <option key={value} value={value}>{value}</option>)}
+          </select>
+          <span>{t("agents.concurrency")}</span>
+        </label>
       </div>
       <div className={s.filterBar}>
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>

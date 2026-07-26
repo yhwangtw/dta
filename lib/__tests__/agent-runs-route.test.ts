@@ -6,12 +6,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const harness = vi.hoisted(() => ({
   allowed: false,
   enqueue: vi.fn(),
+  maxConcurrency: 3,
+  setMaxConcurrency: vi.fn(),
 }));
 
 vi.mock("@/lib/agent-run-supervisor", () => ({
   ensureAgentRunSupervisor: vi.fn(() => ({
-    maxConcurrency: 3,
+    get maxConcurrency() {
+      return harness.maxConcurrency;
+    },
     enqueue: harness.enqueue,
+    setMaxConcurrency: harness.setMaxConcurrency,
   })),
 }));
 
@@ -28,7 +33,7 @@ vi.mock("@/lib/agent-run-workspace", () => ({
   })),
 }));
 
-import { POST } from "../../app/api/agent-runs/route";
+import { PATCH, POST } from "../../app/api/agent-runs/route";
 
 const dirs: string[] = [];
 
@@ -38,9 +43,13 @@ function cwd(): string {
   return value;
 }
 
-function request(body: Record<string, unknown>, contentType = "application/json"): Request {
+function request(
+  body: Record<string, unknown>,
+  contentType = "application/json",
+  method = "POST",
+): Request {
   return new Request("http://localhost/api/agent-runs", {
-    method: "POST",
+    method,
     headers: { "Content-Type": contentType },
     body: JSON.stringify(body),
   });
@@ -48,7 +57,13 @@ function request(body: Record<string, unknown>, contentType = "application/json"
 
 beforeEach(() => {
   harness.allowed = false;
+  harness.maxConcurrency = 3;
   harness.enqueue.mockReset();
+  harness.setMaxConcurrency.mockReset();
+  harness.setMaxConcurrency.mockImplementation((value: number) => {
+    harness.maxConcurrency = value;
+    return value;
+  });
   harness.enqueue.mockImplementation((input) => ({
     ...input,
     id: "run-1",
@@ -95,5 +110,26 @@ describe("POST /api/agent-runs", () => {
     expect(body.run.toolNames).toEqual(["read", "grep", "find", "ls", "ask_user"]);
     expect(body.run.workspace.branch).toBe("main");
     expect(harness.enqueue).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("PATCH /api/agent-runs", () => {
+  it("AC-3.9: persists an explicit concurrency limit and returns the applied value", async () => {
+    const response = await PATCH(request({ maxConcurrency: 6 }, "application/json", "PATCH"));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ maxConcurrency: 6 });
+    expect(harness.setMaxConcurrency).toHaveBeenCalledWith(6);
+  });
+
+  it("AC-3.10: rejects non-JSON, fractional, and out-of-range concurrency settings", async () => {
+    const nonJson = await PATCH(request({ maxConcurrency: 4 }, "text/plain", "PATCH"));
+    expect(nonJson.status).toBe(415);
+
+    for (const maxConcurrency of [0, 9, 2.5, "4"]) {
+      const response = await PATCH(request({ maxConcurrency }, "application/json", "PATCH"));
+      expect(response.status).toBe(400);
+    }
+    expect(harness.setMaxConcurrency).not.toHaveBeenCalled();
   });
 });

@@ -17,6 +17,7 @@ interface MockRun {
 
 async function openDashboard(page: Page, initialRuns: MockRun[]) {
   let runs = [...initialRuns];
+  let maxConcurrency = 3;
   await page.route("**/api/models", (route) => route.fulfill({
     status: 200,
     contentType: "application/json",
@@ -32,10 +33,20 @@ async function openDashboard(page: Page, initialRuns: MockRun[]) {
         body: JSON.stringify({
           runs,
           counts: {},
-          maxConcurrency: 3,
+          maxConcurrency,
           serverTime: "2026-07-26T03:00:00.000Z",
           nextCursor: null,
         }),
+      });
+      return;
+    }
+    if (url.pathname === "/api/agent-runs" && request.method() === "PATCH") {
+      const input = request.postDataJSON() as { maxConcurrency: number };
+      maxConcurrency = input.maxConcurrency;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ maxConcurrency }),
       });
       return;
     }
@@ -143,4 +154,19 @@ test("AC-4.3: dashboard remains usable at 320px without page overflow", async ({
   expect(dimensions.document).toBeLessThanOrEqual(dimensions.viewport);
   expect(dimensions.body).toBeLessThanOrEqual(dimensions.viewport);
   await expect(page.getByTestId("agent-new-run")).toBeVisible();
+});
+
+test("AC-4.5: concurrent slots can be changed from the dashboard", async ({ page }) => {
+  await openDashboard(page, []);
+  const select = page.getByLabel("Concurrent agent slots", { exact: true });
+  await expect(select).toHaveValue("3");
+
+  const updateRequest = page.waitForRequest((request) => (
+    request.url().endsWith("/api/agent-runs") && request.method() === "PATCH"
+  ));
+  await select.selectOption("6");
+  const body = (await updateRequest).postDataJSON() as { maxConcurrency: number };
+
+  expect(body).toEqual({ maxConcurrency: 6 });
+  await expect(select).toHaveValue("6");
 });

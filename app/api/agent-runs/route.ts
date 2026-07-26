@@ -1,7 +1,11 @@
 import { ensureAgentRunSupervisor } from "@/lib/agent-run-supervisor";
 import { readAgentRunStore } from "@/lib/agent-run-store";
 import type { AgentRunStatus } from "@/lib/agent-run-types";
-import { AgentRunValidationError, validateAgentRunInput } from "@/lib/agent-run-validation";
+import {
+  AgentRunValidationError,
+  validateAgentRunConfigInput,
+  validateAgentRunInput,
+} from "@/lib/agent-run-validation";
 import {
   inspectAgentRunWorkspace,
   isTrustedAgentRunWorkspace,
@@ -95,6 +99,27 @@ export async function POST(req: Request): Promise<Response> {
     return Response.json({ run }, { status: 202 });
   } catch (error) {
     const status = error instanceof AgentRunValidationError || error instanceof SyntaxError ? 400 : 500;
+    return Response.json({
+      error: error instanceof Error ? error.message : String(error),
+    }, { status });
+  }
+}
+
+export async function PATCH(req: Request): Promise<Response> {
+  const invalidType = requiresJson(req);
+  if (invalidType) return invalidType;
+  try {
+    const { maxConcurrency } = validateAgentRunConfigInput(await req.json());
+    const applied = ensureAgentRunSupervisor().setMaxConcurrency(maxConcurrency);
+    return Response.json({ maxConcurrency: applied }, {
+      headers: { "Cache-Control": "no-store" },
+    });
+  } catch (error) {
+    const status = error instanceof AgentRunValidationError
+      || error instanceof SyntaxError
+      || error instanceof RangeError
+      ? 400
+      : 500;
     return Response.json({
       error: error instanceof Error ? error.message : String(error),
     }, { status });

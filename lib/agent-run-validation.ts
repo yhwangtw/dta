@@ -2,6 +2,11 @@ import { stat } from "node:fs/promises";
 import { isAbsolute } from "node:path";
 import type { AgentRunInput } from "./agent-run-types";
 import {
+  isAgentRunConcurrency,
+  MAX_AGENT_RUN_CONCURRENCY,
+  MIN_AGENT_RUN_CONCURRENCY,
+} from "./agent-run-types";
+import {
   ALLOWED_SCHEDULE_TOOLS,
   DEFAULT_SCHEDULE_TOOLS,
 } from "./schedule-validation";
@@ -9,6 +14,10 @@ import {
 const THINKING_LEVELS = new Set(["off", "minimal", "low", "medium", "high", "xhigh"]);
 
 export class AgentRunValidationError extends Error {}
+
+export interface AgentRunConfigInput {
+  maxConcurrency: number;
+}
 
 function requiredString(value: unknown, field: string, maxLength: number): string {
   if (typeof value !== "string" || !value.trim()) {
@@ -79,4 +88,17 @@ export async function validateAgentRunInput(value: unknown): Promise<AgentRunInp
     thinkingLevel,
     toolNames: toolNames as string[],
   };
+}
+
+export function validateAgentRunConfigInput(value: unknown): AgentRunConfigInput {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new AgentRunValidationError("JSON object is required");
+  }
+  const maxConcurrency = (value as Record<string, unknown>).maxConcurrency;
+  if (!isAgentRunConcurrency(maxConcurrency)) {
+    throw new AgentRunValidationError(
+      `maxConcurrency must be an integer between ${MIN_AGENT_RUN_CONCURRENCY} and ${MAX_AGENT_RUN_CONCURRENCY}`,
+    );
+  }
+  return { maxConcurrency };
 }

@@ -4,6 +4,7 @@ import { dirname, join } from "node:path";
 import { getAgentDir } from "@earendil-works/pi-coding-agent";
 import {
   ACTIVE_AGENT_RUN_STATUSES,
+  isAgentRunConcurrency,
   type AgentRun,
   type AgentRunStatus,
   type AgentRunStore,
@@ -73,6 +74,9 @@ export function readAgentRunStore(path = agentRunStorePath()): AgentRunStore {
     return {
       version: 1,
       runs: Array.isArray(raw.runs) ? raw.runs.filter(isAgentRun).slice(0, MAX_RUNS) : [],
+      ...(isAgentRunConcurrency(raw.maxConcurrency)
+        ? { maxConcurrency: raw.maxConcurrency }
+        : {}),
     };
   } catch {
     return emptyAgentRunStore();
@@ -84,6 +88,9 @@ export function writeAgentRunStore(store: AgentRunStore, path = agentRunStorePat
   const normalized: AgentRunStore = {
     version: 1,
     runs: store.runs.slice(0, MAX_RUNS),
+    ...(isAgentRunConcurrency(store.maxConcurrency)
+      ? { maxConcurrency: store.maxConcurrency }
+      : {}),
   };
   const temp = `${path}.${process.pid}.${randomUUID()}.tmp`;
   writeFileSync(temp, `${JSON.stringify(normalized, null, 2)}\n`, {

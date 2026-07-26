@@ -50,6 +50,7 @@ describe("agent-run-store", () => {
     const path = fixturePath();
     writeFileSync(path, JSON.stringify({
       version: 1,
+      maxConcurrency: 99,
       runs: [
         run("queued", "valid"),
         { ...run("queued", "bad-status"), status: "unknown" },
@@ -57,7 +58,9 @@ describe("agent-run-store", () => {
       ],
     }));
 
-    expect(readAgentRunStore(path).runs.map((item) => item.id)).toEqual(["valid"]);
+    const store = readAgentRunStore(path);
+    expect(store.runs.map((item) => item.id)).toEqual(["valid"]);
+    expect(store.maxConcurrency).toBeUndefined();
   });
 
   it("AC-1.3: marks active runs interrupted after restart while preserving queued work", () => {
@@ -81,5 +84,22 @@ describe("agent-run-store", () => {
     });
     expect(runs.find((item) => item.id === "waiting")?.status).toBe("interrupted");
     expect(runs.find((item) => item.id === "queued")?.status).toBe("queued");
+  });
+
+  it("AC-1.4: persists the user-selected concurrency limit across restarts", () => {
+    const path = fixturePath();
+    const store: AgentRunStore = {
+      version: 1,
+      runs: [run("queued")],
+      maxConcurrency: 6,
+    };
+
+    writeAgentRunStore(store, path);
+
+    expect(readAgentRunStore(path)).toMatchObject({
+      version: 1,
+      maxConcurrency: 6,
+      runs: [{ id: "run-1" }],
+    });
   });
 });

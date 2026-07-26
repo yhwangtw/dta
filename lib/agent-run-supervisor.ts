@@ -6,6 +6,10 @@ import {
   reconcileInterruptedAgentRuns,
 } from "./agent-run-store";
 import {
+  DEFAULT_AGENT_RUN_CONCURRENCY,
+  isAgentRunConcurrency,
+  MAX_AGENT_RUN_CONCURRENCY,
+  MIN_AGENT_RUN_CONCURRENCY,
   TERMINAL_AGENT_RUN_STATUSES,
   type AgentRun,
   type AgentRunInput,
@@ -15,7 +19,6 @@ import type { WebExtensionUIEvent } from "./web-extension-ui";
 import { isWebExtensionUIDialogRequest, isWebExtensionUIEvent } from "./web-extension-ui-types";
 import { isTrustedAgentRunWorkspace } from "./agent-run-workspace";
 
-const DEFAULT_MAX_CONCURRENCY = 3;
 const KEEP_ALIVE_MS = 4 * 60_000;
 const MAX_RUN_MS = 24 * 60 * 60_000;
 
@@ -32,7 +35,9 @@ export class AgentRunConflictError extends Error {}
 
 function configuredConcurrency(): number {
   const parsed = Number.parseInt(process.env.PIWEB_AGENT_CONCURRENCY ?? "", 10);
-  return Number.isFinite(parsed) ? Math.max(1, Math.min(8, parsed)) : DEFAULT_MAX_CONCURRENCY;
+  return Number.isFinite(parsed)
+    ? Math.max(MIN_AGENT_RUN_CONCURRENCY, Math.min(MAX_AGENT_RUN_CONCURRENCY, parsed))
+    : DEFAULT_AGENT_RUN_CONCURRENCY;
 }
 
 function eventRunError(event: AgentEvent): string | null {
@@ -53,13 +58,34 @@ function cloneRun(run: AgentRun): AgentRun {
 }
 
 export class AgentRunSupervisor {
-  readonly maxConcurrency: number;
+  private maxConcurrencyValue: number;
   private readonly active = new Map<string, ActiveRun>();
   private started = false;
   private draining = false;
 
   constructor(options: { maxConcurrency?: number } = {}) {
-    this.maxConcurrency = options.maxConcurrency ?? configuredConcurrency();
+    const persisted = options.maxConcurrency === undefined
+      ? readAgentRunStore().maxConcurrency
+      : undefined;
+    this.maxConcurrencyValue = options.maxConcurrency ?? persisted ?? configuredConcurrency();
+  }
+
+  get maxConcurrency(): number {
+    return this.maxConcurrencyValue;
+  }
+
+  setMaxConcurrency(value: number): number {
+    if (!isAgentRunConcurrency(value)) {
+      throw new RangeError(
+        `maxConcurrency must be an integer between ${MIN_AGENT_RUN_CONCURRENCY} and ${MAX_AGENT_RUN_CONCURRENCY}`,
+      );
+    }
+    mutateAgentRunStore((store) => {
+      store.maxConcurrency = value;
+    });
+    this.maxConcurrencyValue = value;
+    this.drain();
+    return value;
   }
 
   start(): void {

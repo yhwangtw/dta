@@ -41,6 +41,7 @@ export interface AgentRun extends AgentRunInput {
 export interface AgentRunStore {
   version: 1;
   runs: AgentRun[];
+  maxConcurrency?: number;
 }
 
 export interface AgentRunsResponse {
@@ -62,3 +63,13 @@ export const TERMINAL_AGENT_RUN_STATUSES = new Set<AgentRunStatus>([
   "cancelled",
   "interrupted",
 ]);
+
+export const MIN_AGENT_RUN_CONCURRENCY = 1;
+export const MAX_AGENT_RUN_CONCURRENCY = 8;
+export const DEFAULT_AGENT_RUN_CONCURRENCY = 3;
+
+export function isAgentRunConcurrency(value: unknown): value is number {
+  return Number.isInteger(value)
+    && Number(value) >= MIN_AGENT_RUN_CONCURRENCY
+    && Number(value) <= MAX_AGENT_RUN_CONCURRENCY;
+}

@@ -3,13 +3,17 @@ import type { AgentRunStore } from "../agent-run-types";
 
 const harness = vi.hoisted(() => ({
   store: { version: 1, runs: [] } as AgentRunStore,
+  persistError: null as Error | null,
   startRpcSession: vi.fn(),
   trusted: true,
 }));
 
 vi.mock("../agent-run-store", () => ({
   readAgentRunStore: vi.fn(() => harness.store),
-  mutateAgentRunStore: vi.fn((mutate: (store: AgentRunStore) => unknown) => mutate(harness.store)),
+  mutateAgentRunStore: vi.fn((mutate: (store: AgentRunStore) => unknown) => {
+    if (harness.persistError) throw harness.persistError;
+    return mutate(harness.store);
+  }),
   reconcileInterruptedAgentRuns: vi.fn(() => 0),
 }));
 
@@ -55,6 +59,7 @@ function input(name: string) {
 
 beforeEach(() => {
   harness.store = { version: 1, runs: [] };
+  harness.persistError = null;
   harness.startRpcSession.mockReset();
   harness.trusted = true;
 });
@@ -147,5 +152,78 @@ describe("AgentRunSupervisor", () => {
       error: expect.stringMatching(/no longer trusted/),
     }));
     expect(harness.startRpcSession).not.toHaveBeenCalled();
+  });
+
+  it("AC-2.6: increasing the persisted concurrency starts queued work immediately", async () => {
+    const first = fakeSession();
+    const second = fakeSession();
+    harness.startRpcSession
+      .mockResolvedValueOnce({ session: first.session, realSessionId: "session-1" })
+      .mockResolvedValueOnce({ session: second.session, realSessionId: "session-2" });
+    const supervisor = new AgentRunSupervisor({ maxConcurrency: 1 });
+
+    const run1 = supervisor.enqueue(input("One"));
+    const run2 = supervisor.enqueue(input("Two"));
+    await vi.waitFor(() => expect(harness.store.runs.find((run) => run.id === run1.id)?.sessionId).toBe("session-1"));
+    expect(harness.store.runs.find((run) => run.id === run2.id)?.status).toBe("queued");
+
+    supervisor.setMaxConcurrency(2);
+
+    await vi.waitFor(() => expect(harness.store.runs.find((run) => run.id === run2.id)?.sessionId).toBe("session-2"));
+    expect(supervisor.maxConcurrency).toBe(2);
+    expect(harness.store.maxConcurrency).toBe(2);
+  });
+
+  it("AC-2.7: restores persisted concurrency when the daemon restarts", () => {
+    harness.store = { version: 1, runs: [], maxConcurrency: 5 };
+
+    const supervisor = new AgentRunSupervisor();
+
+    expect(supervisor.maxConcurrency).toBe(5);
+  });
+
+  it("AC-2.8: lowering concurrency lets active runs finish before queued work starts", async () => {
+    const first = fakeSession();
+    const second = fakeSession();
+    const third = fakeSession();
+    harness.startRpcSession
+      .mockResolvedValueOnce({ session: first.session, realSessionId: "session-1" })
+      .mockResolvedValueOnce({ session: second.session, realSessionId: "session-2" })
+      .mockResolvedValueOnce({ session: third.session, realSessionId: "session-3" });
+    const supervisor = new AgentRunSupervisor({ maxConcurrency: 2 });
+
+    const run1 = supervisor.enqueue(input("One"));
+    const run2 = supervisor.enqueue(input("Two"));
+    const run3 = supervisor.enqueue(input("Three"));
+    await vi.waitFor(() => {
+      expect(harness.store.runs.find((run) => run.id === run1.id)?.sessionId).toBe("session-1");
+      expect(harness.store.runs.find((run) => run.id === run2.id)?.sessionId).toBe("session-2");
+    });
+
+    supervisor.setMaxConcurrency(1);
+
+    expect(first.session.send).not.toHaveBeenCalledWith({ type: "abort" });
+    expect(second.session.send).not.toHaveBeenCalledWith({ type: "abort" });
+    expect(harness.store.runs.find((run) => run.id === run3.id)?.status).toBe("queued");
+
+    first.emit({ type: "agent_end", messages: [{ role: "assistant", stopReason: "stop" }] });
+    await vi.waitFor(() => {
+      expect(harness.store.runs.find((run) => run.id === run1.id)?.status).toBe("completed");
+    });
+    expect(harness.startRpcSession).toHaveBeenCalledTimes(2);
+    expect(harness.store.runs.find((run) => run.id === run3.id)?.status).toBe("queued");
+
+    second.emit({ type: "agent_end", messages: [{ role: "assistant", stopReason: "stop" }] });
+    await vi.waitFor(() => {
+      expect(harness.store.runs.find((run) => run.id === run3.id)?.sessionId).toBe("session-3");
+    });
+  });
+
+  it("AC-2.9: keeps the previous concurrency when persistence fails", () => {
+    const supervisor = new AgentRunSupervisor({ maxConcurrency: 2 });
+    harness.persistError = new Error("disk full");
+
+    expect(() => supervisor.setMaxConcurrency(5)).toThrow("disk full");
+    expect(supervisor.maxConcurrency).toBe(2);
   });
 });

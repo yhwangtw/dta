@@ -113,7 +113,7 @@ test("AC-4.1: dashboard groups parallel worktree runs under their repository", a
 test("AC-4.2: coding access is explicit and the run remains queued in the daemon", async ({ page }) => {
   await openDashboard(page, []);
 
-  await page.getByRole("button", { name: "New run", exact: true }).click();
+  await page.getByTestId("agent-new-run").click();
   await page.getByLabel("Run name").fill("Build dashboard");
   await page.getByLabel("Prompt").fill("Implement and verify the dashboard");
   await page.getByRole("button", { name: "Coding", exact: true }).click();

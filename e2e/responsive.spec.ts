@@ -146,4 +146,48 @@ test.describe("responsive shell", () => {
     await expect(sidebar).toHaveClass(/sidebar-open/);
     await expect(sidebar.getByText("README.md", { exact: true })).toBeVisible();
   });
+
+  test("AC-RWD-6: mobile composer preserves typing space and keeps Send visible", async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 800 });
+    await openSession(page);
+
+    const shell = page.getByTestId("composer-shell");
+    const inputRow = page.getByTestId("composer-input-row");
+    const toolbar = page.getByTestId("composer-toolbar");
+    const textarea = page.getByRole("textbox", { name: "Message…" });
+    const send = page.getByRole("button", { name: "Send", exact: true });
+
+    await expect(shell).toBeVisible();
+    await expect(send).toBeVisible();
+    await expect(inputRow.getByRole("textbox", { name: "Message…" })).toBeVisible();
+    await expect(toolbar.getByRole("button", { name: "Send", exact: true })).toBeVisible();
+
+    const [shellBox, textareaBox, sendBox] = await Promise.all([
+      shell.boundingBox(),
+      textarea.boundingBox(),
+      send.boundingBox(),
+    ]);
+    expect(shellBox).not.toBeNull();
+    expect(textareaBox).not.toBeNull();
+    expect(sendBox).not.toBeNull();
+    expect(textareaBox!.width).toBeGreaterThanOrEqual(200);
+    expect(textareaBox!.width).toBeGreaterThanOrEqual(shellBox!.width * 0.75);
+    expect(sendBox!.x + sendBox!.width).toBeLessThanOrEqual(320);
+    await expectNoPageOverflow(page);
+  });
+
+  test("AC-RWD-7: reasoning controls use Traditional Chinese without simplified Chinese", async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem("pi-locale", "zh"));
+    await page.setViewportSize({ width: 768, height: 900 });
+    await page.goto(MAIN);
+    await expect(page.getByRole("textbox", { name: "輸入訊息…" })).toBeVisible({
+      timeout: 20_000,
+    });
+
+    await page.getByRole("button", { name: "切換推理層級" }).click();
+    await expect(page.getByText("沿用 Pi 預設值", { exact: true })).toBeVisible();
+    await expect(page.getByText("低強度推理", { exact: true })).toBeVisible();
+    await expect(page.getByText("最高強度推理", { exact: true })).toBeVisible();
+    await expect(page.getByText(/切换|默认|关闭|强度|设置/)).toHaveCount(0);
+  });
 });

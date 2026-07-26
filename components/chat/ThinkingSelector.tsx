@@ -1,7 +1,28 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { THINKING_LEVELS, THINKING_LEVEL_DESC } from "./chat-input-constants";
+import { THINKING_LEVELS, type ThinkingLevelOption } from "./chat-input-constants";
+import { useI18n, type MsgKey } from "@/lib/i18n";
+
+const THINKING_LABEL_KEYS: Record<ThinkingLevelOption, MsgKey> = {
+  auto: "input.thinking.auto",
+  off: "input.thinking.off",
+  minimal: "input.thinking.minimal",
+  low: "input.thinking.low",
+  medium: "input.thinking.medium",
+  high: "input.thinking.high",
+  xhigh: "input.thinking.xhigh",
+};
+
+const THINKING_DESC_KEYS: Record<ThinkingLevelOption, MsgKey> = {
+  auto: "input.thinkingDesc.auto",
+  off: "input.thinkingDesc.off",
+  minimal: "input.thinkingDesc.minimal",
+  low: "input.thinkingDesc.low",
+  medium: "input.thinkingDesc.medium",
+  high: "input.thinkingDesc.high",
+  xhigh: "input.thinkingDesc.xhigh",
+};
 
 interface ThinkingSelectorProps {
   thinkingLevel?: "auto" | "off" | "minimal" | "low" | "medium" | "high" | "xhigh";
@@ -18,6 +39,7 @@ export function ThinkingSelector({
   isStreaming,
   onThinkingLevelChange,
 }: ThinkingSelectorProps) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -38,7 +60,10 @@ export function ThinkingSelector({
       <button
         onClick={() => !isStreaming && setOpen((v) => !v)}
         disabled={isStreaming}
-        title="切换推理强度"
+        type="button"
+        aria-label={t("input.thinkingTitle")}
+        aria-expanded={open}
+        title={t("input.thinkingTitle")}
         className={open ? "hover-text" : "bg-none hover-bg-text"}
         style={{
           display: "flex", alignItems: "center", gap: 5,
@@ -57,9 +82,9 @@ export function ThinkingSelector({
         </svg>
         <span>{(() => {
           const lvl = thinkingLevel ?? "auto";
-          if (lvl === "auto" || !thinkingLevelMap) return lvl;
+          if (lvl === "auto" || !thinkingLevelMap) return t(THINKING_LABEL_KEYS[lvl]);
           const mapped = thinkingLevelMap[lvl];
-          return mapped != null ? mapped : lvl;
+          return mapped != null ? mapped : t(THINKING_LABEL_KEYS[lvl]);
         })()}</span>
       </button>
       {open && (
@@ -75,13 +100,14 @@ export function ThinkingSelector({
             return availableThinkingLevels.includes(lvl);
           }).map((lvl) => {
             const isActive = (thinkingLevel ?? "auto") === lvl;
-            const desc = THINKING_LEVEL_DESC[lvl];
+            const desc = t(THINKING_DESC_KEYS[lvl]);
             const mappedVal = (lvl !== "auto" && thinkingLevelMap) ? thinkingLevelMap[lvl] : undefined;
-            const displayLabel = (mappedVal != null && mappedVal !== lvl) ? mappedVal : lvl;
+            const displayLabel = (mappedVal != null && mappedVal !== lvl) ? mappedVal : t(THINKING_LABEL_KEYS[lvl]);
             const showOriginal = mappedVal != null && mappedVal !== lvl;
             return (
               <button
                 key={lvl}
+                type="button"
                 onClick={() => { setOpen(false); if (!isActive) onThinkingLevelChange(lvl); }}
                 className={isActive ? "bg-selected" : "bg-none hover-bg"}
                 style={{

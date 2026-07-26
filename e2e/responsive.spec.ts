@@ -146,4 +146,83 @@ test.describe("responsive shell", () => {
     await expect(sidebar).toHaveClass(/sidebar-open/);
     await expect(sidebar.getByText("README.md", { exact: true })).toBeVisible();
   });
+
+  test("AC-RWD-6: mobile composer preserves typing space and keeps Send visible", async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 800 });
+    await openSession(page);
+
+    const shell = page.getByTestId("composer-shell");
+    const inputRow = page.getByTestId("composer-input-row");
+    const toolbar = page.getByTestId("composer-toolbar");
+    const textarea = page.getByRole("textbox", { name: "Message…" });
+    const send = page.getByRole("button", { name: "Send", exact: true });
+
+    await expect(shell).toBeVisible();
+    await expect(send).toBeVisible();
+    await expect(inputRow.getByRole("textbox", { name: "Message…" })).toBeVisible();
+    await expect(toolbar.getByRole("button", { name: "Send", exact: true })).toBeVisible();
+
+    const [shellBox, textareaBox, sendBox] = await Promise.all([
+      shell.boundingBox(),
+      textarea.boundingBox(),
+      send.boundingBox(),
+    ]);
+    expect(shellBox).not.toBeNull();
+    expect(textareaBox).not.toBeNull();
+    expect(sendBox).not.toBeNull();
+    expect(textareaBox!.width).toBeGreaterThanOrEqual(200);
+    expect(textareaBox!.width).toBeGreaterThanOrEqual(shellBox!.width * 0.75);
+    expect(sendBox!.x + sendBox!.width).toBeLessThanOrEqual(320);
+    await expectNoPageOverflow(page);
+  });
+
+  test("AC-RWD-7: reasoning controls use Traditional Chinese without simplified Chinese", async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem("pi-locale", "zh"));
+    await page.setViewportSize({ width: 768, height: 900 });
+    await page.goto(MAIN);
+    await expect(page.getByRole("textbox", { name: "輸入訊息…" })).toBeVisible({
+      timeout: 20_000,
+    });
+
+    await page.getByRole("button", { name: "切換推理層級" }).click();
+    await expect(page.getByText("沿用 Pi 預設值", { exact: true })).toBeVisible();
+    await expect(page.getByText("低強度推理", { exact: true })).toBeVisible();
+    await expect(page.getByText("最高強度推理", { exact: true })).toBeVisible();
+    await expect(page.getByText(/切换|默认|关闭|强度|设置/)).toHaveCount(0);
+  });
+
+  test("AC-RWD-8: mobile file-panel controls stay inside their own toolbars", async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 800 });
+    await openSession(page);
+
+    const topBar = page.getByTestId("top-bar");
+    const showPanel = topBar.getByRole("button", { name: "Show file panel", exact: true });
+    await expect(showPanel).toBeVisible();
+
+    const [topBarBox, showBox] = await Promise.all([
+      topBar.boundingBox(),
+      showPanel.boundingBox(),
+    ]);
+    expect(topBarBox).not.toBeNull();
+    expect(showBox).not.toBeNull();
+    expect(showBox!.x).toBeGreaterThanOrEqual(topBarBox!.x);
+    expect(showBox!.x + showBox!.width).toBeLessThanOrEqual(topBarBox!.x + topBarBox!.width);
+
+    await showPanel.click();
+    const viewer = page.locator(".right-panel-container.right-panel-open");
+    const panelBar = page.getByTestId("right-panel-tab-bar");
+    const hidePanel = panelBar.getByRole("button", { name: "Hide file panel", exact: true });
+    await expect(viewer).toBeVisible();
+    await expect(hidePanel).toBeVisible();
+
+    const [panelBarBox, hideBox] = await Promise.all([
+      panelBar.boundingBox(),
+      hidePanel.boundingBox(),
+    ]);
+    expect(panelBarBox).not.toBeNull();
+    expect(hideBox).not.toBeNull();
+    expect(hideBox!.x).toBeGreaterThanOrEqual(panelBarBox!.x);
+    expect(hideBox!.x + hideBox!.width).toBeLessThanOrEqual(panelBarBox!.x + panelBarBox!.width);
+    await expectNoPageOverflow(page);
+  });
 });

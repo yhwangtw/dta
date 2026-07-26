@@ -618,7 +618,10 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                   className={styles.imagePreviewImg}
                 />
                 <button
+                  type="button"
                   onClick={() => removeImage(i)}
+                  aria-label={t("input.removeImage")}
+                  title={t("input.removeImage")}
                   className={styles.imageRemoveButton}
                 >
                   <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
@@ -633,239 +636,248 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
         {/* Main input */}
         <div
           className={isStreaming && (onSteer || onFollowUp) ? styles.inputWrapperStreaming : styles.inputWrapperNormal}
+          data-testid="composer-shell"
         >
-          <textarea
-            ref={textareaRef}
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onCompositionStart={() => {
-              isComposingRef.current = true;
-            }}
-            onCompositionEnd={() => {
-              isComposingRef.current = false;
-              lastCompositionEndAtRef.current = Date.now();
-            }}
-            onInput={handleInput}
-            onPaste={handlePaste}
-            placeholder={
-              isStreaming && (onSteer || onFollowUp)
-                ? t("input.steerHint")
-                : isStreaming ? t("input.agentRunning")
-                : t("input.message")
-            }
-            rows={1}
-            className={styles.textarea}
-          />
+          <div className={styles.inputRow} data-testid="composer-input-row">
+            <textarea
+              ref={textareaRef}
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onCompositionStart={() => {
+                isComposingRef.current = true;
+              }}
+              onCompositionEnd={() => {
+                isComposingRef.current = false;
+                lastCompositionEndAtRef.current = Date.now();
+              }}
+              onInput={handleInput}
+              onPaste={handlePaste}
+              placeholder={
+                isStreaming && (onSteer || onFollowUp)
+                  ? t("input.steerHint")
+                  : isStreaming ? t("input.agentRunning")
+                  : t("input.message")
+              }
+              rows={1}
+              className={styles.textarea}
+            />
 
-          {/* @file mention menu */}
-          <FileMentionMenu
-            show={!!mention}
-            items={mentionItems}
-            selectedIndex={mentionIndex}
-            onSelect={applyMention}
-            onHover={setMentionIndex}
-          />
+            {/* @file mention menu */}
+            <FileMentionMenu
+              show={!!mention}
+              items={mentionItems}
+              selectedIndex={mentionIndex}
+              onSelect={applyMention}
+              onHover={setMentionIndex}
+            />
 
-          {/* Slash command menu */}
-          <SlashMenu
-            show={showSlashMenu}
-            items={slashItems}
-            filter={slashFilter}
-            selectedIndex={slashSelectedIndex}
-            onSelect={(insert) => {
-              setValue(insert);
-              setShowSlashMenu(false);
-              setSlashFilter("");
-              setSlashSelectedIndex(0);
-              textareaRef.current?.focus();
-            }}
-            onHover={setSlashSelectedIndex}
-            onLeave={() => setSlashSelectedIndex(-1)}
-            onClose={() => setShowSlashMenu(false)}
-          />
+            {/* Slash command menu */}
+            <SlashMenu
+              show={showSlashMenu}
+              items={slashItems}
+              filter={slashFilter}
+              selectedIndex={slashSelectedIndex}
+              onSelect={(insert) => {
+                setValue(insert);
+                setShowSlashMenu(false);
+                setSlashFilter("");
+                setSlashSelectedIndex(0);
+                textareaRef.current?.focus();
+              }}
+              onHover={setSlashSelectedIndex}
+              onLeave={() => setSlashSelectedIndex(-1)}
+              onClose={() => setShowSlashMenu(false)}
+            />
 
-          {isStreaming ? (
-            <div className={styles.streamingActions}>
-              {onSteer && (
+            {isStreaming && (
+              <div className={styles.streamingActions}>
+                {onSteer && (
+                  <button
+                    type="button"
+                    onClick={() => sendQueued("steer")}
+                    disabled={!value.trim() && !attachedImages.length}
+                    title={t("input.steerTitle")}
+                    className={(value.trim() || attachedImages.length) ? styles.steerButtonActive : styles.steerButtonDisabled}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M5 1 L9 5 L5 9" /><line x1="1" y1="5" x2="9" y2="5" />
+                    </svg>
+                    {t("input.steer")}
+                  </button>
+                )}
+                {onFollowUp && (
+                  <button
+                    type="button"
+                    onClick={() => sendQueued("followup")}
+                    disabled={!value.trim() && !attachedImages.length}
+                    title={t("input.followUpTitle")}
+                    className={(value.trim() || attachedImages.length) ? styles.followUpButtonActive : styles.followUpButtonDisabled}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="5" y1="1" x2="5" y2="6" /><polyline points="2.5 3.5 5 1 7.5 3.5" />
+                      <line x1="2" y1="9" x2="8" y2="9" />
+                    </svg>
+                    {t("input.followUp")}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Composer toolbar: project context | keyboard hint | run controls | primary action */}
+          <div className={styles.bottomBar} data-testid="composer-toolbar">
+
+            <div className={styles.bottomBarLeft}>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isStreaming}
+                aria-label={t("input.attachImage")}
+                title={t("input.attachImage")}
+                className={isStreaming ? styles.attachButtonDisabled : styles.attachButtonEnabled}
+                style={{ color: attachedImages.length ? "var(--accent)" : "var(--text-muted)" }}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                  <circle cx="8.5" cy="8.5" r="1.5" />
+                  <polyline points="21 15 16 10 5 21" />
+                </svg>
+              </button>
+              <ModelSelector
+                modelOptions={modelOptions}
+                modelsByProvider={modelsByProvider}
+                currentName={currentName}
+                model={model}
+                isStreaming={isStreaming}
+                onModelChange={onModelChange}
+              />
+            </div>
+
+            <span className={styles.keyboardHint}>{t("input.keyboardHint")}</span>
+
+            <div className={styles.bottomBarRight}>
+              <ThinkingSelector
+                thinkingLevel={thinkingLevel}
+                thinkingLevelMap={thinkingLevelMap}
+                availableThinkingLevels={availableThinkingLevels}
+                isStreaming={isStreaming}
+                onThinkingLevelChange={onThinkingLevelChange}
+              />
+              <ToolPresetSelector
+                toolPreset={toolPreset}
+                isStreaming={isStreaming}
+                onToolPresetChange={onToolPresetChange}
+              />
+
+              {!isStreaming && onCompact && (
+                <div className={styles.compactControls}>
+                  {autoCompactionEnabled !== null && autoCompactionEnabled !== undefined && onAutoCompactionChange && (
+                    <button
+                      type="button"
+                      onClick={() => onAutoCompactionChange(!autoCompactionEnabled)}
+                      disabled={isCompacting || autoCompactionUpdating}
+                      aria-label={`${t("chat.autoCompact")} ${autoCompactionEnabled ? t("chat.on") : t("chat.off")}`}
+                      aria-pressed={autoCompactionEnabled}
+                      title={autoCompactionEnabled ? t("chat.autoCompactOnTitle") : t("chat.autoCompactOffTitle")}
+                      className={autoCompactionEnabled ? styles.autoCompactButtonOn : styles.autoCompactButtonOff}
+                    >
+                      <span className={styles.autoCompactDot} aria-hidden />
+                      {t("chat.autoCompactShort")}
+                    </button>
+                  )}
+                  <div className={styles.compactWrapper}>
+                    {compactError && (
+                      <div className={styles.compactErrorTooltip}>
+                        {compactError}
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={isCompacting ? onAbortCompaction : onCompact}
+                      className={isCompacting ? styles.compactButtonCompacting : styles.compactButtonIdle}
+                      title={isCompacting ? t("chat.stopCompaction") : t("chat.compactTitle")}
+                    >
+                      {isCompacting ? (
+                        <><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect x="2" y="2" width="6" height="6" rx="1" fill="currentColor" /></svg>{t("chat.compacting")}</>
+                      ) : (
+                        <><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="4 14 10 14 10 20" /><polyline points="20 10 14 10 14 4" />
+                          <line x1="10" y1="14" x2="3" y2="21" /><line x1="21" y1="3" x2="14" y2="10" />
+                        </svg>{t("chat.compactNow")}</>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {isStreaming && (
                 <button
-                  onClick={() => sendQueued("steer")}
-                  disabled={!value.trim() && !attachedImages.length}
-                  title="打断 Agent 当前运行，立即注入消息"
-                  className={(value.trim() || attachedImages.length) ? styles.steerButtonActive : styles.steerButtonDisabled}
+                  type="button"
+                  onClick={onAbort}
+                  title={t("input.stopTitle")}
+                  className={styles.stopButton}
                 >
-                  <svg width="12" height="12" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M5 1 L9 5 L5 9" /><line x1="1" y1="5" x2="9" y2="5" />
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                    <rect x="1.5" y="1.5" width="7" height="7" rx="1.5" fill="currentColor" />
                   </svg>
-                  Steer
+                  {t("input.stop")}
                 </button>
               )}
-              {onFollowUp && (
+
+              {onSoundToggle !== undefined && (
                 <button
-                  onClick={() => sendQueued("followup")}
-                  disabled={!value.trim() && !attachedImages.length}
-                  title="在 Agent 完成后排队发送"
-                  className={(value.trim() || attachedImages.length) ? styles.followUpButtonActive : styles.followUpButtonDisabled}
+                  type="button"
+                  onClick={onSoundToggle}
+                  aria-label={soundEnabled ? t("input.soundOnTitle") : t("input.soundOffTitle")}
+                  title={soundEnabled ? t("input.soundOnTitle") : t("input.soundOffTitle")}
+                  className={soundEnabled ? styles.soundButtonEnabled : styles.soundButtonDisabled}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "var(--bg-hover)";
+                    e.currentTarget.style.color = "var(--text)";
+                    e.currentTarget.style.opacity = "1";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "none";
+                    e.currentTarget.style.color = soundEnabled ? "var(--text-muted)" : "var(--text-dim)";
+                    e.currentTarget.style.opacity = soundEnabled ? "1" : "0.55";
+                  }}
                 >
-                  <svg width="12" height="12" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="5" y1="1" x2="5" y2="6" /><polyline points="2.5 3.5 5 1 7.5 3.5" />
-                    <line x1="2" y1="9" x2="8" y2="9" />
-                  </svg>
-                  Follow-up
+                  {soundEnabled ? (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                      <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                      <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+                    </svg>
+                  ) : (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                      <line x1="23" y1="9" x2="17" y2="15" />
+                      <line x1="17" y1="9" x2="23" y2="15" />
+                    </svg>
+                  )}
                 </button>
               )}
             </div>
-          ) : (
-            <button
-              onClick={handleSend}
-              disabled={!value.trim() && !attachedImages.length}
-              className={(value.trim() || attachedImages.length) ? styles.sendButtonActive : styles.sendButtonDisabled}
-              onMouseDown={(e) => { if (value.trim() || attachedImages.length) e.currentTarget.style.transform = "scale(0.97)"; }}
-              onMouseUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
-            >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="2" y1="7" x2="11" y2="7" />
-                <polyline points="7.5 3 12 7 7.5 11" />
-              </svg>
-              {t("input.send")}
-            </button>
-          )}
-        </div>
 
-        {/* Bottom bar: left | center (context) | right */}
-        <div className={styles.bottomBar}>
-
-          {/* LEFT: attach + model selector (idle) or steer/followup toggle (streaming) */}
-          <div className={styles.bottomBarLeft}>
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isStreaming}
-              title="Attach image"
-              className={isStreaming ? styles.attachButtonDisabled : styles.attachButtonEnabled}
-              style={{ color: attachedImages.length ? "var(--accent)" : "var(--text-muted)" }}
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                <circle cx="8.5" cy="8.5" r="1.5" />
-                <polyline points="21 15 16 10 5 21" />
-              </svg>
-            </button>
-            {/* Model selector — visible always, disabled during streaming */}
-            <ModelSelector
-              modelOptions={modelOptions}
-              modelsByProvider={modelsByProvider}
-              currentName={currentName}
-              model={model}
-              isStreaming={isStreaming}
-              onModelChange={onModelChange}
-            />
-          </div>
-
-          {/* spacer */}
-          <div style={{ flex: 1 }} />
-
-          {/* RIGHT: thinking + tools preset + compact + sound (idle) | Stop + sound (streaming) */}
-          <div className={styles.bottomBarRight}>
-            <ThinkingSelector
-              thinkingLevel={thinkingLevel}
-              thinkingLevelMap={thinkingLevelMap}
-              availableThinkingLevels={availableThinkingLevels}
-              isStreaming={isStreaming}
-              onThinkingLevelChange={onThinkingLevelChange}
-            />
-            <ToolPresetSelector
-              toolPreset={toolPreset}
-              isStreaming={isStreaming}
-              onToolPresetChange={onToolPresetChange}
-            />
-
-            {!isStreaming && onCompact && (
-              <div className={styles.compactControls}>
-                {autoCompactionEnabled !== null && autoCompactionEnabled !== undefined && onAutoCompactionChange && (
-                  <button
-                    type="button"
-                    onClick={() => onAutoCompactionChange(!autoCompactionEnabled)}
-                    disabled={isCompacting || autoCompactionUpdating}
-                    aria-label={`${t("chat.autoCompact")} ${autoCompactionEnabled ? t("chat.on") : t("chat.off")}`}
-                    aria-pressed={autoCompactionEnabled}
-                    title={autoCompactionEnabled ? t("chat.autoCompactOnTitle") : t("chat.autoCompactOffTitle")}
-                    className={autoCompactionEnabled ? styles.autoCompactButtonOn : styles.autoCompactButtonOff}
-                  >
-                    <span className={styles.autoCompactDot} aria-hidden />
-                    {t("chat.autoCompactShort")}
-                  </button>
-                )}
-                <div className={styles.compactWrapper}>
-                  {compactError && (
-                    <div className={styles.compactErrorTooltip}>
-                      {compactError}
-                    </div>
-                  )}
-                  <button
-                    onClick={isCompacting ? onAbortCompaction : onCompact}
-                    className={isCompacting ? styles.compactButtonCompacting : styles.compactButtonIdle}
-                    title={isCompacting ? t("chat.stopCompaction") : t("chat.compactTitle")}
-                  >
-                    {isCompacting ? (
-                      <><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect x="2" y="2" width="6" height="6" rx="1" fill="currentColor" /></svg>{t("chat.compacting")}</>
-                    ) : (
-                      <><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="4 14 10 14 10 20" /><polyline points="20 10 14 10 14 4" />
-                        <line x1="10" y1="14" x2="3" y2="21" /><line x1="21" y1="3" x2="14" y2="10" />
-                      </svg>{t("chat.compactNow")}</>
-                    )}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {isStreaming && (
+            {!isStreaming && (
               <button
-                onClick={onAbort}
-                title="停止 Agent"
-                className={styles.stopButton}
+                type="button"
+                onClick={handleSend}
+                disabled={!value.trim() && !attachedImages.length}
+                className={(value.trim() || attachedImages.length) ? styles.sendButtonActive : styles.sendButtonDisabled}
+                onMouseDown={(e) => { if (value.trim() || attachedImages.length) e.currentTarget.style.transform = "scale(0.97)"; }}
+                onMouseUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
               >
-                <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                  <rect x="1.5" y="1.5" width="7" height="7" rx="1.5" fill="currentColor" />
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="2" y1="7" x2="11" y2="7" />
+                  <polyline points="7.5 3 12 7 7.5 11" />
                 </svg>
-                Stop
-              </button>
-            )}
-
-            {onSoundToggle !== undefined && (
-              <button
-                onClick={onSoundToggle}
-                title={soundEnabled ? "关闭完成提示音" : "开启完成提示音"}
-                className={soundEnabled ? styles.soundButtonEnabled : styles.soundButtonDisabled}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "var(--bg-hover)";
-                  e.currentTarget.style.color = "var(--text)";
-                  e.currentTarget.style.opacity = "1";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "none";
-                  e.currentTarget.style.color = soundEnabled ? "var(--text-muted)" : "var(--text-dim)";
-                  e.currentTarget.style.opacity = soundEnabled ? "1" : "0.55";
-                }}
-              >
-                {soundEnabled ? (
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-                    <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
-                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
-                  </svg>
-                ) : (
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-                    <line x1="23" y1="9" x2="17" y2="15" />
-                    <line x1="17" y1="9" x2="23" y2="15" />
-                  </svg>
-                )}
+                {t("input.send")}
               </button>
             )}
           </div>
-
         </div>
       </div>
     </div>

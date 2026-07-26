@@ -4,15 +4,6 @@ export const COMPOSITION_END_ENTER_GRACE_MS = 100;
 
 export const THINKING_LEVELS = ["auto", "off", "minimal", "low", "medium", "high", "xhigh"] as const;
 export type ThinkingLevelOption = typeof THINKING_LEVELS[number];
-export const THINKING_LEVEL_DESC: Record<ThinkingLevelOption, string> = {
-  auto: "沿用 pi 默认设置",
-  off: "关闭推理",
-  minimal: "最少推理",
-  low: "低强度推理",
-  medium: "中等推理",
-  high: "高强度推理",
-  xhigh: "最高强度推理",
-};
 
 // tGD 7-phase slash commands
 export const TGD_COMMANDS = [

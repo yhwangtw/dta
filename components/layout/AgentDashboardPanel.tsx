@@ -123,7 +123,13 @@ export function AgentDashboardPanel({ defaultCwd, onOpenSession }: Props) {
       <div className={`${s.header} chrome-mono`}>
         <strong>{t("agents.title")}</strong>
         <span className={`${s.daemonIndicator} ${error ? s.daemonOffline : ""}`}><i /> daemon</span>
-        <button className={s.newButton} type="button" onClick={() => setEditorOpen(true)} disabled={!defaultCwd}>
+        <button
+          className={s.newButton}
+          type="button"
+          data-testid="agent-new-run"
+          onClick={() => setEditorOpen(true)}
+          disabled={!defaultCwd}
+        >
           <span aria-hidden="true">＋</span>{t("agents.new")}
         </button>
       </div>

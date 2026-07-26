@@ -142,5 +142,5 @@ test("AC-4.3: dashboard remains usable at 320px without page overflow", async ({
   }));
   expect(dimensions.document).toBeLessThanOrEqual(dimensions.viewport);
   expect(dimensions.body).toBeLessThanOrEqual(dimensions.viewport);
-  await expect(page.getByRole("button", { name: "New run", exact: true })).toBeVisible();
+  await expect(page.getByTestId("agent-new-run")).toBeVisible();
 });

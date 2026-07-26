@@ -4,7 +4,7 @@ import { useTheme, toggleOriginFromEvent } from "@/hooks/useTheme";
 import { useI18n } from "@/lib/i18n";
 import s from "./AppShell.module.css";
 
-export type PanelView = "sessions" | "schedule" | "files" | "search" | "changes" | "tgd";
+export type PanelView = "sessions" | "agents" | "schedule" | "files" | "search" | "changes" | "tgd";
 
 interface IconRailProps {
   panelView: PanelView;
@@ -49,6 +49,18 @@ export function IconRail({
       >
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+        </svg>
+      </button>
+      <button
+        onClick={() => onSelectView("agents")}
+        title={t("agents.title")}
+        aria-label={t("agents.title")}
+        aria-pressed={panelView === "agents" && sidebarOpen}
+        className={`${s.railButton} ${panelView === "agents" && sidebarOpen ? s.railButtonActive : ""}`}
+      >
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="4" y="4" width="16" height="16" rx="3" /><path d="M9 9h6M9 13h4" />
+          <path d="M8 2v2M16 2v2M8 20v2M16 20v2M2 8h2M20 8h2M2 16h2M20 16h2" />
         </svg>
       </button>
       <button

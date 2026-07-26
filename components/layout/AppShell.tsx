@@ -9,6 +9,7 @@ import { FilesPanel } from "./FilesPanel";
 import { SearchPanel } from "./SearchPanel";
 import { ChangesPanel } from "./ChangesPanel";
 import { TgdArtifactsPanel } from "./TgdArtifactsPanel";
+import { AgentDashboardPanel } from "./AgentDashboardPanel";
 import { SchedulePanel } from "./SchedulePanel";
 import { DiffPanel } from "./DiffPanel";
 import { AppearancePanel } from "./AppearancePanel";
@@ -394,6 +395,11 @@ export function AppShell() {
           activeTagFilter={activeTagFilter}
           onSelectTagFilter={setActiveTagFilter}
           showExplorer={false}
+        />
+      ) : panelView === "agents" ? (
+        <AgentDashboardPanel
+          defaultCwd={panelCwd}
+          onOpenSession={handleOpenScheduledSession}
         />
       ) : panelView === "schedule" ? (
         <SchedulePanel

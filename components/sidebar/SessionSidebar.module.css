@@ -268,3 +268,43 @@
   color: var(--text-muted);
   background: var(--bg-hover);
 }
+
+@media (max-width: 700px) {
+  .header {
+    padding: 12px 12px 10px;
+  }
+
+  .headerRow {
+    min-height: 44px;
+    margin-bottom: 8px;
+  }
+
+  .newSessionButton,
+  .refreshButton {
+    min-height: 44px;
+  }
+
+  .refreshButton {
+    width: 44px;
+  }
+
+  .sessionToolbar {
+    padding: 8px 12px;
+  }
+
+  .sortButton {
+    width: 40px;
+    height: 40px;
+  }
+
+  .projectScopeLabel,
+  .groupHeader {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .sessionList {
+    padding-bottom: 12px;
+    overscroll-behavior-y: contain;
+  }
+}

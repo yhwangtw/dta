@@ -243,3 +243,53 @@
   color: var(--color-error, #dc2626);
   border-color: var(--color-error, #dc2626);
 }
+
+@media (max-width: 700px) {
+  .overlay {
+    align-items: stretch;
+    padding: var(--safe-area-top) var(--safe-area-right)
+      var(--safe-area-bottom) var(--safe-area-left);
+  }
+
+  .modal {
+    max-width: none;
+    max-height: none;
+    border-radius: 0;
+  }
+
+  .header {
+    min-height: 56px;
+    padding: 8px 12px;
+  }
+
+  .closeButton,
+  .cancelBtn,
+  .saveBtn,
+  .itemBtn {
+    min-height: 44px;
+  }
+
+  .body {
+    padding: 12px;
+  }
+
+  .nameInput,
+  .bodyInput {
+    font-size: 16px;
+  }
+
+  .nameInput {
+    width: 100%;
+  }
+
+  .item {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    padding: 10px 8px;
+  }
+
+  .itemActions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}

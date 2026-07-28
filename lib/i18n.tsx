@@ -32,6 +32,21 @@ const MESSAGES = {
   "topbar.hideFilePanel": { en: "Hide file panel", zh: "隱藏檔案面板" },
   "topbar.showFilePanel": { en: "Show file panel", zh: "顯示檔案面板" },
 
+  // ── Mobile shell ──
+  "mobile.navigation": { en: "Mobile navigation", zh: "手機版主導覽" },
+  "mobile.chat": { en: "Chat", zh: "對話" },
+  "mobile.sessions": { en: "Sessions", zh: "Sessions" },
+  "mobile.files": { en: "Files", zh: "檔案" },
+  "mobile.search": { en: "Search", zh: "搜尋" },
+  "mobile.more": { en: "More", zh: "更多" },
+  "mobile.moreActions": { en: "More tools", zh: "更多工具" },
+  "mobile.closeMore": { en: "Close more tools", zh: "關閉更多工具" },
+  "mobile.changes": { en: "Changes", zh: "變更" },
+  "mobile.openSessions": { en: "Open sessions", zh: "開啟 Sessions" },
+  "mobile.sessionActions": { en: "Session actions", zh: "Session 操作" },
+  "mobile.closeActions": { en: "Close session actions", zh: "關閉 Session 操作" },
+  "mobile.backToChat": { en: "Back to chat", zh: "返回對話" },
+
   // ── Shortcuts dialog ──
   "shortcuts.title": { en: "Keyboard shortcuts", zh: "鍵盤快捷鍵" },
   "shortcuts.palette": { en: "Search & commands", zh: "搜尋與指令" },
@@ -148,6 +163,7 @@ const MESSAGES = {
   "input.toolsDesc.off": { en: "No tools, chat only", zh: "不使用工具，純對話" },
   "input.toolsDesc.default": { en: "4 built-in tools", zh: "4 項內建工具" },
   "input.toolsDesc.full": { en: "All built-in tools", zh: "全部內建工具" },
+  "input.moreControls": { en: "More composer controls", zh: "更多輸入框設定" },
 
   // ── Extensions panel ──
   "extensions.title": { en: "Extensions", zh: "擴充功能" },
@@ -234,6 +250,14 @@ const MESSAGES = {
   "chat.on": { en: "on", zh: "開啟" },
   "chat.off": { en: "off", zh: "關閉" },
   "chat.queueCancelAll": { en: "Cancel all", zh: "全部取消" },
+  "chat.queueTitle": { en: "Queued follow-ups", zh: "待送追問" },
+  "chat.queueEdit": { en: "Edit queued follow-up", zh: "編輯待送追問" },
+  "chat.queueSave": { en: "Save", zh: "儲存" },
+  "chat.queueMoveUp": { en: "Move earlier", zh: "往前移" },
+  "chat.queueMoveDown": { en: "Move later", zh: "往後移" },
+  "chat.queueRemove": { en: "Remove queued follow-up", zh: "移除待送追問" },
+  "chat.queueImages": { en: "images", zh: "張圖片" },
+  "chat.queueUpdating": { en: "Updating queue…", zh: "更新佇列中…" },
   "chat.bookmark": { en: "Bookmark this message", zh: "加入書籤" },
   "chat.unbookmark": { en: "Remove bookmark", zh: "移除書籤" },
   "chat.showFull": { en: "Show full message", zh: "展開完整訊息" },
@@ -433,6 +457,18 @@ const MESSAGES = {
   "input.message": { en: "Message…", zh: "輸入訊息…" },
   "input.agentRunning": { en: "Agent is running…", zh: "Agent 執行中…" },
   "input.steerHint": { en: "Steer: interrupt & inject · Follow-up: queue after", zh: "插話:中斷並注入 · 追問:排在完成後" },
+  "input.sendMode": { en: "Message delivery mode", zh: "訊息送出模式" },
+  "input.steerActionTitle": { en: "Interrupt the current run and inject now (Option+Enter)", zh: "中斷目前執行並立即注入（Option+Enter）" },
+  "input.followUpActionTitle": { en: "Queue until the current run finishes (Command+Enter)", zh: "排在目前執行完成後送出（Command+Enter）" },
+  "input.steerShortcut": { en: "Steer now · Option+Enter", zh: "立即插話 · Option+Enter" },
+  "input.followUpShortcut": { en: "Queue follow-up · Command+Enter", zh: "排入追問 · Command+Enter" },
+  "input.context": { en: "Context", zh: "脈絡" },
+  "input.contextFiles": { en: "Referenced files", zh: "引用檔案" },
+  "input.removeContext": { en: "Remove context", zh: "移除脈絡" },
+  "input.expandComposer": { en: "Expand composer", zh: "展開輸入框" },
+  "input.collapseComposer": { en: "Collapse composer", zh: "收合輸入框" },
+  "input.expandedTitle": { en: "Expanded composer", zh: "展開輸入框" },
+  "input.expandedHint": { en: "Esc to collapse · your draft stays saved", zh: "按 Esc 收合 · 草稿會持續保存" },
 
 } as const;
 

@@ -305,3 +305,42 @@
   height: 30px;
   font-family: inherit;
 }
+
+@media (max-width: 700px) {
+  .item {
+    min-height: 64px;
+    margin: 2px 8px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    padding-right: 8px;
+  }
+
+  .grid {
+    row-gap: 5px;
+  }
+
+  .sessionTitle {
+    font-size: calc(14px * var(--font-scale));
+  }
+
+  .metaRow {
+    font-size: calc(11.5px * var(--font-scale));
+  }
+
+  .titleActions {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .collapseToggle,
+  .overflowButton {
+    width: 40px;
+    height: 40px;
+  }
+
+  .deleteConfirmButton,
+  .cancelButton,
+  .renameInput {
+    min-height: 44px;
+  }
+}

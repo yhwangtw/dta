@@ -38,14 +38,14 @@ test.describe("responsive shell", () => {
 
   for (const modal of [
     {
-      button: "Models (⇧⌘M)",
+      button: "Models",
       name: "Models",
       dialog: "models-config-dialog",
       nav: "models-config-nav",
       detail: "models-config-detail",
     },
     {
-      button: "Skills (⌘/)",
+      button: "Skills",
       name: "Skills",
       dialog: "skills-config-dialog",
       nav: "skills-config-nav",
@@ -59,6 +59,7 @@ test.describe("responsive shell", () => {
       await page.reload();
       await expect(page.getByRole("textbox", { name: "Message…" })).toBeVisible();
 
+      await page.getByRole("button", { name: "More", exact: true }).click();
       await page.getByRole("button", { name: modal.button, exact: true }).click();
       const dialog = page.getByTestId(modal.dialog);
       const nav = page.getByTestId(modal.nav);
@@ -95,7 +96,7 @@ test.describe("responsive shell", () => {
     for (const control of [
       page.getByRole("button", { name: "Sessions", exact: true }),
       page.getByRole("button", { name: "Attach image", exact: true }),
-      page.getByRole("button", { name: "Show file panel", exact: true }),
+      page.getByRole("button", { name: "Files", exact: true }),
     ]) {
       const box = await control.boundingBox();
       expect(box).not.toBeNull();
@@ -116,7 +117,7 @@ test.describe("responsive shell", () => {
       document.documentElement.style.setProperty("--safe-area-left", "14px");
     });
 
-    await expect(page.getByTestId("app-shell")).toHaveCSS("padding", "11px 12px 13px 14px");
+    await expect(page.getByTestId("app-shell")).toHaveCSS("padding", "11px 12px 77px 14px");
     await expectNoPageOverflow(page);
   });
 
@@ -124,7 +125,7 @@ test.describe("responsive shell", () => {
     await page.setViewportSize({ width: 320, height: 800 });
     await openSession(page);
 
-    await page.getByRole("button", { name: "Explorer", exact: true }).click();
+    await page.getByRole("button", { name: "Files", exact: true }).click();
     const sidebar = page.locator(".sidebar-container");
     await expect(sidebar).toHaveClass(/sidebar-open/);
     await expect(page.getByText("README.md", { exact: true })).toBeVisible();
@@ -138,11 +139,11 @@ test.describe("responsive shell", () => {
 
     const viewerBox = await viewer.boundingBox();
     expect(viewerBox).not.toBeNull();
-    expect(viewerBox!.x).toBeGreaterThanOrEqual(44);
+    expect(viewerBox!.x).toBeGreaterThanOrEqual(0);
     expect(viewerBox!.x + viewerBox!.width).toBeLessThanOrEqual(320);
     await expectNoPageOverflow(page);
 
-    await page.getByRole("button", { name: "Explorer", exact: true }).click();
+    await page.getByRole("button", { name: "Files", exact: true }).click();
     await expect(sidebar).toHaveClass(/sidebar-open/);
     await expect(sidebar.getByText("README.md", { exact: true })).toBeVisible();
   });

@@ -80,6 +80,17 @@
   flex: 1;
 }
 
+/* Phone navigation is a separate surface, not a rotated desktop rail. */
+.mobileNav,
+.mobileMoreSheet,
+.mobileSheetBackdrop,
+.mobileSessionsButton,
+.mobileActionsToggle,
+.mobileActionsBackdrop,
+.mobileFileBack {
+  display: none;
+}
+
 /* ── Top bar ── */
 .topBar {
   display: flex;
@@ -625,6 +636,301 @@
   border: none;
   border-left: 1px solid var(--border);
   cursor: pointer;
+}
+
+@media (max-width: 700px) {
+  .container {
+    padding-bottom: calc(var(--safe-area-bottom) + 64px);
+  }
+
+  .rail {
+    display: none;
+  }
+
+  .centerPanel {
+    width: 100%;
+  }
+
+  .container :global(.sidebar-overlay-backdrop) {
+    display: none !important;
+  }
+
+  .sidebarContainer {
+    left: var(--safe-area-left) !important;
+    right: var(--safe-area-right) !important;
+    top: var(--safe-area-top) !important;
+    bottom: calc(var(--safe-area-bottom) + 64px) !important;
+    width: auto !important;
+    max-width: none !important;
+    border-right: 0;
+    box-shadow: none !important;
+  }
+
+  .topBar {
+    height: 56px;
+    padding: 0 8px;
+    gap: 8px;
+    position: relative;
+    z-index: 30;
+  }
+
+  .mobileSessionsButton,
+  .mobileActionsToggle,
+  .mobileFileBack {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
+    border: 0;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--text-muted);
+  }
+
+  .chatTitle {
+    display: block;
+    flex: 1 1 auto;
+    max-width: none;
+    font-size: var(--text-sm);
+    color: var(--text);
+    text-align: center;
+  }
+
+  .sessionStats {
+    display: none;
+  }
+
+  .chatActions {
+    display: none;
+  }
+
+  .chatActionsMobileOpen {
+    position: fixed;
+    top: calc(var(--safe-area-top) + 60px);
+    left: calc(var(--safe-area-left) + 8px);
+    right: calc(var(--safe-area-right) + 8px);
+    z-index: 382;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 4px;
+    height: auto;
+    padding: 8px;
+    overflow: visible;
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    background: var(--glass-bg);
+    -webkit-backdrop-filter: blur(18px) saturate(1.4);
+    backdrop-filter: blur(18px) saturate(1.4);
+    box-shadow: var(--color-shadow-modal);
+  }
+
+  .chatActionsMobileOpen > * {
+    flex: 1 1 calc(50% - 4px);
+    min-width: 0;
+    height: 44px;
+  }
+
+  .chatActionsMobileOpen .exportButton,
+  .chatActionsMobileOpen .systemButton {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+  }
+
+  .mobileActionsBackdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 381;
+    border: 0;
+    background: var(--color-overlay);
+  }
+
+  .topPanelDropdown {
+    top: calc(var(--safe-area-top) + 60px) !important;
+    left: calc(var(--safe-area-left) + 8px) !important;
+    width: calc(100vw - var(--safe-area-left) - var(--safe-area-right) - 16px) !important;
+    z-index: 390;
+  }
+
+  .systemPanel,
+  .systemPromptContent {
+    border-radius: var(--radius-lg);
+  }
+
+  .parallelContainer {
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+  }
+
+  .parallelPane {
+    flex: 0 0 100%;
+    min-width: 100%;
+    scroll-snap-align: start;
+  }
+
+  .rightPanelContainer {
+    position: fixed !important;
+    inset: var(--safe-area-top) var(--safe-area-right)
+      calc(var(--safe-area-bottom) + 64px) var(--safe-area-left);
+    z-index: 260;
+    width: auto !important;
+    min-width: 0 !important;
+    border-left: 0;
+  }
+
+  .rightPanelTabBar {
+    height: 52px;
+    padding: 0 8px 0 4px;
+  }
+
+  .rightPanelContent {
+    padding-left: 0;
+  }
+
+  .mobileNav {
+    position: fixed;
+    left: var(--safe-area-left);
+    right: var(--safe-area-right);
+    bottom: 0;
+    z-index: 350;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    height: calc(64px + var(--safe-area-bottom));
+    padding: 4px 4px var(--safe-area-bottom);
+    border-top: 1px solid var(--border);
+    background: var(--glass-bg);
+    -webkit-backdrop-filter: blur(18px) saturate(1.4);
+    backdrop-filter: blur(18px) saturate(1.4);
+  }
+
+  .mobileNavButton {
+    display: flex;
+    min-width: 0;
+    min-height: 56px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 3px 2px;
+    border: 0;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--text-dim);
+    font-size: calc(10px * var(--font-scale));
+    line-height: 1.1;
+  }
+
+  .mobileNavButtonActive {
+    color: var(--accent);
+    background: var(--color-accent-bg);
+  }
+
+  .mobileNavIcon {
+    display: grid;
+    place-items: center;
+    height: 24px;
+  }
+
+  .mobileSheetBackdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 360;
+    border: 0;
+    background: var(--color-overlay-heavy);
+  }
+
+  .mobileMoreSheet {
+    display: block;
+    position: fixed;
+    left: calc(var(--safe-area-left) + 8px);
+    right: calc(var(--safe-area-right) + 8px);
+    bottom: calc(var(--safe-area-bottom) + 68px);
+    z-index: 370;
+    max-height: min(70dvh, 520px);
+    padding: 6px 12px 14px;
+    overflow-y: auto;
+    border: 1px solid var(--glass-border);
+    border-radius: 14px;
+    background: var(--glass-bg);
+    -webkit-backdrop-filter: blur(22px) saturate(1.5);
+    backdrop-filter: blur(22px) saturate(1.5);
+    box-shadow: var(--color-shadow-modal);
+  }
+
+  .mobileSheetHandle {
+    width: 34px;
+    height: 4px;
+    margin: 2px auto 7px;
+    border-radius: var(--radius-full);
+    background: var(--border);
+  }
+
+  .mobileSheetHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 40px;
+    color: var(--text);
+    font-size: var(--text-sm);
+  }
+
+  .mobileSheetHeader button {
+    width: 40px;
+    height: 40px;
+    border: 0;
+    border-radius: var(--radius-md);
+    color: var(--text-muted);
+    font-size: 22px;
+  }
+
+  .mobileMoreGrid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .mobileMoreAction {
+    display: flex;
+    min-width: 0;
+    min-height: 68px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 4px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--bg-elev-1);
+    color: var(--text-muted);
+    font-size: var(--text-xs);
+  }
+
+  .mobileMoreAction:disabled {
+    opacity: 0.4;
+  }
+
+  .mobileMoreActionActive {
+    border-color: var(--color-accent-border);
+    background: var(--color-accent-bg);
+    color: var(--accent);
+  }
+
+  .container:has(textarea:focus) {
+    padding-bottom: var(--safe-area-bottom);
+  }
+
+  .container:has(textarea:focus) .mobileNav {
+    transform: translateY(110%);
+  }
+
+  .container:has(textarea:focus) .sidebarContainer,
+  .container:has(input:focus) .sidebarContainer {
+    bottom: var(--safe-area-bottom) !important;
+  }
 }
 
 @media (pointer: coarse) {

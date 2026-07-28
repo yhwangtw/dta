@@ -20,11 +20,18 @@
 
 .blockContainer {
   position: relative;
+  min-width: 0;
+  max-width: 100%;
   margin-top: 4px;
   margin-bottom: 4px;
   border-radius: 6px;
   overflow: hidden;
   border: 1px solid var(--border);
+}
+
+.blockContainer > pre {
+  max-width: 100%;
+  overscroll-behavior-x: contain;
 }
 
 .blockHeader {
@@ -87,4 +94,31 @@
 
 .plainStreamPre code {
   font-family: var(--font-mono);
+}
+
+@media (max-width: 700px) {
+  .blockContainer {
+    border-radius: var(--radius-md);
+  }
+
+  .blockHeader {
+    min-height: 36px;
+    padding: 3px 8px;
+  }
+
+  .copyBtn,
+  .previewBtn {
+    min-height: 32px;
+    padding-inline: 8px;
+  }
+
+  .plainStreamPre,
+  .blockContainer > pre {
+    font-size: calc(12px * var(--font-scale)) !important;
+    line-height: 1.55 !important;
+  }
+
+  .plainStreamPre {
+    padding: 8px 10px;
+  }
 }

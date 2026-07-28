@@ -6,10 +6,71 @@
   padding-right: 52px; /* 16px base + 36px for ChatMinimap alignment */
 }
 
+.containerExpanded {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  padding: 20px;
+  background: var(--bg);
+}
+
 /* Max-width wrapper */
 .innerWrapper {
   max-width: 820px;
   margin: 0 auto;
+}
+
+.innerWrapperExpanded {
+  width: min(1100px, 100%);
+  max-width: none;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.expandedHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  color: var(--text);
+}
+
+.expandedHeader > div {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+
+.expandedHeader strong {
+  font-size: var(--text-base);
+  font-weight: 600;
+}
+
+.expandedHeader span {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.expandedHeader button {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-panel);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.expandedHeader button:hover {
+  color: var(--text);
+  background: var(--bg-hover);
 }
 
 /* Retry banner */
@@ -33,6 +94,82 @@
 .retryErrorText {
   opacity: 0.7;
   margin-left: 4px;
+}
+
+/* Completed @file mentions remain plain text in the prompt, while this row
+   makes their active context visible, openable, and individually removable. */
+.contextRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 6px;
+  min-width: 0;
+}
+
+.contextLabel {
+  flex: 0 0 auto;
+  padding-top: 4px;
+  color: var(--text-dim);
+  font-size: var(--text-xs);
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.contextChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-width: 0;
+}
+
+.contextChip {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  max-width: min(320px, 60vw);
+  border: 1px solid var(--color-accent-border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--color-accent-bg-subtle);
+  color: var(--text-muted);
+  overflow: hidden;
+}
+
+.contextOpen {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  padding: 4px 5px 4px 7px;
+  color: inherit;
+  cursor: pointer;
+}
+
+.contextOpen:hover {
+  color: var(--accent);
+}
+
+.contextOpen span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+.contextRemove {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  align-self: stretch;
+  border-left: 1px solid var(--color-accent-border-subtle);
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.contextRemove:hover {
+  background: var(--bg-hover);
+  color: var(--text);
 }
 
 /* Image previews */
@@ -77,13 +214,12 @@
 /* Main input wrapper */
 .inputWrapper {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  align-items: stretch;
+  gap: 8px;
+  align-items: center;
   position: relative;
   background: var(--bg);
   border-radius: var(--radius-lg);
-  padding: 10px;
+  padding: 10px 10px 10px 14px;
   box-shadow: var(--color-shadow-input);
   transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
 }
@@ -106,16 +242,20 @@
   display: flex;
   align-items: flex-end;
   gap: 8px;
+  width: 100%;
   min-width: 0;
   position: relative;
-  padding: 0 4px;
+}
+
+.inputWrapperExpanded {
+  flex: 1 1 auto;
+  min-height: 0;
+  align-items: flex-end;
 }
 
 /* Textarea */
 .textarea {
   flex: 1;
-  width: 100%;
-  min-width: 0;
   background: none;
   border: none;
   outline: none;
@@ -129,6 +269,12 @@
   overflow: auto;
   position: relative;
   z-index: 1;
+}
+
+.textareaExpanded {
+  max-height: none;
+  min-height: 320px;
+  align-self: stretch;
 }
 
 /* Streaming action buttons wrapper */
@@ -199,7 +345,7 @@
 /* Send button base */
 .sendButton {
   flex-shrink: 0;
-  align-self: center;
+  align-self: flex-end;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -229,23 +375,60 @@
   box-shadow: none;
 }
 
+.actionLabel {
+  display: inline;
+}
+
 /* Bottom bar */
 .bottomBar {
-  margin-top: 4px;
-  padding-top: 7px;
-  border-top: 1px solid color-mix(in srgb, var(--border) 58%, transparent);
+  margin-top: 8px;
   display: flex;
   align-items: center;
   gap: 6px;
-  min-width: 0;
 }
 
 .bottomBarLeft {
-  flex: 0 1 auto;
-  min-width: 0;
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   gap: 2px;
+}
+
+.sendModeSwitch {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 4px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-panel);
+}
+
+.sendModeButton {
+  height: 26px;
+  padding: 0 8px;
+  border-radius: calc(var(--radius-md) - 2px);
+  color: var(--text-dim);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sendModeButton:hover {
+  color: var(--text);
+  background: var(--bg-hover);
+}
+
+.sendModeActiveFollowUp {
+  composes: sendModeButton;
+  color: var(--accent);
+  background: var(--color-accent-bg-strong);
+}
+
+.sendModeActiveSteer {
+  composes: sendModeButton;
+  color: var(--color-warning-text-strong);
+  background: var(--color-warning-bg-strong);
 }
 
 .bottomBarRight {
@@ -266,6 +449,26 @@
   text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.mobileToolsButton {
+  display: none;
+}
+
+.expandButton {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.expandButton:hover {
+  color: var(--text);
+  background: var(--bg-hover);
 }
 
 /* Attach button */
@@ -443,8 +646,18 @@
 }
 
 @media (pointer: coarse) {
+  .bottomBar {
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .bottomBar::-webkit-scrollbar {
+    display: none;
+  }
+
   .attachButton,
-  .soundButton {
+  .soundButton,
+  .expandButton {
     width: 44px;
     height: 44px;
   }
@@ -462,45 +675,179 @@
   }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 700px) {
   .container {
-    padding: 0 8px 8px;
+    padding: 6px 8px 8px;
+    background: var(--bg);
+    border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  }
+
+  .containerExpanded {
+    padding: 12px;
+  }
+
+  .expandedHeader > div {
+    display: block;
+  }
+
+  .expandedHeader span {
+    display: block;
+    margin-top: 2px;
+  }
+
+  .textareaExpanded {
+    min-height: 220px;
   }
 
   .inputWrapper {
-    padding: 9px 8px 8px;
+    gap: 6px;
+    padding: 8px 8px 8px 12px;
+    border-radius: 12px;
   }
 
   .inputRow {
-    padding: 0 2px;
+    gap: 6px;
   }
 
-  .streamingActions {
-    flex-wrap: wrap;
-    justify-content: flex-end;
+  .textarea {
+    min-height: 44px;
+    max-height: min(34dvh, 180px);
+    font-size: 16px;
+    line-height: 1.45;
+    padding: 10px 0;
+  }
+
+  .textareaExpanded {
+    max-height: none;
+    padding-top: 4px;
+  }
+
+  .sendModeSwitch {
+    margin-left: 0;
+  }
+
+  .sendButton,
+  .steerButton,
+  .followUpButton {
+    width: 44px;
+    padding-left: 0;
+    padding-right: 0;
+    justify-content: center;
+    gap: 0;
   }
 
   .bottomBar {
-    flex-wrap: wrap;
+    position: relative;
     gap: 4px;
+    margin-top: 4px;
+    overflow: visible;
   }
 
   .bottomBarLeft {
-    flex: 1 1 0;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .bottomBarLeft > div {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .bottomBarLeft > div button {
+    width: 100%;
+    max-width: 100% !important;
+    padding-left: 6px !important;
+    padding-right: 6px !important;
+  }
+
+  .bottomBar > div[style] {
+    display: none;
+  }
+
+  .mobileToolsButton {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
+    border: 0;
+    border-radius: var(--radius-md);
+    color: var(--text-muted);
+    background: transparent;
+  }
+
+  .mobileToolsButtonActive {
+    color: var(--accent);
+    background: var(--color-accent-bg);
+  }
+
+  .bottomBarRight {
+    display: none;
   }
 
   .keyboardHint {
     display: none;
   }
 
-  .bottomBarRight {
-    order: 3;
-    width: 100%;
-    margin-left: 0;
+  .bottomBarRightMobileOpen {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: calc(100% + 8px);
+    z-index: 80;
+    display: flex;
     flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 4px;
+    padding: 8px;
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    background: var(--glass-bg);
+    -webkit-backdrop-filter: blur(18px) saturate(1.4);
+    backdrop-filter: blur(18px) saturate(1.4);
+    box-shadow: var(--color-shadow-popup);
   }
 
-  .sendButton {
-    margin-left: auto;
+  .bottomBarRightStreaming {
+    display: flex;
+    flex: 0 0 auto;
+    margin-left: 0;
+  }
+
+  .bottomBarRightStreaming > :not(.stopButton):not(.soundButtonEnabled):not(.soundButtonDisabled) {
+    display: none;
+  }
+
+  .compactControls {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .autoCompactButton,
+  .compactButton,
+  .stopButton,
+  .attachButton,
+  .soundButton,
+  .expandButton {
+    min-height: 44px;
+  }
+
+  .actionLabel {
+    display: none;
+  }
+
+  .contextChip {
+    max-width: calc(100vw - 72px);
+  }
+
+  .contextRow {
+    display: block;
+  }
+
+  .contextLabel {
+    display: block;
+    padding: 0 0 4px;
   }
 }

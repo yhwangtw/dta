@@ -82,6 +82,9 @@ async function openDashboard(page: Page, initialRuns: MockRun[]) {
 
   await page.goto(MAIN);
   await expect(page.getByRole("textbox", { name: "Message…" })).toBeVisible({ timeout: 20_000 });
+  if ((page.viewportSize()?.width ?? 0) <= 700) {
+    await page.getByRole("button", { name: "More", exact: true }).click();
+  }
   await page.getByRole("button", { name: "Agents", exact: true }).click();
   await expect(page.getByTestId("agent-dashboard")).toBeVisible();
 }

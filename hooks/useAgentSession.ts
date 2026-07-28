@@ -20,6 +20,11 @@ import {
   type WebExtensionUIResponse,
   type WebExtensionUIResponseResult,
 } from "@/lib/web-extension-ui-types";
+import {
+  moveQueuedFollowUp,
+  updateQueuedFollowUp,
+  type QueuedFollowUp,
+} from "@/lib/queued-follow-ups";
 
 export type { SessionData, AgentPhase, ThinkingLevelOption, ChatInputHandle, AttachedImage };
 
@@ -67,7 +72,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const [autoCompactionUpdating, setAutoCompactionUpdating] = useState(false);
   const [agentPhase, setAgentPhase] = useState<AgentPhase>(null);
   const [agentStartedAt, setAgentStartedAt] = useState<number | null>(null);
-  const [queuedFollowUps, setQueuedFollowUps] = useState<string[]>([]);
+  const [queuedFollowUps, setQueuedFollowUps] = useState<QueuedFollowUp[]>([]);
+  const [queueUpdating, setQueueUpdating] = useState(false);
   const [bashRun, setBashRun] = useState<{ command: string; output: string; running: boolean } | null>(null);
   const [extensionUIState, dispatchExtensionUI] = useReducer(extensionUIReducer, initialExtensionUIState);
   // Streaming-update throttle (see the message_update case)
@@ -455,9 +461,9 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     return result.sessionId;
   }, [newSessionCwd, newSessionModel, toolPreset, thinkingLevel, connectEvents, onSessionCreated]);
 
-  const handleSend = useCallback(async (message: string, images?: AttachedImage[]) => {
-    if (!message.trim() && !images?.length) return;
-    if (agentRunning) return;
+  const handleSend = useCallback(async (message: string, images?: AttachedImage[]): Promise<boolean> => {
+    if (!message.trim() && !images?.length) return false;
+    if (agentRunning) return false;
     requestNotifyPermission();
 
     // Bash mode: `!cmd` runs the shell directly (streamed, recorded into the
@@ -466,11 +472,11 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     if (trimmedForBash.startsWith("!") && trimmedForBash.length > 1) {
       if (isNew || !session) {
         showToast("Bash mode needs an active session — send a message first", { type: "warning" });
-        return;
+        return false;
       }
       const excludeFromContext = trimmedForBash.startsWith("!!");
       const bashCommand = trimmedForBash.replace(/^!+/, "").trim();
-      if (!bashCommand) return;
+      if (!bashCommand) return false;
       if (!(await connectEvents(session.id))) {
         console.warn("SSE stream not open before bash send — early output may be missed");
       }
@@ -479,13 +485,14 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         await sendAgentCommand(session.id, { type: "bash", command: bashCommand, excludeFromContext });
         // Reload so the persisted bashExecution entry replaces the live block
         await loadSession(session.id);
+        return true;
       } catch (e) {
         console.error("Bash failed:", e);
         showToast(`Bash failed: ${e instanceof Error ? e.message : e}`, { type: "error" });
+        return false;
       } finally {
         setBashRun(null);
       }
-      return;
     }
     // Slash commands (/tgd-* included) are NOT special-cased here: they go
     // through the normal prompt path below, where pi's own prompt() resolves
@@ -525,13 +532,21 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
           message,
           ...(piImages?.length ? { images: piImages } : {}),
         });
+      } else {
+        throw new Error("No active session");
       }
+      return true;
     } catch (e) {
       console.error("Failed to send message:", e);
       showToast(`${translate("toast.messageNotSent")}: ${e instanceof Error ? e.message : e}`, { type: "error" });
+      setMessages((prev) => {
+        const index = prev.lastIndexOf(userMsg);
+        return index < 0 ? prev : [...prev.slice(0, index), ...prev.slice(index + 1)];
+      });
       setAgentRunning(false);
       setAgentPhase(null);
       dispatch({ type: "end" });
+      return false;
     }
   }, [isNew, newSessionCwd, session, agentRunning, connectEvents, createNewSession, loadSession, pendingScrollToUserRef]);
 
@@ -651,10 +666,11 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     }
   }, [autoCompactionEnabled, autoCompactionUpdating]);
 
-  const handleSteer = useCallback(async (message: string, images?: AttachedImage[]) => {
+  const handleSteer = useCallback(async (message: string, images?: AttachedImage[]): Promise<boolean> => {
     const sid = sessionIdRef.current;
-    if (!sid) return;
-    setMessages((prev) => [...prev, { role: "user", content: `[steer] ${message}`, timestamp: Date.now() } as AgentMessage]);
+    if (!sid) return false;
+    const optimisticMessage = { role: "user", content: `[steer] ${message}`, timestamp: Date.now() } as AgentMessage;
+    setMessages((prev) => [...prev, optimisticMessage]);
     const piImages = images?.map((img) => ({ type: "image" as const, data: img.data, mimeType: img.mimeType }));
     try {
       await sendAgentCommand(sid, {
@@ -662,63 +678,106 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         message,
         ...(piImages?.length ? { images: piImages } : {}),
       });
+      return true;
     } catch (e) {
       console.error("Failed to steer:", e);
+      setMessages((prev) => {
+        const index = prev.lastIndexOf(optimisticMessage);
+        return index < 0 ? prev : [...prev.slice(0, index), ...prev.slice(index + 1)];
+      });
       showToast(`${translate("toast.steerFailed")}: ${e instanceof Error ? e.message : e}`, { type: "error" });
+      return false;
     }
   }, []);
 
-  const handleFollowUp = useCallback(async (message: string, images?: AttachedImage[]) => {
+  const handleFollowUp = useCallback(async (message: string, images?: AttachedImage[]): Promise<boolean> => {
     const sid = sessionIdRef.current;
-    if (!sid) return;
+    if (!sid) return false;
     // Don't append to the transcript — the message hasn't been delivered yet.
     // It sits in a visible queue until the current run ends, then shows up as
     // a real user message via the agent_start reload.
-    setQueuedFollowUps((prev) => [...prev, message]);
     const piImages = images?.map((img) => ({ type: "image" as const, data: img.data, mimeType: img.mimeType }));
+    const item: QueuedFollowUp = {
+      id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      message,
+      ...(piImages?.length ? { images: piImages } : {}),
+    };
+    setQueuedFollowUps((prev) => [...prev, item]);
     try {
       await sendAgentCommand(sid, {
         type: "follow_up",
         message,
         ...(piImages?.length ? { images: piImages } : {}),
       });
+      return true;
     } catch (e) {
       console.error("Failed to follow up:", e);
-      setQueuedFollowUps((prev) => prev.filter((m) => m !== message));
+      setQueuedFollowUps((prev) => prev.filter((queued) => queued.id !== item.id));
       showToast(`${translate("toast.followUpFailed")}: ${e instanceof Error ? e.message : e}`, { type: "error" });
+      return false;
     }
   }, []);
 
-  const handleClearQueue = useCallback(async () => {
+  const handleClearQueue = useCallback(async (): Promise<boolean> => {
     const sid = sessionIdRef.current;
-    if (!sid) return;
+    if (!sid || queueUpdating) return false;
+    setQueueUpdating(true);
     try {
       await sendAgentCommand(sid, { type: "clear_queue" });
       setQueuedFollowUps([]);
+      return true;
     } catch (e) {
       console.error("Failed to clear queue:", e);
+      showToast(`${translate("toast.followUpFailed")}: ${e instanceof Error ? e.message : e}`, { type: "error" });
+      return false;
+    } finally {
+      setQueueUpdating(false);
     }
-  }, []);
+  }, [queueUpdating]);
+
+  const replaceQueuedFollowUps = useCallback(async (next: QueuedFollowUp[]): Promise<boolean> => {
+    const sid = sessionIdRef.current;
+    if (!sid || queueUpdating) return false;
+    setQueueUpdating(true);
+    try {
+      await sendAgentCommand(sid, { type: "clear_queue" });
+      for (const item of next) {
+        await sendAgentCommand(sid, {
+          type: "follow_up",
+          message: item.message,
+          ...(item.images?.length ? { images: item.images.map((image) => ({ type: "image" as const, ...image })) } : {}),
+        });
+      }
+      setQueuedFollowUps(next);
+      return true;
+    } catch (e) {
+      showToast(`${translate("toast.followUpFailed")}: ${e instanceof Error ? e.message : e}`, { type: "error" });
+      return false;
+    } finally {
+      setQueueUpdating(false);
+    }
+  }, [queueUpdating]);
 
   /**
    * Remove ONE queued follow-up. pi's queue API only clears wholesale, so
    * this clears and re-queues the survivors. If the run finishes mid-swap the
    * worst case is a follow-up delivering slightly later — never a duplicate.
    */
-  const handleRemoveQueued = useCallback(async (idx: number) => {
-    const sid = sessionIdRef.current;
-    if (!sid) return;
-    const remaining = queuedFollowUps.filter((_, i) => i !== idx);
-    try {
-      await sendAgentCommand(sid, { type: "clear_queue" });
-      for (const message of remaining) {
-        await sendAgentCommand(sid, { type: "follow_up", message });
-      }
-      setQueuedFollowUps(remaining);
-    } catch (e) {
-      showToast(`${translate("toast.followUpFailed")}: ${e instanceof Error ? e.message : e}`, { type: "error" });
-    }
-  }, [queuedFollowUps]);
+  const handleRemoveQueued = useCallback(async (id: string) => {
+    return replaceQueuedFollowUps(queuedFollowUps.filter((item) => item.id !== id));
+  }, [queuedFollowUps, replaceQueuedFollowUps]);
+
+  const handleUpdateQueued = useCallback(async (id: string, message: string) => {
+    const trimmed = message.trim();
+    if (!trimmed) return false;
+    return replaceQueuedFollowUps(updateQueuedFollowUp(queuedFollowUps, id, trimmed));
+  }, [queuedFollowUps, replaceQueuedFollowUps]);
+
+  const handleMoveQueued = useCallback(async (id: string, direction: -1 | 1) => {
+    const next = moveQueuedFollowUp(queuedFollowUps, id, direction);
+    if (next === queuedFollowUps) return true;
+    return replaceQueuedFollowUps(next);
+  }, [queuedFollowUps, replaceQueuedFollowUps]);
 
   /**
    * Re-run the last failed exchange: roll back to the node before the last
@@ -902,7 +961,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     agentRunning, modelNames, modelList, modelThinkingLevels, modelThinkingLevelMaps, newSessionModel, toolPreset, thinkingLevel,
     retryInfo, contextUsage, systemPrompt, forkingEntryId,
     isCompacting, compactError, autoCompactionEnabled, autoCompactionUpdating, currentModel, displayModel, sessionStats,
-    agentPhase, agentStartedAt, queuedFollowUps, bashRun, stalledSecs, extensionUIState,
+    agentPhase, agentStartedAt, queuedFollowUps, queueUpdating, bashRun, stalledSecs, extensionUIState,
     isNew,
     // Refs
     sessionIdRef, eventSourceRef, messagesEndRef, scrollContainerRef,
@@ -910,7 +969,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     // Actions
     handleSend, handleAbort, handleFork, handleNavigate, handleModelChange,
     handleCompact, handleAutoCompactionChange, handleSteer, handleFollowUp, handleAbortCompaction,
-    handleToolPresetChange, handleThinkingLevelChange, handleClearQueue, handleRemoveQueued, handleRetry, handleEditRerun, handleAbortBash, handleExtensionUIResponse, loadTools, setActiveLeafId, setData, setMessages,
+    handleToolPresetChange, handleThinkingLevelChange, handleClearQueue, handleRemoveQueued, handleUpdateQueued, handleMoveQueued, handleRetry, handleEditRerun, handleAbortBash, handleExtensionUIResponse, loadTools, setActiveLeafId, setData, setMessages,
     dispatch, setAgentRunning, setForkingEntryId,
     // Subscriptions
     handleAgentEventRef,

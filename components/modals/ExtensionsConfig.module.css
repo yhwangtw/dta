@@ -278,8 +278,23 @@
 .flagInput:focus { border-color: var(--accent); }
 
 @media (max-width: 560px) {
-  .modal { height: 86vh; }
+  .overlay {
+    align-items: stretch;
+    padding: var(--safe-area-top) var(--safe-area-right)
+      var(--safe-area-bottom) var(--safe-area-left);
+  }
+  .modal {
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    border-radius: 0;
+  }
+  .header { min-height: 56px; padding: 8px 12px; }
+  .body { padding: 12px; }
+  .reloadButton, .closeButton { min-height: 44px; }
+  .sessionCode { display: none; }
   .supportGrid { grid-template-columns: 1fr; }
   .row { align-items: flex-start; flex-wrap: wrap; }
   .rowSource { margin-left: 0; max-width: 100%; }
+  .flagInput { width: min(100%, 220px); height: 44px; font-size: 16px; }
 }

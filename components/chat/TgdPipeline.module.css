@@ -6,10 +6,9 @@
   border-bottom: 1px solid var(--border);
   background: var(--bg-elev-1, var(--bg-panel));
   flex-shrink: 0;
-  overflow-x: auto;
-  scrollbar-width: none;
+  min-width: 0;
+  overflow: hidden;
 }
-.bar::-webkit-scrollbar { display: none; }
 
 .brand {
   font-family: var(--font-mono);
@@ -42,12 +41,20 @@
   gap: 0;
   flex: 1;
   min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  touch-action: pan-x;
+  -webkit-overflow-scrolling: touch;
 }
+.track::-webkit-scrollbar { display: none; }
 
 .step {
   display: flex;
   align-items: center;
   flex-shrink: 0;
+  scroll-snap-align: start;
 }
 
 .connector {
@@ -117,16 +124,50 @@
   border: none;
   color: var(--text-dim);
   cursor: pointer;
-  padding: 2px;
-  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+  border-radius: var(--radius-md);
 }
-.hide:hover { color: var(--text); }
+.hide:hover {
+  color: var(--text);
+  background: var(--bg-hover);
+}
 
 /* Narrow screens: tighten spacing and drop the "tGD" wordmark so more of the
    scrollable phase track is visible. The track keeps its overflow-x scroll. */
 @media (max-width: 640px) {
-  .bar { gap: 6px; padding: 5px 8px; }
+  .bar { gap: 4px; padding: 4px 6px; }
   .brand { display: none; }
-  .phase { padding: 3px 7px; font-size: calc(11px * var(--font-scale)); }
-  .connector { width: 8px; }
+  .feature {
+    max-width: 104px;
+    padding: 2px 6px;
+    font-size: calc(10px * var(--font-scale));
+  }
+  .track {
+    flex-basis: 0;
+    scroll-padding-inline: 4px;
+  }
+  .phase {
+    min-height: 40px;
+    gap: 3px;
+    padding: 3px 4px;
+    font-size: calc(10.5px * var(--font-scale));
+  }
+  .icon {
+    width: 12px;
+    height: 12px;
+  }
+  .connector { width: 6px; }
+  .hide {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+@media (max-width: 380px) {
+  .feature { max-width: 70px; }
+  .connector { width: 4px; }
 }

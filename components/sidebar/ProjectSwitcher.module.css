@@ -151,3 +151,67 @@
 }
 .footHint + .defaultBtn { margin-left: 12px; }
 .defaultBtn:hover { color: var(--color-accent); }
+
+@media (max-width: 700px) {
+  .overlay {
+    align-items: stretch;
+    padding: var(--safe-area-top) var(--safe-area-right)
+      var(--safe-area-bottom) var(--safe-area-left);
+  }
+
+  .modal {
+    width: 100%;
+    max-height: none;
+    border-radius: 0;
+  }
+
+  .inputRow {
+    min-height: 58px;
+    padding: 7px 12px;
+  }
+
+  .input,
+  .inputMono {
+    font-size: 16px;
+  }
+
+  .body {
+    padding: 6px 8px 10px;
+  }
+
+  .row {
+    min-height: 56px;
+    padding: 9px 10px;
+  }
+
+  .rowName {
+    max-width: 42%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .rowActions {
+    display: inline-flex;
+  }
+
+  .rowActionBtn {
+    min-width: 40px;
+    min-height: 40px;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .footer {
+    min-height: 52px;
+    padding: 6px 12px;
+  }
+
+  .footer > span,
+  .footHint {
+    display: none;
+  }
+
+  .defaultBtn {
+    min-height: 40px;
+  }
+}

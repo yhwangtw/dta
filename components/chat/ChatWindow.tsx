@@ -17,6 +17,7 @@ import { useAudio } from "@/hooks/useAudio";
 import { useDragDrop } from "@/hooks/useDragDrop";
 import styles from "./ChatWindow.module.css";
 import { useI18n, type MsgKey } from "@/lib/i18n";
+import { QueuedFollowUps } from "./QueuedFollowUps";
 
 interface Props {
   session: SessionInfo | null;
@@ -195,12 +196,13 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
     agentRunning, modelNames, modelList, modelThinkingLevels, modelThinkingLevelMaps, toolPreset, thinkingLevel,
     retryInfo, contextUsage, forkingEntryId,
     isCompacting, compactError, autoCompactionEnabled, autoCompactionUpdating, displayModel: displayModelValue, sessionStats,
-    agentPhase, agentStartedAt, queuedFollowUps, bashRun, stalledSecs, extensionUIState,
+    agentPhase, agentStartedAt, queuedFollowUps, queueUpdating, bashRun, stalledSecs, extensionUIState,
     isNew,
     messagesEndRef, scrollContainerRef,
     lastUserMsgRef,
     handleSend, handleAbort, handleFork, handleNavigate, handleModelChange,
     handleCompact, handleAutoCompactionChange, handleSteer, handleFollowUp, handleAbortCompaction,
+    handleUpdateQueued, handleMoveQueued,
     handleToolPresetChange, handleThinkingLevelChange, handleClearQueue, handleRemoveQueued, handleRetry, handleEditRerun, handleAbortBash, handleExtensionUIResponse, handleAgentEventRef,
   } = useAgentSession({
     session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked,
@@ -732,8 +734,8 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
       )}
 
       {isEmptyNew ? (
-        <div className="flex flex-1 flex-col items-center justify-center overflow-y-auto px-4 py-8">
-          <div className={`w-full ${wideChat ? "max-w-[1180px]" : "max-w-[820px]"}`}>
+        <div className={`${styles.emptyNew} flex flex-1 flex-col items-center justify-center overflow-y-auto px-4 py-8`}>
+          <div className={`${styles.emptyNewInner} w-full ${wideChat ? "max-w-[1180px]" : "max-w-[820px]"}`}>
             <div
               className={styles.welcomeHeader}
             >
@@ -781,7 +783,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
       )}
       <div className="relative flex flex-1 overflow-hidden">
         {findOpen && (
-          <div className="glass absolute right-4 top-2 z-20 flex items-center gap-1 rounded-lg border px-2 py-1 shadow-[var(--color-shadow-dropdown)]">
+          <div className={`${styles.findBar} glass absolute right-4 top-2 z-20 flex items-center gap-1 rounded-lg border px-2 py-1 shadow-[var(--color-shadow-dropdown)]`}>
             <input
               ref={findInputRef}
               value={findQuery}
@@ -842,8 +844,8 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
             )}
           </button>
         )}
-        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto pt-4 [scrollbar-width:none]">
-          <div className={`mx-auto px-4 ${wideChat ? "max-w-[1180px]" : "max-w-[820px]"}`}>
+        <div ref={scrollContainerRef} className={`${styles.transcriptScroll} flex-1 overflow-y-auto pt-4 [scrollbar-width:none]`}>
+          <div className={`${styles.transcript} mx-auto px-4 ${wideChat ? "max-w-[1180px]" : "max-w-[820px]"}`}>
 
             {(() => {
               let lastUserIdx = -1;
@@ -996,13 +998,13 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
         />
       </div>
 
-      <div className="relative">
+      <div className={`${styles.composerDock} relative`}>
         {/* Context-pressure nudge: suggest compaction before it's too late */}
         {contextUsage?.percent != null && contextUsage.percent >= 80 && !isCompacting && (
           /* pl-4 pr-[52px]: mirror ChatInput's container padding (right side
              reserves the minimap rail) so the banner's box aligns exactly
              with the composer below instead of sticking out to the right. */
-          <div className="pb-1 pl-4 pr-[52px]">
+          <div className={`${styles.contextWarningWrap} pb-1 pl-4 pr-[52px]`}>
           <div className={`mx-auto flex items-center gap-2 ${wideChat ? "max-w-[1180px]" : "max-w-[820px]"}`}>
             <div className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-[var(--color-warning-border)] bg-[var(--color-warning-bg)] px-3 py-1.5 text-[12px] text-[var(--color-warning-text)]">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
@@ -1027,37 +1029,15 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
           </div>
           </div>
         )}
-        {queuedFollowUps.length > 0 && (
-          /* Same geometry as ChatInput's container (see the banner above). */
-          <div className="pb-1 pl-4 pr-[52px]">
-          <div className={`mx-auto ${wideChat ? "max-w-[1180px]" : "max-w-[820px]"}`}>
-            <div className="flex flex-col gap-1 rounded-lg border border-[var(--color-warning-border)] bg-[var(--color-warning-bg)] px-3 py-1.5 text-[12px] text-[var(--color-warning-text)]">
-              {queuedFollowUps.map((q, i) => (
-                <div key={`${i}-${q.slice(0, 24)}`} className="flex min-w-0 items-center gap-2">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
-                  <span className="min-w-0 flex-1 truncate" title={q}>{q}</span>
-                  <button
-                    onClick={() => void handleRemoveQueued(i)}
-                    className="shrink-0 rounded p-0.5 hover:bg-[var(--color-warning-bg-strong)]"
-                    title="Cancel this follow-up"
-                    aria-label="Cancel this follow-up"
-                  >
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-                  </button>
-                </div>
-              ))}
-              {queuedFollowUps.length > 1 && (
-                <button
-                  onClick={handleClearQueue}
-                  className="self-end rounded px-1.5 py-0.5 text-[11px] hover:bg-[var(--color-warning-bg-strong)]"
-                >
-                  {t("chat.queueCancelAll")}
-                </button>
-              )}
-            </div>
-          </div>
-          </div>
-        )}
+        <QueuedFollowUps
+          items={queuedFollowUps}
+          busy={queueUpdating}
+          wide={wideChat}
+          onRemove={handleRemoveQueued}
+          onUpdate={handleUpdateQueued}
+          onMove={handleMoveQueued}
+          onClear={handleClearQueue}
+        />
         <ExtensionUIPanel
           state={extensionUIState}
           onRespond={handleExtensionUIResponse}

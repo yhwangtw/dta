@@ -187,3 +187,22 @@
   color: var(--color-error);
   border-color: var(--color-error);
 }
+
+@media (max-width: 700px) {
+  .panel {
+    left: calc(var(--safe-area-left) + 8px);
+    right: calc(var(--safe-area-right) + 8px);
+    bottom: calc(var(--safe-area-bottom) + 72px);
+    width: auto;
+    max-height: min(70dvh, 560px);
+    padding: 14px;
+    overflow-y: auto;
+  }
+
+  .themeBtn,
+  .fontSizeBtn,
+  .skinRow,
+  .logoutRow {
+    min-height: 44px;
+  }
+}

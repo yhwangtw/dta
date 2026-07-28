@@ -65,3 +65,16 @@
   flex-shrink: 0;
   display: flex;
 }
+
+@media (max-width: 700px) {
+  .trigger,
+  .triggerEmpty {
+    min-height: 48px;
+    padding: 9px 11px;
+    font-size: calc(14px * var(--font-scale));
+  }
+
+  .triggerName {
+    max-width: 52%;
+  }
+}

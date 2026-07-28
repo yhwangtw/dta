@@ -167,7 +167,7 @@ export function AssistantMessageView({
       {/* Model label */}
       <div className={styles.modelLabel}>
         {message.provider && (
-          <span>{modelNames?.[`${message.provider}:${message.model}`] ?? modelNames?.[message.model] ?? message.model}</span>
+          <span className={styles.modelName}>{modelNames?.[`${message.provider}:${message.model}`] ?? modelNames?.[message.model] ?? message.model}</span>
         )}
         {isStreaming && (() => {
           let chars = 0;

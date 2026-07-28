@@ -14,6 +14,7 @@ import { SchedulePanel } from "./SchedulePanel";
 import { DiffPanel } from "./DiffPanel";
 import { AppearancePanel } from "./AppearancePanel";
 import { IconRail, type PanelView } from "./IconRail";
+import { MobileNavigation } from "./MobileNavigation";
 import { ShortcutsDialog } from "./ShortcutsDialog";
 import { TabBar } from "./TabBar";
 import { BranchNavigator } from "../chat/BranchNavigator";
@@ -71,6 +72,7 @@ export function AppShell() {
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
   const [panelView, setPanelView] = useState<PanelView>("sessions");
   const [searchFocusSignal, setSearchFocusSignal] = useState(0);
   const [revealSignal, setRevealSignal] = useState(0);
@@ -109,6 +111,7 @@ export function AppShell() {
   // Rail behavior: clicking the active view collapses the panel; clicking the
   // other view switches to it (opening the panel if needed).
   const handleRailView = useCallback((view: PanelView) => {
+    setMobileActionsOpen(false);
     if (view === "search") setSearchFocusSignal((signal) => signal + 1);
     if (view === panelView) {
       setSidebarOpen((open) => !open);
@@ -117,6 +120,12 @@ export function AppShell() {
       setSidebarOpen(true);
     }
   }, [panelView]);
+
+  const handleShowMobileChat = useCallback(() => {
+    setSidebarOpen(false);
+    setRightPanelOpen(false);
+    setMobileActionsOpen(false);
+  }, [setRightPanelOpen]);
 
   const handleOpenDiff = useCallback((filePath: string) => {
     setDiffFile(filePath);
@@ -465,6 +474,19 @@ export function AppShell() {
         appearanceOpen={appearanceOpen}
         onToggleAppearance={() => setAppearanceOpen((v) => !v)}
       />
+      <MobileNavigation
+        panelView={panelView}
+        panelOpen={sidebarOpen}
+        filePanelOpen={rightPanelOpen}
+        onShowChat={handleShowMobileChat}
+        onSelectView={handleRailView}
+        onOpenAnalytics={() => setAnalyticsOpen(true)}
+        onOpenModels={() => setModelsConfigOpen(true)}
+        onOpenSkills={() => setSkillsConfigOpen(true)}
+        skillsDisabled={!panelCwd}
+        onOpenExtensions={() => setExtensionsConfigOpen(true)}
+        onOpenAppearance={() => setAppearanceOpen(true)}
+      />
       {/* Mobile overlay backdrop */}
       <div
         className="sidebar-overlay-backdrop"
@@ -486,6 +508,16 @@ export function AppShell() {
       <div className={s.centerPanel}>
         {/* Top bar with sidebar toggle */}
         <div ref={topBarRef} className={s.topBar} data-testid="top-bar">
+          <button
+            type="button"
+            className={s.mobileSessionsButton}
+            onClick={() => handleRailView("sessions")}
+            aria-label={t("mobile.openSessions")}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <rect x="4" y="4" width="16" height="16" rx="3" /><path d="M8 9h8M8 13h6M8 17h4" />
+            </svg>
+          </button>
           <div className={`${s.chatTitle} chrome-mono`} title={state.selectedSession?.name ?? state.selectedSession?.id}>
             {state.selectedSession
               ? (state.selectedSession.name ?? state.selectedSession.id.slice(0, 8))
@@ -494,7 +526,21 @@ export function AppShell() {
                 : "π"}
           </div>
           {showChat && (
-            <div className={s.chatActions}>
+            <button
+              type="button"
+              className={s.mobileActionsToggle}
+              onClick={() => setMobileActionsOpen((open) => !open)}
+              aria-label={t("mobile.sessionActions")}
+              aria-expanded={mobileActionsOpen}
+            >
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                <circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" />
+              </svg>
+            </button>
+          )}
+          {mobileActionsOpen && <button type="button" className={s.mobileActionsBackdrop} onClick={() => setMobileActionsOpen(false)} aria-label={t("mobile.closeActions")} />}
+          {showChat && (
+            <div className={`${s.chatActions} ${mobileActionsOpen ? s.chatActionsMobileOpen : ""}`}>
               <div className={s.exportMenuWrapper} ref={exportMenuRef}>
                 <button
                   onClick={() => setExportMenuOpen((v) => !v)}
@@ -548,7 +594,7 @@ export function AppShell() {
                 )}
               </div>
               <button
-                onClick={() => setAnalyticsOpen(true)}
+                onClick={() => { setAnalyticsOpen(true); setMobileActionsOpen(false); }}
                 className={`${s.systemButton} ${s.systemButtonDefault} hover-text`}
                 title={t("topbar.analyticsTitle")}
                 aria-label={t("topbar.analyticsTitle")}
@@ -571,7 +617,7 @@ export function AppShell() {
                 hasSession
               />
               <button
-                onClick={() => actions.toggleTopPanel("system")}
+                onClick={() => { actions.toggleTopPanel("system"); setMobileActionsOpen(false); }}
                 className={`${s.systemButton} ${state.activeTopPanel === "system" ? s.systemButtonActive : s.systemButtonDefault} hover-text`}
               >
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: state.systemPrompt ? "var(--accent)" : "var(--text-dim)", flexShrink: 0 }}>

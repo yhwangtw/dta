@@ -117,7 +117,7 @@ test.describe("responsive shell", () => {
       document.documentElement.style.setProperty("--safe-area-left", "14px");
     });
 
-    await expect(page.getByTestId("app-shell")).toHaveCSS("padding", "11px 12px 77px 14px");
+    await expect(page.getByTestId("app-shell")).toHaveCSS("padding", "11px 12px 71px 14px");
     await expectNoPageOverflow(page);
   });
 

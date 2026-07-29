@@ -175,6 +175,77 @@
   color: var(--color-warning-text-strong, #d97706);
 }
 
+.messageItemAssistant {
+  padding-left: 4px;
+}
+
+.turnStart {
+  margin-top: 12px;
+  padding-top: 16px;
+}
+
+.turnStart::before {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border) 14%, var(--border) 86%, transparent);
+  content: "";
+}
+
+.turnStart .bookmarkStar { top: 18px; }
+
+.unreadDivider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 16px 0 10px;
+  color: var(--accent);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.unreadDivider::before,
+.unreadDivider::after {
+  height: 1px;
+  flex: 1 1 auto;
+  background: var(--color-accent-border);
+  content: "";
+}
+
+.unreadDivider span { flex: 0 0 auto; }
+
+.recoveryActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.recoveryActions button {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 11px;
+  border: 1px solid var(--color-error-border);
+  border-radius: var(--radius-md);
+  background: var(--color-error-bg);
+  color: var(--color-error-text);
+  cursor: pointer;
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.recoveryActions button:first-child:not(:last-child) {
+  border-color: var(--color-accent-border);
+  background: var(--color-accent-bg);
+  color: var(--accent);
+}
+
+.recoveryActions button:hover { filter: brightness(1.06); }
+
 /* Collapsed tGD pipeline — click to bring the bar back */
 .pipelineShow {
   align-self: flex-start;
@@ -206,6 +277,17 @@
 
 .transcript {
   width: 100%;
+}
+
+.findScope {
+  max-width: 92px;
+  min-height: 28px;
+  border: 0;
+  border-right: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  outline: none;
 }
 
 .contextWarningWrap {
@@ -298,10 +380,47 @@
     font-size: 16px;
   }
 
+  .findScope {
+    max-width: 76px;
+    min-height: 40px;
+    flex: 0 0 auto;
+    font-size: 12px;
+  }
+
+  .findBar button {
+    display: grid;
+    min-width: 40px;
+    min-height: 40px;
+    place-items: center;
+  }
+
   .bookmarkStar {
     top: 0;
-    right: -6px;
+    right: 0;
+    display: grid;
+    width: 36px;
+    height: 36px;
+    place-items: center;
+    padding: 0;
   }
+
+  .messageItem {
+    padding-right: 38px;
+  }
+
+  .messageItemAssistant {
+    padding-left: 0;
+  }
+
+  .turnStart {
+    margin-top: 6px;
+    padding-top: 12px;
+  }
+
+  .turnStart .bookmarkStar { top: 12px; }
+
+  .unreadDivider { margin: 10px 0 8px; gap: 7px; }
+  .recoveryActions button { min-height: 44px; }
 
   .paneHeader {
     min-height: 44px;

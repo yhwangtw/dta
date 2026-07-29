@@ -218,8 +218,37 @@
 .widget { align-items: flex-start; padding: 6px 8px; }
 .widgetText { white-space: pre-wrap; line-height: 1.4; }
 
+@media (max-width: 700px) {
+  .outer { padding: 0 8px 4px; }
+
+  .statusRow,
+  .widgets {
+    flex-wrap: nowrap;
+    margin-bottom: 4px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .statusRow::-webkit-scrollbar,
+  .widgets::-webkit-scrollbar { display: none; }
+
+  .statusChip,
+  .widget {
+    min-height: 36px;
+    flex: 0 0 auto;
+    max-width: calc(100vw - 16px);
+  }
+
+  .statusChip > span:last-child,
+  .widgetText {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
 @media (max-width: 640px) {
-  .outer { padding: 0 12px 6px; }
+  .outer { padding: 0 8px 4px; }
   .choices { grid-template-columns: minmax(0, 1fr); }
   .cardHeader { padding-inline: 12px; }
   .questionLegend { flex-direction: column; gap: 2px; }

@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AgentMessage, SessionInfo, SessionTreeNode, ToolResultMessage } from "@/lib/types";
 import { MessageView } from "./MessageView";
-import { ChatInput, type ChatInputHandle } from "./ChatInput";
+import { ChatInput, type ChatInputHandle, type MessageQuote } from "./ChatInput";
 import { ExtensionUIPanel, ExtensionWidgets } from "./ExtensionUIPanel";
 import { ChatMinimap, useMessageRefs } from "./ChatMinimap";
 import { BashBlock } from "./BashBlock";
@@ -18,6 +18,9 @@ import { useDragDrop } from "@/hooks/useDragDrop";
 import styles from "./ChatWindow.module.css";
 import { useI18n, type MsgKey } from "@/lib/i18n";
 import { QueuedFollowUps } from "./QueuedFollowUps";
+import { isProviderAuthError } from "./AssistantMessageView";
+import { buildConversationLayout } from "./conversation-turns";
+import { MobileTurnNavigator, type MobileTurnItem } from "./MobileTurnNavigator";
 
 interface Props {
   session: SessionInfo | null;
@@ -39,18 +42,31 @@ interface Props {
   onClosePane?: () => void;
   /** Wide-layout preference (⌘K → Toggle Wide Chat). */
   wideChat?: boolean;
+  onOpenModels?: () => void;
 }
 
-export function phaseLabel(phase: AgentPhase): string {
+export function phaseLabel(phase: AgentPhase, translate?: (key: MsgKey) => string): string {
+  if (!translate) {
+    if (phase?.kind === "running_tools") {
+      const names = phase.tools.map((tool) => tool.name);
+      if (names.length === 0) return "Running tool...";
+      if (names.length === 1) return `Running ${names[0]}...`;
+      if (names.length <= 3) return `Running ${names.join(", ")}...`;
+      return `Running ${names.slice(0, 2).join(", ")} (+${names.length - 2})...`;
+    }
+    if (phase?.kind === "waiting_model") return "Waiting for model...";
+    return "Thinking...";
+  }
   if (phase?.kind === "running_tools") {
     const names = phase.tools.map((t) => t.name);
-    if (names.length === 0) return "Running tool...";
-    if (names.length === 1) return `Running ${names[0]}...`;
-    if (names.length <= 3) return `Running ${names.join(", ")}...`;
-    return `Running ${names.slice(0, 2).join(", ")} (+${names.length - 2})...`;
+    const running = translate?.("chat.runningStatus") ?? "Running";
+    if (names.length === 0) return `${running} tool…`;
+    if (names.length === 1) return `${running} ${names[0]}…`;
+    if (names.length <= 3) return `${running} ${names.join(", ")}…`;
+    return `${running} ${names.slice(0, 2).join(", ")} (+${names.length - 2})…`;
   }
-  if (phase?.kind === "waiting_model") return "Waiting for model...";
-  return "Thinking...";
+  if (phase?.kind === "waiting_model") return translate?.("chat.waitingModel") ?? "Waiting for model...";
+  return translate?.("chat.thinkingStatus") ?? "Thinking...";
 }
 
 const phaseSvg = (paths: React.ReactNode) => (
@@ -59,33 +75,33 @@ const phaseSvg = (paths: React.ReactNode) => (
   </svg>
 );
 
-const PHASE_ACTIONS: { cmd: string; label: string; descKey: MsgKey; icon: React.ReactNode }[] = [
+const PHASE_ACTIONS: { cmd: string; label: string; labelKey: MsgKey; descKey: MsgKey; icon: React.ReactNode }[] = [
   {
-    cmd: "/tgd-map", label: "Map", descKey: "phase.map" as MsgKey,
+    cmd: "/tgd-map", label: "Map", labelKey: "phase.label.map", descKey: "phase.map" as MsgKey,
     icon: phaseSvg(<><polygon points="1 6 8 3 16 6 23 3 23 18 16 21 8 18 1 21" /><line x1="8" y1="3" x2="8" y2="18" /><line x1="16" y1="6" x2="16" y2="21" /></>),
   },
   {
-    cmd: "/tgd-define", label: "Define", descKey: "phase.define" as MsgKey,
+    cmd: "/tgd-define", label: "Define", labelKey: "phase.label.define", descKey: "phase.define" as MsgKey,
     icon: phaseSvg(<><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="8" y1="13" x2="16" y2="13" /><line x1="8" y1="17" x2="13" y2="17" /></>),
   },
   {
-    cmd: "/tgd-plan", label: "Plan", descKey: "phase.plan" as MsgKey,
+    cmd: "/tgd-plan", label: "Plan", labelKey: "phase.label.plan", descKey: "phase.plan" as MsgKey,
     icon: phaseSvg(<><line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" /><line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" /></>),
   },
   {
-    cmd: "/tgd-develop", label: "Develop", descKey: "phase.develop" as MsgKey,
+    cmd: "/tgd-develop", label: "Develop", labelKey: "phase.label.develop", descKey: "phase.develop" as MsgKey,
     icon: phaseSvg(<><polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" /></>),
   },
   {
-    cmd: "/tgd-verify", label: "Verify", descKey: "phase.verify" as MsgKey,
+    cmd: "/tgd-verify", label: "Verify", labelKey: "phase.label.verify", descKey: "phase.verify" as MsgKey,
     icon: phaseSvg(<><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></>),
   },
   {
-    cmd: "/tgd-review", label: "Review", descKey: "phase.review" as MsgKey,
+    cmd: "/tgd-review", label: "Review", labelKey: "phase.label.review", descKey: "phase.review" as MsgKey,
     icon: phaseSvg(<><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></>),
   },
   {
-    cmd: "/tgd-release", label: "Release", descKey: "phase.release" as MsgKey,
+    cmd: "/tgd-release", label: "Release", labelKey: "phase.label.release", descKey: "phase.release" as MsgKey,
     icon: phaseSvg(<><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9" /></>),
   },
 ];
@@ -190,7 +206,25 @@ function messageText(msg: AgentMessage): string {
     .join(" ");
 }
 
-export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked, modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionStatsChange, onContextUsageChange, onSessionNamed, isParallel, paneLabel, onClosePane, wideChat }: Props) {
+type FindScope = "all" | "user" | "assistant" | "tools" | "errors";
+
+function activityText(messages: import("@/lib/types").AssistantMessage[], toolResults: Map<string, ToolResultMessage>): string {
+  const parts: string[] = [];
+  for (const message of messages) {
+    if (message.errorMessage) parts.push(message.errorMessage);
+    for (const block of message.content) {
+      if (block.type === "thinking") parts.push(block.thinking);
+      if (block.type === "toolCall") {
+        parts.push(block.toolName, JSON.stringify(block.input));
+        const result = toolResults.get(block.toolCallId);
+        if (result) parts.push(messageText(result));
+      }
+    }
+  }
+  return parts.join(" ");
+}
+
+export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked, modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionStatsChange, onContextUsageChange, onSessionNamed, isParallel, paneLabel, onClosePane, wideChat, onOpenModels }: Props) {
   const {
     loading, error, messages, entryIds, streamState,
     agentRunning, modelNames, modelList, modelThinkingLevels, modelThinkingLevelMaps, toolPreset, thinkingLevel,
@@ -218,7 +252,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
   const showPipeline = useCallback(() => { setPipelineHidden(false); localStorage.removeItem("pi-tgd-pipeline-hidden"); }, []);
 
   const tgdPhases = useMemo(
-    () => PHASE_ACTIONS.map((p) => ({ cmd: p.cmd, label: p.label, desc: t(p.descKey), icon: p.icon })),
+    () => PHASE_ACTIONS.map((p) => ({ cmd: p.cmd, label: t(p.labelKey), desc: t(p.descKey), icon: p.icon })),
     [t],
   );
   // Transcript signal: which /tgd-* were invoked this session, the last one
@@ -346,8 +380,31 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
 
   const { isDragOver, handleDragEnter, handleDragOver, handleDragLeave, handleDrop } = useDragDrop(onDrop);
 
-  const visibleMessages = messages.filter((m) => m.role === "user" || m.role === "assistant");
+  const conversationLayout = useMemo(() => buildConversationLayout(messages), [messages]);
+  const visibleMessages = useMemo(
+    () => conversationLayout.displayIndices.map((index) => messages[index]),
+    [conversationLayout.displayIndices, messages],
+  );
   const messageRefs = useMessageRefs(visibleMessages.length);
+
+  // Scope quotes to the session that created them instead of clearing from an
+  // effect. Session context can settle in more than one render after loading;
+  // an effect-based reset could race a quote click during that window.
+  const [messageQuoteState, setMessageQuoteState] = useState<{
+    sessionId: string | undefined;
+    quote: MessageQuote;
+  } | null>(null);
+  const messageQuote = messageQuoteState && messageQuoteState.sessionId === session?.id
+    ? messageQuoteState.quote
+    : null;
+  const openQuotedMessage = useCallback((entryId: string) => {
+    const target = document.querySelector<HTMLElement>(`[data-entry-id="${CSS.escape(entryId)}"]`);
+    target?.scrollIntoView({ block: "center", behavior: "smooth" });
+    target?.animate(
+      [{ boxShadow: "0 0 0 3px var(--color-accent-border)" }, { boxShadow: "0 0 0 3px transparent" }],
+      { duration: 1200, easing: "ease-out" },
+    );
+  }, []);
 
   // ── Message bookmarks (per session, persisted) ──────────────────────────
   const bookmarkStorageKey = session?.id ? `pi-bookmarks:${session.id}` : null;
@@ -379,15 +436,71 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
   // Visible-message indices that are bookmarked — the minimap marks them.
   const bookmarkedIndices = useMemo(() => {
     const set = new Set<number>();
-    let visIdx = 0;
-    messages.forEach((m, idx) => {
-      if (m.role !== "user" && m.role !== "assistant") return;
+    conversationLayout.displayIndices.forEach((idx, visIdx) => {
       const id = entryIds[idx];
       if (id && bookmarks.has(id)) set.add(visIdx);
-      visIdx++;
     });
     return set;
-  }, [messages, entryIds, bookmarks]);
+  }, [conversationLayout.displayIndices, entryIds, bookmarks]);
+
+  const mobileTurns = useMemo<MobileTurnItem[]>(() => {
+    const visiblePosition = new Map(conversationLayout.displayIndices.map((messageIndex, index) => [messageIndex, index]));
+    return conversationLayout.turns.flatMap((turn) => {
+      if (turn.userIndex === null) return [];
+      const entryId = entryIds[turn.userIndex];
+      return [{
+        entryId,
+        visibleIndex: visiblePosition.get(turn.userIndex) ?? 0,
+        preview: messageText(messages[turn.userIndex]).replace(/\s+/g, " ").trim().slice(0, 120),
+        bookmarked: !!entryId && bookmarks.has(entryId),
+      }];
+    });
+  }, [bookmarks, conversationLayout.displayIndices, conversationLayout.turns, entryIds, messages]);
+
+  const lastReadStorageKey = session?.id ? `pi-last-read:${session.id}` : null;
+  const [unreadMessageIndex, setUnreadMessageIndex] = useState<number | null>(null);
+  useEffect(() => {
+    if (!lastReadStorageKey || conversationLayout.displayIndices.length === 0) {
+      setUnreadMessageIndex(null);
+      return;
+    }
+    const lastReadId = localStorage.getItem(lastReadStorageKey);
+    if (!lastReadId) { setUnreadMessageIndex(null); return; }
+    const lastReadIndex = entryIds.indexOf(lastReadId);
+    if (lastReadIndex < 0) { setUnreadMessageIndex(null); return; }
+    const next = conversationLayout.displayIndices.find((index) => index > lastReadIndex && !!entryIds[index]);
+    setUnreadMessageIndex(next ?? null);
+  }, [conversationLayout.displayIndices, entryIds, lastReadStorageKey]);
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container || !lastReadStorageKey) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const save = () => {
+      const bottom = container.getBoundingClientRect().bottom;
+      let lastVisibleId: string | undefined;
+      conversationLayout.displayIndices.forEach((messageIndex, visibleIndex) => {
+        const element = messageRefs.current[visibleIndex];
+        if (element && element.getBoundingClientRect().top < bottom - 12 && entryIds[messageIndex]) {
+          lastVisibleId = entryIds[messageIndex];
+        }
+      });
+      if (lastVisibleId) localStorage.setItem(lastReadStorageKey, lastVisibleId);
+    };
+    const onScroll = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(save, 500);
+    };
+    const onPageHide = () => save();
+    container.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("pagehide", onPageHide);
+    return () => {
+      if (timer) clearTimeout(timer);
+      save();
+      container.removeEventListener("scroll", onScroll);
+      window.removeEventListener("pagehide", onPageHide);
+    };
+  }, [conversationLayout.displayIndices, entryIds, lastReadStorageKey, messageRefs, scrollContainerRef]);
 
   // ── Long-message collapse ────────────────────────────────────────────────
   // Historical messages taller than a threshold clamp to a preview; the
@@ -415,6 +528,14 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
     }
     return map;
   }, [messages]);
+
+  const historicalTailRole = useMemo<"user" | "assistant" | null>(() => {
+    for (let i = conversationLayout.displayIndices.length - 1; i >= 0; i--) {
+      const role = messages[conversationLayout.displayIndices[i]].role;
+      if (role === "user" || role === "assistant") return role;
+    }
+    return null;
+  }, [conversationLayout.displayIndices, messages]);
 
   const handleEditContent = useCallback((content: string) => {
     chatInputRef?.current?.insertIfEmpty(content);
@@ -520,6 +641,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
   // ── ⌘F in-conversation search ────────────────────────────────────────────
   const [findOpen, setFindOpen] = useState(false);
   const [findQuery, setFindQuery] = useState("");
+  const [findScope, setFindScope] = useState<FindScope>("all");
   const [findPos, setFindPos] = useState(0);
   const findInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -527,24 +649,86 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
     const q = findQuery.trim().toLowerCase();
     if (!q) return [];
     const hits: number[] = [];
-    let visIdx = 0;
-    for (const msg of messages) {
-      if (msg.role !== "user" && msg.role !== "assistant") continue;
-      if (messageText(msg).toLowerCase().includes(q)) hits.push(visIdx);
-      visIdx++;
-    }
+    conversationLayout.displayIndices.forEach((messageIndex, visIdx) => {
+      const msg = messages[messageIndex];
+      const activityMessages = conversationLayout.activityByOwner.get(messageIndex) ?? [];
+      const activity = activityText(activityMessages, toolResultsMap);
+      const hasError = msg.role === "assistant" && (
+        msg.stopReason === "error"
+        || activityMessages.some((item) => item.stopReason === "error")
+        || activityMessages.some((item) => item.content.some((block) => block.type === "toolCall" && toolResultsMap.get(block.toolCallId)?.isError))
+      );
+      let haystack = "";
+      if (findScope === "all") haystack = `${messageText(msg)} ${activity}`;
+      else if (findScope === "user" && msg.role === "user") haystack = messageText(msg);
+      else if (findScope === "assistant" && msg.role === "assistant") haystack = messageText(msg);
+      else if (findScope === "tools") haystack = activity;
+      else if (findScope === "errors" && hasError) haystack = `${messageText(msg)} ${activity}`;
+      if (haystack.toLowerCase().includes(q)) hits.push(visIdx);
+    });
     return hits;
-  }, [messages, findQuery]);
+  }, [conversationLayout.activityByOwner, conversationLayout.displayIndices, findQuery, findScope, messages, toolResultsMap]);
 
   // Keys of visible messages, parallel to messageRefs — used to auto-expand a
   // collapsed message before jumping a find match into it.
   const visibleKeys = useMemo(() => {
-    const keys: (string | number)[] = [];
-    messages.forEach((m, idx) => {
-      if (m.role === "user" || m.role === "assistant") keys.push(entryIds[idx] ?? idx);
+    return conversationLayout.displayIndices.map((index) => entryIds[index] ?? index);
+  }, [conversationLayout.displayIndices, entryIds]);
+
+  useEffect(() => {
+    const query = findQuery.trim().toLocaleLowerCase();
+    if (!query) return;
+    type HighlightRegistry = {
+      set: (name: string, highlight: unknown) => void;
+      delete: (name: string) => boolean;
+    };
+    type HighlightConstructor = new (...ranges: Range[]) => unknown;
+    const registry = (CSS as unknown as { highlights?: HighlightRegistry }).highlights;
+    const HighlightClass = (globalThis as unknown as { Highlight?: HighlightConstructor }).Highlight;
+    if (!registry || !HighlightClass) return;
+
+    const roots = findMatches
+      .map((matchIndex) => messageRefs.current[matchIndex])
+      .filter((root): root is HTMLDivElement => !!root);
+    const applyHighlight = () => {
+      const ranges: Range[] = [];
+      for (const root of roots) {
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+        let node = walker.nextNode();
+        while (node) {
+          const textNode = node as Text;
+          const parent = textNode.parentElement;
+          const source = textNode.textContent ?? "";
+          if (parent && !parent.closest("button, textarea, input, [aria-hidden='true']")) {
+            const lower = source.toLocaleLowerCase();
+            let start = lower.indexOf(query);
+            while (start !== -1) {
+              const range = document.createRange();
+              range.setStart(textNode, start);
+              range.setEnd(textNode, start + query.length);
+              ranges.push(range);
+              start = lower.indexOf(query, start + query.length);
+            }
+          }
+          node = walker.nextNode();
+        }
+      }
+      registry.set("conversation-find", new HighlightClass(...ranges));
+    };
+
+    applyHighlight();
+    // Tool/error scopes can expand the work log after the first match jump.
+    // Rebuild ranges when React adds those details without modifying its DOM.
+    const observers = roots.map((root) => {
+      const observer = new MutationObserver(applyHighlight);
+      observer.observe(root, { childList: true, subtree: true });
+      return observer;
     });
-    return keys;
-  }, [messages, entryIds]);
+    return () => {
+      observers.forEach((observer) => observer.disconnect());
+      registry.delete("conversation-find");
+    };
+  }, [findMatches, findQuery, messageRefs]);
 
   const gotoMatch = useCallback((pos: number) => {
     const target = findMatches[pos];
@@ -557,6 +741,11 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
     setTimeout(() => {
       const el = messageRefs.current[target];
       if (!el) return;
+      if (findScope === "tools" || findScope === "errors") {
+        const workLog = [...el.querySelectorAll<HTMLButtonElement>('section > button[aria-expanded]')]
+          .find((button) => button.parentElement?.getAttribute("aria-label") === t("chat.workLog"));
+        if (workLog?.getAttribute("aria-expanded") === "false") workLog.click();
+      }
       el.scrollIntoView({ block: "center", behavior: "smooth" });
       el.animate(
         [
@@ -566,7 +755,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
         { duration: 1400, easing: "ease-out" },
       );
     }, 60);
-  }, [findMatches, messageRefs, visibleKeys]);
+  }, [findMatches, findScope, messageRefs, t, visibleKeys]);
 
   // ⌥↑ / ⌥↓ — walk between user turns (each jump aligns a user message to
   // the viewport top, mirroring the send-time anchor position).
@@ -614,9 +803,15 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
 
   useEffect(() => {
     setFindPos(0);
-  }, [findQuery]);
+  }, [findQuery, findScope]);
 
   const isEmptyNew = isNew && messages.length === 0 && !streamState.isStreaming && !agentRunning;
+  const lastAssistantOutcome = useMemo(() => {
+    for (let index = messages.length - 1; index >= 0; index--) {
+      if (messages[index].role === "assistant") return messages[index] as import("@/lib/types").AssistantMessage;
+    }
+    return null;
+  }, [messages]);
 
   const availableThinkingLevels = displayModelValue
     ? (modelThinkingLevels[`${displayModelValue.provider}:${displayModelValue.modelId}`] ?? null)
@@ -656,6 +851,9 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
       onSoundToggle={onSoundToggle}
       cwd={tgdCwd}
       persistKey={session?.id ?? (newSessionCwd ? `new:${newSessionCwd}` : null)}
+      quote={messageQuote}
+      onClearQuote={() => setMessageQuoteState(null)}
+      onOpenQuote={openQuotedMessage}
     />
   );
 
@@ -693,7 +891,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
             {paneLabel ?? "session"}
           </span>
           {onClosePane && (
-            <button onClick={onClosePane} className={styles.paneClose} title="Close pane" aria-label="Close pane">
+            <button onClick={onClosePane} className={styles.paneClose} title={t("chat.closePane")} aria-label={t("chat.closePane")}>
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                 <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
               </svg>
@@ -765,7 +963,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                   title={`${phase.cmd} — ${t(phase.descKey)}`}
                 >
                   <span className={styles.phaseIcon} aria-hidden>{phase.icon}</span>
-                  <span className={styles.phaseLabel}>{phase.label}</span>
+                  <span className={styles.phaseLabel}>{t(phase.labelKey)}</span>
                 </button>
               ))}
             </div>
@@ -774,8 +972,9 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
         </div>
       ) : (
       <>
+      <style>{`::highlight(conversation-find) { background: var(--color-warning-bg-strong); color: var(--text); text-decoration: underline var(--color-warning-border); text-decoration-thickness: 1px; }`}</style>
       {pipelineHidden ? (
-        <button onClick={showPipeline} className={styles.pipelineShow} title="Show the tGD pipeline">
+        <button onClick={showPipeline} className={styles.pipelineShow} title={t("chat.showPipeline")}>
           tGD ▸
         </button>
       ) : (
@@ -784,6 +983,18 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
       <div className="relative flex flex-1 overflow-hidden">
         {findOpen && (
           <div className={`${styles.findBar} glass absolute right-4 top-2 z-20 flex items-center gap-1 rounded-lg border px-2 py-1 shadow-[var(--color-shadow-dropdown)]`}>
+            <select
+              value={findScope}
+              onChange={(event) => setFindScope(event.target.value as FindScope)}
+              className={styles.findScope}
+              aria-label={t("search.scopes")}
+            >
+              <option value="all">{t("chat.findScope.all")}</option>
+              <option value="user">{t("chat.findScope.user")}</option>
+              <option value="assistant">{t("chat.findScope.assistant")}</option>
+              <option value="tools">{t("chat.findScope.tools")}</option>
+              <option value="errors">{t("chat.findScope.errors")}</option>
+            </select>
             <input
               ref={findInputRef}
               value={findQuery}
@@ -803,7 +1014,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                   gotoMatch(next);
                 }
               }}
-              placeholder="Find in conversation…"
+              placeholder={t("chat.findPlaceholder")}
               className="w-44 bg-transparent text-[12px] text-[var(--text)] outline-none placeholder:text-[var(--text-dim)]"
               spellCheck={false}
             />
@@ -812,19 +1023,19 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
             </span>
             <button
               onClick={() => { if (findMatches.length) { const p = (findPos - 1 + findMatches.length) % findMatches.length; setFindPos(p); gotoMatch(p); } }}
-              className="rounded p-0.5 text-[var(--text-muted)] hover:bg-[var(--bg-hover)]" aria-label="Previous match"
+              className="rounded p-0.5 text-[var(--text-muted)] hover:bg-[var(--bg-hover)]" aria-label={t("chat.previousMatch")}
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15" /></svg>
             </button>
             <button
               onClick={() => { if (findMatches.length) { const p = (findPos + 1) % findMatches.length; setFindPos(p); gotoMatch(p); } }}
-              className="rounded p-0.5 text-[var(--text-muted)] hover:bg-[var(--bg-hover)]" aria-label="Next match"
+              className="rounded p-0.5 text-[var(--text-muted)] hover:bg-[var(--bg-hover)]" aria-label={t("chat.nextMatch")}
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
             </button>
             <button
               onClick={() => { setFindOpen(false); setFindQuery(""); }}
-              className="rounded p-0.5 text-[var(--text-muted)] hover:bg-[var(--bg-hover)]" aria-label="Close find"
+              className="rounded p-0.5 text-[var(--text-muted)] hover:bg-[var(--bg-hover)]" aria-label={t("chat.closeFind")}
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
             </button>
@@ -833,7 +1044,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
         {showJumpToBottom && (
           <button
             onClick={jumpToBottom}
-            aria-label="Jump to bottom"
+            aria-label={t("chat.jumpBottom")}
             className={`glass absolute bottom-4 left-1/2 z-10 flex h-8 -translate-x-1/2 items-center justify-center rounded-full border text-[var(--text-muted)] shadow-[var(--color-shadow-dropdown)] transition hover:text-[var(--text)] ${agentRunning && newLines > 0 ? "gap-1 px-3" : "w-8"} ${agentRunning ? "!border-[var(--color-accent-border)] text-[var(--accent)]" : ""}`}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><polyline points="19 12 12 19 5 12" /></svg>
@@ -852,27 +1063,51 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
               for (let i = messages.length - 1; i >= 0; i--) {
                 if (messages[i].role === "user") { lastUserIdx = i; break; }
               }
-              let refIdx = 0;
-              return messages.map((msg, idx) => {
-                const prevAssistantEntryId =
-                  msg.role === "user" && idx > 0 && messages[idx - 1].role === "assistant"
-                    ? entryIds[idx - 1]
-                    : undefined;
-                const isVisible = msg.role === "user" || msg.role === "assistant";
-                const currentRefIdx = isVisible ? refIdx++ : -1;
-                let showTimestamp = false;
-                if (msg.role === "assistant") {
-                  showTimestamp = true;
-                  for (let j = idx + 1; j < messages.length; j++) {
-                    const r = messages[j].role;
-                    if (r === "user") break;
-                    if (r === "assistant") { showTimestamp = false; break; }
+              const recoveredAuthIndices = new Set<number>();
+              const laterSuccessfulProviders = new Set<string>();
+              let hasLaterAssistantSuccess = false;
+              for (let i = messages.length - 1; i >= 0; i--) {
+                if (messages[i].role !== "assistant") continue;
+                const assistant = messages[i] as import("@/lib/types").AssistantMessage;
+                const provider = assistant.provider ?? "";
+                if (assistant.stopReason === "error" && isProviderAuthError(assistant.errorMessage)) {
+                  if (provider ? laterSuccessfulProviders.has(provider) : hasLaterAssistantSuccess) {
+                    recoveredAuthIndices.add(i);
                   }
+                  continue;
+                }
+                if (assistant.stopReason !== "error" && messageText(assistant).trim()) {
+                  hasLaterAssistantSuccess = true;
+                  if (provider) laterSuccessfulProviders.add(provider);
+                }
+              }
+              let refIdx = 0;
+              let seenUserMessage = false;
+              let previousVisibleRole: "user" | "assistant" | null = null;
+              return messages.map((msg, idx) => {
+                let prevAssistantEntryId: string | undefined;
+                if (msg.role === "user") {
+                  for (let j = idx - 1; j >= 0; j--) {
+                    if (entryIds[j]) { prevAssistantEntryId = entryIds[j]; break; }
+                  }
+                }
+                const isVisible = conversationLayout.displayIndexSet.has(idx);
+                if (msg.role === "assistant" && !isVisible) return null;
+                const startsNewTurn = msg.role === "user" && seenUserMessage;
+                const showModelLabel = msg.role !== "assistant" || previousVisibleRole !== "assistant";
+                const currentRefIdx = isVisible ? refIdx++ : -1;
+                let showTimestamp = msg.role === "assistant" && conversationLayout.finalAssistantIndices.has(idx);
+                if (msg.role === "assistant") {
                   // Hide on the currently-streaming tail (the streaming bubble owns the live timestamp)
                   if (showTimestamp && streamState.isStreaming && idx === messages.length - 1) {
                     showTimestamp = false;
                   }
                 }
+                const turnIndex = conversationLayout.turnIndexByMessageIndex.get(idx);
+                const turn = turnIndex === undefined ? undefined : conversationLayout.turns[turnIndex];
+                const turnStartedAt = turn?.userIndex !== null && turn?.userIndex !== undefined
+                  ? (messages[turn.userIndex] as AgentMessage & { timestamp?: number }).timestamp
+                  : undefined;
                 // entryIds is parallel to messages after a session load; freshly
                 // streamed messages have no entry id yet, so fall back to index
                 // (hex entry ids never collide with numeric keys).
@@ -892,15 +1127,42 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                     onEditRerun={agentRunning ? undefined : handleEditRerun}
                     showTimestamp={showTimestamp}
                     prevTimestamp={idx > 0 ? (messages[idx - 1] as import("@/lib/types").AgentMessage & { timestamp?: number }).timestamp : undefined}
+                    onOpenModels={onOpenModels}
+                    authRecovered={recoveredAuthIndices.has(idx)}
+                    showModelLabel={showModelLabel}
+                    turnActivityMessages={conversationLayout.activityByOwner.get(idx)}
+                    suppressActivityBlocks={conversationLayout.activityAssistantIndices.has(idx)}
+                    turnStartedAt={turnStartedAt}
+                    usageOverride={conversationLayout.usageByFinalAssistant.get(idx)}
+                    showUsage={conversationLayout.finalAssistantIndices.has(idx)}
+                    onQuote={entryIds[idx] && (msg.role === "user" || msg.role === "assistant")
+                      ? (text) => {
+                          const nextQuote: MessageQuote = { entryId: entryIds[idx]!, role: msg.role, text };
+                          setMessageQuoteState({ sessionId: session?.id, quote: nextQuote });
+                        }
+                      : undefined}
                   />
                 );
                 if (!isVisible) return view;
+                if (msg.role === "user") seenUserMessage = true;
+                previousVisibleRole = msg.role === "user" ? "user" : "assistant";
                 // The current turn (last user message onward) never collapses.
                 const collapsible = lastUserIdx === -1 ? idx < messages.length - 1 : idx < lastUserIdx;
                 const entryId = entryIds[idx];
                 const isBookmarked = !!entryId && bookmarks.has(entryId);
                 return (
-                  <div key={key} className="msg-item hover-group relative" ref={(el) => {
+                  <Fragment key={key}>
+                    {idx === unreadMessageIndex && (
+                      <div className={styles.unreadDivider} role="separator">
+                        <span>{t("chat.unread")}</span>
+                      </div>
+                    )}
+                  <div
+                    data-message-role={msg.role}
+                    data-entry-id={entryId}
+                    data-turn-start={startsNewTurn || undefined}
+                    className={`msg-item hover-group relative ${styles.messageItem} ${msg.role === "user" ? styles.messageItemUser : styles.messageItemAssistant} ${startsNewTurn ? styles.turnStart : ""}`}
+                    ref={(el) => {
                     messageRefs.current[currentRefIdx] = el;
                     if (idx === lastUserIdx) { (lastUserMsgRef as { current: HTMLDivElement | null }).current = el; }
                   }}>
@@ -925,23 +1187,26 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                       {view}
                     </CollapsibleMessage>
                   </div>
+                  </Fragment>
                 );
               });
             })()}
 
-            {/* One-click retry when the last run ended in failure */}
-            {!agentRunning && messages.length > 0 &&
-              messages[messages.length - 1].role === "assistant" &&
-              (messages[messages.length - 1] as { stopReason?: string }).stopReason === "error" && (
-              <button
-                onClick={() => void handleRetry()}
-                className="mb-3 inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-error-border,rgba(239,68,68,0.35))] bg-[var(--color-error-bg,rgba(239,68,68,0.08))] px-3 py-1.5 text-[12px] font-medium text-[var(--color-error-text)] transition hover:bg-[var(--color-error-bg-strong,rgba(239,68,68,0.16))]"
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <polyline points="23 4 23 10 17 10" /><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
-                </svg>
-                {t("chat.retry")}
-              </button>
+            {/* Recovery actions stay next to the interrupted outcome. Earlier
+                turns already expose edit/rerun + fork from the user message. */}
+            {!agentRunning && (lastAssistantOutcome?.stopReason === "error" || lastAssistantOutcome?.stopReason === "aborted") && (
+              <div className={styles.recoveryActions}>
+                {lastAssistantOutcome.stopReason === "aborted" && (
+                  <button type="button" onClick={() => void handleSend(t("chat.continuePrompt"))}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><polyline points="9 18 15 12 9 6" /></svg>
+                    {t("chat.continue")}
+                  </button>
+                )}
+                <button type="button" onClick={() => void handleRetry()}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><polyline points="23 4 23 10 17 10" /><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" /></svg>
+                  {t("chat.retry")}
+                </button>
+              </div>
             )}
 
             {bashRun && (
@@ -954,7 +1219,13 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
             )}
 
             {streamState.isStreaming && streamState.streamingMessage && (
-              <MessageView message={streamState.streamingMessage as AgentMessage} isStreaming modelNames={modelNames} />
+              <MessageView
+                message={streamState.streamingMessage as AgentMessage}
+                isStreaming
+                modelNames={modelNames}
+                toolResults={toolResultsMap}
+                showModelLabel={historicalTailRole !== "assistant"}
+              />
             )}
 
             {agentRunning && !streamState.streamingMessage && (
@@ -971,8 +1242,8 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                 )}
                 <span>
                   {stalledSecs > 0
-                    ? `No response for ${stalledSecs}s — the model or a tool may be stalled. Stop and retry if this persists.`
-                    : phaseLabel(agentPhase)}
+                    ? `${stalledSecs}s · ${t("chat.stalled")}`
+                    : phaseLabel(agentPhase, t)}
                 </span>
                 {agentStartedAt && <Elapsed since={agentStartedAt} />}
               </div>
@@ -990,7 +1261,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
           </div>
         </div>
         <ChatMinimap
-          messages={messages}
+          messages={visibleMessages}
           streamingMessage={streamState.streamingMessage}
           scrollContainer={scrollContainerRef}
           messageRefs={messageRefs}
@@ -998,6 +1269,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
         />
       </div>
 
+      <MobileTurnNavigator turns={mobileTurns} scrollContainer={scrollContainerRef} messageRefs={messageRefs} />
       <div className={`${styles.composerDock} relative`}>
         {/* Context-pressure nudge: suggest compaction before it's too late */}
         {contextUsage?.percent != null && contextUsage.percent >= 80 && !isCompacting && (

@@ -9,6 +9,7 @@ import type {
 } from "@/lib/types";
 import styles from "./UserMessageView.module.css";
 import { ImageLightbox } from "./ImageLightbox";
+import { useI18n } from "@/lib/i18n";
 
 function formatTime(ts?: number): string | null {
   if (!ts) return null;
@@ -42,7 +43,7 @@ function copyText(text: string): Promise<void> {
   }
 }
 
-export function UserMessageView({ message, entryId, onFork, forking, prevAssistantEntryId, onEditRerun }: {
+export function UserMessageView({ message, entryId, onFork, forking, prevAssistantEntryId, onEditRerun, onQuote }: {
   message: UserMessage;
   entryId?: string;
   onFork?: (entryId: string) => void;
@@ -53,9 +54,13 @@ export function UserMessageView({ message, entryId, onFork, forking, prevAssista
   /** @deprecated superseded by inline edit (onEditRerun) */
   onEditContent?: (content: string) => void;
   onEditRerun?: (prevAssistantEntryId: string | undefined, newText: string) => void;
+  onQuote?: (text: string) => void;
 }) {
+  const { t } = useI18n();
   const [copied, setCopied] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const actionsRef = useRef<HTMLDetailsElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   const content =
     typeof message.content === "string"
@@ -101,9 +106,18 @@ export function UserMessageView({ message, entryId, onFork, forking, prevAssista
       setTimeout(() => setCopied(false), 1500);
     });
   };
+  const quoteContent = () => {
+    if (!onQuote) return;
+    const selection = window.getSelection();
+    const selected = selection?.anchorNode && rootRef.current?.contains(selection.anchorNode)
+      ? selection.toString().trim()
+      : "";
+    onQuote(selected || content);
+  };
 
   return (
     <div
+      ref={rootRef}
       className={`hover-group ${styles.root}`}
     >
       <div className={styles.messageRow}>
@@ -125,14 +139,14 @@ export function UserMessageView({ message, entryId, onFork, forking, prevAssista
               spellCheck={false}
             />
             <div className={styles.editActions}>
-              <span className={styles.editHint}>Re-runs from here — later turns are replaced</span>
-              <button onClick={() => setEditing(false)} className={styles.editCancel}>Cancel</button>
+              <span className={styles.editHint}>{t("chat.editRerunHint")}</span>
+              <button onClick={() => setEditing(false)} className={styles.editCancel}>{t("common.cancel")}</button>
               <button onClick={commitEdit} disabled={!draft.trim()} className={styles.editRerunBtn}>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="23 4 23 10 17 10" />
                   <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
                 </svg>
-                Rerun
+                {t("chat.rerun")}
               </button>
             </div>
           </div>
@@ -177,10 +191,10 @@ export function UserMessageView({ message, entryId, onFork, forking, prevAssista
       {/* Bottom row: action buttons + timestamp (hidden while editing) */}
       {!editing && (
         <div className={styles.bottomRow}>
-          <div className={`hover-reveal ${styles.actionButtons}`}>
+          <div className={`hover-reveal ${styles.actionButtons} ${styles.primaryActions}`}>
             <button
               onClick={copyContent}
-              title="Copy message"
+              title={t("chat.copyMessage")}
               className={`${styles.actionButton} ${copied ? "text-accent" : "text-dim hover-accent"}`}
             >
               {copied ? (
@@ -193,28 +207,34 @@ export function UserMessageView({ message, entryId, onFork, forking, prevAssista
                   <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
                 </svg>
               )}
-              {copied ? "Copied" : "Copy"}
+              {copied ? t("common.copied") : t("common.copy")}
             </button>
+            {onQuote && (
+              <button type="button" onClick={quoteContent} title={t("chat.quote")} className={`${styles.actionButton} text-dim hover-accent`}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M3 21c3-6 7-9 14-9" /><path d="M13 7l5 5-5 5" /></svg>
+                {t("chat.quote")}
+              </button>
+            )}
           </div>
           {(canFork || canEdit) && (
-            <div className={`${forking ? "" : "hover-reveal"} ${styles.actionButtons}`}>
+            <div className={`${forking ? "" : "hover-reveal"} ${styles.actionButtons} ${styles.secondaryActions}`}>
               {canEdit && (
                 <button
                   onClick={startEdit}
-                  title="Edit this message and re-run from here — branches within this session"
+                  title={t("chat.editRerunHint")}
                   className={`${styles.actionButton} text-dim hover-accent`}
                 >
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
                   </svg>
-                  Edit
+                  {t("chat.edit")}
                 </button>
               )}
               {canFork && (
                 <button
                   onClick={() => { onFork!(entryId!); }}
                   disabled={forking}
-                  title={forking ? "Creating new session…" : "New session — creates an independent copy from here"}
+                  title={forking ? t("chat.creating") : t("chat.newSession")}
                   className={`${styles.actionButton} ${forking ? "text-accent" : "text-dim hover-accent"}`}
                 >
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -223,10 +243,57 @@ export function UserMessageView({ message, entryId, onFork, forking, prevAssista
                     <circle cx="6" cy="18" r="3" />
                     <path d="M18 9a9 9 0 0 1-9 9" />
                   </svg>
-                  {forking ? "Creating…" : "New session"}
+                  {forking ? t("chat.creating") : t("chat.newSession")}
                 </button>
               )}
             </div>
+          )}
+          {(canFork || canEdit || onQuote) && (
+            <details ref={actionsRef} className={styles.mobileActionMenu}>
+              <summary title={t("chat.moreActions")} aria-label={t("chat.moreActions")}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                  <circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" />
+                </svg>
+              </summary>
+              <div className={styles.mobileActionPanel}>
+                {canEdit && (
+                  <button
+                    onClick={() => { actionsRef.current?.removeAttribute("open"); startEdit(); }}
+                    className={`${styles.actionButton} text-dim hover-accent`}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                      <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
+                    </svg>
+                    {t("chat.edit")}
+                  </button>
+                )}
+                {onQuote && (
+                  <button
+                    type="button"
+                    onClick={() => { actionsRef.current?.removeAttribute("open"); quoteContent(); }}
+                    className={`${styles.actionButton} text-dim hover-accent`}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M3 21c3-6 7-9 14-9" /><path d="M13 7l5 5-5 5" /></svg>
+                    {t("chat.quote")}
+                  </button>
+                )}
+                {canFork && (
+                  <button
+                    onClick={() => { actionsRef.current?.removeAttribute("open"); onFork!(entryId!); }}
+                    disabled={forking}
+                    className={`${styles.actionButton} ${forking ? "text-accent" : "text-dim hover-accent"}`}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                      <line x1="6" y1="3" x2="6" y2="15" />
+                      <circle cx="18" cy="6" r="3" />
+                      <circle cx="6" cy="18" r="3" />
+                      <path d="M18 9a9 9 0 0 1-9 9" />
+                    </svg>
+                    {forking ? t("chat.creating") : t("chat.newSession")}
+                  </button>
+                )}
+              </div>
+            </details>
           )}
           {time && <span className={styles.timestamp}>{time}</span>}
         </div>

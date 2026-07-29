@@ -59,6 +59,62 @@
   font-size: calc(11px * var(--font-scale));
 }
 
+.focusBtn {
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.focusBtn:hover { background: var(--bg-hover); color: var(--text); }
+
+.lineJump {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 5px;
+  padding: 0 6px 0 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-panel);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.lineJump input {
+  width: 52px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  outline: none;
+}
+
+.focusCode {
+  min-width: max-content;
+  min-height: 100%;
+  padding: 14px 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: calc(13px * var(--font-scale));
+  line-height: 1.65;
+}
+
+.focusCodeWrap { min-width: 0; }
+.focusCodeLine { display: grid; grid-template-columns: 58px minmax(0, 1fr); min-height: 1.65em; }
+.focusCodeLineActive { background: var(--color-accent-bg); }
+.focusLineNumber { padding: 0 12px 0 4px; border: 0; background: transparent; color: var(--text-dim); cursor: pointer; font: inherit; text-align: right; user-select: none; }
+.focusLineNumber:hover { color: var(--accent); }
+.focusCodeLine code { padding-right: 18px; font: inherit; white-space: pre; }
+.focusCodeWrap .focusCodeLine code { white-space: pre-wrap; overflow-wrap: anywhere; }
+
 .previewBtn {
   border: 1px solid var(--border);
   cursor: pointer;
@@ -97,6 +153,12 @@
 }
 
 @media (max-width: 700px) {
+  .focusBtn,
+  .copyBtn { min-width: 40px; min-height: 40px; }
+  .lineJump { min-height: 40px; }
+  .lineJump span { display: none; }
+  .lineJump input { width: 42px; }
+  .focusCodeLine { grid-template-columns: 48px minmax(0, 1fr); }
   .blockContainer {
     border-radius: var(--radius-md);
   }

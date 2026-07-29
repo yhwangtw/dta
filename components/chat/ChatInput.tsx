@@ -25,6 +25,12 @@ export interface AttachedImage {
   previewUrl: string; // object URL for display
 }
 
+export interface MessageQuote {
+  entryId: string;
+  role: "user" | "assistant";
+  text: string;
+}
+
 interface Props {
   onSend: (message: string, images?: AttachedImage[]) => Promise<boolean>;
   onAbort: () => void;
@@ -55,6 +61,9 @@ interface Props {
   cwd?: string | null;
   /** Stable per-session key for draft/history persistence. */
   persistKey?: string | null;
+  quote?: MessageQuote | null;
+  onClearQuote?: () => void;
+  onOpenQuote?: (entryId: string) => void;
 }
 
 /**
@@ -100,6 +109,9 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
   soundEnabled, onSoundToggle,
   cwd,
   persistKey,
+  quote,
+  onClearQuote,
+  onOpenQuote,
 }: Props, ref) {
   const { t } = useI18n();
   const { prompts } = usePrompts();
@@ -372,10 +384,12 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
     const submittedImages = [...attachedImages];
     setIsSubmitting(true);
     try {
-      const sent = await onSend(msg, submittedImages.length ? submittedImages : undefined);
+      const outgoing = quote ? `> ${quote.text.replace(/\n/g, "\n> ")}\n\n${msg}` : msg;
+      const sent = await onSend(outgoing, submittedImages.length ? submittedImages : undefined);
       if (!sent) return;
-      pushHistory(msg);
+      pushHistory(outgoing);
       clearImages(submittedImages);
+      onClearQuote?.();
       if ((textareaRef.current?.value ?? value) === submittedValue) {
         setValue("");
         clearDraft(persistKey ?? null);
@@ -384,7 +398,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
     } finally {
       setIsSubmitting(false);
     }
-  }, [value, attachedImages, isStreaming, isSubmitting, onSend, clearImages, pushHistory, persistKey]);
+  }, [value, attachedImages, isStreaming, isSubmitting, onSend, clearImages, pushHistory, persistKey, quote, onClearQuote]);
 
   const sendQueued = useCallback(async (mode: StreamingSendMode) => {
     const msg = value.trim();
@@ -394,14 +408,16 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
     setIsSubmitting(true);
     try {
       let sent = false;
+      const outgoing = quote ? `> ${quote.text.replace(/\n/g, "\n> ")}\n\n${msg}` : msg;
       if (mode === "steer" && onSteer) {
-        sent = await onSteer(msg, submittedImages.length ? submittedImages : undefined);
+        sent = await onSteer(outgoing, submittedImages.length ? submittedImages : undefined);
       } else if (mode === "followup" && onFollowUp) {
-        sent = await onFollowUp(msg, submittedImages.length ? submittedImages : undefined);
+        sent = await onFollowUp(outgoing, submittedImages.length ? submittedImages : undefined);
       }
       if (sent) {
-        pushHistory(msg);
+        pushHistory(outgoing);
         clearImages(submittedImages);
+        onClearQuote?.();
         if ((textareaRef.current?.value ?? value) === submittedValue) {
           setValue("");
           clearDraft(persistKey ?? null);
@@ -411,7 +427,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
     } finally {
       setIsSubmitting(false);
     }
-  }, [value, attachedImages, isSubmitting, onSteer, onFollowUp, clearImages, pushHistory, persistKey]);
+  }, [value, attachedImages, isSubmitting, onSteer, onFollowUp, clearImages, pushHistory, persistKey, quote, onClearQuote]);
 
   const chooseStreamingSendMode = useCallback((mode: StreamingSendMode) => {
     setStreamingSendMode(mode);
@@ -723,7 +739,18 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
               <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
               <path d="M3 3v5h5" />
             </svg>
-            Retrying ({retryInfo.attempt}/{retryInfo.maxAttempts})…{retryInfo.errorMessage && <span className={styles.retryErrorText}>— {retryInfo.errorMessage}</span>}
+            {t("input.retrying")} ({retryInfo.attempt}/{retryInfo.maxAttempts})…{retryInfo.errorMessage && <span className={styles.retryErrorText}>— {retryInfo.errorMessage}</span>}
+          </div>
+        )}
+        {quote && (
+          <div className={styles.quoteRow} aria-label={quote.role === "user" ? t("chat.quoteYou") : t("chat.quoteAssistant")}>
+            <button type="button" className={styles.quoteOpen} onClick={() => onOpenQuote?.(quote.entryId)} title={t("chat.openQuote")}>
+              <span className={styles.quoteLabel}>{quote.role === "user" ? t("chat.quoteYou") : t("chat.quoteAssistant")}</span>
+              <span className={styles.quotePreview}>{quote.text}</span>
+            </button>
+            <button type="button" className={styles.quoteRemove} onClick={onClearQuote} aria-label={t("chat.clearQuote")} title={t("chat.clearQuote")}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+            </button>
           </div>
         )}
         {contextMentions.length > 0 && (

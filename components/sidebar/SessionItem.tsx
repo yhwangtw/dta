@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef } from "react";
 import type { SessionInfo } from "@/lib/types";
-import { formatRelativeTime } from "./session-utils";
+import { formatRelativeTime, getSessionDisplayTitle } from "./session-utils";
 import { getTagStyle } from "@/lib/tag-colors";
 import { useTheme } from "@/hooks/useTheme";
 import { useI18n } from "@/lib/i18n";
@@ -59,7 +59,7 @@ export function SessionItem({
   const { theme } = useTheme();
   const { t } = useI18n();
 
-  const title = session.name || session.firstMessage.slice(0, 50) || session.id.slice(0, 12);
+  const title = getSessionDisplayTitle(session, 50);
 
   const startRename = useCallback(() => {
     setRenameValue(session.name ?? "");

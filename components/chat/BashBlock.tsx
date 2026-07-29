@@ -2,6 +2,7 @@
 
 import { memo, useEffect, useRef } from "react";
 import styles from "./BashBlock.module.css";
+import { useI18n } from "@/lib/i18n";
 
 interface Props {
   command: string;
@@ -20,6 +21,7 @@ interface Props {
  * message from the session file.
  */
 export const BashBlock = memo(function BashBlock({ command, output, running, exitCode, cancelled, truncated, onAbort }: Props) {
+  const { t } = useI18n();
   const outputRef = useRef<HTMLPreElement | null>(null);
 
   // Follow the output while streaming
@@ -32,7 +34,7 @@ export const BashBlock = memo(function BashBlock({ command, output, running, exi
   const status = running
     ? null
     : cancelled
-      ? { label: "cancelled", tone: styles.badgeWarn }
+      ? { label: t("bash.cancelled"), tone: styles.badgeWarn }
       : exitCode === 0 || exitCode === undefined || exitCode === null
         ? { label: "exit 0", tone: styles.badgeOk }
         : { label: `exit ${exitCode}`, tone: styles.badgeErr };
@@ -44,19 +46,19 @@ export const BashBlock = memo(function BashBlock({ command, output, running, exi
         <span className={styles.command} title={command}>{command}</span>
         {running ? (
           <>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className={styles.spinner} aria-label="Running">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className={styles.spinner} aria-label={t("bash.running")}>
               <path d="M21 12a9 9 0 1 1-6.2-8.56" />
             </svg>
             {onAbort && (
               <button onClick={onAbort} className={styles.abortButton}>
-                Cancel
+                {t("bash.cancel")}
               </button>
             )}
           </>
         ) : (
           status && <span className={`${styles.badge} ${status.tone}`}>{status.label}</span>
         )}
-        {truncated && !running && <span className={styles.truncated}>truncated</span>}
+        {truncated && !running && <span className={styles.truncated}>{t("bash.truncated")}</span>}
       </div>
       {(output || running) && (
         <pre ref={outputRef} className={styles.output}>{output || "…"}</pre>

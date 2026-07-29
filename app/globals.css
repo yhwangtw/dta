@@ -1084,6 +1084,13 @@ span.linenumber {
 }
 
 @media (max-width: 700px) {
+  /* Narrow layouts are touch-first even when the browser reports a fine
+     pointer (hybrid devices, responsive preview, remote-control sessions). */
+  .hover-group .hover-reveal {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
   .markdown-body {
     font-size: calc(14px * var(--font-scale));
     line-height: 1.62;

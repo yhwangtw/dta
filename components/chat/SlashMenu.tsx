@@ -3,6 +3,7 @@
 import { useRef } from "react";
 import type { SlashItem } from "./chat-input-constants";
 import styles from "./SlashMenu.module.css";
+import { useI18n } from "@/lib/i18n";
 
 interface SlashMenuProps {
   show: boolean;
@@ -22,6 +23,7 @@ export function filterSlashItems(items: SlashItem[], filter: string): SlashItem[
 }
 
 export function SlashMenu({ show, items, filter, selectedIndex, onSelect, onHover, onLeave }: SlashMenuProps) {
+  const { t } = useI18n();
   const menuRef = useRef<HTMLDivElement>(null);
 
   const filtered = filterSlashItems(items, filter);
@@ -43,7 +45,7 @@ export function SlashMenu({ show, items, filter, selectedIndex, onSelect, onHove
         >
           <span className={styles.commandName}>
             {item.name}
-            {item.isTemplate && <span className={styles.templateTag}>template</span>}
+            {item.isTemplate && <span className={styles.templateTag}>{t("input.template")}</span>}
           </span>
           <span className={styles.description}>
             {item.description}

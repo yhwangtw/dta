@@ -11,8 +11,21 @@ interface Props {
   wide?: boolean;
 }
 
+/** Strip ANSI SGR sequences, including fragments persisted without the ESC byte. */
+export function stripTerminalFormatting(value: string): string {
+  return value
+    .replaceAll("\u001b", "")
+    .replaceAll("\u009b", "[")
+    .replace(/\[(?:\d{1,3};)*\d{1,3}m/g, "")
+    .trim();
+}
+
 function visibleStatuses(statuses: ExtensionUIState["statuses"]) {
-  return Object.entries(statuses).filter(([key, text]) => {
+  return Object.entries(statuses).map(([rawKey, rawText]) => {
+    const key = stripTerminalFormatting(rawKey);
+    const text = stripTerminalFormatting(rawText);
+    return [key, text] as const;
+  }).filter(([key, text]) => {
     if (key.toLocaleLowerCase() !== "telegram") return true;
     const normalized = text.trim().replace(/\s+/g, " ").toLocaleLowerCase();
     return normalized !== "connected" && normalized !== "telegram connected";
@@ -53,14 +66,16 @@ export function ExtensionWidgets({ state, placement, wide = false, bare = false 
   wide?: boolean;
   bare?: boolean;
 }) {
-  const widgets = Object.entries(state.widgets).filter(([, widget]) => widget.placement === placement);
+  const widgets = Object.entries(state.widgets)
+    .filter(([, widget]) => widget.placement === placement)
+    .map(([key, widget]) => [stripTerminalFormatting(key), widget] as const);
   if (widgets.length === 0) return null;
   const content = (
     <div className={styles.widgets}>
       {widgets.map(([key, widget]) => (
         <section key={key} className={styles.widget} aria-label={key}>
           <span className={styles.widgetKey}>{key}</span>
-          <span className={styles.widgetText}>{widget.lines.join("\n")}</span>
+          <span className={styles.widgetText}>{stripTerminalFormatting(widget.lines.join("\n"))}</span>
         </section>
       ))}
     </div>

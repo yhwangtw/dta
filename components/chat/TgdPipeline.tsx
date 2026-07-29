@@ -1,7 +1,8 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import styles from "./TgdPipeline.module.css";
+import { useI18n } from "@/lib/i18n";
 
 export type PhaseStatus = "done" | "current" | "todo";
 
@@ -29,18 +30,44 @@ interface Props {
  * and the rest are "todo". Clicking a phase drops its command into the composer.
  */
 export function TgdPipeline({ phases, statusOf, onRun, feature, onHide }: Props) {
+  const { t } = useI18n();
+  const [mobileExpanded, setMobileExpanded] = useState(false);
+  const phaseListId = useId();
+  const current = phases.find((phase) => statusOf(phase.cmd) === "current")
+    ?? phases.find((phase) => statusOf(phase.cmd) === "todo")
+    ?? phases.at(-1);
+  const doneCount = phases.filter((phase) => statusOf(phase.cmd) === "done").length;
+
   return (
     <div className={styles.bar}>
       <span className={styles.brand}>tGD</span>
-      {feature && <span className={styles.feature} title={`Tracking feature: ${feature}`}>{feature}</span>}
-      <div className={styles.track}>
+      {feature && <span className={styles.feature} title={`${t("chat.trackingFeature")}: ${feature}`}>{feature}</span>}
+      {current && (
+        <button
+          type="button"
+          className={styles.mobileSummary}
+          onClick={() => setMobileExpanded((expanded) => !expanded)}
+          aria-expanded={mobileExpanded}
+          aria-controls={phaseListId}
+        >
+          <span className={styles.mobileCurrent}>
+            <span className={styles.mobileCurrentLabel}>{current.label}</span>
+            {feature && <span className={styles.mobileFeature}>{feature}</span>}
+          </span>
+          <span className={styles.mobileProgress}>{doneCount}/{phases.length}</span>
+          <svg className={styles.mobileChevron} width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </button>
+      )}
+      <div id={phaseListId} className={`${styles.track} ${mobileExpanded ? styles.trackMobileOpen : ""}`}>
         {phases.map((phase, i) => {
           const status = statusOf(phase.cmd);
           return (
             <div key={phase.cmd} className={styles.step}>
               {i > 0 && <span className={`${styles.connector} ${styles[`conn_${status}`]}`} />}
               <button
-                onClick={() => onRun(phase.cmd)}
+                onClick={() => { onRun(phase.cmd); setMobileExpanded(false); }}
                 className={`${styles.phase} ${styles[status]}`}
                 title={`${phase.cmd} — ${phase.desc}`}
                 aria-current={status === "current" ? "step" : undefined}
@@ -57,7 +84,7 @@ export function TgdPipeline({ phases, statusOf, onRun, feature, onHide }: Props)
         })}
       </div>
       {onHide && (
-        <button onClick={onHide} className={styles.hide} title="Hide the tGD pipeline" aria-label="Hide tGD pipeline">
+        <button onClick={onHide} className={styles.hide} title={t("chat.hidePipeline")} aria-label={t("chat.hidePipeline")}>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
         </button>
       )}

@@ -35,6 +35,8 @@
   white-space: nowrap;
 }
 
+.mobileSummary { display: none; }
+
 .track {
   display: flex;
   align-items: center;
@@ -139,16 +141,75 @@
 /* Narrow screens: tighten spacing and drop the "tGD" wordmark so more of the
    scrollable phase track is visible. The track keeps its overflow-x scroll. */
 @media (max-width: 640px) {
-  .bar { gap: 4px; padding: 4px 6px; }
+  .bar {
+    gap: 4px;
+    min-height: 48px;
+    padding: 3px 6px;
+    flex-wrap: wrap;
+  }
   .brand { display: none; }
   .feature {
-    max-width: 104px;
-    padding: 2px 6px;
+    display: none;
+  }
+  .mobileSummary {
+    display: flex;
+    min-width: 0;
+    min-height: 42px;
+    flex: 1 1 auto;
+    align-items: center;
+    gap: 7px;
+    padding: 4px 8px;
+    border: 0;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--text);
+    text-align: left;
+  }
+  .mobileCurrent {
+    display: flex;
+    min-width: 0;
+    flex: 1 1 auto;
+    align-items: baseline;
+    gap: 7px;
+  }
+  .mobileCurrentLabel {
+    flex: 0 0 auto;
+    color: var(--accent);
+    font-size: calc(12px * var(--font-scale));
+    font-weight: 650;
+  }
+  .mobileFeature {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+    font-size: calc(10px * var(--font-scale));
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .mobileProgress {
+    flex: 0 0 auto;
+    color: var(--text-dim);
+    font-family: var(--font-mono);
     font-size: calc(10px * var(--font-scale));
   }
+  .mobileChevron {
+    flex: 0 0 auto;
+    color: var(--text-dim);
+    transition: transform 0.15s ease;
+  }
+  .mobileSummary[aria-expanded="true"] .mobileChevron {
+    transform: rotate(180deg);
+  }
   .track {
-    flex-basis: 0;
+    display: none;
+    order: 4;
+    flex: 1 0 100%;
     scroll-padding-inline: 4px;
+    padding: 2px 0 4px;
+  }
+  .trackMobileOpen {
+    display: flex;
   }
   .phase {
     min-height: 40px;
@@ -168,6 +229,6 @@
 }
 
 @media (max-width: 380px) {
-  .feature { max-width: 70px; }
+  .mobileFeature { max-width: 110px; }
   .connector { width: 4px; }
 }

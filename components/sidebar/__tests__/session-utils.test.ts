@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildSessionTree } from "../session-utils";
+import { buildSessionTree, getSessionDisplayTitle } from "../session-utils";
 import type { SessionInfo } from "@/lib/types";
 
 const s = (id: string, over: Partial<SessionInfo> = {}): SessionInfo => ({
@@ -51,5 +51,17 @@ describe("buildSessionTree sort modes", () => {
     const tree = buildSessionTree(withForks, "name");
     expect(tree).toHaveLength(1);
     expect(tree[0].children.map((c) => c.session.id)).toEqual(["f2", "f1"]);
+  });
+});
+
+describe("getSessionDisplayTitle", () => {
+  it("prefers a custom name, then the first message, without exposing the id", () => {
+    expect(getSessionDisplayTitle(s("secret-id", { name: "Release polish", firstMessage: "fallback" }))).toBe("Release polish");
+    expect(getSessionDisplayTitle(s("secret-id", { name: undefined, firstMessage: "Fix the mobile layout" }))).toBe("Fix the mobile layout");
+    expect(getSessionDisplayTitle(s("secret-id", { name: undefined, firstMessage: "" }))).toBe("Untitled session");
+  });
+
+  it("truncates long titles with an ellipsis", () => {
+    expect(getSessionDisplayTitle(s("x", { firstMessage: "123456789" }), 6)).toBe("12345…");
   });
 });

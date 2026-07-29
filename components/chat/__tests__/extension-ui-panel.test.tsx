@@ -117,4 +117,21 @@ describe("ExtensionUIPanel", () => {
     expect(container!.childElementCount).toBe(0);
     expect(container!.textContent).not.toContain("telegram");
   });
+
+  it("removes ANSI fragments from extension statuses and widgets", async () => {
+    const state: ExtensionUIState = {
+      dialogs: [],
+      statuses: { "[38;5;109mtelegram[39m": "[38;5;44mdisconnected[39m" },
+      widgets: {
+        health: { lines: ["\u001b[31mNeeds attention\u001b[0m"], placement: "aboveEditor" },
+      },
+    };
+
+    await render(state);
+
+    expect(container!.textContent).toContain("telegram");
+    expect(container!.textContent).toContain("disconnected");
+    expect(container!.textContent).toContain("Needs attention");
+    expect(container!.textContent).not.toMatch(/\[(?:\d{1,3};)*\d{1,3}m/);
+  });
 });

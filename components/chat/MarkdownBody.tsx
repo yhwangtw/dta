@@ -1,7 +1,7 @@
 "use client";
 
 import type { Pluggable, PluggableList } from "unified";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 // PrismAsync keeps the full language set but splits refractor + languages into
@@ -10,6 +10,8 @@ import { PrismAsync as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vs, vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { useTheme } from "@/hooks/useTheme";
 import { looksLikeFilePath, requestOpenFile } from "@/lib/file-links";
+import { useI18n } from "@/lib/i18n";
+import { FocusDialog } from "./FocusDialog";
 import styles from "./MarkdownBody.module.css";
 
 interface MarkdownBodyProps {
@@ -201,6 +203,7 @@ function normalizeDisplayMath(markdown: string): string {
 
 function MermaidBlock({ code, isStreaming }: { code: string; isStreaming?: boolean }) {
   const { isDark } = useTheme();
+  const { t } = useI18n();
   const [showPreview, setShowPreview] = useState(false);
   const [svg, setSvg] = useState<string | null>(null);
   const [renderedKey, setRenderedKey] = useState("");
@@ -255,10 +258,10 @@ function MermaidBlock({ code, isStreaming }: { code: string; isStreaming?: boole
     <button
       onClick={() => setShowPreview((v) => !v)}
       disabled={isStreaming}
-      title={isStreaming ? "Preview available after streaming" : (showPreview ? "Show Mermaid source" : "Preview Mermaid diagram")}
+      title={isStreaming ? t("code.previewAfterStream") : (showPreview ? t("code.showDiagramSource") : t("code.previewDiagram"))}
       className={previewBtnClass}
     >
-      {showPreview ? "Source" : "Preview"}
+      {showPreview ? t("code.source") : t("code.preview")}
     </button>
   );
 
@@ -268,9 +271,9 @@ function MermaidBlock({ code, isStreaming }: { code: string; isStreaming?: boole
 
   const body =
     failedKey === currentKey ? (
-      <div className="mermaid-block mermaid-block-error">Invalid Mermaid diagram</div>
+      <div className="mermaid-block mermaid-block-error">{t("code.invalidDiagram")}</div>
     ) : !svg || renderedKey !== currentKey ? (
-      <div className="mermaid-block mermaid-block-loading" aria-label="Rendering Mermaid diagram" />
+      <div className="mermaid-block mermaid-block-loading" aria-label={t("code.renderingDiagram")} />
     ) : (
       <div
         className="mermaid-block"
@@ -291,7 +294,12 @@ function MermaidBlock({ code, isStreaming }: { code: string; isStreaming?: boole
 
 function CodeBlock({ code, lang, headerAction, plain }: { code: string; lang: string; headerAction?: ReactNode; plain?: boolean }) {
   const { isDark } = useTheme();
+  const { t } = useI18n();
   const [copied, setCopied] = useState(false);
+  const [focusOpen, setFocusOpen] = useState(false);
+  const [focusWrap, setFocusWrap] = useState(false);
+  const [focusLine, setFocusLine] = useState(1);
+  const focusCodeRef = useRef<HTMLDivElement>(null);
 
   const copy = () => {
     copyText(code).then(() => {
@@ -300,6 +308,12 @@ function CodeBlock({ code, lang, headerAction, plain }: { code: string; lang: st
     });
   };
 
+  useEffect(() => {
+    if (!focusOpen) return;
+    focusCodeRef.current?.querySelector<HTMLElement>(`[data-line="${focusLine}"]`)
+      ?.scrollIntoView({ block: "center" });
+  }, [focusLine, focusOpen]);
+
   return (
     <div className={styles.blockContainer}>
       <div className={styles.blockHeader}>
@@ -307,10 +321,22 @@ function CodeBlock({ code, lang, headerAction, plain }: { code: string; lang: st
         <div className={styles.headerActions}>
           {headerAction}
           <button
+            type="button"
+            onClick={() => setFocusOpen(true)}
+            className={styles.focusBtn}
+            title={t("code.focus")}
+            aria-label={t("code.focus")}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M8 3H3v5M16 21h5v-5M3 8l5-5M21 16l-5 5" />
+            </svg>
+          </button>
+          <button
             onClick={copy}
             className={styles.copyBtn}
+            aria-label={copied ? t("common.copied") : t("common.copy")}
           >
-            {copied ? "copied" : "copy"}
+            {copied ? t("common.copied") : t("common.copy")}
           </button>
         </div>
       </div>
@@ -343,6 +369,37 @@ function CodeBlock({ code, lang, headerAction, plain }: { code: string; lang: st
         {code}
       </SyntaxHighlighter>
       )}
+      <FocusDialog
+        open={focusOpen}
+        title={lang || t("code.plainText")}
+        onClose={() => setFocusOpen(false)}
+        wrap={focusWrap}
+        onWrapChange={setFocusWrap}
+        actions={(
+          <>
+            <label className={styles.lineJump}>
+              <span>{t("code.line")}</span>
+              <input
+                type="number"
+                min={1}
+                max={Math.max(1, code.split("\n").length)}
+                value={focusLine}
+                onChange={(event) => setFocusLine(Math.max(1, Math.min(code.split("\n").length, Number(event.target.value) || 1)))}
+              />
+            </label>
+            <button type="button" onClick={copy}>{copied ? t("common.copied") : t("common.copy")}</button>
+          </>
+        )}
+      >
+        <div ref={focusCodeRef} className={`${styles.focusCode} ${focusWrap ? styles.focusCodeWrap : ""}`}>
+          {code.split("\n").map((line, index) => (
+            <div key={index} data-line={index + 1} className={`${styles.focusCodeLine} ${focusLine === index + 1 ? styles.focusCodeLineActive : ""}`}>
+              <button type="button" className={styles.focusLineNumber} onClick={() => setFocusLine(index + 1)} aria-label={`${t("code.line")} ${index + 1}`}>{index + 1}</button>
+              <code>{line || " "}</code>
+            </div>
+          ))}
+        </div>
+      </FocusDialog>
     </div>
   );
 }

@@ -12,7 +12,17 @@ import type {
 } from "@/lib/types";
 import { DiffViewMode } from "@/components/layout/text-viewer/DiffViewMode";
 import { getLanguage } from "@/lib/file-mime";
+import { useI18n } from "@/lib/i18n";
+import { ToolRunGroup, type ToolRunItem } from "./ToolRunGroup";
+import { TurnActivityGroup } from "./TurnActivityGroup";
+import { FocusDialog } from "./FocusDialog";
+import type { AssistantUsage } from "@/lib/usage-aggregation";
+import { requestOpenFile } from "@/lib/file-links";
 import styles from "./AssistantMessageView.module.css";
+
+export function isProviderAuthError(errorMessage?: string): boolean {
+  return !!errorMessage && /(?:no api key|unauthori[sz]ed|authentication|credential|sign[ -]?in|log[ -]?in|openai-codex)/i.test(errorMessage);
+}
 
 function formatTime(ts?: number): string | null {
   if (!ts) return null;
@@ -53,6 +63,15 @@ export function AssistantMessageView({
   modelNames,
   showTimestamp,
   prevTimestamp,
+  onOpenModels,
+  authRecovered,
+  showModelLabel = true,
+  turnActivityMessages,
+  suppressActivityBlocks,
+  turnStartedAt,
+  usageOverride,
+  showUsage = true,
+  onQuote,
 }: {
   message: AssistantMessage;
   isStreaming?: boolean;
@@ -60,14 +79,31 @@ export function AssistantMessageView({
   modelNames?: Record<string, string>;
   showTimestamp?: boolean;
   prevTimestamp?: number;
+  onOpenModels?: () => void;
+  authRecovered?: boolean;
+  showModelLabel?: boolean;
+  turnActivityMessages?: AssistantMessage[];
+  suppressActivityBlocks?: boolean;
+  turnStartedAt?: number;
+  usageOverride?: AssistantUsage;
+  showUsage?: boolean;
+  onQuote?: (text: string) => void;
 }) {
+  const { t } = useI18n();
   const time = showTimestamp ? formatTime(message.timestamp) : null;
-  const blocks = message.content ?? [];
+  const blocks = useMemo(() => message.content ?? [], [message.content]);
   const [copied, setCopied] = useState(false);
   const streamStartRef = useRef<number | null>(null);
   const [tps, setTps] = useState<number | null>(null);
   const blocksRef = useRef(blocks);
+  const rootRef = useRef<HTMLDivElement>(null);
   blocksRef.current = blocks;
+  const displayBlocks = useMemo(
+    () => suppressActivityBlocks
+      ? blocks.filter((block) => block.type !== "thinking" && block.type !== "toolCall")
+      : blocks,
+    [blocks, suppressActivityBlocks],
+  );
 
   // Streaming-based timing for thinking blocks
   const blockStartTimesRef = useRef<Map<number, number>>(new Map());
@@ -107,6 +143,26 @@ export function AssistantMessageView({
       setTimeout(() => setCopied(false), 1500);
     });
   };
+
+  const quoteContent = () => {
+    if (!onQuote) return;
+    const selection = window.getSelection();
+    const selected = selection?.anchorNode && rootRef.current?.contains(selection.anchorNode)
+      ? selection.toString().trim()
+      : "";
+    onQuote(selected || textContent);
+  };
+
+  const activeToolCallId = useMemo(() => {
+    if (!isStreaming) return undefined;
+    for (let i = blocks.length - 1; i >= 0; i--) {
+      const block = blocks[i];
+      if (block.type === "toolCall" && !toolResults?.has(block.toolCallId)) {
+        return block.toolCallId;
+      }
+    }
+    return undefined;
+  }, [blocks, isStreaming, toolResults]);
 
   useEffect(() => {
     if (!isStreaming) {
@@ -163,9 +219,9 @@ export function AssistantMessageView({
   }, [isStreaming]);
 
   return (
-    <div className={`hover-group ${styles.messageContainer}`}>
+    <div ref={rootRef} className={`hover-group ${styles.messageContainer}`}>
       {/* Model label */}
-      <div className={styles.modelLabel}>
+      {showModelLabel && <div className={styles.modelLabel}>
         {message.provider && (
           <span className={styles.modelName}>{modelNames?.[`${message.provider}:${message.model}`] ?? modelNames?.[message.model] ?? message.model}</span>
         )}
@@ -181,7 +237,7 @@ export function AssistantMessageView({
             <>
 
               {est > 0 && (
-                <span className={styles.tokenCount} title="预估 token 数（流式接收中）">
+                <span className={styles.tokenCount} title={t("chat.estimatedTokens")}>
                   <span className={styles.tokenCountInner}>
                     <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
                       <line x1="5" y1="1.5" x2="5" y2="8.5" /><polyline points="2 6 5 8.5 8 6" />
@@ -201,37 +257,73 @@ export function AssistantMessageView({
             </>
           );
         })()}
-      </div>
+      </div>}
 
       <div className={styles.blocksContainer}>
-        {blocks.map((block, i) => (
-          <BlockView key={i} block={block} toolResults={toolResults} isStreaming={isStreaming} streamingDuration={streamingDurations.get(i) ?? (block.type === "thinking" ? thinkingDurationFromFile : undefined)} toolCallDurations={toolCallDurations} />
-        ))}
+        {turnActivityMessages && turnActivityMessages.length > 0 && (
+          <TurnWorkLog messages={turnActivityMessages} toolResults={toolResults} turnStartedAt={turnStartedAt} />
+        )}
+        {renderBlocks({
+          blocks: displayBlocks,
+          toolResults,
+          isStreaming,
+          streamingDurations,
+          thinkingDurationFromFile,
+          toolCallDurations,
+          activeToolCallId,
+        })}
       </div>
 
       {!isStreaming && message.stopReason === "error" && (
+        authRecovered && isProviderAuthError(message.errorMessage) ? (
+          <details className={styles.recoveredError}>
+            <summary className={styles.recoveredErrorSummary}>
+              <span className={styles.recoveredIcon} aria-hidden>✓</span>
+              <span>{t("chat.authRecovered")}</span>
+              <span className={styles.recoveredContext}>{t("chat.earlierConnectionIssue")}</span>
+              <svg className={styles.recoveredChevron} width="11" height="11" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <polyline points="2 3.5 5 6.5 8 3.5" />
+              </svg>
+            </summary>
+            <div className={styles.recoveredErrorDetail}>{message.errorMessage}</div>
+          </details>
+        ) : (
         <div className={styles.errorCard} role="alert">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
             <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
             <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
           </svg>
-          <span>{message.errorMessage || "Model call failed"}</span>
+          <div className={styles.errorBody}>
+            <span>{message.errorMessage || t("chat.modelFailed")}</span>
+            {isProviderAuthError(message.errorMessage) && (
+              onOpenModels ? (
+                <button type="button" className={styles.reconnectButton} onClick={onOpenModels}>
+                  {t("chat.reconnectModel")}
+                </button>
+              ) : null
+            )}
+          </div>
         </div>
+        )
       )}
       {!isStreaming && message.stopReason === "aborted" && (
-        <div className={styles.abortedNote}>Stopped by user</div>
+        <div className={styles.abortedNote}>{t("chat.stopped")}</div>
       )}
 
       <div className={styles.footer}>
-        {message.usage && !isStreaming && (
-          <div className={styles.usageText}>
-            {formatUsage(message.usage)}
-          </div>
+        {showUsage && (usageOverride ?? message.usage) && !isStreaming && (
+          <UsageDetails usage={(usageOverride ?? message.usage)!} />
+        )}
+        {textContent && !isStreaming && onQuote && (
+          <button type="button" onClick={quoteContent} title={t("chat.quote")} className={`${styles.copyButton} hover-reveal text-dim hover-accent`}>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M3 21c3-6 7-9 14-9" /><path d="M13 7l5 5-5 5" /></svg>
+            <span className={styles.copyLabel}>{t("chat.quote")}</span>
+          </button>
         )}
         {textContent && !isStreaming && (
           <button
             onClick={copyContent}
-            title="Copy message"
+            title={t("chat.copyMessage")}
             className={`${styles.copyButton} hover-reveal ${copied ? "text-accent" : "text-dim hover-accent"}`}
           >
             {copied ? (
@@ -244,7 +336,7 @@ export function AssistantMessageView({
                 <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
               </svg>
             )}
-            {copied ? "Copied" : "Copy"}
+            <span className={styles.copyLabel}>{copied ? t("common.copied") : t("common.copy")}</span>
           </button>
         )}
         {time && !isStreaming && (
@@ -254,18 +346,140 @@ export function AssistantMessageView({
     </div>
   );
 
-function BlockView({ block, toolResults, isStreaming, streamingDuration, toolCallDurations }: { block: AssistantContentBlock; toolResults?: Map<string, ToolResultMessage>; isStreaming?: boolean; streamingDuration?: number; toolCallDurations?: Map<string, number> }) {
+function TurnWorkLog({
+  messages,
+  toolResults,
+  turnStartedAt,
+}: {
+  messages: AssistantMessage[];
+  toolResults?: Map<string, ToolResultMessage>;
+  turnStartedAt?: number;
+}) {
+  const entries = messages.flatMap((activityMessage) =>
+    activityMessage.content
+      .filter((block) => block.type === "thinking" || block.type === "toolCall")
+      .map((block, index) => ({ activityMessage, block, index })),
+  );
+  const toolEntries = entries.filter(
+    (entry): entry is typeof entry & { block: ToolCallContent } => entry.block.type === "toolCall",
+  );
+  const files = new Set<string>();
+  let failed = messages.filter((activityMessage) => activityMessage.stopReason === "error").length;
+  let lastTimestamp = Math.max(0, ...messages.map((activityMessage) => activityMessage.timestamp ?? 0));
+  for (const entry of toolEntries) {
+    const path = entry.block.input && typeof entry.block.input.path === "string" ? entry.block.input.path : null;
+    if (path && (entry.block.toolName === "edit" || entry.block.toolName === "write")) files.add(path);
+    const result = toolResults?.get(entry.block.toolCallId);
+    if (result?.isError) failed += 1;
+    if (result?.timestamp) lastTimestamp = Math.max(lastTimestamp, result.timestamp);
+  }
+  const firstTimestamp = turnStartedAt
+    ?? Math.min(...messages.map((activityMessage) => activityMessage.timestamp ?? Number.POSITIVE_INFINITY));
+  const elapsed = Number.isFinite(firstTimestamp) && lastTimestamp > firstTimestamp
+    ? Math.max(1, Math.round((lastTimestamp - firstTimestamp) / 1000))
+    : undefined;
+
+  return (
+    <TurnActivityGroup
+      steps={entries.length}
+      tools={toolEntries.length}
+      filesChanged={files.size}
+      failed={failed}
+      elapsed={elapsed}
+    >
+      {entries.map(({ activityMessage, block, index }) => {
+        if (block.type === "thinking") {
+          return <ThinkingBlock key={`thinking-${activityMessage.timestamp ?? 0}-${index}`} block={block} />;
+        }
+        const result = toolResults?.get(block.toolCallId);
+        const duration = result?.timestamp && activityMessage.timestamp
+          ? Math.max(1, Math.round((result.timestamp - activityMessage.timestamp) / 1000))
+          : undefined;
+        return <ToolCallBlock key={block.toolCallId} block={block} result={result} duration={duration} />;
+      })}
+    </TurnActivityGroup>
+  );
+}
+
+function renderBlocks({
+  blocks,
+  toolResults,
+  isStreaming,
+  streamingDurations,
+  thinkingDurationFromFile,
+  toolCallDurations,
+  activeToolCallId,
+}: {
+  blocks: AssistantContentBlock[];
+  toolResults?: Map<string, ToolResultMessage>;
+  isStreaming?: boolean;
+  streamingDurations: Map<number, number>;
+  thinkingDurationFromFile?: number;
+  toolCallDurations: Map<string, number>;
+  activeToolCallId?: string;
+}) {
+  const rendered: React.ReactNode[] = [];
+  for (let i = 0; i < blocks.length;) {
+    const block = blocks[i];
+    if (block.type !== "toolCall") {
+      rendered.push(
+        <BlockView
+          key={i}
+          block={block}
+          isStreaming={isStreaming}
+          streamingDuration={streamingDurations.get(i) ?? (block.type === "thinking" ? thinkingDurationFromFile : undefined)}
+        />,
+      );
+      i += 1;
+      continue;
+    }
+
+    let end = i + 1;
+    while (end < blocks.length && blocks[end].type === "toolCall") end += 1;
+    const run = blocks.slice(i, end) as ToolCallContent[];
+    const items: ToolRunItem[] = run.map((tool) => ({
+      block: tool,
+      result: toolResults?.get(tool.toolCallId),
+      duration: toolCallDurations.get(tool.toolCallId),
+    }));
+
+    if (items.length > 1) {
+      rendered.push(
+        <ToolRunGroup key={`tools-${i}`} items={items} activeToolCallId={activeToolCallId}>
+          {items.map((item) => (
+            <ToolCallBlock
+              key={item.block.toolCallId}
+              block={item.block}
+              result={item.result}
+              duration={item.duration}
+              active={item.block.toolCallId === activeToolCallId}
+            />
+          ))}
+        </ToolRunGroup>,
+      );
+    } else {
+      const item = items[0];
+      rendered.push(
+        <ToolCallBlock
+          key={item.block.toolCallId || i}
+          block={item.block}
+          result={item.result}
+          duration={item.duration}
+          active={item.block.toolCallId === activeToolCallId}
+        />,
+      );
+    }
+    i = end;
+  }
+  return rendered;
+}
+
+function BlockView({ block, isStreaming, streamingDuration }: { block: AssistantContentBlock; isStreaming?: boolean; streamingDuration?: number }) {
   if (block.type === "text") {
     return <TextBlock block={block as TextContent} isStreaming={isStreaming} />;
   }
   if (block.type === "thinking") {
     return <ThinkingBlock block={block as ThinkingContent} duration={streamingDuration} />;
-  }
-  if (block.type === "toolCall") {
-    const tc = block as ToolCallContent;
-    const result = toolResults?.get(tc.toolCallId);
-    const duration = toolCallDurations?.get(tc.toolCallId);
-    return <ToolCallBlock block={tc} result={result} duration={duration} />;
   }
   return null;
 }
@@ -276,13 +490,15 @@ function TextBlock({ block, isStreaming }: { block: TextContent; isStreaming?: b
 
 function ThinkingBlock({ block, duration }: { block: ThinkingContent; duration?: number }) {
   const [expanded, setExpanded] = useState(false);
+  const { t } = useI18n();
   return (
     <div className={styles.thinkingContainer}>
       <button
         onClick={() => setExpanded((v) => !v)}
         className={styles.thinkingButton}
+        aria-expanded={expanded}
       >
-        <span>Thinking</span>
+        <span>{t("chat.thinking")}</span>
         {duration !== undefined && (
           <span className={styles.thinkingDuration}>{duration}s</span>
         )}
@@ -297,8 +513,10 @@ function ThinkingBlock({ block, duration }: { block: ThinkingContent; duration?:
 }
 
 
-function ToolCallBlock({ block, result, duration }: { block: ToolCallContent; result?: ToolResultMessage; duration?: number }) {
+function ToolCallBlock({ block, result, duration, active = false }: { block: ToolCallContent; result?: ToolResultMessage; duration?: number; active?: boolean }) {
   const [expanded, setExpanded] = useState(false);
+  const [focusOpen, setFocusOpen] = useState(false);
+  const { t } = useI18n();
   const inputStr = JSON.stringify(block.input, null, 2);
 
   // pi's file tools get structured rendering instead of raw JSON:
@@ -319,19 +537,21 @@ function ToolCallBlock({ block, result, duration }: { block: ToolCallContent; re
 
   return (
     <div
-      className={`${styles.toolCallContainer} ${isError ? styles.toolCallContainerError : styles.toolCallContainerSuccess}`}
+      className={`${styles.toolCallContainer} ${isError ? styles.toolCallContainerError : active ? styles.toolCallContainerRunning : styles.toolCallContainerSuccess}`}
     >
       {/* ── Tool call header ── */}
       <button
         onClick={() => setExpanded((v) => !v)}
         className={styles.toolCallButton}
+        aria-expanded={expanded}
       >
-        <span className={`${styles.toolName} ${isError ? styles.toolNameError : styles.toolNameSuccess}`}>
+        <span className={`${styles.toolName} ${isError ? styles.toolNameError : active ? styles.toolNameRunning : styles.toolNameSuccess}`}>
           {block.toolName}
         </span>
         <span className={styles.toolPreview}>
           {getToolPreview(block)}
         </span>
+        {active && <span className={styles.toolRunningText}>{t("chat.runningTool")}</span>}
         {duration !== undefined && (
           <span className={styles.toolDuration}>{duration}s</span>
         )}
@@ -343,7 +563,7 @@ function ToolCallBlock({ block, result, duration }: { block: ToolCallContent; re
       {/* ── Expanded: structured view for file tools, JSON otherwise ── */}
       {expanded && isEditTool && (
         <div className={styles.toolDiffWrap}>
-          {toolPath && <div className={`${styles.toolDiffPath} chrome-mono`}>{toolPath}</div>}
+          {toolPath && <ToolDiffHeader path={toolPath} onFocus={() => setFocusOpen(true)} />}
           <DiffViewMode
             oldContent={input.oldText as string}
             newContent={input.newText as string}
@@ -353,7 +573,7 @@ function ToolCallBlock({ block, result, duration }: { block: ToolCallContent; re
       )}
       {expanded && isWriteTool && (
         <div className={styles.toolDiffWrap}>
-          {toolPath && <div className={`${styles.toolDiffPath} chrome-mono`}>{toolPath}</div>}
+          {toolPath && <ToolDiffHeader path={toolPath} onFocus={() => setFocusOpen(true)} />}
           <DiffViewMode
             oldContent=""
             newContent={input.content as string}
@@ -377,6 +597,29 @@ function ToolCallBlock({ block, result, duration }: { block: ToolCallContent; re
           isError={isError}
         />
       )}
+      {(isEditTool || isWriteTool) && (
+        <FocusDialog open={focusOpen} title={toolPath || block.toolName} onClose={() => setFocusOpen(false)}>
+          <div className={styles.focusDiff}>
+            <DiffViewMode
+              oldContent={isEditTool ? input.oldText as string : ""}
+              newContent={isEditTool ? input.newText as string : input.content as string}
+              language={getLanguage(toolPath)}
+            />
+          </div>
+        </FocusDialog>
+      )}
+    </div>
+  );
+}
+
+function ToolDiffHeader({ path, onFocus }: { path: string; onFocus: () => void }) {
+  const { t } = useI18n();
+  return (
+    <div className={`${styles.toolDiffPath} chrome-mono`}>
+      <button type="button" className={styles.toolDiffOpen} onClick={() => requestOpenFile({ path })} title={path}>{path}</button>
+      <button type="button" onClick={onFocus} title={t("code.focus")} aria-label={t("code.focus")}>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M8 3H3v5M16 21h5v-5M3 8l5-5M21 16l-5 5" /></svg>
+      </button>
     </div>
   );
 }
@@ -396,6 +639,22 @@ function PairedResult({ text, isEmpty, isError }: {
         {isEmpty ? "(no output)" : text}
       </pre>
     </div>
+  );
+}
+
+function UsageDetails({ usage }: { usage: NonNullable<AssistantMessage["usage"]> }) {
+  const { t } = useI18n();
+  const details = formatUsage(usage);
+  return (
+    <details className={styles.usageDetails}>
+      <summary title={details}>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <circle cx="12" cy="12" r="9" /><line x1="12" y1="11" x2="12" y2="16" /><line x1="12" y1="8" x2="12.01" y2="8" />
+        </svg>
+        <span>{t("chat.usage")}</span>
+      </summary>
+      <span className={styles.usagePopover}>{details}</span>
+    </details>
   );
 }
 

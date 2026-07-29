@@ -1,5 +1,11 @@
 import type { SessionInfo } from "@/lib/types";
 
+export function getSessionDisplayTitle(session: SessionInfo, maxLength = 80): string {
+  const title = session.name?.trim() || session.firstMessage?.trim() || "Untitled session";
+  if (title.length <= maxLength) return title;
+  return `${title.slice(0, Math.max(1, maxLength - 1)).trimEnd()}…`;
+}
+
 export function formatRelativeTime(dateStr: string): string {
   const date = new Date(dateStr);
   const now = new Date();

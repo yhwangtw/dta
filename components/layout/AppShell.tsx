@@ -36,6 +36,7 @@ import { resolveAppShellCenterView } from "./app-shell-view";
 import { ErrorBoundary } from "./ErrorBoundary";
 import type { SessionInfo, SessionTreeNode } from "@/lib/types";
 import type { ChatInputHandle } from "../chat/ChatInput";
+import { getSessionDisplayTitle } from "../sidebar/session-utils";
 import s from "./AppShell.module.css";
 
 // Lazy-load heavy modals — they're ~1000 lines each and rarely opened
@@ -518,9 +519,9 @@ export function AppShell() {
               <rect x="4" y="4" width="16" height="16" rx="3" /><path d="M8 9h8M8 13h6M8 17h4" />
             </svg>
           </button>
-          <div className={`${s.chatTitle} chrome-mono`} title={state.selectedSession?.name ?? state.selectedSession?.id}>
+          <div className={s.chatTitle} title={state.selectedSession ? getSessionDisplayTitle(state.selectedSession, 240) : undefined}>
             {state.selectedSession
-              ? (state.selectedSession.name ?? state.selectedSession.id.slice(0, 8))
+              ? getSessionDisplayTitle(state.selectedSession)
               : effectiveNewSessionCwd
                 ? t("sidebar.new").toLowerCase() + " · " + (effectiveNewSessionCwd.split("/").pop() ?? "")
                 : "π"}
@@ -764,8 +765,9 @@ export function AppShell() {
                     onSessionStatsChange={actions.setSessionStats}
                     onContextUsageChange={actions.setContextUsage}
                     onSessionNamed={actions.bumpRefreshKey}
+                    onOpenModels={() => setModelsConfigOpen(true)}
                     isParallel
-                    paneLabel={state.selectedSession?.name ?? state.selectedSession?.id.slice(0, 8)}
+                    paneLabel={state.selectedSession ? getSessionDisplayTitle(state.selectedSession) : undefined}
                   />
                 )}
               </div>
@@ -781,8 +783,9 @@ export function AppShell() {
                     onSessionCreated={actions.handleSessionCreated}
                     onSessionForked={actions.handleSessionForked}
                     onSessionNamed={actions.bumpRefreshKey}
+                    onOpenModels={() => setModelsConfigOpen(true)}
                     isParallel
-                    paneLabel={session.name ?? session.id.slice(0, 8)}
+                    paneLabel={getSessionDisplayTitle(session)}
                     onClosePane={state.parallelActiveId === session.id || state.parallelSessions.length > 1
                       ? () => actions.closeParallel(session.id)
                       : undefined}
@@ -806,6 +809,7 @@ export function AppShell() {
               onSessionStatsChange={actions.setSessionStats}
               onContextUsageChange={actions.setContextUsage}
               onSessionNamed={actions.bumpRefreshKey}
+              onOpenModels={() => setModelsConfigOpen(true)}
             />
           ) : centerView === "project" ? (
               <div className={s.placeholderContainer}>

@@ -640,7 +640,7 @@
 
 @media (max-width: 700px) {
   .container {
-    padding-bottom: calc(var(--safe-area-bottom) + 64px);
+    padding-bottom: calc(var(--safe-area-bottom) + 58px);
   }
 
   .rail {
@@ -659,7 +659,7 @@
     left: var(--safe-area-left) !important;
     right: var(--safe-area-right) !important;
     top: var(--safe-area-top) !important;
-    bottom: calc(var(--safe-area-bottom) + 64px) !important;
+    bottom: calc(var(--safe-area-bottom) + 58px) !important;
     width: auto !important;
     max-width: none !important;
     border-right: 0;
@@ -774,7 +774,7 @@
   .rightPanelContainer {
     position: fixed !important;
     inset: var(--safe-area-top) var(--safe-area-right)
-      calc(var(--safe-area-bottom) + 64px) var(--safe-area-left);
+      calc(var(--safe-area-bottom) + 58px) var(--safe-area-left);
     z-index: 260;
     width: auto !important;
     min-width: 0 !important;
@@ -798,8 +798,8 @@
     z-index: 350;
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
-    height: calc(64px + var(--safe-area-bottom));
-    padding: 4px 4px var(--safe-area-bottom);
+    height: calc(58px + var(--safe-area-bottom));
+    padding: 3px 4px var(--safe-area-bottom);
     border-top: 1px solid var(--border);
     background: var(--glass-bg);
     -webkit-backdrop-filter: blur(18px) saturate(1.4);
@@ -809,7 +809,7 @@
   .mobileNavButton {
     display: flex;
     min-width: 0;
-    min-height: 56px;
+    min-height: 50px;
     flex-direction: column;
     align-items: center;
     justify-content: center;
@@ -831,7 +831,7 @@
   .mobileNavIcon {
     display: grid;
     place-items: center;
-    height: 24px;
+    height: 22px;
   }
 
   .mobileSheetBackdrop {
@@ -848,7 +848,7 @@
     position: fixed;
     left: calc(var(--safe-area-left) + 8px);
     right: calc(var(--safe-area-right) + 8px);
-    bottom: calc(var(--safe-area-bottom) + 68px);
+    bottom: calc(var(--safe-area-bottom) + 62px);
     z-index: 370;
     max-height: min(70dvh, 520px);
     padding: 6px 12px 14px;

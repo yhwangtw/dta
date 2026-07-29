@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import styles from "./ImageLightbox.module.css";
+import { useI18n } from "@/lib/i18n";
 
 interface Props {
   src: string;
@@ -16,6 +17,7 @@ interface Props {
  * fixed overlay rendered inside it on some stacking contexts).
  */
 export function ImageLightbox({ src, onClose }: Props) {
+  const { t } = useI18n();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -29,8 +31,8 @@ export function ImageLightbox({ src, onClose }: Props) {
 
   if (typeof document === "undefined") return null;
   return createPortal(
-    <div className={styles.overlay} onClick={onClose} role="dialog" aria-label="Image preview">
-      <button className={styles.close} onClick={onClose} aria-label="Close">×</button>
+    <div className={styles.overlay} onClick={onClose} role="dialog" aria-label={t("image.preview")}>
+      <button className={styles.close} onClick={onClose} aria-label={t("common.close")}>×</button>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={src} alt="" className={styles.image} onClick={(e) => e.stopPropagation()} />
     </div>,

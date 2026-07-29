@@ -86,4 +86,22 @@ describe("ChatInput actions", () => {
     await act(async () => remove.click());
     expect(textarea.value).toBe("Review before release");
   });
+
+  it("sends a visible message quote with the typed follow-up", async () => {
+    const onSend = vi.fn().mockResolvedValue(true);
+    const onClearQuote = vi.fn();
+    const textarea = await render({
+      onSend,
+      onClearQuote,
+      quote: { entryId: "entry-1", role: "assistant", text: "First line\nSecond line" },
+    });
+    await fill(textarea, "Explain this");
+    const send = [...container!.querySelectorAll<HTMLButtonElement>("button")]
+      .find((button) => button.textContent?.includes("Send"))!;
+    await act(async () => send.click());
+
+    expect(onSend).toHaveBeenCalledWith("> First line\n> Second line\n\nExplain this", undefined);
+    expect(onClearQuote).toHaveBeenCalledOnce();
+  });
+
 });

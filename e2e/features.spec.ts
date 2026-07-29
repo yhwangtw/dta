@@ -58,6 +58,10 @@ test.describe("tool-call diff view", () => {
     await page.goto(TOOLS);
     await expect(page.getByText("工具呼叫測試").first()).toBeVisible({ timeout: 20_000 });
 
+    // Tool calls are summarized per turn; expand the work log before opening
+    // the individual edit/write disclosures.
+    await page.locator('section[aria-label="Work log"] > button').first().click();
+
     // Expand the edit tool call → old/new rendered as removed/added lines
     await page.locator("button", { has: page.getByText("edit", { exact: true }) }).first().click();
     await expect(page.locator("[class*=diffLineRemoved]", { hasText: "answer = 42" }).first()).toBeVisible();

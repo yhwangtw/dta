@@ -21,22 +21,25 @@ interface Props {
   feature?: string | null;
   /** Hide the whole bar (persisted by the parent). */
   onHide?: () => void;
+  /** Expand while a tGD command is the active run. */
+  active?: boolean;
 }
 
 /**
- * Always-visible tGD workflow pipeline. Each phase reflects real progress:
+ * Compact tGD workflow pipeline. Each phase reflects real progress:
  * map/define/plan are marked done when their artifacts exist on disk, the later
  * phases when their command has run this session; the live phase is "current"
  * and the rest are "todo". Clicking a phase drops its command into the composer.
  */
-export function TgdPipeline({ phases, statusOf, onRun, feature, onHide }: Props) {
+export function TgdPipeline({ phases, statusOf, onRun, feature, onHide, active = false }: Props) {
   const { t } = useI18n();
-  const [mobileExpanded, setMobileExpanded] = useState(false);
+  const [manuallyExpanded, setManuallyExpanded] = useState(false);
   const phaseListId = useId();
   const current = phases.find((phase) => statusOf(phase.cmd) === "current")
     ?? phases.find((phase) => statusOf(phase.cmd) === "todo")
     ?? phases.at(-1);
   const doneCount = phases.filter((phase) => statusOf(phase.cmd) === "done").length;
+  const expanded = active || manuallyExpanded;
 
   return (
     <div className={styles.bar}>
@@ -46,8 +49,8 @@ export function TgdPipeline({ phases, statusOf, onRun, feature, onHide }: Props)
         <button
           type="button"
           className={styles.mobileSummary}
-          onClick={() => setMobileExpanded((expanded) => !expanded)}
-          aria-expanded={mobileExpanded}
+          onClick={() => setManuallyExpanded((open) => !open)}
+          aria-expanded={expanded}
           aria-controls={phaseListId}
         >
           <span className={styles.mobileCurrent}>
@@ -55,19 +58,19 @@ export function TgdPipeline({ phases, statusOf, onRun, feature, onHide }: Props)
             {feature && <span className={styles.mobileFeature}>{feature}</span>}
           </span>
           <span className={styles.mobileProgress}>{doneCount}/{phases.length}</span>
-          <svg className={styles.mobileChevron} width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <svg className={`${styles.mobileChevron} ${expanded ? styles.mobileChevronOpen : ""}`} width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
             <polyline points="6 9 12 15 18 9" />
           </svg>
         </button>
       )}
-      <div id={phaseListId} className={`${styles.track} ${mobileExpanded ? styles.trackMobileOpen : ""}`}>
+      <div id={phaseListId} className={`${styles.track} ${expanded ? styles.trackOpen : ""}`}>
         {phases.map((phase, i) => {
           const status = statusOf(phase.cmd);
           return (
             <div key={phase.cmd} className={styles.step}>
               {i > 0 && <span className={`${styles.connector} ${styles[`conn_${status}`]}`} />}
               <button
-                onClick={() => { onRun(phase.cmd); setMobileExpanded(false); }}
+                onClick={() => { onRun(phase.cmd); setManuallyExpanded(false); }}
                 className={`${styles.phase} ${styles[status]}`}
                 title={`${phase.cmd} — ${phase.desc}`}
                 aria-current={status === "current" ? "step" : undefined}

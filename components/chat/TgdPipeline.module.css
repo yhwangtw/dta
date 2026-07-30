@@ -35,10 +35,39 @@
   white-space: nowrap;
 }
 
-.mobileSummary { display: none; }
+.mobileSummary {
+  display: flex;
+  min-width: 0;
+  height: 30px;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: 7px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.mobileSummary:hover { background: var(--bg-hover); }
+.mobileCurrent { display: flex; min-width: 0; align-items: baseline; gap: 7px; }
+.mobileCurrentLabel { color: var(--accent); font-size: calc(11.5px * var(--font-scale)); font-weight: 650; }
+.mobileFeature { display: none; }
+.mobileProgress {
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: calc(10px * var(--font-scale));
+}
+.mobileChevron {
+  flex: 0 0 auto;
+  color: var(--text-dim);
+  transition: transform 0.15s ease;
+}
+.mobileChevronOpen { transform: rotate(180deg); }
 
 .track {
-  display: flex;
+  display: none;
   align-items: center;
   gap: 0;
   flex: 1;
@@ -50,6 +79,7 @@
   touch-action: pan-x;
   -webkit-overflow-scrolling: touch;
 }
+.trackOpen { display: flex; }
 .track::-webkit-scrollbar { display: none; }
 
 .step {
@@ -152,7 +182,6 @@
     display: none;
   }
   .mobileSummary {
-    display: flex;
     min-width: 0;
     min-height: 42px;
     flex: 1 1 auto;
@@ -193,14 +222,7 @@
     font-family: var(--font-mono);
     font-size: calc(10px * var(--font-scale));
   }
-  .mobileChevron {
-    flex: 0 0 auto;
-    color: var(--text-dim);
-    transition: transform 0.15s ease;
-  }
-  .mobileSummary[aria-expanded="true"] .mobileChevron {
-    transform: rotate(180deg);
-  }
+  .mobileChevron { flex: 0 0 auto; }
   .track {
     display: none;
     order: 4;
@@ -208,7 +230,7 @@
     scroll-padding-inline: 4px;
     padding: 2px 0 4px;
   }
-  .trackMobileOpen {
+  .trackOpen {
     display: flex;
   }
   .phase {

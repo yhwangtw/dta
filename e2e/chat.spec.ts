@@ -16,6 +16,7 @@ async function openMain(page: Page) {
 test.describe("chat transcript", () => {
   test("offers Compact only after a session has been persisted", async ({ page }) => {
     await openMain(page);
+    await page.getByRole("button", { name: "More composer controls" }).click();
     await expect(page.getByRole("button", { name: "Compact", exact: true })).toBeVisible();
 
     await page.getByRole("button", { name: "New", exact: true }).click();
@@ -25,6 +26,7 @@ test.describe("chat transcript", () => {
 
   test("shows and persists the Auto compact setting for a saved session", async ({ page }) => {
     await openMain(page);
+    await page.getByRole("button", { name: "More composer controls" }).click();
     const toggle = page.getByRole("button", { name: /Auto compact/ });
     await expect(toggle).toHaveAttribute("aria-pressed", "true");
 
@@ -118,7 +120,8 @@ test.describe("chat transcript", () => {
     await openMain(page);
     const userMsg = page.getByText("services 層有沒有需要重構的地方").first();
     await userMsg.scrollIntoViewIfNeeded();
-    await userMsg.hover();
+    const messageItem = page.locator(".msg-item").filter({ has: userMsg }).first();
+    await messageItem.hover({ position: { x: 4, y: 4 } });
     await page.getByRole("button", { name: "Edit", exact: true }).first().click();
     // The bubble becomes a textarea prefilled with the message text, plus Rerun.
     await expect

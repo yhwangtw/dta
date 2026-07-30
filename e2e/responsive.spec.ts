@@ -117,7 +117,7 @@ test.describe("responsive shell", () => {
       document.documentElement.style.setProperty("--safe-area-left", "14px");
     });
 
-    await expect(page.getByTestId("app-shell")).toHaveCSS("padding", "11px 12px 71px 14px");
+    await expect(page.getByTestId("app-shell")).toHaveCSS("padding", "11px 12px 67px 14px");
     await expectNoPageOverflow(page);
   });
 
@@ -185,6 +185,7 @@ test.describe("responsive shell", () => {
       timeout: 20_000,
     });
 
+    await page.getByRole("button", { name: "更多輸入框設定" }).click();
     await page.getByRole("button", { name: "切換推理層級" }).click();
     await expect(page.getByText("沿用 Pi 預設值", { exact: true })).toBeVisible();
     await expect(page.getByText("低強度推理", { exact: true })).toBeVisible();

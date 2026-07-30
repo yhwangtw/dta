@@ -98,7 +98,7 @@
   gap: 2px;
   flex-shrink: 0;
   border-bottom: 1px solid var(--border);
-  height: 42px;
+  height: 46px;
   padding: 0 8px 0 14px;
   background: var(--glass-bg);
   -webkit-backdrop-filter: blur(14px) saturate(1.4);
@@ -113,15 +113,15 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--text-muted);
-  font-size: calc(12px * var(--font-scale));
+  font-size: calc(12.5px * var(--font-scale));
 }
 
 .topBarButton {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   padding: 0;
   background: none;
   border: none;
@@ -191,7 +191,7 @@
 
 /* ── Chat actions (export, branches, system) ── */
 .chatActions {
-  display: flex;
+  display: none;
   align-items: center;
   gap: 2px;
   height: 100%;
@@ -204,6 +204,64 @@
 .chatActions::-webkit-scrollbar { display: none; }
 .chatActions > * { flex-shrink: 0; }
 
+.desktopSessionMenu {
+  position: relative;
+  display: flex;
+  height: 100%;
+  align-items: center;
+  margin-left: auto;
+}
+
+.sessionMenuButton {
+  display: inline-flex;
+  height: 30px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: calc(11px * var(--font-scale));
+}
+.sessionMenuButton:hover { background: var(--bg-hover); color: var(--text); }
+
+.sessionMenu {
+  position: fixed;
+  z-index: 600;
+  display: flex;
+  width: 248px;
+  flex-direction: column;
+  gap: 2px;
+  padding: 5px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  backdrop-filter: blur(18px) saturate(1.4);
+  box-shadow: var(--color-shadow-popup);
+}
+
+.sessionMenuItem {
+  display: flex;
+  min-height: 44px;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+.sessionMenuItem:hover { background: var(--bg-hover); }
+.sessionMenuItem:disabled { color: var(--text-dim); cursor: not-allowed; }
+.sessionMenuItem span { font-size: calc(12px * var(--font-scale)); font-weight: 600; }
+.sessionMenuItem small { color: var(--text-dim); font-size: calc(10.5px * var(--font-scale)); font-weight: 400; }
+.sessionMenuDivider { height: 1px; margin: 3px 5px; background: var(--border); }
+
 /* Narrow screens: reclaim top-bar space so the action buttons fit without
    clipping — drop the session title and the (secondary) live stats. */
 @media (max-width: 640px) {
@@ -214,7 +272,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  height: 28px;
+  height: 30px;
   padding: 0 10px;
   background: none;
   border: none;
@@ -309,7 +367,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  height: 28px;
+  height: 30px;
   padding: 0 10px;
   border: none;
   border-radius: 7px;
@@ -333,7 +391,7 @@
 /* ── Session stats ── */
 .sessionStats {
   font-family: var(--font-mono);
-  margin-left: auto;
+  margin-left: 0;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -640,7 +698,8 @@
 
 @media (max-width: 700px) {
   .container {
-    padding-bottom: calc(var(--safe-area-bottom) + 58px);
+    --mobile-nav-height: 54px;
+    padding-bottom: calc(var(--safe-area-bottom) + var(--mobile-nav-height));
   }
 
   .rail {
@@ -659,7 +718,7 @@
     left: var(--safe-area-left) !important;
     right: var(--safe-area-right) !important;
     top: var(--safe-area-top) !important;
-    bottom: calc(var(--safe-area-bottom) + 58px) !important;
+    bottom: calc(var(--safe-area-bottom) + var(--mobile-nav-height)) !important;
     width: auto !important;
     max-width: none !important;
     border-right: 0;
@@ -704,6 +763,8 @@
   .chatActions {
     display: none;
   }
+
+  .desktopSessionMenu { display: none; }
 
   .chatActionsMobileOpen {
     position: fixed;
@@ -774,7 +835,7 @@
   .rightPanelContainer {
     position: fixed !important;
     inset: var(--safe-area-top) var(--safe-area-right)
-      calc(var(--safe-area-bottom) + 58px) var(--safe-area-left);
+      calc(var(--safe-area-bottom) + var(--mobile-nav-height)) var(--safe-area-left);
     z-index: 260;
     width: auto !important;
     min-width: 0 !important;
@@ -798,7 +859,7 @@
     z-index: 350;
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
-    height: calc(58px + var(--safe-area-bottom));
+    height: calc(var(--mobile-nav-height) + var(--safe-area-bottom));
     padding: 3px 4px var(--safe-area-bottom);
     border-top: 1px solid var(--border);
     background: var(--glass-bg);
@@ -809,7 +870,7 @@
   .mobileNavButton {
     display: flex;
     min-width: 0;
-    min-height: 50px;
+    min-height: 46px;
     flex-direction: column;
     align-items: center;
     justify-content: center;
@@ -828,10 +889,14 @@
     background: var(--color-accent-bg);
   }
 
+  .mobileNavButton:focus-visible {
+    outline-offset: -2px;
+  }
+
   .mobileNavIcon {
     display: grid;
     place-items: center;
-    height: 22px;
+    height: 20px;
   }
 
   .mobileSheetBackdrop {
@@ -848,7 +913,7 @@
     position: fixed;
     left: calc(var(--safe-area-left) + 8px);
     right: calc(var(--safe-area-right) + 8px);
-    bottom: calc(var(--safe-area-bottom) + 62px);
+    bottom: calc(var(--safe-area-bottom) + var(--mobile-nav-height) + 4px);
     z-index: 370;
     max-height: min(70dvh, 520px);
     padding: 6px 12px 14px;

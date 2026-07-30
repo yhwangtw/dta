@@ -180,8 +180,8 @@
 }
 
 .turnStart {
-  margin-top: 12px;
-  padding-top: 16px;
+  margin-top: 8px;
+  padding-top: 12px;
 }
 
 .turnStart::before {
@@ -194,7 +194,7 @@
   content: "";
 }
 
-.turnStart .bookmarkStar { top: 18px; }
+.turnStart .bookmarkStar { top: 14px; }
 
 .unreadDivider {
   display: flex;
@@ -348,13 +348,13 @@
   }
 
   .transcriptScroll {
-    padding-top: 12px;
+    padding-top: 10px;
     overscroll-behavior-y: contain;
   }
 
   .transcript {
-    padding-left: 12px;
-    padding-right: 12px;
+    padding-left: 10px;
+    padding-right: 10px;
   }
 
   .composerDock {
@@ -398,14 +398,14 @@
     top: 0;
     right: 0;
     display: grid;
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
     place-items: center;
     padding: 0;
   }
 
   .messageItem {
-    padding-right: 38px;
+    padding-right: 34px;
   }
 
   .messageItemAssistant {
@@ -413,13 +413,13 @@
   }
 
   .turnStart {
-    margin-top: 6px;
-    padding-top: 12px;
+    margin-top: 4px;
+    padding-top: 10px;
   }
 
-  .turnStart .bookmarkStar { top: 12px; }
+  .turnStart .bookmarkStar { top: 10px; }
 
-  .unreadDivider { margin: 10px 0 8px; gap: 7px; }
+  .unreadDivider { margin: 8px 0 6px; gap: 7px; }
   .recoveryActions button { min-height: 44px; }
 
   .paneHeader {
@@ -430,7 +430,7 @@
 
 @media (max-width: 380px) {
   .transcript {
-    padding-left: 9px;
-    padding-right: 9px;
+    padding-left: 8px;
+    padding-right: 8px;
   }
 }

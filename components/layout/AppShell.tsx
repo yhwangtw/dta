@@ -338,6 +338,39 @@ export function AppShell() {
   // top bar's backdrop-filter traps its stacking context, so a menu hanging
   // below the bar paints *under* the tGD pipeline bar / chat content.
   const [exportMenuPos, setExportMenuPos] = useState<{ top: number; right: number } | null>(null);
+  const [sessionMenuOpen, setSessionMenuOpen] = useState(false);
+  const sessionMenuRef = useRef<HTMLDivElement>(null);
+  const sessionMenuPanelRef = useRef<HTMLDivElement>(null);
+  const [sessionMenuPos, setSessionMenuPos] = useState<{ top: number; right: number } | null>(null);
+
+  useEffect(() => {
+    if (!sessionMenuOpen) { setSessionMenuPos(null); return; }
+    const anchor = sessionMenuRef.current;
+    if (!anchor) return;
+    const update = () => {
+      const rect = anchor.getBoundingClientRect();
+      setSessionMenuPos({ top: rect.bottom + 4, right: Math.max(8, window.innerWidth - rect.right) });
+    };
+    update();
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, true);
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, true);
+    };
+  }, [sessionMenuOpen]);
+
+  useEffect(() => {
+    if (!sessionMenuOpen) return;
+    const close = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (!sessionMenuRef.current?.contains(target) && !sessionMenuPanelRef.current?.contains(target)) {
+        setSessionMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [sessionMenuOpen]);
 
   useEffect(() => {
     if (!exportMenuOpen) { setExportMenuPos(null); return; }
@@ -541,6 +574,45 @@ export function AppShell() {
           )}
           {mobileActionsOpen && <button type="button" className={s.mobileActionsBackdrop} onClick={() => setMobileActionsOpen(false)} aria-label={t("mobile.closeActions")} />}
           {showChat && (
+            <div className={s.desktopSessionMenu} ref={sessionMenuRef}>
+              <button
+                type="button"
+                className={`${s.sessionMenuButton} ${sessionMenuOpen || state.activeTopPanel ? s.systemButtonActive : s.systemButtonDefault}`}
+                onClick={() => setSessionMenuOpen((open) => !open)}
+                aria-label={t("topbar.sessionMenuTitle")}
+                aria-haspopup="menu"
+                aria-expanded={sessionMenuOpen}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M4 5h16M4 12h16M4 19h16" />
+                </svg>
+                <span>{t("topbar.sessionMenu")}</span>
+                <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden><polyline points="2 4 5 7 8 4" /></svg>
+              </button>
+              {sessionMenuOpen && sessionMenuPos && typeof document !== "undefined" && createPortal(
+                <div ref={sessionMenuPanelRef} className={s.sessionMenu} style={{ top: sessionMenuPos.top, right: sessionMenuPos.right }} role="menu">
+                  <button type="button" className={s.sessionMenuItem} role="menuitem" onClick={() => { setAnalyticsOpen(true); setSessionMenuOpen(false); }}>
+                    <span>{t("topbar.analytics")}</span><small>{t("topbar.analyticsTitle")}</small>
+                  </button>
+                  <button type="button" className={s.sessionMenuItem} role="menuitem" onClick={() => { actions.toggleTopPanel("branches"); setSessionMenuOpen(false); }}>
+                    <span>{t("topbar.branches")}</span><small>{state.branchTree.length > 0 ? t("topbar.sessionMenuBranchesHint") : t("topbar.sessionMenuNoBranches")}</small>
+                  </button>
+                  <button type="button" className={s.sessionMenuItem} role="menuitem" onClick={() => { actions.toggleTopPanel("system"); setSessionMenuOpen(false); }}>
+                    <span>{t("topbar.system")}</span><small>{state.systemPrompt ? t("topbar.sessionMenuSystemLoaded") : t("topbar.sessionMenuSystemPending")}</small>
+                  </button>
+                  <div className={s.sessionMenuDivider} />
+                  <button type="button" className={s.sessionMenuItem} role="menuitem" disabled={!state.selectedSession} onClick={() => { handleExportSession(); setSessionMenuOpen(false); }}>
+                    <span>HTML</span><small>{t("topbar.exportHtmlHint")}</small>
+                  </button>
+                  <button type="button" className={s.sessionMenuItem} role="menuitem" disabled={!state.selectedSession} onClick={() => { handleExportMarkdown(); setSessionMenuOpen(false); }}>
+                    <span>Markdown</span><small>{t("topbar.exportMdHint")}</small>
+                  </button>
+                </div>,
+                document.body,
+              )}
+            </div>
+          )}
+          {showChat && (
             <div className={`${s.chatActions} ${mobileActionsOpen ? s.chatActionsMobileOpen : ""}`}>
               <div className={s.exportMenuWrapper} ref={exportMenuRef}>
                 <button
@@ -616,6 +688,7 @@ export function AppShell() {
                 open={state.activeTopPanel === "branches"}
                 onToggle={() => actions.toggleTopPanel("branches")}
                 hasSession
+                hideTrigger
               />
               <button
                 onClick={() => { actions.toggleTopPanel("system"); setMobileActionsOpen(false); }}

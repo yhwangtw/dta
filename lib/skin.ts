@@ -28,10 +28,10 @@ export const SKIN_LABELS: Record<Skin, string> = {
  * "no hardcoded colors in components" rule doesn't apply here.
  */
 export const SKIN_PREVIEWS: Record<Skin, { light: string; dark: string; accent: string }> = {
-  terminal: { light: "#fbfdfb", dark: "#0c0e10", accent: "#34d399" },
+  terminal: { light: "#f8faf9", dark: "#0c0e10", accent: "#0b7f5f" },
   industrial: { light: "#ffffff", dark: "#0a0a0a", accent: "#737373" },
   aurora: { light: "#fbfaff", dark: "#131020", accent: "#7c3aed" },
-  editorial: { light: "#faf6ee", dark: "#171310", accent: "#b45309" },
+  editorial: { light: "#f8f5ee", dark: "#171310", accent: "#9a4508" },
   glass: { light: "#e9edfb", dark: "#0b0e1e", accent: "#5b5bd6" },
 };
 

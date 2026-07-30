@@ -191,7 +191,8 @@ export function UserMessageView({ message, entryId, onFork, forking, prevAssista
       {/* Bottom row: action buttons + timestamp (hidden while editing) */}
       {!editing && (
         <div className={styles.bottomRow}>
-          <div className={`hover-reveal ${styles.actionButtons} ${styles.primaryActions}`}>
+          <div className={styles.desktopActionToolbar}>
+          <div className={`${styles.actionButtons} ${styles.primaryActions}`}>
             <button
               onClick={copyContent}
               title={t("chat.copyMessage")}
@@ -217,7 +218,7 @@ export function UserMessageView({ message, entryId, onFork, forking, prevAssista
             )}
           </div>
           {(canFork || canEdit) && (
-            <div className={`${forking ? "" : "hover-reveal"} ${styles.actionButtons} ${styles.secondaryActions}`}>
+            <div className={`${styles.actionButtons} ${styles.secondaryActions}`}>
               {canEdit && (
                 <button
                   onClick={startEdit}
@@ -248,14 +249,26 @@ export function UserMessageView({ message, entryId, onFork, forking, prevAssista
               )}
             </div>
           )}
-          {(canFork || canEdit || onQuote) && (
-            <details ref={actionsRef} className={styles.mobileActionMenu}>
+          </div>
+          <details ref={actionsRef} className={styles.mobileActionMenu}>
               <summary title={t("chat.moreActions")} aria-label={t("chat.moreActions")}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
                   <circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" />
                 </svg>
               </summary>
               <div className={styles.mobileActionPanel}>
+                <button
+                  type="button"
+                  onClick={() => { actionsRef.current?.removeAttribute("open"); copyContent(); }}
+                  className={`${styles.actionButton} ${copied ? "text-accent" : "text-dim hover-accent"}`}
+                >
+                  {copied ? (
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                  ) : (
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
+                  )}
+                  {copied ? t("common.copied") : t("common.copy")}
+                </button>
                 {canEdit && (
                   <button
                     onClick={() => { actionsRef.current?.removeAttribute("open"); startEdit(); }}
@@ -294,7 +307,6 @@ export function UserMessageView({ message, entryId, onFork, forking, prevAssista
                 )}
               </div>
             </details>
-          )}
           {time && <span className={styles.timestamp}>{time}</span>}
         </div>
       )}

@@ -1,8 +1,9 @@
 /* Root container */
 .messageContainer {
+  position: relative;
   min-width: 0;
   max-width: 100%;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 /* Model label */
@@ -157,17 +158,47 @@
 
 .footer {
   display: flex;
+  width: fit-content;
+  max-width: 100%;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   margin-top: 4px;
   /* Meta noise fades until the message is hovered */
-  opacity: 0.45;
+  opacity: 0.68;
   transition: opacity 0.15s;
   min-width: 0;
 }
 .messageContainer:hover .footer,
 .footer:focus-within {
   opacity: 1;
+}
+
+.actionToolbar {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(14px) saturate(1.3);
+  backdrop-filter: blur(14px) saturate(1.3);
+  box-shadow: var(--color-shadow-popup);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(3px);
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+.mobileActionMenu { display: none; }
+.messageContainer:hover .actionToolbar,
+.messageContainer:focus-within .actionToolbar {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
 }
 
 .usageDetails { position: relative; flex: 0 0 auto; }
@@ -209,6 +240,7 @@
 /* Copy button */
 .copyButton {
   display: flex;
+  order: 2;
   align-items: center;
   gap: 4px;
   padding: 3px 8px;
@@ -224,9 +256,10 @@
 }
 
 .timestamp {
+  order: 1;
   font-size: calc(10.5px * var(--font-scale));
   color: var(--text-dim);
-  margin-left: auto;
+  margin-left: 4px;
 }
 
 /* Thinking block */
@@ -482,11 +515,11 @@
   .toolDiffPath button { width: 40px; height: 40px; }
   .focusDiff { padding: 0; }
   .messageContainer {
-    margin-bottom: 12px;
+    margin-bottom: 8px;
   }
 
   .modelLabel {
-    margin-bottom: 4px;
+    margin-bottom: 2px;
   }
 
   .blocksContainer {
@@ -494,24 +527,72 @@
   }
 
   .footer {
-    min-height: 36px;
+    width: fit-content;
+    max-width: 100%;
+    min-height: 32px;
     flex-wrap: nowrap;
-    gap: 4px;
+    gap: 2px;
     opacity: 1;
   }
 
+  .actionToolbar { display: none; }
+
+  .mobileActionMenu {
+    position: relative;
+    order: 2;
+    display: block;
+    flex: 0 0 auto;
+  }
+  .mobileActionMenu > summary {
+    display: grid;
+    width: 36px;
+    height: 36px;
+    place-items: center;
+    border-radius: var(--radius-md);
+    color: var(--text-dim);
+    cursor: pointer;
+    list-style: none;
+  }
+  .mobileActionMenu > summary::-webkit-details-marker { display: none; }
+  .mobileActionMenu[open] > summary { background: var(--bg-hover); color: var(--text); }
+  .mobileActionPanel {
+    position: absolute;
+    left: 0;
+    bottom: calc(100% + 4px);
+    z-index: 40;
+    display: flex;
+    min-width: 148px;
+    flex-direction: column;
+    gap: 2px;
+    padding: 5px;
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    background: var(--glass-bg);
+    -webkit-backdrop-filter: blur(16px) saturate(1.3);
+    backdrop-filter: blur(16px) saturate(1.3);
+    box-shadow: var(--color-shadow-popup);
+  }
+  .mobileActionPanel .copyButton {
+    width: 100%;
+    min-height: 44px;
+    justify-content: flex-start;
+    padding: 0 10px;
+  }
+
   .timestamp {
-    margin-left: auto;
+    order: 3;
+    margin-left: 2px;
   }
 
   .copyButton {
-    min-height: 36px;
+    order: initial;
+    min-height: 32px;
     flex: 0 0 auto;
     padding-right: 5px;
     padding-left: 5px;
   }
 
-  .usageDetails > summary { min-height: 36px; }
+  .usageDetails > summary { min-height: 32px; }
 
   .thinkingButton,
   .toolCallButton {

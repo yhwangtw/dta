@@ -97,6 +97,7 @@ export function AssistantMessageView({
   const [tps, setTps] = useState<number | null>(null);
   const blocksRef = useRef(blocks);
   const rootRef = useRef<HTMLDivElement>(null);
+  const actionsRef = useRef<HTMLDetailsElement>(null);
   blocksRef.current = blocks;
   const displayBlocks = useMemo(
     () => suppressActivityBlocks
@@ -314,8 +315,9 @@ export function AssistantMessageView({
         {showUsage && (usageOverride ?? message.usage) && !isStreaming && (
           <UsageDetails usage={(usageOverride ?? message.usage)!} />
         )}
+        {textContent && !isStreaming && <div className={styles.actionToolbar}>
         {textContent && !isStreaming && onQuote && (
-          <button type="button" onClick={quoteContent} title={t("chat.quote")} className={`${styles.copyButton} hover-reveal text-dim hover-accent`}>
+          <button type="button" onClick={quoteContent} title={t("chat.quote")} className={`${styles.copyButton} text-dim hover-accent`}>
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M3 21c3-6 7-9 14-9" /><path d="M13 7l5 5-5 5" /></svg>
             <span className={styles.copyLabel}>{t("chat.quote")}</span>
           </button>
@@ -324,7 +326,7 @@ export function AssistantMessageView({
           <button
             onClick={copyContent}
             title={t("chat.copyMessage")}
-            className={`${styles.copyButton} hover-reveal ${copied ? "text-accent" : "text-dim hover-accent"}`}
+            className={`${styles.copyButton} ${copied ? "text-accent" : "text-dim hover-accent"}`}
           >
             {copied ? (
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -338,6 +340,32 @@ export function AssistantMessageView({
             )}
             <span className={styles.copyLabel}>{copied ? t("common.copied") : t("common.copy")}</span>
           </button>
+        )}
+        </div>}
+        {textContent && !isStreaming && (
+          <details ref={actionsRef} className={styles.mobileActionMenu}>
+            <summary title={t("chat.moreActions")} aria-label={t("chat.moreActions")}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                <circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" />
+              </svg>
+            </summary>
+            <div className={styles.mobileActionPanel}>
+              {onQuote && (
+                <button type="button" onClick={() => { actionsRef.current?.removeAttribute("open"); quoteContent(); }} className={`${styles.copyButton} text-dim hover-accent`}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M3 21c3-6 7-9 14-9" /><path d="M13 7l5 5-5 5" /></svg>
+                  <span>{t("chat.quote")}</span>
+                </button>
+              )}
+              <button type="button" onClick={() => { actionsRef.current?.removeAttribute("open"); copyContent(); }} className={`${styles.copyButton} ${copied ? "text-accent" : "text-dim hover-accent"}`}>
+                {copied ? (
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                ) : (
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
+                )}
+                <span>{copied ? t("common.copied") : t("common.copy")}</span>
+              </button>
+            </div>
+          </details>
         )}
         {time && !isStreaming && (
           <span className={styles.timestamp}>{time}</span>

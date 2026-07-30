@@ -20,6 +20,8 @@ interface Props {
   onToggle?: () => void;
   /** Whether a session is currently active (used to show appropriate empty reason) */
   hasSession?: boolean;
+  /** Keep the controlled dropdown mounted while another control owns its trigger. */
+  hideTrigger?: boolean;
 }
 
 // Find the set of entry IDs on the path from root to activeLeafId
@@ -161,7 +163,7 @@ function TreeNodeView({ node, activePathIds, depth, isLast, parentLines, onSelec
   );
 }
 
-export function BranchNavigator({ tree, activeLeafId, onLeafChange, inline, containerRef, open: openProp, onToggle, hasSession }: Props) {
+export function BranchNavigator({ tree, activeLeafId, onLeafChange, inline, containerRef, open: openProp, onToggle, hasSession, hideTrigger = false }: Props) {
   const { t } = useI18n();
   const [openInternal, setOpenInternal] = useState(false);
   const open = openProp !== undefined ? openProp : openInternal;
@@ -234,14 +236,16 @@ export function BranchNavigator({ tree, activeLeafId, onLeafChange, inline, cont
   if (inline) {
     return (
       <div className={styles.inlineContainer}>
-        <button
-          ref={btnRef}
-          onClick={() => onToggle ? onToggle() : setOpenInternal((v) => !v)}
-          className={open ? styles.inlineButtonOpen : styles.inlineButtonClosed}
-        >
-          {branchIcon}
-          <span>{t("topbar.branches")}</span>
-        </button>
+        {!hideTrigger && (
+          <button
+            ref={btnRef}
+            onClick={() => onToggle ? onToggle() : setOpenInternal((v) => !v)}
+            className={open ? styles.inlineButtonOpen : styles.inlineButtonClosed}
+          >
+            {branchIcon}
+            <span>{t("topbar.branches")}</span>
+          </button>
+        )}
         {open && dropdownPos && typeof document !== "undefined" && createPortal(
           // Portalled to <body>: the top bar has a backdrop-filter, which traps
           // position:fixed children in a stacking context that paints *under*

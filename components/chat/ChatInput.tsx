@@ -341,6 +341,22 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
   }, [expanded]);
 
   useEffect(() => {
+    if (!mobileToolsOpen) return;
+    const closeOnPointer = (event: PointerEvent) => {
+      if (!containerRef.current?.contains(event.target as Node)) setMobileToolsOpen(false);
+    };
+    const closeOnEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") setMobileToolsOpen(false);
+    };
+    document.addEventListener("pointerdown", closeOnPointer);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnPointer);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [mobileToolsOpen]);
+
+  useEffect(() => {
     if (!expanded) return;
     requestAnimationFrame(() => textareaRef.current?.focus());
     const handleExpandedKeys = (event: globalThis.KeyboardEvent) => {

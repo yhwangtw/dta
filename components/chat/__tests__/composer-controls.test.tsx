@@ -104,4 +104,24 @@ describe("composer controls", () => {
     expect(toolbar?.contains(send ?? null)).toBe(true);
     expect(toolbar?.textContent).toContain("Enter 傳送 · Shift+Enter 換行");
   });
+
+  it("keeps secondary controls behind one disclosure button", async () => {
+    await render(
+      <ChatInput
+        onSend={vi.fn()}
+        onAbort={vi.fn()}
+        isStreaming={false}
+        onCompact={vi.fn()}
+      />,
+    );
+
+    const trigger = container!.querySelector<HTMLButtonElement>('button[aria-label="More composer controls"]')!;
+    const panel = container!.querySelector<HTMLElement>("#composer-secondary-tools")!;
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+    expect(panel.className).not.toContain("bottomBarRightMobileOpen");
+
+    await act(async () => trigger.click());
+    expect(trigger.getAttribute("aria-expanded")).toBe("true");
+    expect(panel.className).toContain("bottomBarRightMobileOpen");
+  });
 });

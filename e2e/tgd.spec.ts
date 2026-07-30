@@ -26,6 +26,7 @@ test.describe("tGD pipeline", () => {
     await expect(page.locator('[class*="TgdPipeline_feature"]')).toHaveText("user-login");
 
     // Clicking a phase drops its command into the composer
+    await page.locator('[class*="TgdPipeline_mobileSummary"]').click();
     await page.getByRole("button", { name: /Verify/ }).first().click();
     await expect(page.locator("textarea").last()).toHaveValue("/tgd-verify ");
   });

@@ -9,6 +9,7 @@ import { ChatMinimap, useMessageRefs } from "./ChatMinimap";
 import { BashBlock } from "./BashBlock";
 import { CollapsibleMessage } from "./CollapsibleMessage";
 import { TgdPipeline, type PhaseStatus } from "./TgdPipeline";
+import { CompactionSummary, getCompactionSummary } from "./CompactionSummary";
 import { pickTurnTarget } from "./turn-nav";
 import { getAlwaysFollow } from "@/lib/prefs";
 import { useAgentSession, type AgentPhase } from "@/hooks/useAgentSession";
@@ -20,7 +21,7 @@ import { useI18n, type MsgKey } from "@/lib/i18n";
 import { QueuedFollowUps } from "./QueuedFollowUps";
 import { isProviderAuthError } from "./AssistantMessageView";
 import { buildConversationLayout } from "./conversation-turns";
-import { MobileTurnNavigator, type MobileTurnItem } from "./MobileTurnNavigator";
+import { assistantModelKey, shouldShowAssistantModelLabel } from "./message-chrome";
 
 interface Props {
   session: SessionInfo | null;
@@ -333,6 +334,14 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
   const runPhase = useCallback((cmd: string) => {
     chatInputRef?.current?.setText(cmd + " ");
   }, [chatInputRef]);
+  const activeTgdRun = useMemo(() => {
+    if (!agentRunning) return false;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role !== "user") continue;
+      return /^\/tgd-\w+\b/.test(messageText(messages[i]).trim());
+    }
+    return false;
+  }, [agentRunning, messages]);
 
   const { soundEnabled, onSoundToggle, playDoneSound } = useAudio();
   const playDoneSoundRef = useRef(playDoneSound);
@@ -443,20 +452,6 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
     return set;
   }, [conversationLayout.displayIndices, entryIds, bookmarks]);
 
-  const mobileTurns = useMemo<MobileTurnItem[]>(() => {
-    const visiblePosition = new Map(conversationLayout.displayIndices.map((messageIndex, index) => [messageIndex, index]));
-    return conversationLayout.turns.flatMap((turn) => {
-      if (turn.userIndex === null) return [];
-      const entryId = entryIds[turn.userIndex];
-      return [{
-        entryId,
-        visibleIndex: visiblePosition.get(turn.userIndex) ?? 0,
-        preview: messageText(messages[turn.userIndex]).replace(/\s+/g, " ").trim().slice(0, 120),
-        bookmarked: !!entryId && bookmarks.has(entryId),
-      }];
-    });
-  }, [bookmarks, conversationLayout.displayIndices, conversationLayout.turns, entryIds, messages]);
-
   const lastReadStorageKey = session?.id ? `pi-last-read:${session.id}` : null;
   const [unreadMessageIndex, setUnreadMessageIndex] = useState<number | null>(null);
   useEffect(() => {
@@ -529,10 +524,12 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
     return map;
   }, [messages]);
 
-  const historicalTailRole = useMemo<"user" | "assistant" | null>(() => {
+  const historicalAssistantModelKey = useMemo<string | null>(() => {
     for (let i = conversationLayout.displayIndices.length - 1; i >= 0; i--) {
-      const role = messages[conversationLayout.displayIndices[i]].role;
-      if (role === "user" || role === "assistant") return role;
+      const message = messages[conversationLayout.displayIndices[i]];
+      if (message.role === "assistant") {
+        return assistantModelKey(message);
+      }
     }
     return null;
   }, [conversationLayout.displayIndices, messages]);
@@ -978,7 +975,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
           tGD ▸
         </button>
       ) : (
-        <TgdPipeline phases={tgdPhases} statusOf={phaseStatusOf} onRun={runPhase} onHide={hidePipeline} feature={currentFeature?.name ?? null} />
+        <TgdPipeline phases={tgdPhases} statusOf={phaseStatusOf} onRun={runPhase} onHide={hidePipeline} feature={currentFeature?.name ?? null} active={activeTgdRun} />
       )}
       <div className="relative flex flex-1 overflow-hidden">
         {findOpen && (
@@ -1061,7 +1058,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
             {(() => {
               let lastUserIdx = -1;
               for (let i = messages.length - 1; i >= 0; i--) {
-                if (messages[i].role === "user") { lastUserIdx = i; break; }
+                if (messages[i].role === "user" && getCompactionSummary(messages[i]) === null) { lastUserIdx = i; break; }
               }
               const recoveredAuthIndices = new Set<number>();
               const laterSuccessfulProviders = new Set<string>();
@@ -1083,18 +1080,23 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
               }
               let refIdx = 0;
               let seenUserMessage = false;
-              let previousVisibleRole: "user" | "assistant" | null = null;
+              let previousAssistantModelKey: string | null = null;
               return messages.map((msg, idx) => {
+                const compactionSummary = getCompactionSummary(msg);
                 let prevAssistantEntryId: string | undefined;
-                if (msg.role === "user") {
+                if (msg.role === "user" && compactionSummary === null) {
                   for (let j = idx - 1; j >= 0; j--) {
                     if (entryIds[j]) { prevAssistantEntryId = entryIds[j]; break; }
                   }
                 }
                 const isVisible = conversationLayout.displayIndexSet.has(idx);
                 if (msg.role === "assistant" && !isVisible) return null;
-                const startsNewTurn = msg.role === "user" && seenUserMessage;
-                const showModelLabel = msg.role !== "assistant" || previousVisibleRole !== "assistant";
+                const startsNewTurn = msg.role === "user" && compactionSummary === null && seenUserMessage;
+                const currentAssistantModelKey = msg.role === "assistant"
+                  ? assistantModelKey(msg)
+                  : null;
+                const showModelLabel = msg.role === "assistant"
+                  && shouldShowAssistantModelLabel(previousAssistantModelKey, msg);
                 const currentRefIdx = isVisible ? refIdx++ : -1;
                 let showTimestamp = msg.role === "assistant" && conversationLayout.finalAssistantIndices.has(idx);
                 if (msg.role === "assistant") {
@@ -1112,7 +1114,9 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                 // streamed messages have no entry id yet, so fall back to index
                 // (hex entry ids never collide with numeric keys).
                 const key = entryIds[idx] ?? idx;
-                const view = (
+                const view = compactionSummary !== null ? (
+                  <CompactionSummary key={key} summary={compactionSummary} />
+                ) : (
                   <MessageView
                     key={key}
                     message={msg}
@@ -1144,10 +1148,10 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                   />
                 );
                 if (!isVisible) return view;
-                if (msg.role === "user") seenUserMessage = true;
-                previousVisibleRole = msg.role === "user" ? "user" : "assistant";
+                if (msg.role === "user" && compactionSummary === null) seenUserMessage = true;
+                if (currentAssistantModelKey !== null) previousAssistantModelKey = currentAssistantModelKey;
                 // The current turn (last user message onward) never collapses.
-                const collapsible = lastUserIdx === -1 ? idx < messages.length - 1 : idx < lastUserIdx;
+                const collapsible = compactionSummary === null && (lastUserIdx === -1 ? idx < messages.length - 1 : idx < lastUserIdx);
                 const entryId = entryIds[idx];
                 const isBookmarked = !!entryId && bookmarks.has(entryId);
                 return (
@@ -1158,10 +1162,10 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                       </div>
                     )}
                   <div
-                    data-message-role={msg.role}
+                    data-message-role={compactionSummary === null ? msg.role : "summary"}
                     data-entry-id={entryId}
                     data-turn-start={startsNewTurn || undefined}
-                    className={`msg-item hover-group relative ${styles.messageItem} ${msg.role === "user" ? styles.messageItemUser : styles.messageItemAssistant} ${startsNewTurn ? styles.turnStart : ""}`}
+                    className={`msg-item hover-group relative ${styles.messageItem} ${msg.role === "user" && compactionSummary === null ? styles.messageItemUser : styles.messageItemAssistant} ${startsNewTurn ? styles.turnStart : ""}`}
                     ref={(el) => {
                     messageRefs.current[currentRefIdx] = el;
                     if (idx === lastUserIdx) { (lastUserMsgRef as { current: HTMLDivElement | null }).current = el; }
@@ -1224,7 +1228,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                 isStreaming
                 modelNames={modelNames}
                 toolResults={toolResultsMap}
-                showModelLabel={historicalTailRole !== "assistant"}
+                showModelLabel={historicalAssistantModelKey !== assistantModelKey(streamState.streamingMessage as { provider?: string; model?: string })}
               />
             )}
 
@@ -1269,7 +1273,6 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
         />
       </div>
 
-      <MobileTurnNavigator turns={mobileTurns} scrollContainer={scrollContainerRef} messageRefs={messageRefs} />
       <div className={`${styles.composerDock} relative`}>
         {/* Context-pressure nudge: suggest compaction before it's too late */}
         {contextUsage?.percent != null && contextUsage.percent >= 80 && !isCompacting && (

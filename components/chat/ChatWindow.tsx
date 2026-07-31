@@ -1114,6 +1114,11 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                 // streamed messages have no entry id yet, so fall back to index
                 // (hex entry ids never collide with numeric keys).
                 const key = entryIds[idx] ?? idx;
+                const entryId = entryIds[idx];
+                const canBookmark = compactionSummary === null
+                  && !!entryId
+                  && (msg.role === "user" || msg.role === "assistant");
+                const isBookmarked = canBookmark && bookmarks.has(entryId);
                 const view = compactionSummary !== null ? (
                   <CompactionSummary key={key} summary={compactionSummary} />
                 ) : (
@@ -1145,6 +1150,8 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                           setMessageQuoteState({ sessionId: session?.id, quote: nextQuote });
                         }
                       : undefined}
+                    isBookmarked={isBookmarked}
+                    onToggleBookmark={canBookmark ? toggleBookmark : undefined}
                   />
                 );
                 if (!isVisible) return view;
@@ -1152,8 +1159,6 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                 if (currentAssistantModelKey !== null) previousAssistantModelKey = currentAssistantModelKey;
                 // The current turn (last user message onward) never collapses.
                 const collapsible = compactionSummary === null && (lastUserIdx === -1 ? idx < messages.length - 1 : idx < lastUserIdx);
-                const entryId = entryIds[idx];
-                const isBookmarked = !!entryId && bookmarks.has(entryId);
                 return (
                   <Fragment key={key}>
                     {idx === unreadMessageIndex && (
@@ -1164,25 +1169,13 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                   <div
                     data-message-role={compactionSummary === null ? msg.role : "summary"}
                     data-entry-id={entryId}
+                    data-bookmarked={isBookmarked || undefined}
                     data-turn-start={startsNewTurn || undefined}
                     className={`msg-item hover-group relative ${styles.messageItem} ${msg.role === "user" && compactionSummary === null ? styles.messageItemUser : styles.messageItemAssistant} ${startsNewTurn ? styles.turnStart : ""}`}
                     ref={(el) => {
                     messageRefs.current[currentRefIdx] = el;
                     if (idx === lastUserIdx) { (lastUserMsgRef as { current: HTMLDivElement | null }).current = el; }
                   }}>
-                    {entryId && (
-                      <button
-                        onClick={() => toggleBookmark(entryId)}
-                        className={`${isBookmarked ? "" : "hover-reveal "}${styles.bookmarkStar} ${isBookmarked ? styles.bookmarkStarOn : ""}`}
-                        title={isBookmarked ? t("chat.unbookmark") : t("chat.bookmark")}
-                        aria-label={isBookmarked ? t("chat.unbookmark") : t("chat.bookmark")}
-                        aria-pressed={isBookmarked}
-                      >
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill={isBookmarked ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                        </svg>
-                      </button>
-                    )}
                     <CollapsibleMessage
                       collapsible={collapsible}
                       expanded={expandedKeys.has(key)}

@@ -9,25 +9,62 @@ async function openMain(page: Page) {
 }
 
 test.describe("message bookmarks", () => {
-  test("star toggles and persists across reload", async ({ page }) => {
+  test("bookmark action toggles and persists across reload", async ({ page }) => {
     await openMain(page);
     const first = page.locator(".msg-item").first();
     await first.scrollIntoViewIfNeeded();
     await first.hover();
-    const star = first.locator('button[title="Bookmark this message"]');
-    await star.click();
-    await expect(first.locator('button[title="Remove bookmark"]')).toHaveCount(1);
+    await first.getByRole("button", { name: "Bookmark this message" }).click();
+    await expect(first).toHaveAttribute("data-bookmarked", "true");
+    await expect(first.locator("[data-bookmark-indicator]")).toHaveCount(1);
 
     await page.reload();
     await expect(page.getByText("專案架構分析").first()).toBeVisible({ timeout: 20_000 });
     const afterReload = page.locator(".msg-item").first();
     await afterReload.scrollIntoViewIfNeeded();
-    await expect(afterReload.locator('button[title="Remove bookmark"]')).toHaveCount(1);
+    await expect(afterReload).toHaveAttribute("data-bookmarked", "true");
+    await expect(afterReload.locator("[data-bookmark-indicator]")).toHaveCount(1);
 
     // Clean up so other specs see a fresh state
     await afterReload.hover();
-    await afterReload.locator('button[title="Remove bookmark"]').click();
-    await expect(afterReload.locator('button[title="Bookmark this message"]')).toBeAttached();
+    await afterReload.getByRole("button", { name: "Remove bookmark" }).click();
+    await expect(afterReload).not.toHaveAttribute("data-bookmarked", "true");
+    await expect(afterReload.locator("[data-bookmark-indicator]")).toHaveCount(0);
+  });
+
+  test("mobile keeps bookmark inside the message action menu", async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 760 });
+    await openMain(page);
+    const first = page.locator(".msg-item").first();
+    await first.scrollIntoViewIfNeeded();
+
+    await expect(first.getByRole("button", { name: "Bookmark this message" })).toHaveCount(0);
+    await first.getByRole("button", { name: "More message actions" }).click();
+    const addBookmark = first.getByRole("button", { name: "Bookmark this message" });
+    await expect(addBookmark).toBeVisible();
+    await expect(first.getByRole("button", { name: "Copy", exact: true })).toBeVisible();
+    await expect(first.getByRole("button", { name: "Quote" })).toBeVisible();
+    await addBookmark.click();
+    await expect(first).toHaveAttribute("data-bookmarked", "true");
+    await expect(first.locator("[data-bookmark-indicator]")).toBeVisible();
+
+    await first.getByRole("button", { name: "More message actions" }).click();
+    await first.getByRole("button", { name: "Remove bookmark" }).click();
+    await expect(first.locator("[data-bookmark-indicator]")).toHaveCount(0);
+
+    const lastAssistant = page.locator('.msg-item[data-message-role="assistant"]').last();
+    await lastAssistant.scrollIntoViewIfNeeded();
+    await lastAssistant.getByRole("button", { name: "More message actions" }).click();
+    await expect(lastAssistant.getByRole("button", { name: "Copy", exact: true })).toBeVisible();
+    const assistantQuote = lastAssistant.getByRole("button", { name: "Quote" });
+    await expect(assistantQuote).toBeVisible();
+    await expect(lastAssistant.getByRole("button", { name: "Bookmark this message" })).toBeVisible();
+    expect(await assistantQuote.evaluate((button) => {
+      const rect = button.getBoundingClientRect();
+      return document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)?.closest("button") === button;
+    })).toBe(true);
+    await page.keyboard.press("Escape");
+    await expect(lastAssistant.getByRole("button", { name: "Bookmark this message" })).toHaveCount(0);
   });
 });
 

@@ -173,6 +173,8 @@ test.describe("responsive shell", () => {
     expect(sendBox).not.toBeNull();
     expect(textareaBox!.width).toBeGreaterThanOrEqual(200);
     expect(textareaBox!.width).toBeGreaterThanOrEqual(shellBox!.width * 0.75);
+    expect(Math.abs(textareaBox!.y - sendBox!.y)).toBeLessThanOrEqual(1);
+    expect(Math.abs(textareaBox!.height - sendBox!.height)).toBeLessThanOrEqual(1);
     expect(sendBox!.x + sendBox!.width).toBeLessThanOrEqual(320);
     await expectNoPageOverflow(page);
   });

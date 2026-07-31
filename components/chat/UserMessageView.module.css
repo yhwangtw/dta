@@ -62,30 +62,41 @@
 
 .desktopActionToolbar {
   position: absolute;
-  right: 0;
-  bottom: calc(100% + 3px);
+  right: calc(100% + 6px);
+  bottom: 50%;
   z-index: 20;
   display: flex;
   align-items: center;
   gap: 2px;
   padding: 3px;
-  border: 1px solid var(--glass-border);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-md);
-  background: var(--glass-bg);
+  background: var(--bg-elev-1);
   -webkit-backdrop-filter: blur(14px) saturate(1.3);
   backdrop-filter: blur(14px) saturate(1.3);
   box-shadow: var(--color-shadow-popup);
   opacity: 0;
   pointer-events: none;
-  transform: translateY(3px);
+  transform: translate(3px, 50%);
   transition: opacity 0.12s ease, transform 0.12s ease;
 }
 .root:hover .desktopActionToolbar,
 .root:focus-within .desktopActionToolbar {
   opacity: 1;
   pointer-events: auto;
-  transform: translateY(0);
+  transform: translate(0, 50%);
 }
+
+.desktopActionToolbar .actionButton {
+  width: 28px;
+  justify-content: center;
+  gap: 0;
+  padding: 0;
+  color: var(--text);
+  font-size: 0;
+}
+.desktopActionToolbar .actionButton svg { width: 13px; height: 13px; }
+.desktopActionToolbar .actionButton[aria-pressed="true"] { color: var(--color-warning-text-strong); }
 
 /* Action buttons */
 .actionButtons {
@@ -99,8 +110,8 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 3px 8px;
-  height: 22px;
+  padding: 4px 8px;
+  height: 28px;
   background: none;
   border: none;
   border-radius: 5px;
@@ -118,6 +129,8 @@
 .timestamp {
   font-size: calc(10.5px * var(--font-scale));
   color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 /* ── Inline edit + rerun ── */
@@ -216,7 +229,7 @@
   .bottomRow {
     width: auto;
     max-width: 94%;
-    min-height: 34px;
+    min-height: 40px;
     flex-wrap: nowrap;
     gap: 2px;
     margin-top: 1px;
@@ -237,13 +250,14 @@
 
   .mobileActionMenu > summary {
     display: grid;
-    width: 36px;
-    height: 36px;
+    width: 40px;
+    height: 40px;
     place-items: center;
     border-radius: var(--radius-md);
     color: var(--text-dim);
     cursor: pointer;
     list-style: none;
+    touch-action: manipulation;
   }
 
   .mobileActionMenu > summary::-webkit-details-marker { display: none; }
@@ -263,9 +277,9 @@
     flex-direction: column;
     gap: 2px;
     padding: 5px;
-    border: 1px solid var(--glass-border);
+    border: 1px solid var(--border-strong);
     border-radius: var(--radius-lg);
-    background: var(--glass-bg);
+    background: var(--bg-elev-1);
     -webkit-backdrop-filter: blur(16px) saturate(1.3);
     backdrop-filter: blur(16px) saturate(1.3);
     box-shadow: var(--color-shadow-popup);
@@ -275,7 +289,10 @@
     min-height: 44px;
     justify-content: flex-start;
     padding: 0 10px;
+    color: var(--text-muted);
   }
+
+  .mobileActionPanel .actionButton[aria-pressed="true"] { color: var(--color-warning-text-strong); }
 
   .timestamp {
     margin-left: 2px;

@@ -1025,6 +1025,13 @@ span.linenumber {
   scroll-margin-top: 10px;
 }
 
+/* content-visibility adds paint containment. Temporarily lift it while a
+   disclosure is open so upward-opening message menus and usage popovers are
+   not clipped to the message's own box. */
+.msg-item:has(details[open]) {
+  content-visibility: visible;
+}
+
 /* ═══ Interactive hover utility classes ═══ */
 .hover-bg:hover:not(:disabled):not([aria-disabled="true"]) {
   background: var(--bg-hover);

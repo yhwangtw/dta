@@ -153,28 +153,6 @@
   transform-origin: center;
 }
 
-/* Message bookmark star (top-right of each message row) */
-.bookmarkStar {
-  position: absolute;
-  top: 2px;
-  right: -4px;
-  z-index: 5;
-  padding: 2px;
-  border: none;
-  border-radius: 4px;
-  background: none;
-  color: var(--text-dim);
-  cursor: pointer;
-}
-
-.bookmarkStar:hover {
-  color: var(--color-warning-text-strong, #d97706);
-}
-
-.bookmarkStarOn {
-  color: var(--color-warning-text-strong, #d97706);
-}
-
 .messageItemAssistant {
   padding-left: 4px;
 }
@@ -193,8 +171,6 @@
   background: linear-gradient(90deg, transparent, var(--border) 14%, var(--border) 86%, transparent);
   content: "";
 }
-
-.turnStart .bookmarkStar { top: 14px; }
 
 .unreadDivider {
   display: flex;
@@ -394,20 +370,6 @@
     place-items: center;
   }
 
-  .bookmarkStar {
-    top: 0;
-    right: 0;
-    display: grid;
-    width: 32px;
-    height: 32px;
-    place-items: center;
-    padding: 0;
-  }
-
-  .messageItem {
-    padding-right: 34px;
-  }
-
   .messageItemAssistant {
     padding-left: 0;
   }
@@ -416,8 +378,6 @@
     margin-top: 4px;
     padding-top: 10px;
   }
-
-  .turnStart .bookmarkStar { top: 10px; }
 
   .unreadDivider { margin: 8px 0 6px; gap: 7px; }
   .recoveryActions button { min-height: 44px; }

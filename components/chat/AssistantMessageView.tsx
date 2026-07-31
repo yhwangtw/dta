@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { MarkdownBody } from "./MarkdownBody";
 import type {
   AssistantMessage,
@@ -19,6 +19,7 @@ import { FocusDialog } from "./FocusDialog";
 import type { AssistantUsage } from "@/lib/usage-aggregation";
 import { requestOpenFile } from "@/lib/file-links";
 import styles from "./AssistantMessageView.module.css";
+import { MessageBookmarkAction, MessageBookmarkIndicator } from "./MessageBookmarkAction";
 
 export function isProviderAuthError(errorMessage?: string): boolean {
   return !!errorMessage && /(?:no api key|unauthori[sz]ed|authentication|credential|sign[ -]?in|log[ -]?in|openai-codex)/i.test(errorMessage);
@@ -72,6 +73,9 @@ export function AssistantMessageView({
   usageOverride,
   showUsage = true,
   onQuote,
+  bookmarkEntryId,
+  isBookmarked = false,
+  onToggleBookmark,
 }: {
   message: AssistantMessage;
   isStreaming?: boolean;
@@ -88,6 +92,9 @@ export function AssistantMessageView({
   usageOverride?: AssistantUsage;
   showUsage?: boolean;
   onQuote?: (text: string) => void;
+  bookmarkEntryId?: string;
+  isBookmarked?: boolean;
+  onToggleBookmark?: (entryId: string) => void;
 }) {
   const { t } = useI18n();
   const time = showTimestamp ? formatTime(message.timestamp) : null;
@@ -97,6 +104,7 @@ export function AssistantMessageView({
   const [tps, setTps] = useState<number | null>(null);
   const blocksRef = useRef(blocks);
   const rootRef = useRef<HTMLDivElement>(null);
+  const [actionsOpen, setActionsOpen] = useState(false);
   const actionsRef = useRef<HTMLDetailsElement>(null);
   blocksRef.current = blocks;
   const displayBlocks = useMemo(
@@ -137,6 +145,30 @@ export function AssistantMessageView({
     .filter((b): b is TextContent => b.type === "text")
     .map((b) => b.text)
     .join("\n");
+  const canBookmark = !!bookmarkEntryId && !!onToggleBookmark && !!textContent && !isStreaming;
+
+  const closeActions = useCallback(() => {
+    actionsRef.current?.removeAttribute("open");
+    setActionsOpen(false);
+  }, []);
+  useEffect(() => {
+    if (!actionsOpen) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (!actionsRef.current?.contains(event.target as Node)) closeActions();
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeActions();
+      }
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [actionsOpen, closeActions]);
 
   const copyContent = () => {
     copyText(textContent).then(() => {
@@ -341,22 +373,29 @@ export function AssistantMessageView({
             <span className={styles.copyLabel}>{copied ? t("common.copied") : t("common.copy")}</span>
           </button>
         )}
+        {canBookmark && (
+          <MessageBookmarkAction
+            isBookmarked={isBookmarked}
+            onToggle={() => onToggleBookmark!(bookmarkEntryId!)}
+            className={styles.copyButton}
+          />
+        )}
         </div>}
         {textContent && !isStreaming && (
           <details ref={actionsRef} className={styles.mobileActionMenu}>
-            <summary title={t("chat.moreActions")} aria-label={t("chat.moreActions")}>
+            <summary role="button" title={t("chat.moreActions")} aria-label={t("chat.moreActions")} onClick={() => setActionsOpen(!(actionsRef.current?.open ?? false))}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
                 <circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" />
               </svg>
             </summary>
             <div className={styles.mobileActionPanel}>
               {onQuote && (
-                <button type="button" onClick={() => { actionsRef.current?.removeAttribute("open"); quoteContent(); }} className={`${styles.copyButton} text-dim hover-accent`}>
+                <button type="button" onClick={() => { closeActions(); quoteContent(); }} className={`${styles.copyButton} text-dim hover-accent`}>
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M3 21c3-6 7-9 14-9" /><path d="M13 7l5 5-5 5" /></svg>
                   <span>{t("chat.quote")}</span>
                 </button>
               )}
-              <button type="button" onClick={() => { actionsRef.current?.removeAttribute("open"); copyContent(); }} className={`${styles.copyButton} ${copied ? "text-accent" : "text-dim hover-accent"}`}>
+              <button type="button" onClick={() => { closeActions(); copyContent(); }} className={`${styles.copyButton} ${copied ? "text-accent" : "text-dim hover-accent"}`}>
                 {copied ? (
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                 ) : (
@@ -364,9 +403,17 @@ export function AssistantMessageView({
                 )}
                 <span>{copied ? t("common.copied") : t("common.copy")}</span>
               </button>
+              {canBookmark && (
+                <MessageBookmarkAction
+                  isBookmarked={isBookmarked}
+                  onToggle={() => { closeActions(); onToggleBookmark!(bookmarkEntryId!); }}
+                  className={styles.copyButton}
+                />
+              )}
             </div>
           </details>
         )}
+        <MessageBookmarkIndicator isBookmarked={canBookmark && isBookmarked} />
         {time && !isStreaming && (
           <span className={styles.timestamp}>{time}</span>
         )}

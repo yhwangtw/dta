@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { MarkdownBody } from "./MarkdownBody";
 import type {
   UserMessage,
@@ -10,6 +10,7 @@ import type {
 import styles from "./UserMessageView.module.css";
 import { ImageLightbox } from "./ImageLightbox";
 import { useI18n } from "@/lib/i18n";
+import { MessageBookmarkAction, MessageBookmarkIndicator } from "./MessageBookmarkAction";
 
 function formatTime(ts?: number): string | null {
   if (!ts) return null;
@@ -43,7 +44,7 @@ function copyText(text: string): Promise<void> {
   }
 }
 
-export function UserMessageView({ message, entryId, onFork, forking, prevAssistantEntryId, onEditRerun, onQuote }: {
+export function UserMessageView({ message, entryId, onFork, forking, prevAssistantEntryId, onEditRerun, onQuote, isBookmarked = false, onToggleBookmark }: {
   message: UserMessage;
   entryId?: string;
   onFork?: (entryId: string) => void;
@@ -55,10 +56,13 @@ export function UserMessageView({ message, entryId, onFork, forking, prevAssista
   onEditContent?: (content: string) => void;
   onEditRerun?: (prevAssistantEntryId: string | undefined, newText: string) => void;
   onQuote?: (text: string) => void;
+  isBookmarked?: boolean;
+  onToggleBookmark?: (entryId: string) => void;
 }) {
   const { t } = useI18n();
   const [copied, setCopied] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [actionsOpen, setActionsOpen] = useState(false);
   const actionsRef = useRef<HTMLDetailsElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -99,6 +103,30 @@ export function UserMessageView({ message, entryId, onFork, forking, prevAssista
   const time = formatTime(message.timestamp);
   const canFork = !!entryId && !!onFork;
   const canEdit = !!prevAssistantEntryId && !!onEditRerun;
+  const canBookmark = !!entryId && !!onToggleBookmark;
+
+  const closeActions = useCallback(() => {
+    actionsRef.current?.removeAttribute("open");
+    setActionsOpen(false);
+  }, []);
+  useEffect(() => {
+    if (!actionsOpen) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (!actionsRef.current?.contains(event.target as Node)) closeActions();
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeActions();
+      }
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [actionsOpen, closeActions]);
 
   const copyContent = () => {
     copyText(content).then(() => {
@@ -216,6 +244,13 @@ export function UserMessageView({ message, entryId, onFork, forking, prevAssista
                 {t("chat.quote")}
               </button>
             )}
+            {canBookmark && (
+              <MessageBookmarkAction
+                isBookmarked={isBookmarked}
+                onToggle={() => onToggleBookmark!(entryId!)}
+                className={styles.actionButton}
+              />
+            )}
           </div>
           {(canFork || canEdit) && (
             <div className={`${styles.actionButtons} ${styles.secondaryActions}`}>
@@ -251,7 +286,7 @@ export function UserMessageView({ message, entryId, onFork, forking, prevAssista
           )}
           </div>
           <details ref={actionsRef} className={styles.mobileActionMenu}>
-              <summary title={t("chat.moreActions")} aria-label={t("chat.moreActions")}>
+              <summary role="button" title={t("chat.moreActions")} aria-label={t("chat.moreActions")} onClick={() => setActionsOpen(!(actionsRef.current?.open ?? false))}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
                   <circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" />
                 </svg>
@@ -259,7 +294,7 @@ export function UserMessageView({ message, entryId, onFork, forking, prevAssista
               <div className={styles.mobileActionPanel}>
                 <button
                   type="button"
-                  onClick={() => { actionsRef.current?.removeAttribute("open"); copyContent(); }}
+                  onClick={() => { closeActions(); copyContent(); }}
                   className={`${styles.actionButton} ${copied ? "text-accent" : "text-dim hover-accent"}`}
                 >
                   {copied ? (
@@ -271,7 +306,7 @@ export function UserMessageView({ message, entryId, onFork, forking, prevAssista
                 </button>
                 {canEdit && (
                   <button
-                    onClick={() => { actionsRef.current?.removeAttribute("open"); startEdit(); }}
+                    onClick={() => { closeActions(); startEdit(); }}
                     className={`${styles.actionButton} text-dim hover-accent`}
                   >
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -283,16 +318,23 @@ export function UserMessageView({ message, entryId, onFork, forking, prevAssista
                 {onQuote && (
                   <button
                     type="button"
-                    onClick={() => { actionsRef.current?.removeAttribute("open"); quoteContent(); }}
+                    onClick={() => { closeActions(); quoteContent(); }}
                     className={`${styles.actionButton} text-dim hover-accent`}
                   >
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M3 21c3-6 7-9 14-9" /><path d="M13 7l5 5-5 5" /></svg>
                     {t("chat.quote")}
                   </button>
                 )}
+                {canBookmark && (
+                  <MessageBookmarkAction
+                    isBookmarked={isBookmarked}
+                    onToggle={() => { closeActions(); onToggleBookmark!(entryId!); }}
+                    className={styles.actionButton}
+                  />
+                )}
                 {canFork && (
                   <button
-                    onClick={() => { actionsRef.current?.removeAttribute("open"); onFork!(entryId!); }}
+                    onClick={() => { closeActions(); onFork!(entryId!); }}
                     disabled={forking}
                     className={`${styles.actionButton} ${forking ? "text-accent" : "text-dim hover-accent"}`}
                   >
@@ -307,6 +349,7 @@ export function UserMessageView({ message, entryId, onFork, forking, prevAssista
                 )}
               </div>
             </details>
+          <MessageBookmarkIndicator isBookmarked={canBookmark && isBookmarked} />
           {time && <span className={styles.timestamp}>{time}</span>}
         </div>
       )}

@@ -77,6 +77,29 @@ test.describe("appearance", () => {
       .toBe(false);
   });
 
+  test("interface density applies immediately and survives reload", async ({ page }) => {
+    await openMain(page);
+    await page.getByRole("button", { name: "Appearance" }).click();
+    const dialog = page.getByRole("dialog", { name: "Appearance" });
+    await dialog.getByRole("button", { name: "Compact", exact: true }).click();
+
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.getAttribute("data-density")))
+      .toBe("compact");
+
+    await page.reload();
+    await expect(page.getByText("專案架構分析").first()).toBeVisible({ timeout: 20_000 });
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.getAttribute("data-density")))
+      .toBe("compact");
+
+    await page.getByRole("button", { name: "Appearance" }).click();
+    await page.getByRole("dialog", { name: "Appearance" }).getByRole("button", { name: "Comfortable", exact: true }).click();
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.hasAttribute("data-density")))
+      .toBe(false);
+  });
+
   test("all-left layout remains aligned and usable on mobile", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await openMain(page);
@@ -115,5 +138,39 @@ test.describe("appearance", () => {
       dark: document.documentElement.classList.contains("dark"),
     }));
     expect(state.skin).toBe("editorial");
+  });
+
+  test("primary empty-state actions keep readable contrast in every skin", async ({ page }) => {
+    await openMain(page);
+    await page.getByRole("button", { name: "Schedules", exact: true }).click();
+    const create = page.getByRole("button", { name: "New schedule", exact: true });
+    await expect(create).toBeVisible();
+
+    for (const skin of ["terminal", "industrial", "aurora", "editorial", "glass"]) {
+      for (const dark of [false, true]) {
+        const contrast = await create.evaluate((button, state) => {
+          const root = document.documentElement;
+          if (state.skin === "terminal") root.removeAttribute("data-skin");
+          else root.setAttribute("data-skin", state.skin);
+          root.classList.toggle("dark", state.dark);
+
+          const parse = (value: string) => value.match(/[\d.]+/g)?.slice(0, 3).map(Number) ?? [0, 0, 0];
+          const luminance = (value: string) => {
+            const channels = parse(value).map((channel) => {
+              const normalized = channel / 255;
+              return normalized <= 0.04045 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4;
+            });
+            return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
+          };
+
+          const styles = getComputedStyle(button);
+          const foreground = luminance(styles.color);
+          const background = luminance(styles.backgroundColor);
+          return (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05);
+        }, { skin, dark });
+
+        expect(contrast, `${skin} ${dark ? "dark" : "light"}`).toBeGreaterThanOrEqual(4.5);
+      }
+    }
   });
 });

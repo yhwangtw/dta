@@ -1347,6 +1347,13 @@
   :global(html[data-ui-style="trae"]) .sidebarContainer {
     left: calc(var(--safe-area-left) + 50px);
   }
+
+  :global(html[data-ui-style="trae"]) .rightPanelContainer {
+    /* Tablet layout already reserves 44px for the icon rail. TRAE adds an
+       8px outer gutter, so subtract it from the panel width instead of
+       letting the gutter push trailing viewer actions past the viewport. */
+    width: calc(100% - 52px);
+  }
 }
 
 @media (max-width: 700px) {

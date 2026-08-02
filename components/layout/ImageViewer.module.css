@@ -95,3 +95,9 @@
   cursor: pointer;
 }
 .zoomReset:hover { color: var(--text); }
+
+:global(html[data-ui-style="trae"]) .root { background: var(--trae-canvas); }
+:global(html[data-ui-style="trae"]) .toolbar { min-height: 44px; padding: 7px 12px; border-bottom-color: var(--trae-hairline); background: var(--trae-surface); }
+:global(html[data-ui-style="trae"]) .imageContainer { background-color: var(--trae-control); }
+:global(html[data-ui-style="trae"]) .image { border-radius: 12px; box-shadow: var(--trae-hover-shadow); }
+:global(html[data-ui-style="trae"]) .zoomReset { min-height: 28px; border-color: transparent; border-radius: 9px; background: var(--trae-control); }

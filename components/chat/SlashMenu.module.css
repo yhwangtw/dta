@@ -55,3 +55,7 @@
   color: var(--color-accent);
   vertical-align: middle;
 }
+
+:global(html[data-ui-style="trae"]) .menu { padding: 6px; border-color: var(--trae-hairline); border-radius: 15px; background: var(--glass-bg); }
+:global(html[data-ui-style="trae"]) .item { min-height: 42px; padding: 8px 10px; border-radius: 10px; }
+:global(html[data-ui-style="trae"]) .itemSelected { background: var(--bg-selected); }

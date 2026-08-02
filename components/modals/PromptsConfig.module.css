@@ -293,3 +293,28 @@
     justify-content: flex-end;
   }
 }
+
+:global(html[data-ui-style="trae"]) .overlay { background: var(--trae-overlay); backdrop-filter: blur(8px); }
+:global(html[data-ui-style="trae"]) .modal { border-color: var(--trae-hairline); border-radius: 20px; background: var(--trae-canvas); }
+:global(html[data-ui-style="trae"]) .header { min-height: 58px; padding: 12px 20px; border-bottom-color: var(--trae-hairline); background: var(--trae-surface); }
+:global(html[data-ui-style="trae"]) .body { padding: 20px; }
+:global(html[data-ui-style="trae"]) .list { gap: 8px; }
+:global(html[data-ui-style="trae"]) .item {
+  border-color: transparent;
+  border-radius: 14px;
+  background: var(--trae-surface-solid);
+  box-shadow: var(--trae-card-shadow);
+}
+:global(html[data-ui-style="trae"]) .itemEditing { border-color: var(--color-accent-border-focus); }
+:global(html[data-ui-style="trae"]) .nameInput,
+:global(html[data-ui-style="trae"]) .bodyInput { border-color: transparent; border-radius: 11px; background: var(--trae-control); }
+:global(html[data-ui-style="trae"]) .itemBtn,
+:global(html[data-ui-style="trae"]) .saveBtn,
+:global(html[data-ui-style="trae"]) .cancelBtn { border-radius: 10px; }
+:global(html[data-ui-style="trae"]) .empty { border: 0; border-radius: 14px; background: var(--trae-surface); }
+
+@media (max-width: 700px) {
+  :global(html[data-ui-style="trae"]) .modal { border: 0; border-radius: 0; }
+  :global(html[data-ui-style="trae"]) .body { padding: 14px 10px 28px; }
+  :global(html[data-ui-style="trae"]) .item { padding: 13px 11px; }
+}

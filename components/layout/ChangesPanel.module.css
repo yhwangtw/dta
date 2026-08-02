@@ -269,3 +269,22 @@
 }
 .commitBtn:hover { background: var(--accent-hover); }
 .commitBtn:disabled { opacity: 0.5; cursor: default; }
+
+:global(html[data-ui-style="trae"]) .container { background: var(--trae-canvas); }
+:global(html[data-ui-style="trae"]) .header {
+  min-height: 48px;
+  margin: 8px 8px 2px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--trae-surface);
+}
+:global(html[data-ui-style="trae"]) .count { border-radius: 999px; }
+:global(html[data-ui-style="trae"]) .list { gap: 3px; padding: 6px 8px; }
+:global(html[data-ui-style="trae"]) .item { min-height: 36px; border-radius: 10px; }
+:global(html[data-ui-style="trae"]) .snapSection,
+:global(html[data-ui-style="trae"]) .commitBox { border-top-color: var(--trae-hairline); }
+:global(html[data-ui-style="trae"]) .snapItem { margin: 0 8px 4px; border-radius: 10px; }
+:global(html[data-ui-style="trae"]) .snapRestore,
+:global(html[data-ui-style="trae"]) .commitInput { border-color: transparent; border-radius: 10px; background: var(--trae-control); }
+:global(html[data-ui-style="trae"]) .commitBtn { border-radius: 10px; color: var(--accent-fg); }

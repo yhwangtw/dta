@@ -644,3 +644,59 @@
   .copyLabel { display: none; }
   .copyButton { width: 36px; justify-content: center; }
 }
+
+:global(html[data-ui-style="trae"]) .messageContainer {
+  margin-bottom: 16px;
+}
+
+:global(html[data-ui-style="trae"]) .modelLabel {
+  margin-bottom: 6px;
+  color: var(--text-dim);
+}
+
+:global(html[data-ui-style="trae"]) .footer {
+  min-height: 30px;
+  margin-top: 5px;
+  opacity: 0.58;
+}
+
+:global(html[data-ui-style="trae"]) .actionToolbar,
+:global(html[data-ui-style="trae"]) .mobileActionPanel,
+:global(html[data-ui-style="trae"]) .usagePopover {
+  border-color: color-mix(in srgb, var(--text) 9%, transparent);
+  border-radius: 14px;
+  background: var(--bg-elev-1);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+:global(html[data-ui-style="trae"]) .thinkingContainer,
+:global(html[data-ui-style="trae"]) .toolCallContainer {
+  border-radius: 13px;
+}
+
+:global(html[data-ui-style="trae"]) .toolCallContainerError {
+  border-color: color-mix(in srgb, var(--text) 10%, transparent);
+  background: var(--bg-panel);
+  box-shadow: inset 3px 0 var(--color-error);
+}
+
+:global(html[data-ui-style="trae"]) .toolCallContainerSuccess {
+  border-color: color-mix(in srgb, var(--text) 8%, transparent);
+  background: var(--tool-bg);
+}
+
+:global(html[data-ui-style="trae"]) .errorCard {
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--color-error-bg) 55%, var(--bg-elev-1));
+}
+
+@media (max-width: 700px) {
+  :global(html[data-ui-style="trae"]) .messageContainer {
+    margin-bottom: 14px;
+  }
+
+  :global(html[data-ui-style="trae"]) .footer {
+    min-height: 36px;
+  }
+}

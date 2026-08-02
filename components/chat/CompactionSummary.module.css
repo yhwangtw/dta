@@ -41,3 +41,7 @@
   .card { max-width: 100%; }
   .header { min-height: 44px; }
 }
+
+:global(html[data-ui-style="trae"]) .card { border-color: transparent; border-radius: 14px; background: var(--trae-surface); box-shadow: var(--trae-card-shadow); }
+:global(html[data-ui-style="trae"]) .header { padding: 8px 11px; }
+:global(html[data-ui-style="trae"]) .body { border-top-color: var(--trae-hairline); }

@@ -298,3 +298,41 @@
   .twoColumns { grid-template-columns: 1fr; gap: 0; }
   .segmented { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* TRAE schedule cards share the same soft hierarchy as the agent dashboard. */
+:global(html[data-ui-style="trae"]) .container { background: var(--trae-canvas); }
+:global(html[data-ui-style="trae"]) .header {
+  min-height: 44px;
+  padding: 6px 10px 6px 12px;
+  border-bottom: 0;
+  background: transparent;
+}
+:global(html[data-ui-style="trae"]) .header strong { font-size: calc(12px * var(--font-scale)); }
+:global(html[data-ui-style="trae"]) .newButton { height: 30px; }
+:global(html[data-ui-style="trae"]) .newButton,
+:global(html[data-ui-style="trae"]) .primaryButton,
+:global(html[data-ui-style="trae"]) .secondaryButton,
+:global(html[data-ui-style="trae"]) .cardActions button,
+:global(html[data-ui-style="trae"]) .runState button { border-radius: 10px; }
+:global(html[data-ui-style="trae"]) .body { padding: 10px; }
+:global(html[data-ui-style="trae"]) .scheduleList { gap: 10px; }
+:global(html[data-ui-style="trae"]) .card,
+:global(html[data-ui-style="trae"]) .historyRow {
+  border-color: transparent;
+  border-radius: 14px;
+  background: var(--trae-surface-solid);
+  box-shadow: var(--trae-card-shadow);
+}
+:global(html[data-ui-style="trae"]) .card { padding: 13px; }
+:global(html[data-ui-style="trae"]) .cardWaiting { border-color: var(--color-warning-border); }
+:global(html[data-ui-style="trae"]) .runState { border-radius: 10px; background: var(--trae-control); }
+:global(html[data-ui-style="trae"]) .history { border-top-color: var(--trae-hairline); }
+:global(html[data-ui-style="trae"]) .field input,
+:global(html[data-ui-style="trae"]) .field textarea,
+:global(html[data-ui-style="trae"]) .field select,
+:global(html[data-ui-style="trae"]) .segmented,
+:global(html[data-ui-style="trae"]) .weekdays {
+  border-color: transparent;
+  border-radius: 11px;
+  background: var(--trae-control);
+}

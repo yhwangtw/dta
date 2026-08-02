@@ -116,3 +116,8 @@
     display: none;
   }
 }
+
+:global(html[data-ui-style="trae"]) .container { border-left-color: var(--trae-hairline); background: transparent; }
+:global(html[data-ui-style="trae"]) .viewportIndicator { border-color: var(--trae-hairline); background: var(--color-accent-bg-subtle); }
+:global(html[data-ui-style="trae"]) .centerLine { background: var(--trae-hairline); }
+:global(html[data-ui-style="trae"]) .tooltip { padding: 5px 9px; border-radius: 9px; background: var(--glass-bg); box-shadow: var(--color-shadow-dropdown); }

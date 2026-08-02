@@ -184,3 +184,10 @@
     padding: 8px 10px;
   }
 }
+
+:global(html[data-ui-style="trae"]) .blockContainer { border-color: transparent; border-radius: 14px; background: var(--trae-surface-solid); box-shadow: var(--trae-card-shadow); }
+:global(html[data-ui-style="trae"]) .blockHeader { min-height: 38px; border-bottom-color: var(--trae-hairline); background: var(--trae-control); }
+:global(html[data-ui-style="trae"]) .copyBtn,
+:global(html[data-ui-style="trae"]) .focusBtn,
+:global(html[data-ui-style="trae"]) .previewBtn { min-height: 28px; border-radius: 9px; }
+:global(html[data-ui-style="trae"]) .inlineCode { border-radius: 6px; background: var(--trae-control); }

@@ -208,3 +208,12 @@
   color: var(--accent);
   text-decoration: none;
 }
+
+:global(html[data-ui-style="trae"]) .headerArea { gap: 14px; }
+:global(html[data-ui-style="trae"]) .searchInput { min-height: 42px; border-color: transparent; border-radius: 11px; background: var(--trae-control); }
+:global(html[data-ui-style="trae"]) .searchBtn,
+:global(html[data-ui-style="trae"]) .installBtn { min-height: 38px; border-color: transparent; border-radius: 10px; }
+:global(html[data-ui-style="trae"]) .scopeToggle { padding: 3px; border: 0; border-radius: 11px; background: var(--trae-control); }
+:global(html[data-ui-style="trae"]) .scopeBtn { min-height: 30px; border: 0; border-radius: 8px; }
+:global(html[data-ui-style="trae"]) .scopeBtnActive { background: var(--trae-surface-solid); box-shadow: 0 1px 3px color-mix(in srgb, var(--text) 9%, transparent); }
+:global(html[data-ui-style="trae"]) .resultItem { margin-bottom: 8px; padding: 12px; border: 0; border-radius: 13px; background: var(--trae-surface-solid); box-shadow: var(--trae-card-shadow); }

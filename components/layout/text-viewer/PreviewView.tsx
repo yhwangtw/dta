@@ -40,7 +40,7 @@ export function PreviewView({ content, language, filePath }: Props) {
     // table wrappers, and external-link handling all come along for free.
     return (
       <div className={styles.markdownPreview}>
-        <MarkdownBody className="markdown-file-preview">{content}</MarkdownBody>
+        <MarkdownBody className="markdown-file-preview" allowSafeHtml sourceFilePath={filePath}>{content}</MarkdownBody>
       </div>
     );
   }

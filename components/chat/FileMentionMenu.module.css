@@ -46,3 +46,7 @@
   text-align: left;
   unicode-bidi: plaintext;
 }
+
+:global(html[data-ui-style="trae"]) .menu { padding: 6px; border-color: var(--trae-hairline); border-radius: 15px; background: var(--glass-bg); }
+:global(html[data-ui-style="trae"]) .item { min-height: 40px; padding: 7px 10px; border-radius: 10px; }
+:global(html[data-ui-style="trae"]) .itemSelected { background: var(--bg-selected); }

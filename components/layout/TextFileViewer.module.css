@@ -23,21 +23,46 @@
   flex-direction: column;
   height: 100%;
   overflow: hidden;
+  container-type: inline-size;
 }
 
 /* Status bar */
 .statusBar {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  column-gap: 8px;
-  row-gap: 4px;
-  padding: 4px 16px;
+  gap: 8px;
+  min-height: 38px;
+  padding: 4px 10px;
   border-bottom: 1px solid var(--border);
   font-size: calc(11px * var(--font-scale));
   color: var(--text-dim);
   background: var(--bg);
   flex-shrink: 0;
+}
+
+.fileSummary,
+.fileMeta,
+.fileActions {
+  display: flex;
+  align-items: center;
+}
+
+.fileSummary {
+  min-width: 0;
+  gap: 9px;
+}
+
+.fileMeta {
+  flex: 0 0 auto;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.fileActions {
+  min-width: 0;
+  justify-content: flex-end;
+  gap: 5px;
 }
 
 /* Partial-preview banner for files above the preview cap */
@@ -56,7 +81,7 @@
 }
 
 .filePath {
-  flex: 1 1 180px;
+  flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -224,4 +249,64 @@
   font-size: calc(13px * var(--font-scale));
   line-height: 1.6;
   tab-size: 2;
+}
+
+:global(html[data-ui-style="trae"]) .root { background: var(--trae-canvas); }
+:global(html[data-ui-style="trae"]) .statusBar {
+  min-height: 40px;
+  gap: 8px;
+  padding: 5px 10px;
+  border-bottom-color: var(--trae-hairline);
+  background: var(--trae-canvas);
+}
+:global(html[data-ui-style="trae"]) .toggleGroup {
+  padding: 2px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--trae-control);
+}
+:global(html[data-ui-style="trae"]) .toggleButton,
+:global(html[data-ui-style="trae"]) .toggleGroupFirst,
+:global(html[data-ui-style="trae"]) .toggleGroupSecond,
+:global(html[data-ui-style="trae"]) .toggleStandalone {
+  min-height: 26px;
+  border: 0;
+  border-radius: 999px;
+}
+:global(html[data-ui-style="trae"]) .toggleActive { background: var(--trae-surface-solid); box-shadow: 0 1px 3px color-mix(in srgb, var(--text) 9%, transparent); }
+:global(html[data-ui-style="trae"]) .toggleInactive { background: transparent; }
+:global(html[data-ui-style="trae"]) .findInput { min-height: 28px; border-color: transparent; border-radius: 8px; background: var(--trae-control); }
+:global(html[data-ui-style="trae"]) .contentArea { background: var(--trae-canvas); }
+:global(html[data-ui-style="trae"]) .markdownPreview {
+  width: min(860px, 100%);
+  max-width: none;
+  margin: 0 auto;
+  padding: clamp(22px, 4vw, 48px);
+}
+:global(html[data-ui-style="trae"]) .editor { padding: 18px; background: var(--trae-canvas); }
+
+@container (max-width: 720px) {
+  .statusBar {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+    padding: 5px 8px;
+  }
+
+  .fileActions {
+    justify-content: flex-start;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .fileActions::-webkit-scrollbar { display: none; }
+}
+
+@container (max-width: 430px) {
+  .fileSummary { gap: 6px; }
+  .fileMeta { gap: 6px; }
+  .findInput { width: 92px; }
+}
+
+@media (max-width: 700px) {
+  :global(html[data-ui-style="trae"]) .markdownPreview { padding: 20px 16px 48px; }
 }

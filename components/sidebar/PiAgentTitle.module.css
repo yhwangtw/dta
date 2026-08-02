@@ -51,3 +51,7 @@
   color: var(--text-dim);
   white-space: nowrap;
 }
+
+:global(html[data-ui-style="trae"]) .badge { border-radius: 10px; color: var(--accent-fg); box-shadow: 0 5px 16px var(--color-accent-glow); }
+:global(html[data-ui-style="trae"]) .name { font-weight: 650; }
+:global(html[data-ui-style="trae"]) .tagline { letter-spacing: 0.05em; text-transform: none; }

@@ -79,3 +79,8 @@
   color: var(--text);
   overflow-x: auto;
 }
+
+:global(html[data-ui-style="trae"]) .root { background: var(--trae-canvas); }
+:global(html[data-ui-style="trae"]) .diffLine { min-height: 24px; }
+:global(html[data-ui-style="trae"]) .lineNumber { border-right-color: var(--trae-hairline); }
+:global(html[data-ui-style="trae"]) .hiddenSegment { border-color: var(--trae-hairline); background: var(--trae-control); }

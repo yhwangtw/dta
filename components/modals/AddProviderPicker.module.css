@@ -130,3 +130,12 @@
 .plusIcon {
   color: var(--text-dim);
 }
+
+:global(html[data-ui-style="trae"]) .overlay { background: var(--trae-overlay); backdrop-filter: blur(8px); }
+:global(html[data-ui-style="trae"]) .modal { border-color: var(--trae-hairline); border-radius: 20px; background: var(--trae-canvas); }
+:global(html[data-ui-style="trae"]) .searchBar { min-height: 58px; margin: 10px; padding: 0 14px; border: 0; border-radius: 14px; background: var(--trae-control); }
+:global(html[data-ui-style="trae"]) .cardGridArea { padding: 8px 14px 18px; }
+:global(html[data-ui-style="trae"]) .sectionHeader { letter-spacing: 0.03em; text-transform: none; }
+:global(html[data-ui-style="trae"]) .card { min-height: 64px; border-color: transparent; border-radius: 13px; background: var(--trae-surface-solid); box-shadow: var(--trae-card-shadow); }
+:global(html[data-ui-style="trae"]) .card:hover { box-shadow: var(--trae-hover-shadow); }
+:global(html[data-ui-style="trae"]) .plusIconBox { border: 0; border-radius: 9px; background: var(--trae-control); }

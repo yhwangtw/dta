@@ -100,3 +100,21 @@
   cursor: pointer;
 }
 .tabMenuItem:hover { background: var(--bg-hover); color: var(--text); }
+
+:global(html[data-ui-style="trae"]) .tabBar {
+  height: 36px;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 6px;
+  background: var(--trae-canvas);
+}
+:global(html[data-ui-style="trae"]) .tab {
+  height: 30px;
+  min-width: 88px;
+  padding: 0 6px 0 9px;
+  border: 0;
+  border-radius: 8px;
+}
+:global(html[data-ui-style="trae"]) .tabActive { background: var(--trae-surface-solid); box-shadow: var(--trae-card-shadow); }
+:global(html[data-ui-style="trae"]) .tabInactive { background: transparent; }
+:global(html[data-ui-style="trae"]) .tabMenu { border-color: var(--trae-hairline); border-radius: 14px; background: var(--glass-bg); }

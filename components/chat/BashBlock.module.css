@@ -94,3 +94,9 @@
   white-space: pre-wrap;
   word-break: break-word;
 }
+
+:global(html[data-ui-style="trae"]) .container { border-color: transparent; border-radius: 14px; background: var(--trae-surface-solid); box-shadow: var(--trae-card-shadow); }
+:global(html[data-ui-style="trae"]) .header { min-height: 40px; padding: 7px 12px; border-bottom-color: var(--trae-hairline); background: var(--trae-control); }
+:global(html[data-ui-style="trae"]) .badge,
+:global(html[data-ui-style="trae"]) .abortButton { border-radius: 999px; }
+:global(html[data-ui-style="trae"]) .output { max-height: 360px; padding: 12px 14px; }

@@ -116,3 +116,14 @@
     animation: none;
   }
 }
+
+:global(html[data-ui-style="trae"]) .container { gap: 10px; }
+:global(html[data-ui-style="trae"]) .toast { min-height: 48px; padding: 11px 13px; border-color: var(--trae-hairline); border-radius: 14px; box-shadow: var(--color-shadow-popup); }
+:global(html[data-ui-style="trae"]) .success { box-shadow: inset 3px 0 var(--color-success), var(--color-shadow-popup); }
+:global(html[data-ui-style="trae"]) .error { box-shadow: inset 3px 0 var(--color-error), var(--color-shadow-popup); }
+:global(html[data-ui-style="trae"]) .warning { box-shadow: inset 3px 0 var(--color-warning), var(--color-shadow-popup); }
+:global(html[data-ui-style="trae"]) .info { box-shadow: inset 3px 0 var(--color-info), var(--color-shadow-popup); }
+
+@media (max-width: 700px) {
+  :global(html[data-ui-style="trae"]) .container { left: 10px; right: 10px; bottom: calc(var(--safe-area-bottom) + 82px); max-width: none; }
+}

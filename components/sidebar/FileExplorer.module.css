@@ -170,3 +170,32 @@
   color: var(--accent);
   background: var(--bg-selected);
 }
+
+:global(html[data-ui-style="trae"]) .treeContainer { padding: 6px; }
+:global(html[data-ui-style="trae"]) .treeNode {
+  height: 34px;
+  margin: 1px 0;
+  border-radius: 9px;
+}
+:global(html[data-ui-style="trae"]) .treeNodeActive { background: var(--bg-selected); }
+:global(html[data-ui-style="trae"]) .treeNode:focus { outline: 2px solid var(--color-accent-border-focus); border-radius: 9px; }
+:global(html[data-ui-style="trae"]) .mentionButton {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-color: transparent;
+  border-radius: 9px;
+  background: var(--trae-control);
+  font-size: 0;
+}
+:global(html[data-ui-style="trae"]) .mentionButton svg { width: 13px; height: 13px; }
+:global(html[data-ui-style="trae"]) .contextMenu { border-color: var(--trae-hairline); border-radius: 14px; background: var(--glass-bg); }
+:global(html[data-ui-style="trae"]) .menuItem { min-height: 36px; border-radius: 9px; }
+:global(html[data-ui-style="trae"]) .menuSep { background: var(--trae-hairline); }
+
+@media (max-width: 700px) {
+  :global(html[data-ui-style="trae"]) .treeNode { height: 46px; padding-right: 8px; }
+  :global(html[data-ui-style="trae"]) .mentionButton { right: 7px; width: 34px; height: 34px; opacity: 0.5; }
+  :global(html[data-ui-style="trae"]) .treeNodeActive .mentionButton,
+  :global(html[data-ui-style="trae"]) .treeNode:focus-within .mentionButton { opacity: 1; }
+}

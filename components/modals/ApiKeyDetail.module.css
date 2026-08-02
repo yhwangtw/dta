@@ -106,3 +106,8 @@
 .disconnectBtn:disabled {
   cursor: not-allowed;
 }
+
+:global(html[data-ui-style="trae"]) .root { gap: 18px; }
+:global(html[data-ui-style="trae"]) .inputField { min-height: 42px; border-color: transparent; border-radius: 11px; background: var(--trae-control); }
+:global(html[data-ui-style="trae"]) .saveBtn,
+:global(html[data-ui-style="trae"]) .disconnectBtn { min-height: 38px; border-radius: 10px; }

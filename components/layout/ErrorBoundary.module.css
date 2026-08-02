@@ -49,3 +49,8 @@
   font-size: calc(12px * var(--font-scale));
   font-weight: 500;
 }
+
+:global(html[data-ui-style="trae"]) .container { margin: 16px; border-radius: 16px; background: var(--trae-surface); }
+:global(html[data-ui-style="trae"]) .retryBtn,
+:global(html[data-ui-style="trae"]) .reloadBtn { min-height: 38px; border-color: transparent; border-radius: 10px; }
+:global(html[data-ui-style="trae"]) .reloadBtn { background: var(--trae-control); }

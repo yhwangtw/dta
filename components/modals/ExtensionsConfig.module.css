@@ -298,3 +298,26 @@
   .rowSource { margin-left: 0; max-width: 100%; }
   .flagInput { width: min(100%, 220px); height: 44px; font-size: 16px; }
 }
+
+:global(html[data-ui-style="trae"]) .overlay { background: var(--trae-overlay); backdrop-filter: blur(8px); }
+:global(html[data-ui-style="trae"]) .modal { border-color: var(--trae-hairline); border-radius: 20px; background: var(--trae-canvas); }
+:global(html[data-ui-style="trae"]) .header { min-height: 58px; padding: 12px 20px; border-bottom-color: var(--trae-hairline); background: var(--trae-surface); }
+:global(html[data-ui-style="trae"]) .body { padding: 20px; }
+:global(html[data-ui-style="trae"]) .diag,
+:global(html[data-ui-style="trae"]) .supportItem {
+  border-color: transparent;
+  border-radius: 12px;
+  background: var(--trae-surface-solid);
+  box-shadow: var(--trae-card-shadow);
+}
+:global(html[data-ui-style="trae"]) .section { margin-bottom: 24px; }
+:global(html[data-ui-style="trae"]) .sectionTitle { letter-spacing: 0.03em; text-transform: none; }
+:global(html[data-ui-style="trae"]) .row { min-height: 38px; border-radius: 10px; }
+:global(html[data-ui-style="trae"]) .reloadButton,
+:global(html[data-ui-style="trae"]) .flagInput { border-color: transparent; border-radius: 10px; background: var(--trae-control); }
+
+@media (max-width: 560px) {
+  :global(html[data-ui-style="trae"]) .modal { border: 0; border-radius: 0; }
+  :global(html[data-ui-style="trae"]) .body { padding: 16px 12px 28px; }
+  :global(html[data-ui-style="trae"]) .supportItem { min-height: 48px; }
+}

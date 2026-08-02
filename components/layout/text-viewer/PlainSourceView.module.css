@@ -34,3 +34,7 @@
   color: var(--text-dim);
   user-select: none;
 }
+
+:global(html[data-ui-style="trae"]) .plainPre { padding: 18px 0; background: var(--trae-canvas); }
+:global(html[data-ui-style="trae"]) .line { padding-right: 18px; }
+:global(html[data-ui-style="trae"]) .lineNo { border-right: 1px solid var(--trae-hairline); margin-right: 12px; }

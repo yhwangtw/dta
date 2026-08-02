@@ -193,3 +193,12 @@
   cursor: pointer;
   font-size: calc(12px * var(--font-scale));
 }
+
+:global(html[data-ui-style="trae"]) .optionButton,
+:global(html[data-ui-style="trae"]) .textInput,
+:global(html[data-ui-style="trae"]) .codeDisplay { min-height: 42px; border-color: transparent; border-radius: 11px; background: var(--trae-control); }
+:global(html[data-ui-style="trae"]) .optionButton:hover { background: var(--bg-hover); }
+:global(html[data-ui-style="trae"]) .submitBtn,
+:global(html[data-ui-style="trae"]) .cancelBtn,
+:global(html[data-ui-style="trae"]) .loginBtn,
+:global(html[data-ui-style="trae"]) .disconnectBtn { min-height: 38px; border-radius: 10px; }

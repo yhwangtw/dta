@@ -32,3 +32,6 @@
   color: var(--text);
   background: var(--bg-hover);
 }
+
+:global(html[data-ui-style="trae"]) .toggleBtn { min-height: 34px; border-color: transparent; border-radius: 999px; background: var(--trae-control); }
+:global(html[data-ui-style="trae"]) .fade { background: linear-gradient(transparent, var(--trae-canvas)); }

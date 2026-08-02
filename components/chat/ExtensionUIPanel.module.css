@@ -309,3 +309,63 @@
   .primaryButton,
   .secondaryButton { min-height: 36px; }
 }
+
+:global(html[data-ui-style="trae"]) .outer {
+  padding-bottom: 12px;
+}
+
+:global(html[data-ui-style="trae"]) .card {
+  border-color: color-mix(in srgb, var(--text) 10%, transparent);
+  border-radius: 22px;
+  box-shadow: 0 16px 46px rgba(24, 24, 28, 0.1);
+}
+
+:global(html[data-ui-style="trae"]) .cardHeader {
+  min-height: 66px;
+  padding: 12px 16px;
+  border-bottom-color: color-mix(in srgb, var(--text) 7%, transparent);
+  background: var(--bg-elev-1);
+}
+
+:global(html[data-ui-style="trae"]) .choice,
+:global(html[data-ui-style="trae"]) .textInput,
+:global(html[data-ui-style="trae"]) .editor {
+  border-radius: 14px;
+  background: var(--bg-panel);
+}
+
+:global(html[data-ui-style="trae"]) .questionGroup {
+  border-bottom-color: color-mix(in srgb, var(--text) 7%, transparent);
+}
+
+:global(html[data-ui-style="trae"]) .actions {
+  padding: 12px 14px;
+  border-top-color: color-mix(in srgb, var(--text) 7%, transparent);
+  background: var(--bg-elev-1);
+}
+
+:global(html[data-ui-style="trae"]) .primaryButton,
+:global(html[data-ui-style="trae"]) .secondaryButton {
+  min-height: 40px;
+  border-radius: var(--radius-full);
+}
+
+@media (max-width: 700px) {
+  :global(html[data-ui-style="trae"]) .outer {
+    padding: 0 12px 8px;
+  }
+
+  :global(html[data-ui-style="trae"]) .card {
+    max-height: min(70dvh, 560px);
+    border-radius: 20px;
+  }
+
+  :global(html[data-ui-style="trae"]) .choices {
+    gap: 10px;
+  }
+
+  :global(html[data-ui-style="trae"]) .choice {
+    min-height: 60px;
+    padding: 10px 12px;
+  }
+}

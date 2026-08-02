@@ -3,6 +3,8 @@
 import { useState, useCallback, useMemo, useRef } from "react";
 import type { SessionInfo } from "@/lib/types";
 import type { SessionTags } from "./useTags";
+import type { Skin } from "@/lib/skin";
+import type { UiStyle } from "@/lib/ui-style";
 
 // ── Result types ───────────────────────────────────────────────────────────
 
@@ -33,6 +35,9 @@ export type PaletteActionId =
   | "view:toggle-file-panel"
   | "view:toggle-chat-width"
   | "view:toggle-follow"
+  | "ui-style:original"
+  | "ui-style:trae"
+  | "skin:trae"
   | "skin:terminal"
   | "skin:industrial"
   | "skin:aurora"
@@ -66,7 +71,8 @@ export interface PaletteCallbacks {
   toggleFilePanel: () => void;
   toggleChatWidth: () => void;
   toggleFollowStream: () => void;
-  setSkin: (skin: "terminal" | "industrial" | "aurora" | "editorial" | "glass") => void;
+  setSkin: (skin: Skin) => void;
+  setUiStyle: (style: UiStyle) => void;
   newSession: () => void;
   openParallelForActive: () => void;
   openHelp: () => void;
@@ -150,17 +156,41 @@ const ACTIONS: PaletteResult[] = [
     data: { action: "view:toggle-file-panel" } as { action: PaletteActionId },
   },
   {
+    id: "action:ui-style-original",
+    kind: "action",
+    title: "Interface: Original",
+    subtitle: "Use the original Pi Web component geometry",
+    keywords: "interface style original layout 介面 原版 版型",
+    data: { action: "ui-style:original" } as { action: PaletteActionId },
+  },
+  {
+    id: "action:ui-style-trae",
+    kind: "action",
+    title: "Interface: TRAE",
+    subtitle: "Use the quieter TRAE-inspired component geometry",
+    keywords: "interface style trae layout 介面 版型",
+    data: { action: "ui-style:trae" } as { action: PaletteActionId },
+  },
+  {
     id: "action:skin-terminal",
     kind: "action",
-    title: "Appearance: Terminal",
+    title: "Color: Terminal",
     subtitle: "Near-black with emerald",
     keywords: "skin theme appearance emerald green 外觀 風格 綠",
     data: { action: "skin:terminal" } as { action: PaletteActionId },
   },
   {
+    id: "action:skin-trae",
+    kind: "action",
+    title: "Color: TRAE Violet",
+    subtitle: "Neutral surfaces with a focused violet accent",
+    keywords: "skin theme color appearance trae violet purple 配色 紫",
+    data: { action: "skin:trae" } as { action: PaletteActionId },
+  },
+  {
     id: "action:skin-industrial",
     kind: "action",
-    title: "Appearance: Industrial",
+    title: "Color: Industrial",
     subtitle: "Pure monochrome, high contrast",
     keywords: "skin theme appearance mono black white 外觀 風格 黑白",
     data: { action: "skin:industrial" } as { action: PaletteActionId },
@@ -168,7 +198,7 @@ const ACTIONS: PaletteResult[] = [
   {
     id: "action:skin-aurora",
     kind: "action",
-    title: "Appearance: Aurora",
+    title: "Color: Aurora",
     subtitle: "Deep violet with soft glow",
     keywords: "skin theme appearance violet purple 外觀 風格 紫",
     data: { action: "skin:aurora" } as { action: PaletteActionId },
@@ -176,15 +206,15 @@ const ACTIONS: PaletteResult[] = [
   {
     id: "action:skin-editorial",
     kind: "action",
-    title: "Appearance: Editorial",
-    subtitle: "Warm paper tones with burnt orange — the default",
+    title: "Color: Editorial",
+    subtitle: "Warm paper tones with burnt orange",
     keywords: "skin theme appearance warm paper orange 外觀 風格 紙 橙",
     data: { action: "skin:editorial" } as { action: PaletteActionId },
   },
   {
     id: "action:skin-glass",
     kind: "action",
-    title: "Appearance: Glass",
+    title: "Color: Glass",
     subtitle: "Frosted panels over an aurora gradient",
     keywords: "skin theme appearance glass frost blur glassmorphism 外觀 風格 玻璃 磨砂",
     data: { action: "skin:glass" } as { action: PaletteActionId },
@@ -391,6 +421,9 @@ export function useCommandPalette({
       case "view:toggle-file-panel": cbs.toggleFilePanel(); break;
       case "view:toggle-chat-width": cbs.toggleChatWidth(); break;
       case "view:toggle-follow": cbs.toggleFollowStream(); break;
+      case "ui-style:original": cbs.setUiStyle("original"); break;
+      case "ui-style:trae": cbs.setUiStyle("trae"); break;
+      case "skin:trae": cbs.setSkin("trae"); break;
       case "skin:terminal": cbs.setSkin("terminal"); break;
       case "skin:industrial": cbs.setSkin("industrial"); break;
       case "skin:aurora": cbs.setSkin("aurora"); break;

@@ -74,3 +74,6 @@
   .star { color: var(--color-warning-text-strong); }
   .empty { padding: 32px 12px; color: var(--text-dim); text-align: center; }
 }
+
+:global(html[data-ui-style="trae"]) .trigger { border-color: transparent; border-radius: 999px; background: var(--trae-control); }
+:global(html[data-ui-style="trae"]) .backdrop { background: var(--trae-overlay); backdrop-filter: blur(6px); }

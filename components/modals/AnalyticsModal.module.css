@@ -281,3 +281,31 @@
     min-width: 540px;
   }
 }
+
+:global(html[data-ui-style="trae"]) .overlay { background: var(--trae-overlay); backdrop-filter: blur(8px); }
+:global(html[data-ui-style="trae"]) .modal { border-color: var(--trae-hairline); border-radius: 20px; background: var(--trae-canvas); }
+:global(html[data-ui-style="trae"]) .header { min-height: 58px; padding: 12px 20px; border-bottom-color: var(--trae-hairline); background: var(--trae-surface); }
+:global(html[data-ui-style="trae"]) .body { padding: 22px; }
+:global(html[data-ui-style="trae"]) .stat {
+  border-color: transparent;
+  border-radius: 14px;
+  background: var(--trae-surface-solid);
+  box-shadow: var(--trae-card-shadow);
+}
+:global(html[data-ui-style="trae"]) .section h3 { letter-spacing: 0; text-transform: none; }
+:global(html[data-ui-style="trae"]) .barTrack { border-radius: 999px; background: var(--trae-control); }
+:global(html[data-ui-style="trae"]) .barFill { border-radius: 999px; }
+:global(html[data-ui-style="trae"]) .table {
+  overflow: hidden;
+  border: 0;
+  border-radius: 14px;
+  background: var(--trae-surface-solid);
+  box-shadow: var(--trae-card-shadow);
+}
+:global(html[data-ui-style="trae"]) .tableHeader,
+:global(html[data-ui-style="trae"]) .tableRow { border-color: var(--trae-hairline); }
+
+@media (max-width: 700px) {
+  :global(html[data-ui-style="trae"]) .modal { border: 0; border-radius: 0; }
+  :global(html[data-ui-style="trae"]) .body { padding: 16px 12px 28px; }
+}

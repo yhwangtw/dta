@@ -69,3 +69,12 @@
   .actions button { min-height: 40px; }
   .actions .close { width: 40px; }
 }
+
+:global(html[data-ui-style="trae"]) .overlay { background: var(--trae-overlay); }
+:global(html[data-ui-style="trae"]) .panel { border-color: var(--trae-hairline); border-radius: 20px; background: var(--trae-canvas); }
+:global(html[data-ui-style="trae"]) .header { min-height: 56px; padding: 8px 12px 8px 18px; border-bottom-color: var(--trae-hairline); background: var(--trae-surface); }
+:global(html[data-ui-style="trae"]) .actions button { border-color: transparent; border-radius: 10px; background: var(--trae-control); }
+
+@media (max-width: 700px) {
+  :global(html[data-ui-style="trae"]) .panel { border: 0; border-radius: 0; }
+}

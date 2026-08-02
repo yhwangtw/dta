@@ -3,6 +3,7 @@
 import type { Pluggable, PluggableList } from "unified";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
+import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
 // PrismAsync keeps the full language set but splits refractor + languages into
 // a lazily-loaded chunk, so the highlighter never blocks the initial bundle.
@@ -10,6 +11,7 @@ import { PrismAsync as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vs, vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { useTheme } from "@/hooks/useTheme";
 import { looksLikeFilePath, requestOpenFile } from "@/lib/file-links";
+import { encodeFilePathForApi, normalizeFilePathSlashes } from "@/lib/file-paths";
 import { useI18n } from "@/lib/i18n";
 import { FocusDialog } from "./FocusDialog";
 import styles from "./MarkdownBody.module.css";
@@ -18,6 +20,63 @@ interface MarkdownBodyProps {
   children: string;
   className?: string;
   isStreaming?: boolean;
+  /** Enable a constrained subset of raw HTML for trusted local file previews. */
+  allowSafeHtml?: boolean;
+  /** Absolute Markdown path used to resolve local relative image sources. */
+  sourceFilePath?: string;
+}
+
+type HastNode = {
+  type?: string;
+  tagName?: string;
+  properties?: Record<string, unknown>;
+  children?: HastNode[];
+};
+
+const BLOCKED_PREVIEW_TAGS = new Set([
+  "applet", "base", "button", "embed", "form", "frame", "frameset",
+  "iframe", "input", "link", "meta", "object", "script", "select",
+  "style", "textarea",
+]);
+
+/** Raw README HTML is useful for badges and alignment, but must stay inert. */
+function rehypeSafeLocalHtml() {
+  return (tree: HastNode) => {
+    const clean = (node: HastNode): HastNode | null => {
+      if (node.type === "element" && node.tagName) {
+        if (BLOCKED_PREVIEW_TAGS.has(node.tagName.toLowerCase())) return null;
+        if (node.properties) {
+          for (const key of Object.keys(node.properties)) {
+            if (/^on/i.test(key) || key === "style" || key === "srcDoc") {
+              delete node.properties[key];
+            }
+          }
+        }
+      }
+      if (node.children) {
+        node.children = node.children.map(clean).filter((child): child is HastNode => child !== null);
+      }
+      return node;
+    };
+    clean(tree);
+  };
+}
+
+export function resolveMarkdownImageSource(src: string | undefined, sourceFilePath?: string): string | undefined {
+  if (!src || !sourceFilePath || /^(?:[a-z][a-z0-9+.-]*:|\/\/|\/|#)/i.test(src)) return src;
+
+  const source = normalizeFilePathSlashes(sourceFilePath).split("/");
+  source.pop();
+  let relative = src.split(/[?#]/, 1)[0].replace(/\\/g, "/");
+  try { relative = decodeURIComponent(relative); } catch { /* keep malformed input literal */ }
+  for (const part of relative.split("/")) {
+    if (!part || part === ".") continue;
+    if (part === "..") source.pop();
+    else source.push(part);
+  }
+
+  const absolute = source.join("/") || "/";
+  return `/api/files/${encodeFilePathForApi(absolute)}?type=raw`;
 }
 
 type MathPlugins = {
@@ -57,7 +116,7 @@ function copyText(text: string): Promise<void> {
   }
 }
 
-export function MarkdownBody({ children, className, isStreaming }: MarkdownBodyProps) {
+export function MarkdownBody({ children, className, isStreaming, allowSafeHtml = false, sourceFilePath }: MarkdownBodyProps) {
   const normalizedMarkdown = useMemo(() => normalizeDisplayMath(children), [children]);
   const needsMath = useMemo(() => containsMath(normalizedMarkdown), [normalizedMarkdown]);
   const [mathPlugins, setMathPlugins] = useState<MathPlugins | null>(null);
@@ -90,11 +149,17 @@ export function MarkdownBody({ children, className, isStreaming }: MarkdownBodyP
     [mathPlugins],
   );
   const rehypePlugins: PluggableList = useMemo(
-    () =>
-      mathPlugins
-        ? [[mathPlugins.rehypeKatex, { throwOnError: false, strict: false }] as Pluggable]
-        : [],
-    [mathPlugins],
+    () => {
+      const plugins: PluggableList = [];
+      if (allowSafeHtml) {
+        plugins.push(rehypeRaw as Pluggable, rehypeSafeLocalHtml as Pluggable);
+      }
+      if (mathPlugins) {
+        plugins.push([mathPlugins.rehypeKatex, { throwOnError: false, strict: false }] as Pluggable);
+      }
+      return plugins;
+    },
+    [allowSafeHtml, mathPlugins],
   );
 
   return (
@@ -163,6 +228,12 @@ export function MarkdownBody({ children, className, isStreaming }: MarkdownBodyP
                 {children}
               </a>
             );
+          },
+          img({ alt, ...props }) {
+            const src = resolveMarkdownImageSource(typeof props.src === "string" ? props.src : undefined, sourceFilePath);
+            // Arbitrary README badge hosts cannot be declared up front for next/image.
+            // eslint-disable-next-line @next/next/no-img-element
+            return <img {...props} src={src} alt={alt ?? ""} loading="lazy" decoding="async" referrerPolicy="no-referrer" />;
           },
         }}
       >

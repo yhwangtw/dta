@@ -8,6 +8,7 @@ import { DEFAULT_FONT_SIZE, FONT_SIZES, useFontSize } from "@/lib/font-size";
 import { DEFAULT_FONT_FAMILY, FONT_FAMILIES, useFontFamily } from "@/lib/font-family";
 import { DEFAULT_MESSAGE_LAYOUT, MESSAGE_LAYOUTS, useMessageLayout } from "@/lib/message-layout";
 import { DEFAULT_DENSITY, DENSITIES, useDensity } from "@/lib/density";
+import { DEFAULT_UI_STYLE, UI_STYLES, useUiStyle } from "@/lib/ui-style";
 import styles from "./AppearancePanel.module.css";
 
 interface Props {
@@ -15,9 +16,9 @@ interface Props {
 }
 
 /**
- * Appearance picker popover (rail → palette icon): theme, font size, and the
- * five skins as swatch cards. Changes apply instantly for live preview; Esc
- * or clicking outside closes.
+ * Appearance picker popover (rail → palette icon): interface geometry, color
+ * palette, theme, and readability preferences. Changes apply instantly for
+ * live preview; Esc or clicking outside closes.
  */
 export function AppearancePanel({ onClose }: Props) {
   const { skin, setSkin } = useSkin();
@@ -26,6 +27,7 @@ export function AppearancePanel({ onClose }: Props) {
   const { fontFamily, setFontFamily } = useFontFamily();
   const { messageLayout, setMessageLayout } = useMessageLayout();
   const { density, setDensity } = useDensity();
+  const { uiStyle, setUiStyle } = useUiStyle();
   const { locale, setLocale, t } = useI18n();
   const ref = useRef<HTMLDivElement | null>(null);
 
@@ -49,6 +51,7 @@ export function AppearancePanel({ onClose }: Props) {
     setFontFamily(DEFAULT_FONT_FAMILY);
     setMessageLayout(DEFAULT_MESSAGE_LAYOUT);
     setDensity(DEFAULT_DENSITY);
+    setUiStyle(DEFAULT_UI_STYLE);
   };
 
   useEffect(() => {
@@ -74,7 +77,7 @@ export function AppearancePanel({ onClose }: Props) {
       <div className={styles.panelHeader}>
         <div>
           <strong>{t("appearance.title")}</strong>
-          <span>{t("appearance.colors")}</span>
+          <span>{t("appearance.subtitle")}</span>
         </div>
         <button type="button" className={styles.closeButton} onClick={onClose} aria-label={t("appearance.close")} title={t("appearance.close")}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
@@ -108,6 +111,21 @@ export function AppearancePanel({ onClose }: Props) {
           </svg>
           {t("appearance.dark")}
         </button>
+      </div>
+
+      <div className={styles.sectionLabel}>{t("appearance.interfaceStyle")}</div>
+      <div className={styles.messageLayoutRow} role="group" aria-label={t("appearance.interfaceStyle")}>
+        {UI_STYLES.map((style) => (
+          <button
+            key={style}
+            type="button"
+            className={`${styles.fontSizeBtn} ${style === uiStyle ? styles.fontSizeBtnActive : ""}`}
+            aria-pressed={style === uiStyle}
+            onClick={() => setUiStyle(style)}
+          >
+            {t(`appearance.interfaceStyle.${style}`)}
+          </button>
+        ))}
       </div>
 
       <div className={styles.sectionLabel}>{t("appearance.fontSize")}</div>
@@ -178,7 +196,7 @@ export function AppearancePanel({ onClose }: Props) {
       </div>
 
       <div className={styles.sectionLabel}>{t("appearance.colors")}</div>
-      <div className={styles.skinList}>
+      <div className={styles.skinList} role="group" aria-label={t("appearance.colors")}>
         {SKINS.map((sk) => (
           <button
             key={sk}

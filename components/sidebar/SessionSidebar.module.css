@@ -308,3 +308,40 @@
     overscroll-behavior-y: contain;
   }
 }
+
+:global(html[data-ui-style="trae"]) .header {
+  padding: 16px 12px 10px;
+}
+
+:global(html[data-ui-style="trae"]) .newSessionButton,
+:global(html[data-ui-style="trae"]) .refreshButton {
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--bg-elev-1);
+  box-shadow: 0 4px 15px rgba(24, 24, 28, 0.045);
+}
+
+:global(html[data-ui-style="trae"]) .sessionToolbar {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+:global(html[data-ui-style="trae"]) .sessionListLabel,
+:global(html[data-ui-style="trae"]) .groupHeader {
+  letter-spacing: 0.07em;
+}
+
+:global(html[data-ui-style="trae"]) .groupHeaderDivider {
+  margin-top: 10px;
+}
+
+@media (max-width: 700px) {
+  :global(html[data-ui-style="trae"]) .header {
+    padding: 14px 14px 10px;
+  }
+
+  :global(html[data-ui-style="trae"]) .newSessionButton,
+  :global(html[data-ui-style="trae"]) .refreshButton {
+    min-height: 46px;
+  }
+}

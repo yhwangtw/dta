@@ -1049,3 +1049,212 @@
     padding: 0 0 4px;
   }
 }
+
+/* The composer mirrors TRAE Work's two-storey mobile surface: writing and
+   model controls stay in the white card, while real workspace context sits
+   in a quieter footer. This is deliberately skin-scoped so the denser editor
+   skins keep their existing ergonomics. */
+.workspaceContextBar {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+}
+
+.workspaceContextItem {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.workspaceContextItem > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.workspaceContextItemMuted {
+  color: var(--text-dim);
+}
+
+:global(html[data-ui-style="trae"]) .container {
+  padding: 0 24px 18px;
+  padding-right: 60px;
+}
+
+:global(html[data-ui-style="trae"]) .innerWrapper:not(.innerWrapperExpanded) {
+  padding: 8px;
+  border: 1px solid color-mix(in srgb, var(--text) 9%, transparent);
+  border-radius: 26px;
+  background: var(--bg-elev-1);
+  box-shadow: var(--color-shadow-input);
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+:global(html[data-ui-style="trae"]) .innerWrapper:not(.innerWrapperExpanded):focus-within {
+  border-color: var(--color-accent-border-focus);
+  box-shadow: var(--color-shadow-input), 0 0 0 3px var(--color-accent-bg-subtle);
+}
+
+:global(html[data-ui-style="trae"]) .inputWrapper {
+  gap: 10px;
+  padding: 9px 10px 7px 12px;
+  border: 0;
+  border-radius: 18px;
+  background: transparent;
+  box-shadow: none;
+}
+
+:global(html[data-ui-style="trae"]) .inputWrapperNormal:focus-within {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+:global(html[data-ui-style="trae"]) .textarea {
+  min-height: 44px;
+  padding: 8px 0;
+  font-size: calc(15px * var(--font-scale));
+  line-height: 1.55;
+}
+
+:global(html[data-ui-style="trae"]) .sendButton {
+  width: 44px;
+  min-height: 44px;
+  justify-content: center;
+  gap: 0;
+  padding: 0;
+  border-radius: var(--radius-full);
+}
+
+:global(html[data-ui-style="trae"]) .sendButton .actionLabel {
+  display: none;
+}
+
+:global(html[data-ui-style="trae"]) .bottomBar {
+  min-height: 40px;
+  margin: 0;
+  padding: 0 10px 8px;
+}
+
+:global(html[data-ui-style="trae"]) .bottomBarLeft {
+  gap: 5px;
+}
+
+:global(html[data-ui-style="trae"]) .bottomBarLeft button,
+:global(html[data-ui-style="trae"]) .mobileToolsButton,
+:global(html[data-ui-style="trae"]) .expandButton {
+  border-radius: var(--radius-full);
+}
+
+:global(html[data-ui-style="trae"]) .attachButton {
+  width: 34px;
+  height: 34px;
+  background: var(--bg-panel);
+}
+
+:global(html[data-ui-style="trae"]) .keyboardHint {
+  display: none;
+}
+
+:global(html[data-ui-style="trae"]) .mobileToolsButton {
+  margin-left: auto;
+  background: var(--bg-panel);
+}
+
+:global(html[data-ui-style="trae"]) .workspaceContextBar {
+  margin: 2px -8px -8px;
+  padding: 10px 16px;
+  overflow-x: auto;
+  border-top: 1px solid color-mix(in srgb, var(--text) 7%, transparent);
+  border-radius: 0 0 25px 25px;
+  background: var(--bg-panel);
+  scrollbar-width: none;
+}
+
+:global(html[data-ui-style="trae"]) .workspaceContextBar::-webkit-scrollbar {
+  display: none;
+}
+
+:global(html[data-ui-style="trae"]) .workspaceContextItem + .workspaceContextItem::before {
+  width: 3px;
+  height: 3px;
+  margin-right: 2px;
+  border-radius: var(--radius-full);
+  background: var(--border);
+  content: "";
+}
+
+@media (max-width: 700px) {
+  :global(html[data-ui-style="trae"]) .container {
+    padding: 4px 12px 10px;
+  }
+
+  :global(html[data-ui-style="trae"]) .innerWrapper:not(.innerWrapperExpanded) {
+    padding: 7px;
+    border-radius: 28px;
+  }
+
+  :global(html[data-ui-style="trae"]) .inputWrapper {
+    padding: 7px 5px 5px 9px;
+    border-radius: 21px;
+  }
+
+  :global(html[data-ui-style="trae"]) .textarea {
+    min-height: 50px;
+    max-height: min(32dvh, 170px);
+    padding: 9px 0;
+  }
+
+  :global(html[data-ui-style="trae"]) .sendButton,
+  :global(html[data-ui-style="trae"]) .steerButton,
+  :global(html[data-ui-style="trae"]) .followUpButton {
+    width: 50px;
+    min-height: 50px;
+  }
+
+  :global(html[data-ui-style="trae"]) .attachButton {
+    width: 44px;
+    height: 44px;
+  }
+
+  :global(html[data-ui-style="trae"]) .bottomBar {
+    min-height: 42px;
+    padding: 0 7px 7px;
+  }
+
+  :global(html[data-ui-style="trae"]) .bottomBarLeft > div button {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+  }
+
+  :global(html[data-ui-style="trae"]) .workspaceContextBar {
+    min-height: 44px;
+    margin: 2px -7px -7px;
+    padding: 8px 13px;
+    border-radius: 0 0 27px 27px;
+  }
+
+  :global(html[data-ui-style="trae"]) .workspaceContextItem {
+    flex: 0 1 auto;
+    max-width: 42%;
+    font-size: calc(10.5px * var(--font-scale));
+  }
+
+  :global(html[data-ui-style="trae"]) .workspaceContextItem:first-child {
+    flex: 0 0 auto;
+    max-width: none;
+  }
+
+  :global(html[data-ui-style="trae"]) .bottomBarRightMobileOpen {
+    bottom: calc(100% + 12px);
+    padding: 8px;
+    border-radius: 20px;
+    background: var(--bg-elev-1);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}

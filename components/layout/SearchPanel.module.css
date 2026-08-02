@@ -254,3 +254,31 @@
   .result { min-height: 48px; }
   .caseButton { min-width: 44px; height: 32px; }
 }
+
+:global(html[data-ui-style="trae"]) .root { background: var(--trae-canvas); }
+:global(html[data-ui-style="trae"]) .header {
+  margin: 8px 8px 0;
+  padding: 10px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--trae-surface);
+}
+:global(html[data-ui-style="trae"]) .title { margin-bottom: 10px; letter-spacing: 0; text-transform: none; }
+:global(html[data-ui-style="trae"]) .input {
+  height: 40px;
+  border-color: transparent;
+  border-radius: 12px;
+  background: var(--trae-control);
+}
+:global(html[data-ui-style="trae"]) .scope { min-height: 32px; padding: 0 9px; border-radius: 999px; }
+:global(html[data-ui-style="trae"]) .scopeActive { border-color: transparent; background: var(--bg-selected); }
+:global(html[data-ui-style="trae"]) .status { padding: 10px 14px 6px; }
+:global(html[data-ui-style="trae"]) .group { border: 0; padding: 0 6px 8px; }
+:global(html[data-ui-style="trae"]) .groupTitle {
+  padding: 8px 8px 5px;
+  background: var(--trae-canvas);
+  letter-spacing: 0;
+  text-transform: none;
+}
+:global(html[data-ui-style="trae"]) .result { min-height: 46px; border-radius: 10px; }
+:global(html[data-ui-style="trae"]) .result:focus-visible { box-shadow: 0 0 0 2px var(--color-accent-border-focus); }

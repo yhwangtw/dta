@@ -72,3 +72,8 @@
   color: var(--color-error);
   min-height: 18px;
 }
+
+:global(html[data-ui-style="trae"]) .wrap { background: var(--trae-canvas); }
+:global(html[data-ui-style="trae"]) .card { max-width: 380px; padding: 32px 28px; border-color: var(--trae-hairline); border-radius: 22px; background: var(--trae-surface-solid); box-shadow: var(--color-shadow-modal); }
+:global(html[data-ui-style="trae"]) .input { height: 44px; border-color: transparent; border-radius: 12px; background: var(--trae-control); }
+:global(html[data-ui-style="trae"]) .button { height: 44px; border-radius: 12px; color: var(--accent-fg); }

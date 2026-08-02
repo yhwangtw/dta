@@ -202,22 +202,28 @@ export function TextFileViewer({ filePath, cwd, gotoLine: gotoLineProp, gotoNonc
   return (
     <div className={styles.root}>
       {/* Status bar */}
-      <div className={styles.statusBar}>
-        <span className={styles.filePath} title={filePath}>
-          {getRelativeFilePath(filePath, cwd)}
-        </span>
-        <span className={styles.language}>{data.language}</span>
-        {viewMode === "source" && <span>{lines.length} lines</span>}
-        <span>{formatSize(data.size)}</span>
+      <div className={styles.statusBar} data-testid="file-viewer-toolbar">
+        <div className={styles.fileSummary}>
+          <span className={styles.filePath} title={filePath}>
+            {getRelativeFilePath(filePath, cwd)}
+          </span>
+          <span className={styles.fileMeta}>
+            <span className={styles.language}>{data.language}</span>
+            {viewMode === "source" && <span>{lines.length} lines</span>}
+            <span>{formatSize(data.size)}</span>
 
-        {/* Live watch indicator */}
-        <span
-          title={watching ? "Live sync active" : "Not watching"}
-          className={watching ? styles.watchIndicatorActive : styles.watchIndicatorInactive}
-        >
-          <span className={watching ? styles.watchDotActive : styles.watchDotInactive} />
-          {watching ? "live" : "static"}
-        </span>
+            {/* Live watch indicator */}
+            <span
+              title={watching ? "Live sync active" : "Not watching"}
+              className={watching ? styles.watchIndicatorActive : styles.watchIndicatorInactive}
+            >
+              <span className={watching ? styles.watchDotActive : styles.watchDotInactive} />
+              {watching ? "live" : "static"}
+            </span>
+          </span>
+        </div>
+
+        <div className={styles.fileActions}>
 
         {/* Diff / Source toggle */}
         {hasDiff && (
@@ -358,6 +364,7 @@ export function TextFileViewer({ filePath, cwd, gotoLine: gotoLineProp, gotoNonc
             </button>
           </div>
         )}
+        </div>
       </div>
 
       {/* Partial-preview banner: the API returned only the file's first chunk */}

@@ -278,6 +278,73 @@ html.dark {
    Complete palettes selected via html[data-skin]; "terminal" is the base
    palette above (no attribute). Switch with ⌘K → Appearance. */
 
+/* ── TRAE Work — quiet canvas, soft capsules, one focused violet action ── */
+html[data-skin="trae"] {
+  --bg: #f6f6f5;
+  --bg-panel: #efefed;
+  --bg-hover: #e9e9e7;
+  --bg-selected: #e5e3ff;
+  --border: #dededb;
+  --text: #171719;
+  --text-muted: #55575d;
+  --text-dim: #707279;
+  --accent: #5b4ff6;
+  --accent-fg: #ffffff;
+  --accent-hover: #4c40e8;
+  --user-bg: #f0f0ef;
+  --assistant-bg: #ffffff;
+  --tool-bg: #f3f3f1;
+  --bg-elev-1: #ffffff;
+  --bg-elev-2: #fbfbfa;
+  --glass-bg: rgba(255,255,255,0.94);
+  --glass-border: rgba(23,23,25,0.09);
+  --color-accent-bg: rgba(91,79,246,0.08);
+  --color-accent-bg-strong: rgba(91,79,246,0.13);
+  --color-accent-border: rgba(91,79,246,0.22);
+  --color-accent-glow: rgba(91,79,246,0.2);
+  --color-accent-border-focus: rgba(91,79,246,0.36);
+  --color-accent-border-focus-strong: rgba(91,79,246,0.46);
+  --color-accent-bg-subtle: rgba(91,79,246,0.05);
+  --color-accent-border-subtle: rgba(91,79,246,0.16);
+  --color-shadow-modal: 0 24px 70px rgba(24,24,28,0.14);
+  --color-shadow-popup: 0 14px 36px rgba(24,24,28,0.12);
+  --color-shadow-dropdown: 0 10px 30px rgba(24,24,28,0.12);
+  --color-shadow-input: 0 12px 36px rgba(24,24,28,0.09), 0 1px 2px rgba(24,24,28,0.05);
+}
+
+html.dark[data-skin="trae"] {
+  --bg: #171719;
+  --bg-panel: #202023;
+  --bg-hover: #29292d;
+  --bg-selected: #302f4a;
+  --border: #343438;
+  --text: #f3f3f2;
+  --text-muted: #b8b8bd;
+  --text-dim: #92939a;
+  --accent: #6557ec;
+  --accent-fg: #ffffff;
+  --accent-hover: #786bf5;
+  --user-bg: #29292d;
+  --assistant-bg: #171719;
+  --tool-bg: #222226;
+  --bg-elev-1: #242428;
+  --bg-elev-2: #2a2a2f;
+  --glass-bg: rgba(36,36,40,0.94);
+  --glass-border: rgba(255,255,255,0.1);
+  --color-accent-bg: rgba(136,124,255,0.12);
+  --color-accent-bg-strong: rgba(136,124,255,0.18);
+  --color-accent-border: rgba(136,124,255,0.3);
+  --color-accent-glow: rgba(136,124,255,0.26);
+  --color-accent-border-focus: rgba(136,124,255,0.44);
+  --color-accent-border-focus-strong: rgba(136,124,255,0.55);
+  --color-accent-bg-subtle: rgba(136,124,255,0.07);
+  --color-accent-border-subtle: rgba(136,124,255,0.22);
+  --color-shadow-modal: 0 24px 70px rgba(0,0,0,0.42);
+  --color-shadow-popup: 0 14px 36px rgba(0,0,0,0.34);
+  --color-shadow-dropdown: 0 10px 30px rgba(0,0,0,0.34);
+  --color-shadow-input: 0 14px 40px rgba(0,0,0,0.26), 0 1px 2px rgba(0,0,0,0.3);
+}
+
 
 html[data-skin="industrial"] {
   --bg: #ffffff;
@@ -523,6 +590,23 @@ html.dark[data-skin="glass"] body {
     radial-gradient(1000px 800px at 42% 115%, rgba(236,72,153,0.36), transparent 62%),
     #0b0e1e;
   background-attachment: fixed;
+}
+
+/* ═══ Interface geometry ═══
+   Component shape is independent from the selected color palette. TRAE uses
+   semantic palette tokens so every skin remains a valid combination. */
+html[data-ui-style="trae"] {
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --trae-canvas: var(--bg);
+  --trae-surface: color-mix(in srgb, var(--bg-elev-1) 78%, transparent);
+  --trae-surface-solid: var(--bg-elev-1);
+  --trae-control: color-mix(in srgb, var(--bg-panel) 82%, var(--bg-elev-1));
+  --trae-hairline: color-mix(in srgb, var(--border) 60%, transparent);
+  --trae-card-shadow: var(--color-shadow-input);
+  --trae-hover-shadow: var(--color-shadow-dropdown);
+  --trae-overlay: var(--color-overlay);
 }
 
 /* Theme toggle: circular wipe via View Transitions API.
@@ -777,6 +861,18 @@ pre, code {
 .markdown-file-preview pre code {
   background: none;
   padding: 0;
+}
+
+.markdown-file-preview img {
+  display: inline-block;
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-sm);
+}
+
+.markdown-file-preview > p[align="center"],
+.markdown-file-preview > div[align="center"] {
+  text-align: center;
 }
 
 /* syntax highlighter line numbers */

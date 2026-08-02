@@ -254,13 +254,15 @@ empty/corrupted files as a side effect. Cache lives on `globalThis`
 without an SSE event (120s during tool runs) shows a warning — SSE heartbeats
 are comments and don't reset the clock.
 
-### Appearance skins
-Base palette (terminal) lives in `:root`/`html.dark`; the other skins are
-`html[data-skin="…"]` token-override blocks in `globals.css` (~23 tokens ×
-skin × theme). Components read CSS variables only — **never hardcode colors**.
-Default skin: `editorial` (see `DEFAULT_SKIN` and the no-flash init script in
-`layout.tsx` — adding a skin means updating `SKINS`, the init script's inline
-array, and the palette's `skin:*` actions).
+### Appearance skins and interface styles
+Color palettes and component geometry are independent. `lib/skin.ts` persists
+the palette as `pi-skin` and applies `html[data-skin="…"]`; `lib/ui-style.ts`
+persists Original/TRAE geometry as `pi-ui-style` and applies
+`html[data-ui-style="trae"]`. TRAE component selectors must use the latter,
+while palette blocks stay on `data-skin`. Components read CSS variables only —
+**never hardcode colors**. The default combination is TRAE geometry + TRAE
+violet. The no-flash script in `layout.tsx` applies both preferences and keeps
+legacy explicit non-TRAE palettes on Original geometry.
 
 Glass layer: `--glass-bg`/`--glass-border` are derived from each skin's own
 surfaces via `color-mix` in `:root`, so all skins get matching frosted chrome

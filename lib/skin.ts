@@ -8,13 +8,14 @@ import { useSyncExternalStore } from "react";
 // "terminal" is the base palette in globals.css (no attribute needed).
 // ============================================================================
 
-export const SKINS = ["terminal", "industrial", "aurora", "editorial", "glass"] as const;
+export const SKINS = ["trae", "terminal", "industrial", "aurora", "editorial", "glass"] as const;
 export type Skin = (typeof SKINS)[number];
 
 /** Default when the user hasn't picked one. */
-export const DEFAULT_SKIN: Skin = "editorial";
+export const DEFAULT_SKIN: Skin = "trae";
 
 export const SKIN_LABELS: Record<Skin, string> = {
+  trae: "TRAE (violet)",
   terminal: "Terminal (emerald)",
   industrial: "Industrial (mono)",
   aurora: "Aurora (violet)",
@@ -28,6 +29,7 @@ export const SKIN_LABELS: Record<Skin, string> = {
  * "no hardcoded colors in components" rule doesn't apply here.
  */
 export const SKIN_PREVIEWS: Record<Skin, { light: string; dark: string; accent: string }> = {
+  trae: { light: "#f6f6f5", dark: "#171719", accent: "#5b4ff6" },
   terminal: { light: "#f8faf9", dark: "#0c0e10", accent: "#0b7f5f" },
   industrial: { light: "#ffffff", dark: "#0a0a0a", accent: "#737373" },
   aurora: { light: "#fbfaff", dark: "#131020", accent: "#7c3aed" },

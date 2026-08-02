@@ -86,3 +86,10 @@
   color: #fff;
 }
 .danger:hover { opacity: 0.9; color: #fff; }
+
+:global(html[data-ui-style="trae"]) .overlay { background: var(--trae-overlay); backdrop-filter: blur(8px); }
+:global(html[data-ui-style="trae"]) .dialog { border-color: var(--trae-hairline); border-radius: 18px; background: var(--glass-bg); }
+:global(html[data-ui-style="trae"]) .input { height: 42px; border-color: transparent; border-radius: 11px; background: var(--trae-control); }
+:global(html[data-ui-style="trae"]) .btn { height: 38px; border-color: transparent; border-radius: 10px; background: var(--trae-control); }
+:global(html[data-ui-style="trae"]) .primary { background: var(--accent); color: var(--accent-fg); }
+:global(html[data-ui-style="trae"]) .danger { background: var(--color-error); color: var(--color-white); }

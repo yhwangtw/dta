@@ -33,3 +33,14 @@
   color: var(--text-dim);
   font-size: calc(12px * var(--font-scale));
 }
+
+:global(html[data-ui-style="trae"]) .container { background: var(--trae-canvas); }
+:global(html[data-ui-style="trae"]) .header {
+  margin: 8px 10px 2px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--trae-control);
+}
+:global(html[data-ui-style="trae"]) .tree { padding: 6px 6px 14px; }
+:global(html[data-ui-style="trae"]) .empty { padding: 24px; }

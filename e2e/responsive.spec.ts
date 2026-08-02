@@ -292,7 +292,13 @@ test.describe("responsive shell", () => {
     const identity = page.getByTestId("session-identity");
     await expect(identity.getByTestId("workspace-repository")).toHaveText("demo-project");
     await expect(identity.getByTestId("workspace-branch")).not.toHaveText("");
-    await expect(identity).toContainText("專案架構分析");
+    await expect(identity.getByTestId("workspace-repository")).toBeVisible();
+    await expect(identity.getByTestId("workspace-branch")).toBeVisible();
+
+    const composerContext = page.getByTestId("composer-workspace-context");
+    await expect(composerContext).toBeVisible();
+    await expect(composerContext).toContainText("Local");
+    await expect(composerContext).toContainText("demo-project");
     await expectNoPageOverflow(page);
   });
 
@@ -341,6 +347,59 @@ test.describe("responsive shell", () => {
     expect(panelBox!.width).toBeLessThanOrEqual(320);
     expect(panelBox!.x).toBeGreaterThanOrEqual(0);
     expect(panelBox!.x + panelBox!.width).toBeLessThanOrEqual(320);
+    await expectNoPageOverflow(page);
+  });
+
+  test("AC-RWD-13: narrow desktop file chrome stays compact and aligned", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await openSession(page);
+
+    await page.getByRole("button", { name: "Explorer", exact: true }).click();
+    await page.getByText("README.md", { exact: true }).click();
+    await page.getByRole("button", { name: "Raw", exact: true }).click();
+
+    const panel = page.locator(".right-panel-container.right-panel-open");
+    const panelBar = page.getByTestId("right-panel-tab-bar");
+    const tabs = panelBar.locator("[class*='tabBar']");
+    const toolbar = page.getByTestId("file-viewer-toolbar");
+    const actions = toolbar.locator("[class*='fileActions']");
+    const [panelBox, tabsBox, toolbarBox, actionsBox] = await Promise.all([
+      panel.boundingBox(),
+      tabs.boundingBox(),
+      toolbar.boundingBox(),
+      actions.boundingBox(),
+    ]);
+
+    expect(panelBox).not.toBeNull();
+    expect(tabsBox).not.toBeNull();
+    expect(toolbarBox).not.toBeNull();
+    expect(actionsBox).not.toBeNull();
+    expect(tabsBox!.height).toBeLessThanOrEqual(36);
+    expect(toolbarBox!.height).toBeLessThanOrEqual(70);
+    expect(toolbarBox!.x).toBeGreaterThanOrEqual(panelBox!.x);
+    expect(toolbarBox!.x + toolbarBox!.width).toBeLessThanOrEqual(panelBox!.x + panelBox!.width);
+    expect(actionsBox!.x).toBeGreaterThanOrEqual(toolbarBox!.x);
+    expect(actionsBox!.x + actionsBox!.width).toBeLessThanOrEqual(toolbarBox!.x + toolbarBox!.width);
+    await expectNoPageOverflow(page);
+  });
+
+  test("AC-RWD-14: tablet operational panel clears the rail and keeps a 44px header", async ({ page }) => {
+    await page.setViewportSize({ width: 1024, height: 800 });
+    await openSession(page);
+
+    await page.getByRole("button", { name: "Schedules", exact: true }).click();
+    const rail = page.getByRole("navigation", { name: "Primary" });
+    const panel = page.getByTestId("schedule-panel");
+    const header = panel.locator(":scope > div").first();
+    const [railBox, headerBox] = await Promise.all([
+      rail.boundingBox(),
+      header.boundingBox(),
+    ]);
+
+    expect(railBox).not.toBeNull();
+    expect(headerBox).not.toBeNull();
+    await expect.poll(async () => (await panel.boundingBox())?.x ?? -1).toBeGreaterThanOrEqual(railBox!.x + railBox!.width - 1);
+    expect(headerBox!.height).toBeLessThanOrEqual(44);
     await expectNoPageOverflow(page);
   });
 });

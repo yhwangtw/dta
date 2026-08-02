@@ -78,3 +78,12 @@
     max-width: 52%;
   }
 }
+
+:global(html[data-ui-style="trae"]) .trigger,
+:global(html[data-ui-style="trae"]) .triggerEmpty {
+  border-color: transparent;
+  border-radius: 11px;
+  background: var(--trae-control);
+}
+:global(html[data-ui-style="trae"]) .trigger:hover,
+:global(html[data-ui-style="trae"]) .triggerEmpty:hover { background: var(--bg-hover); }

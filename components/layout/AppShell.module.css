@@ -1265,3 +1265,205 @@
   font-family: var(--font-mono);
   font-size: calc(11px * var(--font-scale));
 }
+
+/* TRAE Work layout: the desktop shell reads as a quiet workspace floating on
+   a soft canvas; on phones the repo/branch control becomes the centered
+   segmented capsule from the mobile product instead of a miniature IDE bar. */
+:global(html[data-ui-style="trae"]) .container {
+  gap: 0;
+  background: var(--bg-panel);
+}
+
+:global(html[data-ui-style="trae"]) .rail {
+  width: 50px;
+  gap: 4px;
+  padding: 10px 0;
+  border-right: 0;
+  background: transparent;
+}
+
+:global(html[data-ui-style="trae"]) .railButton {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+}
+
+:global(html[data-ui-style="trae"]) .railButtonActive {
+  background: var(--bg-elev-1);
+  box-shadow: 0 5px 18px rgba(24, 24, 28, 0.07);
+}
+
+:global(html[data-ui-style="trae"]) .sidebarContainer {
+  border-right: 0;
+  background: transparent;
+}
+
+:global(html[data-ui-style="trae"]) .centerPanel {
+  margin: 8px 8px 8px 0;
+  overflow: hidden;
+  border-radius: 18px;
+  background: var(--bg);
+  box-shadow: 0 4px 22px rgba(24, 24, 28, 0.055);
+}
+
+:global(html[data-ui-style="trae"]) .topBar {
+  height: 48px;
+  padding: 0 12px;
+  border: 0;
+  background: color-mix(in srgb, var(--bg) 96%, transparent);
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+:global(html[data-ui-style="trae"]) .topBarButton,
+:global(html[data-ui-style="trae"]) .commandPaletteTrigger,
+:global(html[data-ui-style="trae"]) .sessionMenuButton {
+  border-radius: var(--radius-full);
+}
+
+:global(html[data-ui-style="trae"]) .workspaceBranch {
+  padding: 4px 8px;
+}
+
+:global(html[data-ui-style="trae"]) .rightPanelContainer {
+  margin: 8px 8px 8px 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 18px;
+  background: var(--bg-elev-1);
+  box-shadow: 0 4px 22px rgba(24, 24, 28, 0.055);
+}
+
+:global(html[data-ui-style="trae"]) .sessionMenu,
+:global(html[data-ui-style="trae"]) .mobileMoreSheet,
+:global(html[data-ui-style="trae"]) .chatActionsMobileOpen {
+  background: var(--bg-elev-1);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+@media (min-width: 701px) and (max-width: 1024px) {
+  :global(html[data-ui-style="trae"]) .sidebarContainer {
+    left: calc(var(--safe-area-left) + 50px);
+  }
+}
+
+@media (max-width: 700px) {
+  :global(html[data-ui-style="trae"]) .container {
+    background: var(--bg);
+  }
+
+  :global(html[data-ui-style="trae"]) .centerPanel {
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  :global(html[data-ui-style="trae"]) .topBar {
+    height: 58px;
+    gap: 7px;
+    padding: 6px 10px;
+    background: var(--bg);
+  }
+
+  :global(html[data-ui-style="trae"]) .mobileSessionsButton,
+  :global(html[data-ui-style="trae"]) .mobileActionsToggle,
+  :global(html[data-ui-style="trae"]) .mobileFileBack {
+    width: 44px;
+    height: 44px;
+    flex-basis: 44px;
+    border-radius: var(--radius-full);
+    background: var(--bg-elev-1);
+    box-shadow: 0 5px 18px rgba(24, 24, 28, 0.065);
+  }
+
+  :global(html[data-ui-style="trae"]) .sessionIdentity {
+    align-items: center;
+    padding: 0;
+  }
+
+  :global(html[data-ui-style="trae"]) .workspaceIdentity {
+    width: auto;
+    max-width: 100%;
+    justify-content: center;
+    gap: 0;
+    padding: 3px;
+    border-radius: var(--radius-full);
+    background: var(--bg-panel);
+    color: var(--text);
+    font-family: var(--font-ui);
+    font-size: calc(11px * var(--font-scale));
+  }
+
+  :global(html[data-ui-style="trae"]) .workspaceRepository,
+  :global(html[data-ui-style="trae"]) .workspaceBranch {
+    max-width: 34vw;
+    padding: 8px 11px;
+    border-radius: var(--radius-full);
+    text-align: center;
+  }
+
+  :global(html[data-ui-style="trae"]) .workspaceRepository {
+    font-weight: 600;
+  }
+
+  :global(html[data-ui-style="trae"]) .workspaceBranch {
+    background: var(--bg-elev-1);
+    color: var(--text);
+    box-shadow: 0 2px 8px rgba(24, 24, 28, 0.07);
+    font-size: calc(10.5px * var(--font-scale));
+  }
+
+  :global(html[data-ui-style="trae"]) .workspaceBranchNeutral {
+    color: var(--text-dim);
+  }
+
+  :global(html[data-ui-style="trae"]) .chatTitle {
+    display: none;
+  }
+
+  :global(html[data-ui-style="trae"]) .sidebarContainer {
+    background: var(--bg-panel);
+  }
+
+  :global(html[data-ui-style="trae"]) .mobileNav {
+    height: calc(var(--mobile-nav-height) + var(--safe-area-bottom));
+    padding: 3px 8px var(--safe-area-bottom);
+    border-top: 0;
+    background: var(--bg-elev-1);
+    box-shadow: 0 -8px 28px rgba(24, 24, 28, 0.055);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  :global(html[data-ui-style="trae"]) .mobileNavButton {
+    border-radius: 14px;
+  }
+
+  :global(html[data-ui-style="trae"]) .mobileNavButtonActive {
+    background: transparent;
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  :global(html[data-ui-style="trae"]) .mobileMoreSheet {
+    left: calc(var(--safe-area-left) + 12px);
+    right: calc(var(--safe-area-right) + 12px);
+    bottom: calc(var(--safe-area-bottom) + var(--mobile-nav-height) + 10px);
+    padding: 8px 14px 16px;
+    border-radius: 24px;
+  }
+
+  :global(html[data-ui-style="trae"]) .chatActionsMobileOpen {
+    top: calc(var(--safe-area-top) + 70px);
+    right: calc(var(--safe-area-right) + 12px);
+    border-radius: 20px;
+  }
+
+  :global(html[data-ui-style="trae"]) .rightPanelContainer {
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+}

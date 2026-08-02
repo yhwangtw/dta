@@ -249,3 +249,10 @@
     justify-content: flex-end;
   }
 }
+
+:global(html[data-ui-style="trae"]) .panel { border-color: transparent; border-radius: 14px; box-shadow: var(--trae-card-shadow); }
+:global(html[data-ui-style="trae"]) .header,
+:global(html[data-ui-style="trae"]) .item + .item { border-color: color-mix(in srgb, var(--color-warning-border) 60%, transparent); }
+:global(html[data-ui-style="trae"]) .position,
+:global(html[data-ui-style="trae"]) .message small { border-radius: 999px; }
+:global(html[data-ui-style="trae"]) .editor textarea { border-radius: 11px; }

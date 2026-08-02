@@ -136,3 +136,14 @@
 .tagListRemove:hover {
   opacity: 1;
 }
+
+:global(html[data-ui-style="trae"]) .menu {
+  padding: 6px;
+  border-color: var(--trae-hairline);
+  border-radius: 14px;
+  background: var(--glass-bg);
+  box-shadow: var(--color-shadow-dropdown);
+}
+:global(html[data-ui-style="trae"]) .menuItem { height: 36px; border-radius: 9px; }
+:global(html[data-ui-style="trae"]) .separator { background: var(--trae-hairline); }
+:global(html[data-ui-style="trae"]) .tagForm { height: 38px; border-radius: 9px; background: var(--trae-control); }

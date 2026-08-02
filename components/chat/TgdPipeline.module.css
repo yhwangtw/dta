@@ -259,3 +259,33 @@
   .mobileFeature { max-width: 110px; }
   .connector { width: 4px; }
 }
+
+:global(html[data-ui-style="trae"]) .bar {
+  margin: 0 14px;
+  padding: 6px 8px;
+  border-radius: 14px;
+  background: transparent;
+}
+
+:global(html[data-ui-style="trae"]) .current {
+  color: var(--accent);
+  border-color: var(--color-accent-border);
+  background: var(--color-accent-bg);
+}
+
+:global(html[data-ui-style="trae"]) .connector {
+  opacity: 0.45;
+}
+
+@media (max-width: 640px) {
+  :global(html[data-ui-style="trae"]) .bar {
+    min-height: 44px;
+    margin: 0 8px;
+    padding: 2px 4px;
+  }
+
+  :global(html[data-ui-style="trae"]) .mobileSummary {
+    min-height: 40px;
+    border-radius: 13px;
+  }
+}

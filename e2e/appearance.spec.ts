@@ -8,19 +8,35 @@ async function openMain(page: Page) {
 }
 
 test.describe("appearance", () => {
-  test("picker panel: five skins, live apply, theme toggle, dismissal", async ({ page }) => {
+  test("picker panel: interface and color switch independently", async ({ page }) => {
     await openMain(page);
     await page.getByRole("button", { name: "Appearance" }).click();
     const dialog = page.getByRole("dialog", { name: "Appearance" });
     await expect(dialog).toBeVisible();
 
-    const rows = dialog.getByRole("button").filter({ hasText: /Terminal|Industrial|Aurora|Editorial|Glass/ });
-    await expect(rows).toHaveCount(5);
+    const colors = dialog.getByRole("group", { name: "Color palette" });
+    const rows = colors.getByRole("button");
+    await expect(rows).toHaveCount(6);
+
+    await dialog.getByRole("button", { name: "Original", exact: true }).click();
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.hasAttribute("data-ui-style")))
+      .toBe(false);
 
     await dialog.getByRole("button", { name: /Glass/ }).click();
     await expect
       .poll(() => page.evaluate(() => document.documentElement.getAttribute("data-skin")))
       .toBe("glass");
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.hasAttribute("data-ui-style")))
+      .toBe(false);
+
+    await dialog.getByRole("button", { name: "TRAE", exact: true }).click();
+    const combined = await page.evaluate(() => ({
+      style: document.documentElement.getAttribute("data-ui-style"),
+      skin: document.documentElement.getAttribute("data-skin"),
+    }));
+    expect(combined).toEqual({ style: "trae", skin: "glass" });
     await expect(dialog).toBeVisible(); // stays open for live preview
 
     await dialog.getByRole("button", { name: "Dark" }).click();
@@ -32,19 +48,21 @@ test.describe("appearance", () => {
     await expect(dialog).toHaveCount(0);
   });
 
-  test("skin + theme survive a reload via the no-flash init script", async ({ page }) => {
+  test("interface + skin + theme survive a reload via the no-flash init script", async ({ page }) => {
     await openMain(page);
     await page.evaluate(() => {
       localStorage.setItem("pi-skin", "glass");
+      localStorage.setItem("pi-ui-style", "trae");
       localStorage.setItem("pi-theme", "dark");
     });
     await page.reload();
     await expect(page.getByText("專案架構分析").first()).toBeVisible({ timeout: 20_000 });
     const state = await page.evaluate(() => ({
       skin: document.documentElement.getAttribute("data-skin"),
+      style: document.documentElement.getAttribute("data-ui-style"),
       dark: document.documentElement.classList.contains("dark"),
     }));
-    expect(state).toEqual({ skin: "glass", dark: true });
+    expect(state).toEqual({ skin: "glass", style: "trae", dark: true });
   });
 
   test("message layout switches between split and all-left and survives reload", async ({ page }) => {
@@ -131,13 +149,25 @@ test.describe("appearance", () => {
     expect(actionsBox!.x + actionsBox!.width).toBeLessThanOrEqual(390);
   });
 
-  test("default is editorial light", async ({ page }) => {
+  test("default is TRAE interface with TRAE violet colors", async ({ page }) => {
     await openMain(page);
     const state = await page.evaluate(() => ({
       skin: document.documentElement.getAttribute("data-skin"),
+      style: document.documentElement.getAttribute("data-ui-style"),
       dark: document.documentElement.classList.contains("dark"),
     }));
-    expect(state.skin).toBe("editorial");
+    expect(state).toEqual({ skin: "trae", style: "trae", dark: false });
+  });
+
+  test("preserves an existing explicit Editorial choice", async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem("pi-skin", "editorial"));
+    await openMain(page);
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.getAttribute("data-skin")))
+      .toBe("editorial");
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.hasAttribute("data-ui-style")))
+      .toBe(false);
   });
 
   test("primary empty-state actions keep readable contrast in every skin", async ({ page }) => {
@@ -146,7 +176,7 @@ test.describe("appearance", () => {
     const create = page.getByRole("button", { name: "New schedule", exact: true });
     await expect(create).toBeVisible();
 
-    for (const skin of ["terminal", "industrial", "aurora", "editorial", "glass"]) {
+    for (const skin of ["trae", "terminal", "industrial", "aurora", "editorial", "glass"]) {
       for (const dark of [false, true]) {
         const contrast = await create.evaluate((button, state) => {
           const root = document.documentElement;

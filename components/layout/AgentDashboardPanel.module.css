@@ -354,3 +354,56 @@
   .twoColumns { grid-template-columns: 1fr; gap: 0; }
   .summary span { font-size: calc(8px * var(--font-scale)); }
 }
+
+/* TRAE: turn the operational dashboard into a calm card workspace. */
+:global(html[data-ui-style="trae"]) .container { background: var(--trae-canvas); }
+:global(html[data-ui-style="trae"]) .header {
+  min-height: 44px;
+  padding: 6px 10px 6px 12px;
+  border-bottom: 0;
+  background: transparent;
+}
+:global(html[data-ui-style="trae"]) .header strong { font-size: calc(12px * var(--font-scale)); }
+:global(html[data-ui-style="trae"]) .newButton { height: 30px; }
+:global(html[data-ui-style="trae"]) .newButton,
+:global(html[data-ui-style="trae"]) .primaryButton,
+:global(html[data-ui-style="trae"]) .secondaryButton,
+:global(html[data-ui-style="trae"]) .cardActions button { border-radius: 10px; }
+:global(html[data-ui-style="trae"]) .summary {
+  gap: 6px;
+  padding: 10px;
+  border: 0;
+  background: transparent;
+}
+:global(html[data-ui-style="trae"]) .summary button,
+:global(html[data-ui-style="trae"]) .summary > div,
+:global(html[data-ui-style="trae"]) .summary > .concurrencyControl {
+  min-height: 54px;
+  border-radius: 12px;
+  background: var(--trae-surface);
+}
+:global(html[data-ui-style="trae"]) .filterBar {
+  height: 40px;
+  margin: 2px 10px 8px;
+  border-color: transparent;
+  border-radius: 12px;
+  background: var(--trae-control);
+}
+:global(html[data-ui-style="trae"]) .body { padding: 4px 10px 14px; }
+:global(html[data-ui-style="trae"]) .groups { gap: 18px; }
+:global(html[data-ui-style="trae"]) .card {
+  padding: 12px;
+  border-color: transparent;
+  border-radius: 14px;
+  background: var(--trae-surface-solid);
+  box-shadow: var(--trae-card-shadow);
+}
+:global(html[data-ui-style="trae"]) .cardWaiting { border-color: var(--color-warning-border); }
+:global(html[data-ui-style="trae"]) .field input,
+:global(html[data-ui-style="trae"]) .field textarea,
+:global(html[data-ui-style="trae"]) .field select,
+:global(html[data-ui-style="trae"]) .segmented {
+  border-color: transparent;
+  border-radius: 11px;
+  background: var(--trae-control);
+}

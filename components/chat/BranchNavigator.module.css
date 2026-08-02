@@ -259,3 +259,11 @@
   box-shadow: var(--color-shadow-dropdown);
   z-index: 100;
 }
+
+:global(html[data-ui-style="trae"]) .inlineButton,
+:global(html[data-ui-style="trae"]) .standaloneHeaderButton { min-height: 32px; border-color: transparent; border-radius: 10px; background: var(--trae-control); }
+:global(html[data-ui-style="trae"]) .inlineDropdown,
+:global(html[data-ui-style="trae"]) .dropdownContent,
+:global(html[data-ui-style="trae"]) .standaloneWrapper { border-color: var(--trae-hairline); border-radius: 14px; background: var(--glass-bg); box-shadow: var(--color-shadow-dropdown); }
+:global(html[data-ui-style="trae"]) .nodeRow { min-height: 36px; border-radius: 9px; }
+:global(html[data-ui-style="trae"]) .roleBadge { border-radius: 999px; }

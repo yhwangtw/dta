@@ -23,6 +23,7 @@ import { QueuedFollowUps } from "./QueuedFollowUps";
 import { isProviderAuthError } from "./AssistantMessageView";
 import { buildConversationLayout } from "./conversation-turns";
 import { assistantModelKey, shouldShowAssistantModelLabel } from "./message-chrome";
+import type { WorkspaceIdentity } from "@/lib/workspace-identity";
 
 interface Props {
   session: SessionInfo | null;
@@ -45,6 +46,7 @@ interface Props {
   /** Wide-layout preference (⌘K → Toggle Wide Chat). */
   wideChat?: boolean;
   onOpenModels?: () => void;
+  workspaceIdentity?: WorkspaceIdentity | null;
 }
 
 export function phaseLabel(phase: AgentPhase, translate?: (key: MsgKey) => string): string {
@@ -226,7 +228,7 @@ function activityText(messages: import("@/lib/types").AssistantMessage[], toolRe
   return parts.join(" ");
 }
 
-export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked, modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionStatsChange, onContextUsageChange, onSessionNamed, isParallel, paneLabel, onClosePane, wideChat, onOpenModels }: Props) {
+export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked, modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionStatsChange, onContextUsageChange, onSessionNamed, isParallel, paneLabel, onClosePane, wideChat, onOpenModels, workspaceIdentity }: Props) {
   const {
     loading, error, messages, entryIds, streamState,
     agentRunning, modelNames, modelList, modelThinkingLevels, modelThinkingLevelMaps, toolPreset, thinkingLevel,
@@ -911,6 +913,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
       soundEnabled={soundEnabled}
       onSoundToggle={onSoundToggle}
       cwd={tgdCwd}
+      workspaceIdentity={workspaceIdentity}
       persistKey={session?.id ?? (newSessionCwd ? `new:${newSessionCwd}` : null)}
       quote={messageQuote}
       onClearQuote={() => setMessageQuoteState(null)}

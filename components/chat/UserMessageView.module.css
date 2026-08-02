@@ -338,3 +338,56 @@
     min-height: 36px;
   }
 }
+
+:global(html[data-ui-style="trae"]) .root {
+  margin-bottom: 16px;
+}
+
+:global(html[data-ui-style="trae"]) .messageRow {
+  max-width: min(76%, 720px);
+}
+
+:global(html[data-ui-style="trae"]) .bubble {
+  padding: 10px 14px;
+  border-color: color-mix(in srgb, var(--text) 9%, transparent);
+  border-radius: 18px 18px 6px 18px;
+  background: var(--user-bg);
+}
+
+:global(html[data-ui-style="trae"][data-message-layout="left"]) .bubble {
+  border-radius: 18px 18px 18px 6px;
+}
+
+:global(html[data-ui-style="trae"]) .bottomRow {
+  min-height: 30px;
+  margin-top: 2px;
+}
+
+:global(html[data-ui-style="trae"]) .desktopActionToolbar,
+:global(html[data-ui-style="trae"]) .mobileActionPanel {
+  border-color: color-mix(in srgb, var(--text) 9%, transparent);
+  border-radius: 14px;
+  background: var(--bg-elev-1);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+@media (max-width: 700px) {
+  :global(html[data-ui-style="trae"]) .messageRow,
+  :global(html[data-ui-style="trae"]) .bottomRow {
+    max-width: 88%;
+  }
+
+  :global(html[data-ui-style="trae"]) .bubble {
+    padding: 10px 13px;
+    border-radius: 17px 17px 5px 17px;
+  }
+
+  :global(html[data-ui-style="trae"][data-message-layout="left"]) .bubble {
+    border-radius: 17px 17px 17px 5px;
+  }
+
+  :global(html[data-ui-style="trae"]) .bottomRow {
+    min-height: 36px;
+  }
+}

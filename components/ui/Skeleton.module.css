@@ -41,3 +41,5 @@
   border-radius: 3px;
   /* override the default .skeleton-line 12px height in globals.css */
 }
+
+:global(html[data-ui-style="trae"]) .line { border-radius: 999px; background: linear-gradient(90deg, var(--trae-control), var(--bg-selected), var(--trae-control)); background-size: 200% 100%; }

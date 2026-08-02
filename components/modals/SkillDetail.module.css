@@ -128,3 +128,7 @@
   overflow-y: auto;
   font-size: calc(13px * var(--font-scale));
 }
+
+:global(html[data-ui-style="trae"]) .container { gap: 22px; }
+:global(html[data-ui-style="trae"]) .tag { padding: 2px 7px; border-radius: 999px; }
+:global(html[data-ui-style="trae"]) .contentBox { border-color: transparent; border-radius: 14px; background: var(--trae-surface-solid); box-shadow: var(--trae-card-shadow); }

@@ -272,3 +272,30 @@
     padding: 8px 12px;
   }
 }
+
+:global(html[data-ui-style="trae"]) .overlay { background: var(--trae-overlay); backdrop-filter: blur(8px); }
+:global(html[data-ui-style="trae"]) .modal { border-color: var(--trae-hairline); border-radius: 20px; background: var(--trae-canvas); }
+:global(html[data-ui-style="trae"]) .header,
+:global(html[data-ui-style="trae"]) .footer { border-color: var(--trae-hairline); background: var(--trae-surface); }
+:global(html[data-ui-style="trae"]) .header { min-height: 58px; padding: 12px 20px; }
+:global(html[data-ui-style="trae"]) .sidebar { width: 230px; border-right-color: var(--trae-hairline); background: transparent; }
+:global(html[data-ui-style="trae"]) .sidebarScroll { padding: 10px 8px; }
+:global(html[data-ui-style="trae"]) .groupLabel { padding: 7px 9px 4px; letter-spacing: 0.03em; text-transform: none; }
+:global(html[data-ui-style="trae"]) .skillItem { min-height: 40px; border-radius: 10px; }
+:global(html[data-ui-style="trae"]) .addButtonWrapper { border-color: var(--trae-hairline); }
+:global(html[data-ui-style="trae"]) .addSkillButton { min-height: 38px; border-radius: 10px; background: var(--trae-control); }
+:global(html[data-ui-style="trae"]) .rightPanel { padding: 24px; }
+:global(html[data-ui-style="trae"]) .closeButtonFooter { border-color: transparent; border-radius: 10px; background: var(--trae-control); }
+
+@media (max-width: 600px) {
+  :global(html[data-ui-style="trae"]) .modal { border: 0; border-radius: 0; }
+  :global(html[data-ui-style="trae"]) .sidebar {
+    width: 100%;
+    min-height: 132px;
+    max-height: min(34dvh, 240px);
+    border-right: 0;
+    border-bottom: 1px solid var(--trae-hairline);
+    background: var(--trae-surface);
+  }
+  :global(html[data-ui-style="trae"]) .rightPanel { padding: 18px 14px 28px; }
+}

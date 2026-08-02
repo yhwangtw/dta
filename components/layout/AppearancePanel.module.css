@@ -286,3 +286,41 @@
     min-height: 44px;
   }
 }
+
+:global(html[data-ui-style="trae"]) .panel {
+  border-color: var(--trae-hairline);
+  border-radius: 18px;
+  background: var(--glass-bg);
+  box-shadow: var(--color-shadow-modal);
+}
+:global(html[data-ui-style="trae"]) .panelHeader { border-bottom-color: var(--trae-hairline); }
+:global(html[data-ui-style="trae"]) .themeRow,
+:global(html[data-ui-style="trae"]) .fontSizeRow,
+:global(html[data-ui-style="trae"]) .messageLayoutRow {
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--trae-control);
+}
+:global(html[data-ui-style="trae"]) .themeBtn,
+:global(html[data-ui-style="trae"]) .fontSizeBtn {
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+}
+:global(html[data-ui-style="trae"]) .themeBtnActive,
+:global(html[data-ui-style="trae"]) .fontSizeBtnActive {
+  background: var(--trae-surface-solid);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--text) 9%, transparent);
+}
+:global(html[data-ui-style="trae"]) .skinList { gap: 5px; }
+:global(html[data-ui-style="trae"]) .skinRow { min-height: 42px; border: 0; border-radius: 11px; }
+:global(html[data-ui-style="trae"]) .skinRowActive { background: var(--bg-selected); }
+:global(html[data-ui-style="trae"]) .resetRow,
+:global(html[data-ui-style="trae"]) .logoutRow { border-color: transparent; border-radius: 11px; background: var(--trae-control); }
+
+@media (max-width: 700px) {
+  :global(html[data-ui-style="trae"]) .panel {
+    border-radius: 22px 22px 0 0;
+    box-shadow: 0 -16px 50px color-mix(in srgb, var(--text) 14%, transparent);
+  }
+}

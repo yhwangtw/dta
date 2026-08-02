@@ -173,3 +173,34 @@
   font-size: calc(13px * var(--font-scale));
 }
 .emptyHint { font-size: calc(11.5px * var(--font-scale)); color: var(--text-dim); max-width: 220px; line-height: 1.5; }
+
+:global(html[data-ui-style="trae"]) .container { background: var(--trae-canvas); }
+:global(html[data-ui-style="trae"]) .header {
+  min-height: 48px;
+  margin: 8px 8px 2px;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--trae-surface);
+}
+:global(html[data-ui-style="trae"]) .viewToggle {
+  flex: 0 0 auto;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--trae-control);
+}
+:global(html[data-ui-style="trae"]) .viewTab,
+:global(html[data-ui-style="trae"]) .viewTabActive { min-height: 28px; padding: 0 10px; border-radius: 999px; }
+:global(html[data-ui-style="trae"]) .viewTabActive { background: var(--trae-surface-solid); box-shadow: 0 1px 3px color-mix(in srgb, var(--text) 9%, transparent); }
+:global(html[data-ui-style="trae"]) .body { padding: 8px 6px 14px; }
+:global(html[data-ui-style="trae"]) .feature {
+  margin: 4px 4px 8px;
+  padding: 10px 0;
+  border: 0;
+  border-radius: 12px;
+  background: var(--trae-surface-solid);
+  box-shadow: var(--trae-card-shadow);
+}
+:global(html[data-ui-style="trae"]) .fileRow,
+:global(html[data-ui-style="trae"]) .dirRow { min-height: 34px; border-radius: 9px; }
+:global(html[data-ui-style="trae"]) .noFeatures { border: 0; }

@@ -50,3 +50,6 @@
 .clear:hover {
   color: var(--text);
 }
+
+:global(html[data-ui-style="trae"]) .row { padding: 7px 10px; border-bottom-color: var(--trae-hairline); }
+:global(html[data-ui-style="trae"]) .chip { min-height: 26px; padding: 3px 9px; border-radius: 999px; }

@@ -114,6 +114,12 @@
   --bg-elev-1: #ffffff;
   --bg-elev-2: #fbfdfc;
 
+  /* Shared border and status tokens. Keep these derived from the active
+     palette so geometry styles never lose their color when a skin changes. */
+  --border-subtle: color-mix(in srgb, var(--border) 58%, transparent);
+  --border-strong: color-mix(in srgb, var(--border) 78%, var(--text) 22%);
+  --color-accent-fg: var(--accent-fg);
+
   /* Design Tokens - Border Radius */
   --radius-sm: 4px;
   --radius-md: 6px;
@@ -162,6 +168,9 @@
   --color-warning-bg-strong: rgba(234,179,8,0.12);
   --color-warning-border-strong: rgba(234,179,8,0.35);
   --color-warning-text-strong: rgba(180,130,0,1);
+  --color-warning: var(--color-warning-text-strong);
+  --color-info: #2563eb;
+  --color-info-bg: rgba(59,130,246,0.12);
   --color-project-bg: rgba(99,102,241,0.12);
   --color-project-text: rgba(99,102,241,0.8);
   --color-shadow-modal: 0 16px 48px rgba(0,0,0,0.14);
@@ -248,6 +257,9 @@ html.dark {
   --color-warning-bg-strong: rgba(250,204,21,0.15);
   --color-warning-border-strong: rgba(250,204,21,0.4);
   --color-warning-text-strong: rgba(250,204,21,1);
+  --color-warning: var(--color-warning-text-strong);
+  --color-info: #60a5fa;
+  --color-info-bg: rgba(59,130,246,0.16);
   --color-project-bg: rgba(167,139,250,0.12);
   --color-project-text: rgba(167,139,250,0.8);
   --color-shadow-modal: 0 8px 32px rgba(0,0,0,0.35);

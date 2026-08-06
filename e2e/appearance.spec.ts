@@ -203,4 +203,37 @@ test.describe("appearance", () => {
       }
     }
   });
+
+  test("shared geometry and status tokens resolve in every skin and theme", async ({ page }) => {
+    await openMain(page);
+
+    for (const skin of ["trae", "terminal", "industrial", "aurora", "editorial", "glass"]) {
+      for (const dark of [false, true]) {
+        const tokens = await page.evaluate(({ skin, dark }) => {
+          const root = document.documentElement;
+          if (skin === "terminal") root.removeAttribute("data-skin");
+          else root.setAttribute("data-skin", skin);
+          root.classList.toggle("dark", dark);
+          const styles = getComputedStyle(root);
+          return {
+            borderStrong: styles.getPropertyValue("--border-strong").trim(),
+            borderSubtle: styles.getPropertyValue("--border-subtle").trim(),
+            warning: styles.getPropertyValue("--color-warning").trim(),
+            info: styles.getPropertyValue("--color-info").trim(),
+            infoBg: styles.getPropertyValue("--color-info-bg").trim(),
+            accentFg: styles.getPropertyValue("--color-accent-fg").trim(),
+          };
+        }, { skin, dark });
+
+        expect(tokens, `${skin} ${dark ? "dark" : "light"}`).toEqual({
+          borderStrong: expect.not.stringMatching(/^$/),
+          borderSubtle: expect.not.stringMatching(/^$/),
+          warning: expect.not.stringMatching(/^$/),
+          info: expect.not.stringMatching(/^$/),
+          infoBg: expect.not.stringMatching(/^$/),
+          accentFg: expect.not.stringMatching(/^$/),
+        });
+      }
+    }
+  });
 });

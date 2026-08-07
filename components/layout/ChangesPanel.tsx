@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useI18n } from "@/lib/i18n";
 import { useToast } from "@/hooks/useToast";
 import s from "./ChangesPanel.module.css";
@@ -61,32 +61,52 @@ export function ChangesPanel({ cwd, sessionId, refreshKey, onOpenDiff, selectedP
   const [commitMsg, setCommitMsg] = useState("");
   const [committing, setCommitting] = useState(false);
   const [discarding, setDiscarding] = useState<string | null>(null);
+  const loadRequestRef = useRef(0);
+  const snapshotRequestRef = useRef(0);
 
   const load = useCallback(async () => {
-    if (!cwd) return;
+    const requestId = ++loadRequestRef.current;
+    if (!cwd) {
+      setFiles([]);
+      setBranch(null);
+      setIsGit(true);
+      setLoading(false);
+      return;
+    }
+    setFiles([]);
+    setBranch(null);
+    setIsGit(true);
     setLoading(true);
     try {
       const res = await fetch(`/api/git/changes?cwd=${encodeURIComponent(cwd)}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const d = await res.json() as { git: boolean; branch: string | null; files: ChangedFile[] };
+      if (requestId !== loadRequestRef.current) return;
       setIsGit(d.git);
       setBranch(d.branch);
       setFiles(d.files ?? []);
     } catch {
+      if (requestId !== loadRequestRef.current) return;
       setFiles([]);
+      setBranch(null);
+      setIsGit(true);
     } finally {
-      setLoading(false);
+      if (requestId === loadRequestRef.current) setLoading(false);
     }
   }, [cwd]);
 
   const loadSnapshots = useCallback(async () => {
-    if (!cwd || !sessionId) { setSnapshots([]); return; }
+    const requestId = ++snapshotRequestRef.current;
+    setSnapshots([]);
+    if (!cwd || !sessionId) return;
     try {
       const res = await fetch(`/api/git/snapshots?cwd=${encodeURIComponent(cwd)}&sessionId=${encodeURIComponent(sessionId)}`);
       if (!res.ok) return;
       const d = await res.json() as { git: boolean; snapshots: Snapshot[] };
+      if (requestId !== snapshotRequestRef.current) return;
       setSnapshots(d.snapshots ?? []);
     } catch {
+      if (requestId !== snapshotRequestRef.current) return;
       setSnapshots([]);
     }
   }, [cwd, sessionId]);

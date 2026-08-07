@@ -262,7 +262,7 @@
   border: none;
   border-radius: var(--radius-md);
   background: var(--accent);
-  color: #fff;
+  color: var(--accent-fg);
   font-size: var(--text-sm);
   font-weight: 500;
   cursor: pointer;

@@ -419,7 +419,7 @@
 .sendButtonActive {
   composes: sendButton;
   background: var(--accent);
-  color: #fff;
+  color: var(--accent-fg);
   cursor: pointer;
   box-shadow: 0 1px 3px var(--color-accent-glow);
 }

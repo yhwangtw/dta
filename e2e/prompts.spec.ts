@@ -32,14 +32,16 @@ test.describe("prompt templates", () => {
 
     // Open the manager via the command palette
     await page.keyboard.press("Control+k");
-    await page.waitForTimeout(300);
-    await page.keyboard.type("prompt templates");
-    await page.waitForTimeout(300);
-    await page.keyboard.press("Enter");
+    const search = page.getByRole("textbox", { name: "Unified search" });
+    await expect(search).toBeFocused();
+    await search.fill("prompt templates");
+    await page.getByRole("button", { name: /^Prompt templates / }).click();
 
     // Add a template
-    await page.locator("input[placeholder='name']").fill(NAME);
-    await page.locator("textarea[placeholder^='Template body']").fill(BODY);
+    const dialog = page.getByRole("dialog", { name: "Prompt templates" });
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole("textbox", { name: "Template name" }).fill(NAME);
+    await dialog.getByRole("textbox", { name: "Template body" }).fill(BODY);
     await page.getByRole("button", { name: "Add template" }).click();
     // Saved item shows in the list with a Delete control (unambiguous — the
     // live name-hint also renders the /name text while typing).

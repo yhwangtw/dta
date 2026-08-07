@@ -158,6 +158,7 @@ export function useAppShellState(): {
 
   const handleSelectSession = useCallback(
     (session: SessionInfo, isRestore = false) => {
+      setActiveCwd(session.cwd ?? null);
       setNewSessionCwd(null);
       setSelectedSession(session);
       setSessionKey((k) => k + 1);
@@ -176,6 +177,7 @@ export function useAppShellState(): {
 
   const handleNewSession = useCallback(
     (_sessionId: string, cwd: string) => {
+      setActiveCwd(cwd);
       setSelectedSession(null);
       setNewSessionCwd(cwd);
       setSessionKey((k) => k + 1);
@@ -190,6 +192,7 @@ export function useAppShellState(): {
 
   const handleSessionCreated = useCallback(
     (session: SessionInfo) => {
+      setActiveCwd(session.cwd ?? null);
       setNewSessionCwd(null);
       setSelectedSession(session);
       setRefreshKey((k) => k + 1);
@@ -224,18 +227,18 @@ export function useAppShellState(): {
   const handleSessionDeleted = useCallback(
     (sessionId: string) => {
       setRefreshKey((k) => k + 1);
-      setSelectedSession((prev) => {
-        if (prev?.id !== sessionId) return prev;
-        const cwd = prev.cwd;
-        setNewSessionCwd(cwd ?? null);
-        setSessionKey((k) => k + 1);
-        setBranchTree([]);
-        setBranchActiveLeafId(null);
-        setSystemPrompt(null);
-        setActiveTopPanel(null);
-        router.replace("/", { scroll: false });
-        return null;
-      });
+      const selected = selectedSessionRef.current;
+      if (selected?.id !== sessionId) return;
+      const cwd = selected.cwd;
+      setActiveCwd(cwd ?? null);
+      setNewSessionCwd(cwd ?? null);
+      setSelectedSession(null);
+      setSessionKey((k) => k + 1);
+      setBranchTree([]);
+      setBranchActiveLeafId(null);
+      setSystemPrompt(null);
+      setActiveTopPanel(null);
+      router.replace("/", { scroll: false });
     },
     [router],
   );

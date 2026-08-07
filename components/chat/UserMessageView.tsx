@@ -11,6 +11,7 @@ import styles from "./UserMessageView.module.css";
 import { ImageLightbox } from "./ImageLightbox";
 import { useI18n } from "@/lib/i18n";
 import { MessageBookmarkAction, MessageBookmarkIndicator } from "./MessageBookmarkAction";
+import { useMobileActionPlacement } from "@/hooks/use-mobile-action-placement";
 
 function formatTime(ts?: number, locale: "en" | "zh" = "en"): string | null {
   if (!ts) return null;
@@ -66,6 +67,7 @@ export function UserMessageView({ message, entryId, onFork, forking, prevAssista
   const [actionsOpen, setActionsOpen] = useState(false);
   const actionsRef = useRef<HTMLDetailsElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  const actionPlacement = useMobileActionPlacement(actionsRef, actionsOpen);
 
   const content =
     typeof message.content === "string"
@@ -293,7 +295,11 @@ export function UserMessageView({ message, entryId, onFork, forking, prevAssista
                   <circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" />
                 </svg>
               </summary>
-              <div data-testid="user-message-actions" className={styles.mobileActionPanel}>
+              <div
+                data-testid="user-message-actions"
+                data-mobile-action-panel
+                className={`${styles.mobileActionPanel} ${actionPlacement === "down" ? styles.mobileActionPanelDown : ""}`}
+              >
                 <button
                   type="button"
                   onClick={() => { closeActions(); copyContent(); }}

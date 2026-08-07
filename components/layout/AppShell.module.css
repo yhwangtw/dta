@@ -311,6 +311,7 @@
   text-align: left;
 }
 .sessionMenuItem:hover { background: var(--bg-hover); }
+.sessionMenuItemActive { background: var(--color-accent-bg); color: var(--accent); }
 .sessionMenuItem:disabled { color: var(--text-dim); cursor: not-allowed; }
 .sessionMenuItem:disabled:hover { background: transparent; }
 .sessionMenuItem span { font-size: calc(12px * var(--font-scale)); font-weight: 600; }
@@ -431,8 +432,13 @@
   white-space: nowrap;
   transition: color 0.1s, background 0.1s;
 }
-.systemButton:hover {
+.systemButton:hover:not(:disabled) {
   background: var(--bg-hover);
+}
+.systemButton:disabled {
+  color: var(--text-dim);
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 .systemButtonDefault {
   background: none;

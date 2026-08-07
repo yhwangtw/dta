@@ -1,9 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
 
 const MAIN = "/?session=aaaa1111-2222-3333-4444-555566667777";
+// This fixture is never activated through the agent API, so the System action
+// must remain unavailable even when another spec has started MAIN's wrapper.
+const INACTIVE = "/?session=dddd1111-2222-3333-4444-555566667777";
 
-async function openSession(page: Page) {
-  await page.goto(MAIN);
+async function openSession(page: Page, url = MAIN) {
+  await page.goto(url);
   await expect(page.getByRole("textbox", { name: "Message…" })).toBeVisible({
     timeout: 20_000,
   });
@@ -263,7 +266,7 @@ test.describe("responsive shell", () => {
 
   test("AC-RWD-9b: session overlays stay above the transcript and hide dead branch actions", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
-    await openSession(page);
+    await openSession(page, INACTIVE);
 
     await page.getByRole("button", { name: "Session actions" }).click();
     const branches = page.getByRole("menuitem", { name: /Branches/ });
@@ -272,16 +275,10 @@ test.describe("responsive shell", () => {
     await expect(page.getByRole("menuitem", { name: /HTML/ })).toContainText("Downloads .html · keeps the full layout");
     await expect(page.getByRole("menuitem", { name: /Markdown/ })).toContainText("Downloads .md · easy to edit or paste");
 
-    await page.getByRole("menuitem", { name: /System/ }).click();
-    const panel = page.getByTestId("system-prompt-panel");
-    await expect(panel).toBeVisible();
-    expect(await panel.evaluate((element) => element.parentElement === document.body)).toBe(true);
-
-    const box = await panel.boundingBox();
-    expect(box).not.toBeNull();
-    expect(box!.width).toBeLessThanOrEqual(760);
-    expect(box!.x).toBeGreaterThanOrEqual(0);
-    expect(box!.x + box!.width).toBeLessThanOrEqual(1440);
+    const system = page.getByRole("menuitem", { name: /System/ });
+    await expect(system).toBeDisabled();
+    await expect(system).toContainText("Unavailable until this session is active");
+    await expect(page.getByTestId("system-prompt-panel")).toHaveCount(0);
     await expectNoPageOverflow(page);
   });
 

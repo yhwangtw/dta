@@ -75,9 +75,9 @@
 .primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--accent-fg);
 }
-.primary:hover { background: var(--accent-hover); color: #fff; }
+.primary:hover { background: var(--accent-hover); color: var(--accent-fg); }
 .primary:disabled { opacity: 0.5; cursor: default; }
 
 .danger {

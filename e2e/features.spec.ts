@@ -42,8 +42,16 @@ test.describe("message bookmarks", () => {
     await first.getByRole("button", { name: "More message actions" }).click();
     const addBookmark = first.getByRole("button", { name: "Bookmark this message" });
     await expect(addBookmark).toBeVisible();
-    await expect(first.getByRole("button", { name: "Copy", exact: true })).toBeVisible();
-    await expect(first.getByRole("button", { name: "Quote" })).toBeVisible();
+    const copy = first.getByRole("button", { name: "Copy", exact: true });
+    const quote = first.getByRole("button", { name: "Quote" });
+    await expect(copy).toBeVisible();
+    await expect(quote).toBeVisible();
+    for (const action of [copy, quote, addBookmark]) {
+      const box = await action.boundingBox();
+      expect(box).not.toBeNull();
+      expect(box!.y).toBeGreaterThanOrEqual(0);
+      expect(box!.y + box!.height).toBeLessThanOrEqual(760);
+    }
     await addBookmark.click();
     await expect(first).toHaveAttribute("data-bookmarked", "true");
     await expect(first.locator("[data-bookmark-indicator]")).toBeVisible();

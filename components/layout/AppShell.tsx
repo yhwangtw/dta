@@ -12,6 +12,8 @@ import { TgdArtifactsPanel } from "./TgdArtifactsPanel";
 import { AgentDashboardPanel } from "./AgentDashboardPanel";
 import { SchedulePanel } from "./SchedulePanel";
 import { DiffPanel } from "./DiffPanel";
+import type { DiffAnnotation } from "./DiffView";
+import { DesignInspector } from "./DesignInspector";
 import { AppearancePanel } from "./AppearancePanel";
 import { IconRail, type PanelView } from "./IconRail";
 import { MobileNavigation } from "./MobileNavigation";
@@ -77,6 +79,7 @@ export function AppShell() {
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
+  const [designModeOpen, setDesignModeOpen] = useState(false);
   const [panelView, setPanelView] = useState<PanelView>("sessions");
   const [searchFocusSignal, setSearchFocusSignal] = useState(0);
   const [revealSignal, setRevealSignal] = useState(0);
@@ -190,7 +193,7 @@ export function AppShell() {
   const { allSessions } = useSessions(state.refreshKey);
   const { tags } = useTags();
   const { ToastContainer } = useToast();
-  const effectiveCwdForPalette = state.activeCwd ?? state.selectedSession?.cwd ?? state.newSessionCwd;
+  const effectiveCwdForPalette = state.selectedSession?.cwd ?? state.newSessionCwd ?? state.activeCwd;
 
   const palette = useCommandPalette({
     sessions: allSessions,
@@ -331,6 +334,28 @@ export function AppShell() {
     }
   }, [actions, allSessions, handleSelectSessionFromSidebar, t]);
 
+  const handleCompareSessions = useCallback(async (sessionIds: string[]) => {
+    const sessions = await Promise.all(sessionIds.map(async (sessionId) => {
+      const known = allSessions.find((session) => session.id === sessionId);
+      if (known) return known;
+      try {
+        const response = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}`);
+        if (!response.ok) return null;
+        const payload = await response.json() as { info?: SessionInfo | null };
+        return payload.info ?? null;
+      } catch {
+        return null;
+      }
+    }));
+    const usable = sessions.filter((session): session is SessionInfo => Boolean(session));
+    if (usable.length < 2) {
+      showToast(t("extensionUI.noSession"), { type: "warning" });
+      return;
+    }
+    handleSelectSessionFromSidebar(usable[0]);
+    usable.slice(1, 3).forEach((session) => actions.openParallel(session));
+  }, [actions, allSessions, handleSelectSessionFromSidebar, t]);
+
   const handlePaletteSelectTag = useCallback(
     (tag: string) => setActiveTagFilter(tag),
     [],
@@ -353,6 +378,24 @@ export function AppShell() {
   const handleAtMention = useCallback((relativePath: string) => {
     chatInputRef.current?.insertText("`" + relativePath + "`");
   }, []);
+
+  const handleDesignCapture = useCallback((context: string) => {
+    chatInputRef.current?.insertText(context);
+    setDesignModeOpen(false);
+    setMobileActionsOpen(false);
+    showToast(t("topbar.designCaptured"), { type: "success" });
+  }, [t]);
+
+  const handleDiffAnnotation = useCallback((annotation: DiffAnnotation & { path: string }) => {
+    const kind = annotation.type === "added" ? "added" : annotation.type === "removed" ? "removed" : "unchanged";
+    const prompt = [
+      `Review ${annotation.path}:${annotation.lineNo} (${kind} line).`,
+      `Line: ${annotation.text || "(blank)"}`,
+      `Requested change: ${annotation.comment}`,
+    ].join("\n");
+    chatInputRef.current?.insertText(prompt);
+    showToast(t("diff.annotationAdded"), { type: "success" });
+  }, [t]);
 
   const handleExportSession = useCallback(() => {
     if (!state.selectedSession) return;
@@ -447,7 +490,7 @@ export function AppShell() {
 
   const activeFileTab = fileTabs.find((t) => t.id === activeFileTabId) ?? null;
 
-  const panelCwd = state.activeCwd ?? state.selectedSession?.cwd ?? state.newSessionCwd ?? null;
+  const panelCwd = state.selectedSession?.cwd ?? state.newSessionCwd ?? state.activeCwd ?? null;
 
   const sidebarContent = (
     <ErrorBoundary>
@@ -476,6 +519,7 @@ export function AppShell() {
         <AgentDashboardPanel
           defaultCwd={panelCwd}
           onOpenSession={handleOpenScheduledSession}
+          onCompareSessions={handleCompareSessions}
         />
       ) : panelView === "schedule" ? (
         <SchedulePanel
@@ -524,6 +568,7 @@ export function AppShell() {
 
   const tabTitle = useTabTitle();
   const sessionHasBranches = hasSessionBranches(state.branchTree);
+  const systemPromptUnavailable = state.systemPrompt === null;
   const systemPanelStyle = state.topPanelPos && typeof window !== "undefined"
     ? (() => {
         const margin = 8;
@@ -568,6 +613,7 @@ export function AppShell() {
         skillsDisabled={!panelCwd}
         onOpenExtensions={() => setExtensionsConfigOpen(true)}
         onOpenAppearance={() => setAppearanceOpen(true)}
+        onOpenDesignMode={() => setDesignModeOpen(true)}
       />
       {/* Mobile overlay backdrop */}
       <div
@@ -666,6 +712,14 @@ export function AppShell() {
                   </button>
                   <button
                     type="button"
+                    className={`${s.sessionMenuItem} ${designModeOpen ? s.sessionMenuItemActive : ""}`}
+                    role="menuitem"
+                    onClick={() => { setDesignModeOpen((open) => !open); setSessionMenuOpen(false); }}
+                  >
+                    <span>{t("topbar.designMode")}</span><small>{t("topbar.designModeHint")}</small>
+                  </button>
+                  <button
+                    type="button"
                     className={s.sessionMenuItem}
                     role="menuitem"
                     disabled={!sessionHasBranches}
@@ -676,8 +730,23 @@ export function AppShell() {
                   >
                     <span>{t("topbar.branches")}</span><small>{sessionHasBranches ? t("topbar.sessionMenuBranchesHint") : t("topbar.sessionMenuNoBranches")}</small>
                   </button>
-                  <button type="button" className={s.sessionMenuItem} role="menuitem" onClick={() => { actions.toggleTopPanel("system"); setSessionMenuOpen(false); }}>
-                    <span>{t("topbar.system")}</span><small>{state.systemPrompt ? t("topbar.sessionMenuSystemLoaded") : t("topbar.sessionMenuSystemPending")}</small>
+                  <button
+                    type="button"
+                    className={s.sessionMenuItem}
+                    role="menuitem"
+                    disabled={systemPromptUnavailable}
+                    onClick={() => {
+                      if (!systemPromptUnavailable) actions.toggleTopPanel("system");
+                      setSessionMenuOpen(false);
+                    }}
+                  >
+                    <span>{t("topbar.system")}</span>
+                    <small>{systemPromptUnavailable
+                      ? t("topbar.sessionMenuSystemUnavailable")
+                      : state.systemPrompt
+                        ? t("topbar.sessionMenuSystemLoaded")
+                        : t("topbar.sessionMenuSystemEmpty")}
+                    </small>
                   </button>
                   <div className={s.sessionMenuDivider} />
                   <button type="button" className={s.sessionMenuItem} role="menuitem" disabled={!state.selectedSession} onClick={() => { handleExportSession(); setSessionMenuOpen(false); }}>
@@ -772,6 +841,8 @@ export function AppShell() {
               <button
                 onClick={() => { actions.toggleTopPanel("system"); setMobileActionsOpen(false); }}
                 className={`${s.systemButton} ${state.activeTopPanel === "system" ? s.systemButtonActive : s.systemButtonDefault} hover-text`}
+                disabled={systemPromptUnavailable}
+                title={systemPromptUnavailable ? t("topbar.sessionMenuSystemUnavailable") : t("topbar.system")}
               >
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: state.systemPrompt ? "var(--accent)" : "var(--text-dim)", flexShrink: 0 }}>
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -893,7 +964,7 @@ export function AppShell() {
                 </div>
               ) : (
                 <div className={s.systemPromptPlaceholder}>
-                  {t("system.notLoaded")}
+                  {systemPromptUnavailable ? t("system.unavailable") : t("system.notLoaded")}
                 </div>
               )}
             </div>
@@ -1068,7 +1139,7 @@ export function AppShell() {
         {/* File content */}
         <div className={s.rightPanelContent}>
           {diffFile && panelCwd ? (
-            <DiffPanel cwd={panelCwd} path={diffFile} onClose={() => setDiffFile(null)} />
+            <DiffPanel cwd={panelCwd} path={diffFile} onClose={() => setDiffFile(null)} onAnnotate={handleDiffAnnotation} />
           ) : activeFileTab?.filePath ? (
             <FileViewer filePath={activeFileTab.filePath} cwd={state.activeCwd ?? undefined} gotoLine={activeFileTab.gotoLine} gotoNonce={activeFileTab.gotoNonce} />
           ) : (
@@ -1103,6 +1174,7 @@ export function AppShell() {
     {analyticsOpen && <Suspense fallback={null}><AnalyticsModal open={analyticsOpen} onClose={() => setAnalyticsOpen(false)} /></Suspense>}
     {appearanceOpen && <AppearancePanel onClose={() => setAppearanceOpen(false)} />}
     {shortcutsOpen && <ShortcutsDialog onClose={() => setShortcutsOpen(false)} />}
+    <DesignInspector active={designModeOpen && showChat} onClose={() => setDesignModeOpen(false)} onCapture={handleDesignCapture} />
     {/* Toast notifications — mount once at app root */}
     <ToastContainer />
     </>

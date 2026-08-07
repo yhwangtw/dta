@@ -37,9 +37,9 @@ export function PromptsConfig({ onClose }: { onClose: () => void }) {
 
   return (
     <div className={styles.overlay} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className={styles.modal}>
+      <div className={styles.modal} role="dialog" aria-modal="true" aria-labelledby="prompt-templates-title">
         <div className={styles.header}>
-          <span className={styles.title}>Prompt templates</span>
+          <span className={styles.title} id="prompt-templates-title">Prompt templates</span>
           <button onClick={onClose} className={styles.closeButton} aria-label="Close">×</button>
         </div>
 
@@ -52,6 +52,7 @@ export function PromptsConfig({ onClose }: { onClose: () => void }) {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="name"
+                aria-label="Template name"
                 className={styles.nameInput}
                 spellCheck={false}
               />
@@ -61,6 +62,7 @@ export function PromptsConfig({ onClose }: { onClose: () => void }) {
               value={body}
               onChange={(e) => setBody(e.target.value)}
               placeholder="Template body — inserted into the composer when you pick it"
+              aria-label="Template body"
               className={styles.bodyInput}
               rows={5}
               spellCheck={false}

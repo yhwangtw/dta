@@ -40,6 +40,12 @@ const MESSAGES = {
   "topbar.sessionMenuNoBranches": { en: "No alternate turns yet", zh: "目前沒有分支" },
   "topbar.sessionMenuSystemLoaded": { en: "View the active instructions", zh: "查看目前系統提示" },
   "topbar.sessionMenuSystemPending": { en: "Available after the first message", zh: "傳送訊息後可查看" },
+  "topbar.sessionMenuSystemEmpty": { en: "No instructions (tools are disabled)", zh: "沒有系統提示（工具已停用）" },
+  "topbar.sessionMenuSystemUnavailable": { en: "Unavailable until this session is active", zh: "此工作階段啟用後才能查看" },
+  "topbar.designMode": { en: "Design mode", zh: "設計模式" },
+  "topbar.designModeHint": { en: "Capture an element into the prompt", zh: "擷取畫面元素到輸入框" },
+  "topbar.designModeActive": { en: "Design mode is active", zh: "設計模式使用中" },
+  "topbar.designCaptured": { en: "Design context added to prompt", zh: "設計資訊已加入輸入框" },
   "input.send": { en: "Send", zh: "傳送" },
   "topbar.hideFilePanel": { en: "Hide file panel", zh: "隱藏檔案面板" },
   "topbar.showFilePanel": { en: "Show file panel", zh: "顯示檔案面板" },
@@ -347,6 +353,11 @@ const MESSAGES = {
   "code.showDiagramSource": { en: "Show Mermaid source", zh: "顯示 Mermaid 原始碼" },
   "code.invalidDiagram": { en: "Invalid Mermaid diagram", zh: "Mermaid 圖表格式無效" },
   "code.renderingDiagram": { en: "Rendering Mermaid diagram", zh: "正在產生 Mermaid 圖表" },
+  "diff.annotateLine": { en: "Annotate line", zh: "註解這一行" },
+  "diff.commentPlaceholder": { en: "What should the agent change here?", zh: "要 agent 在這裡修改什麼？" },
+  "diff.commentShortcut": { en: "⌘/Ctrl + Enter", zh: "⌘/Ctrl + Enter" },
+  "diff.addToPrompt": { en: "Add to prompt", zh: "加入輸入框" },
+  "diff.annotationAdded": { en: "Diff note added to prompt", zh: "Diff 註解已加入輸入框" },
   "input.retrying": { en: "Retrying", zh: "正在重試" },
   "input.template": { en: "template", zh: "範本" },
   "bash.running": { en: "Running", zh: "執行中" },
@@ -405,6 +416,7 @@ const MESSAGES = {
   // ── System prompt panel ──
   "system.empty": { en: "System prompt is empty (tools are disabled)", zh: "系統提示為空(工具已停用)" },
   "system.notLoaded": { en: "Send a message to load the system prompt", zh: "傳送訊息後載入系統提示" },
+  "system.unavailable": { en: "System prompt is unavailable until this session is active", zh: "此工作階段啟用後才能查看系統提示" },
 
   // ── Sidebar ──
   "sidebar.new": { en: "New", zh: "新增" },
@@ -564,6 +576,10 @@ const MESSAGES = {
   "agents.started": { en: "Background agent started", zh: "背景 Agent 已啟動" },
   "agents.loadFailed": { en: "Could not load agent runs", zh: "無法載入 Agent Runs" },
   "agents.actionFailed": { en: "Agent action failed", zh: "Agent 操作失敗" },
+  "agents.compare": { en: "Compare", zh: "比較" },
+  "agents.compareHint": { en: "Open selected sessions side by side", zh: "將選取的 session 並排開啟" },
+  "agents.selectForCompare": { en: "Select for comparison", zh: "選取以比較" },
+  "agents.compareLimit": { en: "Compare up to three sessions at once", zh: "一次最多比較三個 session" },
   // ── Toasts ──
   "toast.sessionDeleted": { en: "Session deleted", zh: "已刪除 session" },
   "toast.tagAdded": { en: "Added", zh: "已加入" },

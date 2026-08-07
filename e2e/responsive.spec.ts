@@ -272,16 +272,10 @@ test.describe("responsive shell", () => {
     await expect(page.getByRole("menuitem", { name: /HTML/ })).toContainText("Downloads .html · keeps the full layout");
     await expect(page.getByRole("menuitem", { name: /Markdown/ })).toContainText("Downloads .md · easy to edit or paste");
 
-    await page.getByRole("menuitem", { name: /System/ }).click();
-    const panel = page.getByTestId("system-prompt-panel");
-    await expect(panel).toBeVisible();
-    expect(await panel.evaluate((element) => element.parentElement === document.body)).toBe(true);
-
-    const box = await panel.boundingBox();
-    expect(box).not.toBeNull();
-    expect(box!.width).toBeLessThanOrEqual(760);
-    expect(box!.x).toBeGreaterThanOrEqual(0);
-    expect(box!.x + box!.width).toBeLessThanOrEqual(1440);
+    const system = page.getByRole("menuitem", { name: /System/ });
+    await expect(system).toBeDisabled();
+    await expect(system).toContainText("Unavailable until this session is active");
+    await expect(page.getByTestId("system-prompt-panel")).toHaveCount(0);
     await expectNoPageOverflow(page);
   });
 

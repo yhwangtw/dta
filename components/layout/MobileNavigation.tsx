@@ -17,6 +17,7 @@ interface Props {
   skillsDisabled: boolean;
   onOpenExtensions: () => void;
   onOpenAppearance: () => void;
+  onOpenDesignMode?: () => void;
 }
 
 interface NavButtonProps {
@@ -87,6 +88,7 @@ export function MobileNavigation({
   skillsDisabled,
   onOpenExtensions,
   onOpenAppearance,
+  onOpenDesignMode,
 }: Props) {
   const [moreOpen, setMoreOpen] = useState(false);
   const { t } = useI18n();
@@ -174,6 +176,7 @@ export function MobileNavigation({
               <MoreAction label={t("sidebar.skills")} disabled={skillsDisabled} onClick={() => run(onOpenSkills)} icon={<svg {...iconProps}><path d="M12 2 2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" /></svg>} />
               <MoreAction label={t("extensions.title")} onClick={() => run(onOpenExtensions)} icon={<svg {...iconProps}><path d="M20.5 11H19V7a2 2 0 0 0-2-2h-4V3.5a2.5 2.5 0 0 0-5 0V5H4a2 2 0 0 0-2 2v4h1.5a2.5 2.5 0 0 1 0 5H2v4a2 2 0 0 0 2 2h4v-1.5a2.5 2.5 0 0 1 5 0V22h4a2 2 0 0 0 2-2v-4h1.5a2.5 2.5 0 0 0 0-5z" /></svg>} />
               <MoreAction label={t("appearance.title")} onClick={() => run(onOpenAppearance)} icon={<svg {...iconProps}><circle cx="12" cy="12" r="9" /><path d="M8 15h8M9 9h.01M12 7h.01M15 9h.01" /></svg>} />
+              {onOpenDesignMode && <MoreAction label={t("topbar.designMode")} onClick={() => run(() => onOpenDesignMode())} icon={<svg {...iconProps}><path d="M12 3 4 7v10l8 4 8-4V7z" /><path d="m8 9 4 2 4-2M8 15l4 2 4-2M12 11v6" /></svg>} />}
             </div>
           </div>
         </section>

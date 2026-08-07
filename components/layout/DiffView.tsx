@@ -1,11 +1,20 @@
 "use client";
 
+import { Fragment, useState } from "react";
+import { useI18n } from "@/lib/i18n";
 import styles from "./DiffView.module.css";
 
 type DiffLine =
   | { type: "unchanged"; text: string; lineNo: number }
   | { type: "removed"; text: string; lineNo: number }
   | { type: "added"; text: string; lineNo: number };
+
+export interface DiffAnnotation {
+  lineNo: number;
+  type: DiffLine["type"];
+  text: string;
+  comment: string;
+}
 
 function diffLines(oldLines: string[], newLines: string[]): DiffLine[] {
   const m = oldLines.length;
@@ -75,7 +84,20 @@ function diffLines(oldLines: string[], newLines: string[]): DiffLine[] {
   ];
 }
 
-export function DiffView({ oldContent, newContent, language: _language }: { oldContent: string; newContent: string; language: string }) {
+export function DiffView({
+  oldContent,
+  newContent,
+  language: _language,
+  onAnnotate,
+}: {
+  oldContent: string;
+  newContent: string;
+  language: string;
+  onAnnotate?: (annotation: DiffAnnotation) => void;
+}) {
+  const { t } = useI18n();
+  const [annotationLine, setAnnotationLine] = useState<number | null>(null);
+  const [annotationText, setAnnotationText] = useState("");
   const oldLines = oldContent.split("\n");
   const newLines = newContent.split("\n");
   const diff = diffLines(oldLines, newLines);
@@ -165,21 +187,66 @@ export function DiffView({ oldContent, newContent, language: _language }: { oldC
           const prefix =
             line.type === "added" ? "+" : line.type === "removed" ? "-" : " ";
 
+          const lineNumber = line.type === "removed" ? line.lineNo : newLno || line.lineNo;
+          const isAnnotating = annotationLine === idx;
           return (
-            <div
-              key={li}
-              className={lineClass}
-            >
-              <span className={styles.lineNumber}>
-                {line.type === "removed" ? line.lineNo : newLno || ""}
-              </span>
-              <span className={prefixClass}>
-                {prefix}
-              </span>
-              <span className={styles.lineText}>
-                {line.text || "\u00a0"}
-              </span>
-            </div>
+            <Fragment key={li}>
+              <div className={lineClass} data-diff-line={lineNumber}>
+                <span className={styles.lineNumber}>{line.type === "removed" ? line.lineNo : newLno || ""}</span>
+                <span className={prefixClass}>{prefix}</span>
+                <span className={styles.lineText}>{line.text || "\u00a0"}</span>
+                {onAnnotate && (
+                  <button
+                    type="button"
+                    className={styles.lineAction}
+                    aria-label={`${t("diff.annotateLine")} ${lineNumber}`}
+                    title={t("diff.annotateLine")}
+                    onClick={() => {
+                      setAnnotationLine((current) => current === idx ? null : idx);
+                      setAnnotationText("");
+                    }}
+                  >
+                    +
+                  </button>
+                )}
+              </div>
+              {isAnnotating && onAnnotate && (
+                <div className={styles.annotationEditor} data-testid="diff-annotation-editor">
+                  <textarea
+                    autoFocus
+                    value={annotationText}
+                    onChange={(event) => setAnnotationText(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Escape") { event.preventDefault(); setAnnotationLine(null); }
+                      if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+                        event.preventDefault();
+                        const comment = annotationText.trim();
+                        if (!comment) return;
+                        onAnnotate({ lineNo: lineNumber, type: line.type, text: line.text, comment });
+                        setAnnotationLine(null);
+                        setAnnotationText("");
+                      }
+                    }}
+                    placeholder={t("diff.commentPlaceholder")}
+                    rows={2}
+                  />
+                  <div className={styles.annotationActions}>
+                    <span>{t("diff.commentShortcut")}</span>
+                    <button
+                      type="button"
+                      disabled={!annotationText.trim()}
+                      onClick={() => {
+                        const comment = annotationText.trim();
+                        if (!comment) return;
+                        onAnnotate({ lineNo: lineNumber, type: line.type, text: line.text, comment });
+                        setAnnotationLine(null);
+                        setAnnotationText("");
+                      }}
+                    >{t("diff.addToPrompt")}</button>
+                  </div>
+                </div>
+              )}
+            </Fragment>
           );
         });
         diffIdx += seg.lines.length;

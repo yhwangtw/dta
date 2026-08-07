@@ -60,6 +60,19 @@
 }
 .newButton:hover { background: var(--color-accent-bg-strong); }
 .newButton:disabled { opacity: 0.45; cursor: default; }
+.compareButton {
+  height: 27px;
+  padding: 0 8px;
+  border: 1px solid var(--color-accent-border-subtle);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: calc(10px * var(--font-scale));
+  cursor: pointer;
+}
+.compareButton:hover:not(:disabled) { background: var(--color-accent-bg); }
+.compareButton:disabled { opacity: .4; cursor: not-allowed; }
 
 .summary {
   flex: 0 0 auto;
@@ -185,6 +198,7 @@
   background: color-mix(in srgb, var(--color-warning-bg) 45%, var(--bg-elev-1));
 }
 .cardHeader { display: flex; align-items: center; gap: 6px; }
+.compareCheck { width: 14px; height: 14px; flex: 0 0 auto; accent-color: var(--accent); cursor: pointer; }
 .cardTitle {
   min-width: 0;
   flex: 1;

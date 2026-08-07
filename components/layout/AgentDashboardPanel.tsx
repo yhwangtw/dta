@@ -19,6 +19,7 @@ import s from "./AgentDashboardPanel.module.css";
 interface Props {
   defaultCwd: string | null;
   onOpenSession: (sessionId: string) => void | Promise<void>;
+  onCompareSessions?: (sessionIds: string[]) => void | Promise<void>;
 }
 
 type Filter = "all" | "active" | "queued" | "done";
@@ -27,7 +28,7 @@ function projectName(path: string): string {
   return path.split(/[\\/]/).filter(Boolean).pop() ?? path;
 }
 
-export function AgentDashboardPanel({ defaultCwd, onOpenSession }: Props) {
+export function AgentDashboardPanel({ defaultCwd, onOpenSession, onCompareSessions }: Props) {
   const { t } = useI18n();
   const [runs, setRuns] = useState<AgentRun[]>([]);
   const [maxConcurrency, setMaxConcurrency] = useState(3);
@@ -38,6 +39,7 @@ export function AgentDashboardPanel({ defaultCwd, onOpenSession }: Props) {
   const [savingConcurrency, setSavingConcurrency] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [compareIds, setCompareIds] = useState<string[]>([]);
 
   const load = useCallback(async (quiet = false) => {
     try {
@@ -103,6 +105,28 @@ export function AgentDashboardPanel({ defaultCwd, onOpenSession }: Props) {
     }
   };
 
+  const toggleCompare = (run: AgentRun) => {
+    if (!run.sessionId) return;
+    setCompareIds((current) => {
+      if (current.includes(run.id)) return current.filter((id) => id !== run.id);
+      if (current.length >= 3) {
+        showToast(t("agents.compareLimit"), { type: "warning" });
+        return current;
+      }
+      return [...current, run.id];
+    });
+  };
+
+  const compare = async () => {
+    if (!onCompareSessions || compareIds.length < 2) return;
+    const sessionIds = compareIds
+      .map((id) => runs.find((run) => run.id === id)?.sessionId)
+      .filter((id): id is string => Boolean(id));
+    if (sessionIds.length < 2) return;
+    await onCompareSessions(sessionIds);
+    setCompareIds([]);
+  };
+
   const updateConcurrency = async (nextValue: number) => {
     if (savingConcurrency || nextValue === maxConcurrency) return;
     setSavingConcurrency(true);
@@ -161,6 +185,17 @@ export function AgentDashboardPanel({ defaultCwd, onOpenSession }: Props) {
         >
           <span aria-hidden="true">＋</span>{t("agents.new")}
         </button>
+        {onCompareSessions && (
+          <button
+            className={s.compareButton}
+            type="button"
+            disabled={compareIds.length < 2}
+            onClick={() => void compare()}
+            title={t("agents.compareHint")}
+          >
+            {t("agents.compare")} {compareIds.length > 0 ? `(${compareIds.length})` : ""}
+          </button>
+        )}
       </div>
       <div className={s.summary} aria-label="Agent run summary">
         <button className={filter === "active" ? s.summaryActive : ""} onClick={() => setFilter(filter === "active" ? "all" : "active")}>
@@ -218,6 +253,8 @@ export function AgentDashboardPanel({ defaultCwd, onOpenSession }: Props) {
                       key={run.id}
                       run={run}
                       busy={busyId === run.id}
+                      selected={compareIds.includes(run.id)}
+                      onToggleSelect={onCompareSessions ? toggleCompare : undefined}
                       onCancel={(item) => void act(item, "cancel")}
                       onRetry={(item) => void act(item, "retry")}
                       onOpenSession={onOpenSession}

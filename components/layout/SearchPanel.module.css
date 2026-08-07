@@ -97,6 +97,25 @@
   color: var(--accent);
 }
 
+/* Desktop sidebars are narrow enough that a single flex row clips the last
+   scope (usually Commands). Keep every scope readable without horizontal
+   scrolling; coarse/mobile layouts retain their touch-friendly row below. */
+@media (min-width: 701px) {
+  .scopes {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+    gap: 2px;
+    overflow: visible;
+  }
+
+  .scope {
+    min-width: 0;
+    padding-inline: 4px;
+    text-align: center;
+    white-space: nowrap;
+  }
+}
+
 .caseButton {
   position: absolute;
   right: 10px;

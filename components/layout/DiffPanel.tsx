@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { DiffViewMode } from "./text-viewer/DiffViewMode";
+import type { DiffAnnotation } from "./DiffView";
 import { getLanguage } from "@/lib/file-mime";
 import s from "./DiffPanel.module.css";
 
@@ -9,13 +10,14 @@ interface Props {
   cwd: string;
   path: string;
   onClose: () => void;
+  onAnnotate?: (annotation: DiffAnnotation & { path: string }) => void;
 }
 
 /**
  * HEAD ↔ working-tree diff for one file, shown in the right panel when a
  * file is picked from the Changes view.
  */
-export function DiffPanel({ cwd, path, onClose }: Props) {
+export function DiffPanel({ cwd, path, onClose, onAnnotate }: Props) {
   const [state, setState] = useState<
     | { kind: "loading" }
     | { kind: "error"; message: string }
@@ -60,7 +62,12 @@ export function DiffPanel({ cwd, path, onClose }: Props) {
         {state.kind === "error" && <div className={s.notice}>Failed to load diff: {state.message}</div>}
         {state.kind === "tooLarge" && <div className={s.notice}>File too large to diff (&gt;1 MB)</div>}
         {state.kind === "ready" && (
-          <DiffViewMode oldContent={state.oldText} newContent={state.newText} language={getLanguage(path)} />
+          <DiffViewMode
+            oldContent={state.oldText}
+            newContent={state.newText}
+            language={getLanguage(path)}
+            onAnnotate={onAnnotate ? (annotation) => onAnnotate({ ...annotation, path }) : undefined}
+          />
         )}
       </div>
     </div>

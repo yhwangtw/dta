@@ -31,6 +31,16 @@ test.describe("left rail", () => {
     for (const scope of ["All", "Sessions", "Files", "Content", "Commands"]) {
       await expect(search.getByRole("button", { name: scope, exact: true })).toBeVisible();
     }
+    const scopes = search.locator("[class*='scopes']");
+    const [searchBox, scopesBox] = await Promise.all([search.boundingBox(), scopes.boundingBox()]);
+    expect(searchBox).not.toBeNull();
+    expect(scopesBox).not.toBeNull();
+    for (const scope of ["All", "Sessions", "Files", "Content", "Commands"]) {
+      const box = await search.getByRole("button", { name: scope, exact: true }).boundingBox();
+      expect(box).not.toBeNull();
+      expect(box!.x).toBeGreaterThanOrEqual(scopesBox!.x - 1);
+      expect(box!.x + box!.width).toBeLessThanOrEqual(scopesBox!.x + scopesBox!.width + 1);
+    }
 
     await openFiles(page);
     await expect(page.getByPlaceholder("Filter files…")).toHaveCount(0);

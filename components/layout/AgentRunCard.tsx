@@ -21,12 +21,14 @@ const STATUS_KEYS: Record<AgentRun["status"], MsgKey> = {
 interface Props {
   run: AgentRun;
   busy: boolean;
+  selected?: boolean;
+  onToggleSelect?: (run: AgentRun) => void;
   onCancel: (run: AgentRun) => void;
   onRetry: (run: AgentRun) => void;
   onOpenSession: (sessionId: string) => void | Promise<void>;
 }
 
-export function AgentRunCard({ run, busy, onCancel, onRetry, onOpenSession }: Props) {
+export function AgentRunCard({ run, busy, selected = false, onToggleSelect, onCancel, onRetry, onOpenSession }: Props) {
   const { locale, t } = useI18n();
   const active = run.status === "queued" || ACTIVE_AGENT_RUN_STATUSES.has(run.status);
   const terminal = TERMINAL_AGENT_RUN_STATUSES.has(run.status);
@@ -40,6 +42,15 @@ export function AgentRunCard({ run, busy, onCancel, onRetry, onOpenSession }: Pr
   return (
     <article className={`${s.card} ${run.status === "waiting_for_input" ? s.cardWaiting : ""}`} data-testid="agent-run-card">
       <div className={s.cardHeader}>
+        {run.sessionId && onToggleSelect && (
+          <input
+            className={s.compareCheck}
+            type="checkbox"
+            checked={selected}
+            onChange={() => onToggleSelect(run)}
+            aria-label={`${t("agents.selectForCompare")}: ${run.name}`}
+          />
+        )}
         <span className={`${s.statusDot} ${s[`status_${run.status}`]}`} aria-hidden="true" />
         <strong className={s.cardTitle}>{run.name}</strong>
         {run.workspace?.branch && <span className={`${s.branch} chrome-mono`}>{run.workspace.branch}</span>}

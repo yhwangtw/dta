@@ -1,0 +1,44 @@
+export interface DesignRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface DesignSnapshot {
+  selector: string;
+  tagName: string;
+  text: string;
+  html: string;
+  rect: DesignRect;
+  viewport: { width: number; height: number };
+  styles: Record<string, string>;
+}
+
+/**
+ * Turn a selected DOM node into a compact, model-friendly design brief.
+ * Keep this format stable: it is pasted into a prompt and may be saved in a
+ * user's draft/history.
+ */
+export function formatDesignContext(snapshot: DesignSnapshot): string {
+  const styleLines = Object.entries(snapshot.styles)
+    .filter(([, value]) => value)
+    .map(([name, value]) => `  ${name}: ${value}`)
+    .join("\n");
+  const rect = snapshot.rect;
+  return [
+    "<design-context>",
+    `Selected ${snapshot.tagName.toLowerCase()} at ${snapshot.selector}.`,
+    `Viewport: ${snapshot.viewport.width}×${snapshot.viewport.height}px.`,
+    `Bounds: x=${Math.round(rect.x)}, y=${Math.round(rect.y)}, width=${Math.round(rect.width)}, height=${Math.round(rect.height)}px.`,
+    snapshot.text ? `Visible text: ${snapshot.text}` : "Visible text: (none)",
+    "Computed styles:",
+    styleLines || "  (none)",
+    "HTML snapshot:",
+    "```html",
+    snapshot.html,
+    "```",
+    "Use this as a visual/reference target. Preserve the app's existing design tokens and responsive behavior; do not copy generated class names blindly.",
+    "</design-context>",
+  ].join("\n");
+}

@@ -20,6 +20,7 @@ import type { AssistantUsage } from "@/lib/usage-aggregation";
 import { requestOpenFile } from "@/lib/file-links";
 import styles from "./AssistantMessageView.module.css";
 import { MessageBookmarkAction, MessageBookmarkIndicator } from "./MessageBookmarkAction";
+import { useMobileActionPlacement } from "@/hooks/use-mobile-action-placement";
 
 export function isProviderAuthError(errorMessage?: string): boolean {
   return !!errorMessage && /(?:no api key|unauthori[sz]ed|authentication|credential|sign[ -]?in|log[ -]?in|openai-codex)/i.test(errorMessage);
@@ -107,6 +108,7 @@ export function AssistantMessageView({
   const rootRef = useRef<HTMLDivElement>(null);
   const [actionsOpen, setActionsOpen] = useState(false);
   const actionsRef = useRef<HTMLDetailsElement>(null);
+  const actionPlacement = useMobileActionPlacement(actionsRef, actionsOpen);
   blocksRef.current = blocks;
   const displayBlocks = useMemo(
     () => suppressActivityBlocks
@@ -389,7 +391,10 @@ export function AssistantMessageView({
                 <circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" />
               </svg>
             </summary>
-            <div className={styles.mobileActionPanel}>
+            <div
+              data-mobile-action-panel
+              className={`${styles.mobileActionPanel} ${actionPlacement === "down" ? styles.mobileActionPanelDown : ""}`}
+            >
               {onQuote && (
                 <button type="button" onClick={() => { closeActions(); quoteContent(); }} className={`${styles.copyButton} text-dim hover-accent`}>
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M3 21c3-6 7-9 14-9" /><path d="M13 7l5 5-5 5" /></svg>

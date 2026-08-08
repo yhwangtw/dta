@@ -25,6 +25,7 @@
     "analyze": "ANALYZE=true next build --webpack"
   },
   "overrides": {
+    "nanoid": "3.3.17",
     "mermaid": {
       "dompurify": "3.4.12"
     },

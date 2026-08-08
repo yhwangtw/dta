@@ -62,8 +62,8 @@ const CUSTOM_STYLE: React.CSSProperties = {
   margin: 0,
   padding: "12px 0",
   background: "var(--bg)",
-  fontSize: "calc(13px * var(--font-scale))",
-  lineHeight: 1.6,
+  fontSize: "var(--text-md)",
+  lineHeight: "var(--leading-relaxed)",
   fontFamily: "var(--font-mono)",
   minHeight: "100%",
 };

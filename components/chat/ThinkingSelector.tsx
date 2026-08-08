@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { THINKING_LEVELS, type ThinkingLevelOption } from "./chat-input-constants";
 import { useI18n, type MsgKey } from "@/lib/i18n";
+import styles from "./ComposerSelector.module.css";
 
 const THINKING_LABEL_KEYS: Record<ThinkingLevelOption, MsgKey> = {
   auto: "input.thinking.auto",
@@ -49,31 +50,30 @@ export function ThinkingSelector({
     const handler = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
     document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      document.removeEventListener("keydown", onKeyDown);
+    };
   }, [open]);
 
   if (!onThinkingLevelChange) return null;
 
   return (
-    <div ref={ref} style={{ position: "relative" }}>
+    <div ref={ref} className={styles.root}>
       <button
         onClick={() => !isStreaming && setOpen((v) => !v)}
         disabled={isStreaming}
         type="button"
         aria-label={t("input.thinkingTitle")}
         aria-expanded={open}
+        aria-haspopup="listbox"
         title={t("input.thinkingTitle")}
-        className={open ? "hover-text" : "bg-none hover-bg-text"}
-        style={{
-          display: "flex", alignItems: "center", gap: 5,
-          padding: "8px 12px", height: 32,
-          border: "none", borderRadius: 9,
-          color: "var(--text-muted)",
-          cursor: isStreaming ? "not-allowed" : "pointer",
-          fontSize: "calc(12px * var(--font-scale))", opacity: isStreaming ? 0.5 : 1,
-          transition: "background 0.12s, color 0.12s",
-        }}
+        className={`${styles.trigger} ${open ? styles.triggerOpen : ""}`}
       >
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M9.5 2A5.5 5.5 0 0 0 4 7.5c0 1.7.78 3.21 2 4.21V14a1 1 0 0 0 1 1h5a1 1 0 0 0 1-1v-2.29c1.22-1 2-2.51 2-4.21A5.5 5.5 0 0 0 9.5 2z" />
@@ -88,12 +88,7 @@ export function ThinkingSelector({
         })()}</span>
       </button>
       {open && (
-        <div style={{
-          position: "absolute", bottom: "calc(100% + 6px)", right: 0,
-          zIndex: 100, background: "var(--bg)", border: "1px solid var(--border)",
-          borderRadius: 8, boxShadow: "var(--color-shadow-popup)",
-          overflow: "hidden", minWidth: 180,
-        }}>
+        <div className={`${styles.panel} ${styles.panelAbsolute}`} role="listbox" aria-label={t("input.thinkingTitle")}>
           {THINKING_LEVELS.filter((lvl) => {
             if (!availableThinkingLevels) return true;
             if (lvl === "auto") return true;
@@ -108,25 +103,19 @@ export function ThinkingSelector({
               <button
                 key={lvl}
                 type="button"
+                role="option"
+                aria-selected={isActive}
                 onClick={() => { setOpen(false); if (!isActive) onThinkingLevelChange(lvl); }}
-                className={isActive ? "bg-selected" : "bg-none hover-bg"}
-                style={{
-                  display: "flex", alignItems: "center", gap: 8,
-                  width: "100%", padding: "7px 12px",
-                  border: "none",
-                  color: isActive ? "var(--text)" : "var(--text-muted)",
-                  cursor: "pointer", fontSize: "calc(12px * var(--font-scale))", textAlign: "left",
-                  fontWeight: isActive ? 600 : 400, whiteSpace: "nowrap",
-                }}
+                className={`${styles.option} ${isActive ? styles.optionActive : ""}`}
               >
                 {isActive
-                  ? <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><polyline points="1.5 5 4 7.5 8.5 2.5" /></svg>
-                  : <span style={{ width: 10, flexShrink: 0 }} />}
-                <span style={{ flex: 1 }}>
+                  ? <svg className={styles.check} width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1.5 5 4 7.5 8.5 2.5" /></svg>
+                  : <span className={styles.checkSpacer} />}
+                <span className={styles.optionLabel}>
                   {displayLabel}
-                  {showOriginal && <span style={{ fontSize: "calc(10px * var(--font-scale))", color: "var(--text-dim)", fontFamily: "var(--font-mono)", marginLeft: 5 }}>({lvl})</span>}
+                  {showOriginal && <span className={styles.originalLabel}>({lvl})</span>}
                 </span>
-                <span style={{ fontSize: "calc(11px * var(--font-scale))", color: "var(--text-dim)", marginLeft: 8 }}>{desc}</span>
+                <span className={styles.description}>{desc}</span>
               </button>
             );
           })}

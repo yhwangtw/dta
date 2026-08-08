@@ -18,7 +18,6 @@ import { useI18n } from "@/lib/i18n";
 import { extractComposerMentions, removeComposerMention, type ComposerMention } from "@/lib/composer-context";
 import { loadStreamingSendMode, resolveStreamingSendMode, saveStreamingSendMode, type StreamingSendMode } from "@/lib/composer-mode";
 import { requestOpenFile } from "@/lib/file-links";
-import type { WorkspaceIdentity } from "@/lib/workspace-identity";
 
 export interface AttachedImage {
   data: string;   // base64, no prefix
@@ -60,8 +59,6 @@ interface Props {
   onSoundToggle?: () => void;
   /** Project cwd — enables the `@file` mention autocomplete. */
   cwd?: string | null;
-  /** Repository context shown in the TRAE-style composer status rail. */
-  workspaceIdentity?: WorkspaceIdentity | null;
   /** Stable per-session key for draft/history persistence. */
   persistKey?: string | null;
   quote?: MessageQuote | null;
@@ -113,7 +110,6 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
   retryInfo,
   soundEnabled, onSoundToggle,
   cwd,
-  workspaceIdentity,
   persistKey,
   quote,
   onClearQuote,
@@ -149,14 +145,6 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
   const lastEscAtRef = useRef(0);
   const expandedRef = useRef(expanded);
   expandedRef.current = expanded;
-  const workspaceContext = workspaceIdentity ?? (cwd ? {
-    sourceCwd: cwd,
-    repository: cwd.replace(/\/+$/, "").split("/").filter(Boolean).pop() ?? cwd,
-    branch: null,
-    root: cwd,
-    isGit: false,
-    detached: false,
-  } : null);
 
   useImperativeHandle(ref, () => ({
     insertIfEmpty(text: string) {
@@ -868,7 +856,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
             aria-busy={isSubmitting}
             placeholder={
               isStreaming && (onSteer || onFollowUp)
-                ? t("input.steerHint")
+                ? t(streamingSendMode === "steer" ? "input.steerPlaceholder" : "input.followUpPlaceholder")
                 : isStreaming ? t("input.agentRunning")
                 : t("input.message")
             }
@@ -1158,32 +1146,6 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
 
         </div>
 
-        {workspaceContext && (
-          <div
-            className={styles.workspaceContextBar}
-            data-testid="composer-workspace-context"
-            aria-label={`${t("topbar.repository")}: ${workspaceContext.repository}${workspaceContext.branch ? `, ${t("topbar.branch")}: ${workspaceContext.branch}` : ""}`}
-          >
-            <span className={styles.workspaceContextItem}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="M20 17.5A4.5 4.5 0 0 0 18.5 9a6.5 6.5 0 0 0-12.4 1.4A3.8 3.8 0 0 0 7 18h13" />
-              </svg>
-              <span>{t("input.localWorkspace")}</span>
-            </span>
-            <span className={styles.workspaceContextItem} title={workspaceContext.root}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="M3 6.5h6l2 2h10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><path d="M3 6.5v-1a2 2 0 0 1 2-2h4l2 2" />
-              </svg>
-              <span>{workspaceContext.repository}</span>
-            </span>
-            <span className={`${styles.workspaceContextItem} ${!workspaceContext.isGit ? styles.workspaceContextItemMuted : ""}`}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <circle cx="6" cy="4" r="2" /><circle cx="18" cy="6" r="2" /><circle cx="6" cy="20" r="2" /><path d="M6 6v12M8 8c5 0 8 0 8-2" />
-              </svg>
-              <span>{workspaceContext.branch ?? t("topbar.notGitRepository")}</span>
-            </span>
-          </div>
-        )}
       </div>
     </div>
   );

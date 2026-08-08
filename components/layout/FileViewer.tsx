@@ -5,6 +5,7 @@ import { ImageViewer } from "./ImageViewer";
 import { AudioViewer } from "./AudioViewer";
 import { DocumentViewer } from "./DocumentViewer";
 import { TextFileViewer } from "./TextFileViewer";
+import styles from "./FileViewer.module.css";
 
 interface Props {
   filePath: string;
@@ -50,17 +51,7 @@ export function DownloadLink({ filePath, label = "Download" }: { filePath: strin
     <a
       href={`/api/files/${encoded}?type=read`}
       download={getFileName(filePath)}
-      style={{
-        color: "var(--text-muted)",
-        textDecoration: "none",
-        border: "1px solid var(--border)",
-        borderRadius: 5,
-        padding: "2px 8px",
-        fontSize: "calc(11px * var(--font-scale))",
-        lineHeight: 1.4,
-        background: "var(--bg-hover)",
-        flexShrink: 0,
-      }}
+      className={styles.downloadLink}
     >
       {label}
     </a>

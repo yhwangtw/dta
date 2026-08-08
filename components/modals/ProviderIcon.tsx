@@ -96,15 +96,15 @@ export function ProviderIcon({ id, size }: { id: string; size: number }) {
           width: size,
           height: size,
           border: "1px solid var(--border)",
-          borderRadius: 4,
+          borderRadius: "var(--radius-sm)",
           color: "var(--text-dim)",
           display: "inline-flex",
           alignItems: "center",
           justifyContent: "center",
           flexShrink: 0,
-          fontSize: Math.max(8, Math.floor(size * 0.42)),
-          fontWeight: 700,
-          lineHeight: 1,
+          fontSize: Math.max(10, Math.floor(size * 0.42)),
+          fontWeight: "var(--weight-bold)",
+          lineHeight: "var(--leading-none)",
         }}
       >
         {label}

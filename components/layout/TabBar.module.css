@@ -16,7 +16,7 @@
   padding-right: 6px;
   border-right: 1px solid var(--border);
   cursor: pointer;
-  font-size: calc(12px * var(--font-scale));
+  font-size: var(--text-sm);
   white-space: nowrap;
   max-width: 180px;
   min-width: 80px;
@@ -50,17 +50,19 @@
 }
 
 .tabLabel {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
   flex: 1;
 }
 
 .tabLabelActive {
-  font-weight: 500;
+  font-weight: var(--weight-medium);
 }
 
 .tabLabelInactive {
-  font-weight: 400;
+  font-weight: var(--weight-regular);
 }
 
 .closeBtn {

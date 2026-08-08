@@ -425,8 +425,8 @@ function CodeBlock({ code, lang, headerAction, plain }: { code: string; lang: st
         customStyle={{
           margin: 0,
           padding: "10px 12px",
-          fontSize: "calc(12.5px * var(--font-scale))",
-          lineHeight: 1.6,
+          fontSize: "var(--text-md)",
+          lineHeight: "var(--leading-relaxed)",
           borderRadius: 0,
           // Both forms: the highlighter themes mix `background` (vscDarkPlus)
           // and `backgroundColor` (vs); pinning both keeps the merged style

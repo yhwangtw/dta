@@ -38,6 +38,7 @@ import { setUiStyle } from "@/lib/ui-style";
 import { resolveAppShellCenterView } from "./app-shell-view";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { resolveWorkspaceIdentity, type WorkspaceIdentity } from "@/lib/workspace-identity";
+import { requestOpenProjectSwitcher } from "@/lib/project-switcher-events";
 import type { Worktree } from "@/lib/worktrees";
 import type { SessionInfo, SessionTreeNode } from "@/lib/types";
 import type { ChatInputHandle } from "../chat/ChatInput";
@@ -162,6 +163,11 @@ export function AppShell() {
     setRightPanelOpen(false);
     setMobileActionsOpen(false);
   }, [setRightPanelOpen]);
+
+  const handleOpenProjectSwitcher = useCallback(() => {
+    setPanelView("sessions");
+    window.setTimeout(requestOpenProjectSwitcher, 0);
+  }, []);
 
   const handleOpenDiff = useCallback((filePath: string) => {
     setDiffFile(filePath);
@@ -648,10 +654,12 @@ export function AppShell() {
           </button>
           <div className={s.sessionIdentity} data-testid="session-identity">
             {visibleWorkspaceIdentity && (
-              <div
+              <button
+                type="button"
                 className={s.workspaceIdentity}
-                aria-label={`${t("topbar.repository")}: ${visibleWorkspaceIdentity.repository}${visibleWorkspaceIdentity.branch ? `, ${t("topbar.branch")}: ${visibleWorkspaceIdentity.branch}` : ""}`}
+                aria-label={`${t("cwd.select")} · ${t("topbar.repository")}: ${visibleWorkspaceIdentity.repository}${visibleWorkspaceIdentity.branch ? `, ${t("topbar.branch")}: ${visibleWorkspaceIdentity.branch}` : ""}`}
                 title={visibleWorkspaceIdentity.root}
+                onClick={handleOpenProjectSwitcher}
               >
                 <span className={s.workspaceRepository} data-testid="workspace-repository">
                   {visibleWorkspaceIdentity.repository}
@@ -665,7 +673,7 @@ export function AppShell() {
                     : visibleWorkspaceIdentity.branch
                     ?? (workspaceIdentity?.sourceCwd === workspaceCwd ? t("topbar.notGitRepository") : "…")}
                 </span>
-              </div>
+              </button>
             )}
             <div className={s.chatTitle} title={state.selectedSession ? getSessionDisplayTitle(state.selectedSession, 240) : undefined}>
               {state.selectedSession
@@ -994,7 +1002,6 @@ export function AppShell() {
                     onContextUsageChange={actions.setContextUsage}
                     onSessionNamed={actions.bumpRefreshKey}
                     onOpenModels={() => setModelsConfigOpen(true)}
-                    workspaceIdentity={visibleWorkspaceIdentity}
                     isParallel
                     paneLabel={state.selectedSession ? getSessionDisplayTitle(state.selectedSession) : undefined}
                   />
@@ -1039,7 +1046,6 @@ export function AppShell() {
               onContextUsageChange={actions.setContextUsage}
               onSessionNamed={actions.bumpRefreshKey}
               onOpenModels={() => setModelsConfigOpen(true)}
-              workspaceIdentity={visibleWorkspaceIdentity}
             />
           ) : centerView === "project" ? (
               <div className={s.placeholderContainer}>

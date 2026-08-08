@@ -17,12 +17,12 @@
   background: linear-gradient(135deg, var(--accent), var(--accent-hover));
   color: var(--bg);
   font-family: var(--font-mono);
-  font-size: calc(19px * var(--font-scale));
-  font-weight: 700;
-  line-height: 1;
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-none);
   padding-bottom: 2px;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    inset 0 1px 0 color-mix(in srgb, var(--color-white) 25%, transparent),
     0 2px 8px var(--color-accent-glow);
 }
 
@@ -34,24 +34,24 @@
 }
 
 .name {
-  font-size: calc(15px * var(--font-scale));
-  font-weight: 700;
-  letter-spacing: -0.015em;
-  line-height: 1.1;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--leading-compact);
   color: var(--text);
   white-space: nowrap;
 }
 
 .tagline {
   font-family: var(--font-mono);
-  font-size: calc(9px * var(--font-scale));
-  font-weight: 500;
-  letter-spacing: 0.09em;
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-caps);
   text-transform: uppercase;
   color: var(--text-dim);
   white-space: nowrap;
 }
 
 :global(html[data-ui-style="trae"]) .badge { border-radius: 10px; color: var(--accent-fg); box-shadow: 0 5px 16px var(--color-accent-glow); }
-:global(html[data-ui-style="trae"]) .name { font-weight: 650; }
-:global(html[data-ui-style="trae"]) .tagline { letter-spacing: 0.05em; text-transform: none; }
+:global(html[data-ui-style="trae"]) .name { font-weight: var(--weight-semibold); }
+:global(html[data-ui-style="trae"]) .tagline { letter-spacing: var(--tracking-wide); text-transform: none; }

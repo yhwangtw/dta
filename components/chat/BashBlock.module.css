@@ -14,12 +14,12 @@
   border-bottom: 1px solid var(--border);
   background: var(--bg-panel);
   font-family: var(--font-mono);
-  font-size: calc(12px * var(--font-scale));
+  font-size: var(--text-sm);
 }
 
 .prompt {
   color: var(--accent);
-  font-weight: 700;
+  font-weight: var(--weight-bold);
   flex-shrink: 0;
 }
 
@@ -48,7 +48,7 @@
   border: 1px solid var(--color-error-border);
   border-radius: var(--radius-sm);
   color: var(--color-error);
-  font-size: calc(11px * var(--font-scale));
+  font-size: var(--text-xs);
   cursor: pointer;
   transition: background 0.12s;
 }
@@ -60,8 +60,8 @@
   flex-shrink: 0;
   padding: 1px 7px;
   border-radius: var(--radius-sm);
-  font-size: calc(10.5px * var(--font-scale));
-  line-height: 1.6;
+  font-size: var(--text-xs);
+  line-height: var(--leading-relaxed);
 }
 .badgeOk {
   color: var(--color-success);
@@ -79,7 +79,7 @@
 .truncated {
   flex-shrink: 0;
   color: var(--text-dim);
-  font-size: calc(10.5px * var(--font-scale));
+  font-size: var(--text-xs);
 }
 
 .output {
@@ -88,8 +88,8 @@
   max-height: 320px;
   overflow: auto;
   font-family: var(--font-mono);
-  font-size: calc(12px * var(--font-scale));
-  line-height: 1.55;
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
   color: var(--text-muted);
   white-space: pre-wrap;
   word-break: break-word;

@@ -15,12 +15,12 @@
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  font-size: calc(10.5px * var(--font-scale));
-  line-height: 1.2;
+  font-size: var(--text-xs);
+  line-height: var(--leading-tight);
   padding: 2px 7px;
   border-radius: 999px;
   border: 1px solid transparent;
-  font-weight: 500;
+  font-weight: var(--weight-medium);
   cursor: pointer;
   transition: filter 0.1s ease;
   font-family: inherit;
@@ -32,7 +32,7 @@
 
 .count {
   margin-left: 2px;
-  font-size: calc(9px * var(--font-scale));
+  font-size: var(--text-2xs);
   padding: 0 4px;
   border-radius: 999px;
 }
@@ -42,8 +42,8 @@
   border: none;
   color: var(--text-dim);
   cursor: pointer;
-  font-size: calc(14px * var(--font-scale));
-  line-height: 1;
+  font-size: var(--text-base);
+  line-height: var(--leading-none);
   padding: 0 4px;
 }
 

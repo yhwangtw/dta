@@ -28,6 +28,8 @@ export function Toggle({
           ? "Visible in model prompt — click to disable"
           : "Hidden from model prompt — click to enable"
       }
+      aria-label={enabled ? "Disable skill" : "Enable skill"}
+      aria-pressed={enabled}
       className={`${styles.toggle} ${toggleClass}`}
     >
       <span
@@ -84,49 +86,29 @@ export function SkillDetail({
 
   return (
     <div className={styles.container}>
-      {/* Path + tag + toggle */}
-      <div className={styles.pathRow}>
-        <span
-          className={`${styles.tag} ${label === "project" ? styles.tagProject : styles.tagGlobal}`}
-        >
-          {label}
-        </span>
-        <span className={styles.pathText}>
-          {displayPath(skill.filePath)}
-        </span>
-        <Toggle
-          enabled={enabled}
-          loading={toggling}
-          onToggle={() => onToggle(skill)}
-        />
-        {saveError && (
-          <span className={styles.errorText}>
-            {saveError}
-          </span>
-        )}
+      <div className={styles.skillHeader}>
+        <div className={styles.skillIntro}>
+          <div className={styles.titleRow}>
+            <h3>{skill.name}</h3>
+            <span className={`${styles.tag} ${label === "project" ? styles.tagProject : styles.tagGlobal}`}>
+              {label}
+            </span>
+          </div>
+          <p className={styles.fieldValueText}>{skill.description}</p>
+          <div className={styles.pathRow} title={skill.filePath}>
+            <span className={styles.pathText}>{displayPath(skill.filePath)}</span>
+          </div>
+        </div>
+        <div className={styles.toggleControl}>
+          <span>{enabled ? "Enabled" : "Disabled"}</span>
+          <Toggle enabled={enabled} loading={toggling} onToggle={() => onToggle(skill)} />
+        </div>
       </div>
+      {saveError && <span className={styles.errorText}>{saveError}</span>}
 
       <div className={styles.fieldSection}>
         <span className={styles.fieldLabel}>
-          Name
-        </span>
-        <span className={styles.fieldValueMono}>
-          {skill.name}
-        </span>
-      </div>
-
-      <div className={styles.fieldSection}>
-        <span className={styles.fieldLabel}>
-          Description
-        </span>
-        <span className={styles.fieldValueText}>
-          {skill.description}
-        </span>
-      </div>
-
-      <div className={styles.fieldSection}>
-        <span className={styles.fieldLabel}>
-          Content
+          Instructions
         </span>
         {contentError ? (
           <span className={styles.errorText}>{contentError}</span>

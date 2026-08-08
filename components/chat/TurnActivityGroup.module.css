@@ -41,7 +41,7 @@
   flex: 0 0 auto;
   color: var(--text);
   font-size: var(--text-sm);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
 }
 
 .meta {

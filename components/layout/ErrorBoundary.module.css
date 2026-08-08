@@ -11,15 +11,15 @@
 }
 
 .title {
-  font-size: calc(14px * var(--font-scale));
-  font-weight: 600;
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
   color: var(--text);
 }
 
 .message {
-  font-size: calc(12px * var(--font-scale));
+  font-size: var(--text-sm);
   max-width: 360px;
-  line-height: 1.5;
+  line-height: var(--leading-copy);
 }
 
 .actions {
@@ -35,8 +35,8 @@
   border-radius: var(--radius-md);
   color: var(--color-white);
   cursor: pointer;
-  font-size: calc(12px * var(--font-scale));
-  font-weight: 600;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
 }
 
 .reloadBtn {
@@ -46,8 +46,8 @@
   border-radius: var(--radius-md);
   color: var(--text-muted);
   cursor: pointer;
-  font-size: calc(12px * var(--font-scale));
-  font-weight: 500;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
 }
 
 :global(html[data-ui-style="trae"]) .container { margin: 16px; border-radius: 16px; background: var(--trae-surface); }

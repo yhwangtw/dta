@@ -625,7 +625,8 @@ const MESSAGES = {
   // ── Chat input ──
   "input.message": { en: "Message…", zh: "輸入訊息…" },
   "input.agentRunning": { en: "Agent is running…", zh: "Agent 執行中…" },
-  "input.steerHint": { en: "Steer: interrupt & inject · Follow-up: queue after", zh: "插話:中斷並注入 · 追問:排在完成後" },
+  "input.steerPlaceholder": { en: "Steer the current run…", zh: "立即插話…" },
+  "input.followUpPlaceholder": { en: "Queue a follow-up…", zh: "排入追問…" },
   "input.sendMode": { en: "Message delivery mode", zh: "訊息送出模式" },
   "input.steerActionTitle": { en: "Interrupt the current run and inject now (Option+Enter)", zh: "中斷目前執行並立即注入（Option+Enter）" },
   "input.followUpActionTitle": { en: "Queue until the current run finishes (Command+Enter)", zh: "排在目前執行完成後送出（Command+Enter）" },

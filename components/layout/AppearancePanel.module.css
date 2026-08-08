@@ -3,14 +3,14 @@
   left: 52px;
   bottom: 12px;
   z-index: 950;
-  width: 268px;
+  width: 280px;
   max-height: calc(100dvh - 24px);
-  padding: 12px;
+  padding: var(--space-3);
   overflow-y: auto;
   border: 1px solid var(--glass-border);
-  border-radius: 12px;
+  border-radius: var(--radius-xl);
   box-shadow: var(--color-shadow-modal);
-  animation: appearance-in 0.14s ease-out;
+  animation: appearance-in var(--motion-normal) var(--ease-standard);
 }
 
 @keyframes appearance-in {
@@ -20,24 +20,24 @@
 
 .panelHeader {
   display: flex;
-  min-height: 34px;
+  min-height: var(--control-lg);
   align-items: flex-start;
   justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 10px;
+  gap: var(--space-2-5);
+  margin-bottom: var(--space-2-5);
 }
 
 .panelHeader > div {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 1px;
+  gap: var(--space-0-5);
 }
 
 .panelHeader strong {
   color: var(--text);
   font-size: var(--text-sm);
-  font-weight: 650;
+  font-weight: var(--weight-semibold);
 }
 
 .panelHeader span {
@@ -47,8 +47,8 @@
 
 .closeButton {
   display: grid;
-  width: 32px;
-  height: 32px;
+  width: var(--control-md);
+  height: var(--control-md);
   flex: 0 0 auto;
   place-items: center;
   border: 0;
@@ -62,10 +62,10 @@
 
 .themeRow {
   display: flex;
-  gap: 4px;
-  padding: 3px;
-  margin-bottom: 10px;
-  border-radius: 8px;
+  gap: var(--space-1);
+  padding: var(--radius-xs);
+  margin-bottom: var(--space-2-5);
+  border-radius: var(--radius-lg);
   background: var(--bg-subtle);
 }
 
@@ -74,11 +74,12 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 5px 0;
-  font-size: calc(11.5px * var(--font-scale));
+  gap: var(--space-1-5);
+  min-height: var(--control-md);
+  padding: var(--space-1) 0;
+  font-size: var(--text-sm);
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
@@ -91,45 +92,45 @@
 .themeBtnActive {
   background: var(--bg-elev-2);
   color: var(--text);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--color-shadow-card);
 }
 
 .sectionLabel {
-  margin: 2px 2px 6px;
+  margin: var(--space-0-5) var(--space-0-5) var(--space-1-5);
   color: var(--text-dim);
-  font-size: calc(10px * var(--font-scale));
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-label);
   text-transform: uppercase;
 }
 
 .fontSizeRow {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 3px;
-  padding: 3px;
-  margin-bottom: 10px;
-  border-radius: 8px;
+  gap: var(--radius-xs);
+  padding: var(--radius-xs);
+  margin-bottom: var(--space-2-5);
+  border-radius: var(--radius-lg);
   background: var(--bg-subtle);
 }
 
 .fontFamilyRow {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 3px;
-  padding: 3px;
-  margin-bottom: 10px;
-  border-radius: 8px;
+  gap: var(--radius-xs);
+  padding: var(--radius-xs);
+  margin-bottom: var(--space-2-5);
+  border-radius: var(--radius-lg);
   background: var(--bg-subtle);
 }
 
 .messageLayoutRow {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 3px;
-  padding: 3px;
-  margin-bottom: 10px;
-  border-radius: 8px;
+  gap: var(--radius-xs);
+  padding: var(--radius-xs);
+  margin-bottom: var(--space-2-5);
+  border-radius: var(--radius-lg);
   background: var(--bg-subtle);
 }
 
@@ -139,12 +140,13 @@
 
 .fontSizeBtn {
   min-width: 0;
-  padding: 6px 2px;
+  min-height: var(--control-md);
+  padding: var(--space-1-5) var(--space-0-5);
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   background: transparent;
   color: var(--text-muted);
-  font-size: calc(10px * var(--font-scale));
+  font-size: var(--text-2xs);
   cursor: pointer;
 }
 
@@ -156,26 +158,27 @@
 .fontSizeBtnActive {
   background: var(--color-accent-bg);
   color: var(--text);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
 }
 
 .skinList {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-0-5);
 }
 
 .skinRow {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: var(--space-2);
   width: 100%;
-  padding: 7px 8px;
+  min-height: var(--control-lg);
+  padding: var(--space-1-5) var(--space-2);
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   background: transparent;
   color: var(--text-muted);
-  font-size: calc(12px * var(--font-scale));
+  font-size: var(--text-sm);
   text-align: left;
   cursor: pointer;
 }
@@ -193,7 +196,7 @@
 .swatches {
   display: inline-flex;
   flex-shrink: 0;
-  border-radius: 5px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
   border: 1px solid var(--border);
 }
@@ -219,15 +222,15 @@
 .logoutRow {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: var(--space-2);
   width: 100%;
-  margin-top: 8px;
-  padding: 8px;
+  margin-top: var(--space-2);
+  padding: var(--space-2);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   background: transparent;
   color: var(--text-muted);
-  font-size: calc(12px * var(--font-scale));
+  font-size: var(--text-sm);
   text-align: left;
   cursor: pointer;
 }
@@ -239,11 +242,11 @@
 .resetRow {
   display: flex;
   width: 100%;
-  min-height: 34px;
+  min-height: var(--control-lg);
   align-items: center;
-  gap: 8px;
-  margin-top: 8px;
-  padding: 7px 8px;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  padding: var(--space-1-5) var(--space-2);
   border: 1px solid transparent;
   border-radius: var(--radius-md);
   background: transparent;

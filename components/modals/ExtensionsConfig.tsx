@@ -100,9 +100,15 @@ export function ExtensionsConfig({ sessionId, onClose, onReload }: Props) {
 
   return (
     <div className={styles.overlay} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className={styles.modal} data-testid="extensions-config">
+      <div
+        className={styles.modal}
+        data-testid="extensions-config"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="extensions-config-title"
+      >
         <div className={styles.header}>
-          <span className={styles.title}>{t("extensions.title")}</span>
+          <span id="extensions-config-title" className={styles.title}>{t("extensions.title")}</span>
           {sessionId && <code className={styles.sessionCode}>{sessionId.slice(0, 8)}</code>}
           <div className={styles.headerActions}>
             <button className={styles.reloadButton} onClick={() => void reload()} disabled={reloading || !sessionId}>
@@ -112,7 +118,7 @@ export function ExtensionsConfig({ sessionId, onClose, onReload }: Props) {
               </svg>
               {reloading ? t("extensions.reloading") : t("extensions.reload")}
             </button>
-            <button onClick={onClose} className={styles.closeButton}>×</button>
+            <button onClick={onClose} className={styles.closeButton} aria-label={t("common.close")}>×</button>
           </div>
         </div>
 

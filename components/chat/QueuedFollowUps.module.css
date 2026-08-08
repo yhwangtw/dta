@@ -36,7 +36,7 @@
 
 .header strong {
   color: inherit;
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
 }
 
 .header div > span {
@@ -174,7 +174,7 @@
   background: var(--bg);
   color: var(--text);
   font: inherit;
-  line-height: 1.45;
+  line-height: var(--leading-ui);
   outline: none;
 }
 

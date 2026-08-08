@@ -10,7 +10,7 @@
   padding: 12px 14px 8px;
   border-bottom: 1px solid var(--border);
   color: var(--text-muted);
-  font-size: calc(11px * var(--font-scale));
+  font-size: var(--text-xs);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -31,7 +31,7 @@
   justify-content: center;
   gap: 8px;
   color: var(--text-dim);
-  font-size: calc(12px * var(--font-scale));
+  font-size: var(--text-sm);
 }
 
 :global(html[data-ui-style="trae"]) .container { background: var(--trae-canvas); }

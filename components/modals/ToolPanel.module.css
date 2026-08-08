@@ -30,8 +30,8 @@
   background: transparent;
   box-shadow: none;
   color: var(--text-muted);
-  font-weight: 400;
-  font-size: calc(12px * var(--font-scale));
+  font-weight: var(--weight-regular);
+  font-size: var(--text-sm);
   cursor: pointer;
   transition: all 0.12s;
 }
@@ -40,13 +40,13 @@
   background: var(--bg);
   box-shadow: var(--color-shadow-dropdown);
   color: var(--accent);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
 }
 
 .description {
-  font-size: calc(11px * var(--font-scale));
+  font-size: var(--text-xs);
   color: var(--text-dim);
-  line-height: 1.5;
+  line-height: var(--leading-copy);
 }
 
 .trackBar {
@@ -68,7 +68,7 @@
 }
 
 .note {
-  font-size: calc(10.5px * var(--font-scale));
+  font-size: var(--text-xs);
   color: var(--text-dim);
 }
 

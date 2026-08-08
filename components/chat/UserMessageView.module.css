@@ -28,8 +28,8 @@
   border: 1px solid var(--color-accent-border);
   border-radius: 12px 12px 4px 12px;
   padding: 8px 12px;
-  font-size: calc(14px * var(--font-scale));
-  line-height: 1.6;
+  font-size: var(--text-base);
+  line-height: var(--leading-relaxed);
   color: var(--text);
   word-break: break-word;
 }
@@ -139,8 +139,8 @@
   border: none;
   border-radius: 5px;
   cursor: pointer;
-  font-size: calc(11px * var(--font-scale));
-  font-weight: 400;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-regular);
   white-space: nowrap;
   transition: color 0.12s;
 }
@@ -150,7 +150,7 @@
 }
 
 .timestamp {
-  font-size: calc(10.5px * var(--font-scale));
+  font-size: var(--text-xs);
   color: var(--text-dim);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -176,8 +176,8 @@
   background: transparent;
   color: var(--text);
   font-family: inherit;
-  font-size: calc(14px * var(--font-scale));
-  line-height: 1.6;
+  font-size: var(--text-base);
+  line-height: var(--leading-relaxed);
   outline: none;
   overflow: hidden;
   min-height: 1.6em;
@@ -191,12 +191,12 @@
 
 .editHint {
   flex: 1;
-  font-size: calc(10.5px * var(--font-scale));
+  font-size: var(--text-xs);
   color: var(--text-dim);
 }
 
 .editCancel {
-  font-size: calc(11.5px * var(--font-scale));
+  font-size: var(--text-sm);
   padding: 3px 10px;
   border-radius: 7px;
   border: 1px solid var(--border);
@@ -213,13 +213,13 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: calc(11.5px * var(--font-scale));
-  font-weight: 500;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
   padding: 3px 11px;
   border-radius: 7px;
   border: 1px solid transparent;
   background: var(--color-accent);
-  color: var(--color-accent-fg, #fff);
+  color: var(--color-accent-fg);
   cursor: pointer;
 }
 
@@ -242,8 +242,8 @@
   .bubble {
     padding: 9px 11px;
     border-radius: 11px 11px 3px 11px;
-    font-size: calc(15px * var(--font-scale));
-    line-height: 1.55;
+    font-size: var(--text-lg);
+    line-height: var(--leading-relaxed);
   }
 
   .image {

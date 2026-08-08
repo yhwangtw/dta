@@ -11,9 +11,14 @@ interface Props {
 }
 
 const STYLE_PROPERTIES = [
-  "display", "position", "width", "height", "padding", "margin", "gap",
-  "font-family", "font-size", "font-weight", "line-height", "color",
-  "background-color", "border", "border-radius", "box-shadow",
+  "display", "position", "width", "height", "min-width", "min-height", "max-width", "max-height",
+  "padding", "padding-block", "padding-inline", "margin", "gap",
+  "font-family", "font-size", "font-weight", "font-style", "line-height", "letter-spacing",
+  "font-variant-numeric", "text-transform", "text-rendering", "text-overflow", "white-space",
+  "word-break", "overflow-wrap", "-webkit-line-clamp", "color",
+  "background-color", "border", "border-color", "border-radius", "box-shadow", "opacity",
+  "cursor", "pointer-events", "outline", "outline-offset", "overflow", "overflow-x", "overflow-y",
+  "transition-property", "transition-duration", "transition-timing-function", "transform",
   "grid-template-columns", "flex-direction", "align-items", "justify-content",
 ];
 
@@ -45,17 +50,28 @@ function snapshotOf(element: HTMLElement): DesignSnapshot {
     rect: { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height },
     viewport: { width: window.innerWidth, height: window.innerHeight },
     styles,
+    interaction: {
+      role: element.getAttribute("role") ?? element.tagName.toLowerCase(),
+      label: element.getAttribute("aria-label") ?? element.getAttribute("title") ?? "",
+      disabled: element.matches(":disabled") || element.getAttribute("aria-disabled") === "true",
+      pressed: element.getAttribute("aria-pressed") ?? "",
+      expanded: element.getAttribute("aria-expanded") ?? "",
+      selected: element.getAttribute("aria-selected") ?? "",
+      tabIndex: element.tabIndex,
+    },
   };
 }
 
 export function DesignInspector({ active, onClose, onCapture }: Props) {
   const [target, setTarget] = useState<HTMLElement | null>(null);
   const [rect, setRect] = useState<DesignSnapshot["rect"] | null>(null);
+  const [targetStyles, setTargetStyles] = useState<Record<string, string> | null>(null);
 
   useEffect(() => {
     if (!active) {
       setTarget(null);
       setRect(null);
+      setTargetStyles(null);
       return;
     }
 
@@ -63,11 +79,13 @@ export function DesignInspector({ active, onClose, onCapture }: Props) {
       if (!element || element === document.body || element === document.documentElement) {
         setTarget(null);
         setRect(null);
+        setTargetStyles(null);
         return;
       }
       setTarget(element);
-      const bounds = element.getBoundingClientRect();
-      setRect({ x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height });
+      const snapshot = snapshotOf(element);
+      setRect(snapshot.rect);
+      setTargetStyles(snapshot.styles);
     };
 
     const onPointerMove = (event: PointerEvent) => {
@@ -113,7 +131,7 @@ export function DesignInspector({ active, onClose, onCapture }: Props) {
       </div>
       {target && rect && (
         <div className={s.label} style={{ left: Math.max(8, rect.x), top: Math.max(8, rect.y - 28) }}>
-          {target.tagName.toLowerCase()} · {Math.round(rect.width)}×{Math.round(rect.height)}
+          {target.tagName.toLowerCase()} · {Math.round(rect.width)}×{Math.round(rect.height)} · {targetStyles?.["font-family"]?.split(",")[0] || "—"} {targetStyles?.["font-size"] || "—"}/{targetStyles?.["line-height"] || "—"} w{targetStyles?.["font-weight"] || "—"} · r {targetStyles?.["border-radius"] || "0"}
         </div>
       )}
     </div>

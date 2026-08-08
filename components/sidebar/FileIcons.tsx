@@ -49,8 +49,8 @@ function LabelFileIcon({ label, size = 14 }: { label: string; size?: number }) {
         x="7" y="9.5"
         textAnchor="middle"
         fontSize={3.4 * s}
-        fontFamily="var(--font-mono), monospace"
-        fontWeight="600"
+        fontFamily="var(--font-mono)"
+        fontWeight="var(--weight-semibold)"
         fill={DIM}
         letterSpacing="0"
       >{label}</text>

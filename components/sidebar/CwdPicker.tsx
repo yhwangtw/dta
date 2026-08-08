@@ -4,6 +4,7 @@ import { useCallback, useEffect, type RefObject } from "react";
 import { shortenCwd } from "./session-utils";
 import { ProjectSwitcher } from "./ProjectSwitcher";
 import styles from "./CwdPicker.module.css";
+import { onOpenProjectSwitcher } from "@/lib/project-switcher-events";
 import { useI18n } from "@/lib/i18n";
 
 interface CwdPickerState {
@@ -87,6 +88,8 @@ export function CwdPicker({ state, actions, projects, initialSessionId, isRestor
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [setDropdownOpen]);
+
+  useEffect(() => onOpenProjectSwitcher(() => setDropdownOpen(true)), [setDropdownOpen]);
 
   return (
     <>

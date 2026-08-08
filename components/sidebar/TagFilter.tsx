@@ -28,7 +28,7 @@ export function TagFilter({ tags, activeTag, onSelectTag }: Props) {
         // Active state keeps the same hue but uses a stronger fill so it reads
         // as "selected". ts.fg is dark in light mode / pastel in dark mode, so
         // the text sitting on top of it flips with the theme.
-        const activeText = theme === "dark" ? "#1a1a1a" : "#ffffff";
+        const activeText = "var(--tag-active-text)";
         const bg = isActive ? ts.fg : ts.bg;
         const fg = isActive ? activeText : ts.fg;
         const border = isActive ? ts.fg : ts.border;
@@ -47,7 +47,7 @@ export function TagFilter({ tags, activeTag, onSelectTag }: Props) {
               // doubles as its fill (gray --bg-elev-2 looked foreign next to
               // the identical chips on the session rows).
               style={isActive
-                ? { background: theme === "dark" ? "rgba(0,0,0,0.18)" : "rgba(255,255,255,0.28)", color: activeText }
+                ? { background: "var(--tag-active-count-bg)", color: activeText }
                 : { background: ts.border, color: ts.fg }}
             >
               {count}

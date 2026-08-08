@@ -42,7 +42,7 @@ export function AudioViewer({ filePath, cwd }: { filePath: string; cwd?: string 
           gap: 12,
           padding: "4px 16px",
           borderBottom: "1px solid var(--border)",
-          fontSize: "calc(11px * var(--font-scale))",
+          fontSize: "var(--text-xs)",
           color: "var(--text-dim)",
           background: "var(--bg)",
           flexShrink: 0,
@@ -83,7 +83,7 @@ export function AudioViewer({ filePath, cwd }: { filePath: string; cwd?: string 
       >
         <div style={{ width: "min(680px, 100%)" }}>
           {error && (
-            <div style={{ color: "var(--color-error-text)", fontSize: "calc(13px * var(--font-scale))", marginBottom: 12, textAlign: "center" }}>
+            <div style={{ color: "var(--color-error-text)", fontSize: "var(--text-md)", marginBottom: "var(--space-3)", textAlign: "center" }}>
               {error}
             </div>
           )}

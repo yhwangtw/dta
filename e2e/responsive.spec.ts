@@ -292,10 +292,11 @@ test.describe("responsive shell", () => {
     await expect(identity.getByTestId("workspace-repository")).toBeVisible();
     await expect(identity.getByTestId("workspace-branch")).toBeVisible();
 
-    const composerContext = page.getByTestId("composer-workspace-context");
-    await expect(composerContext).toBeVisible();
-    await expect(composerContext).toContainText("Local");
-    await expect(composerContext).toContainText("demo-project");
+    const workspaceButton = identity.getByRole("button", { name: /Select project/ });
+    await expect(workspaceButton).toBeVisible();
+    await workspaceButton.click();
+    await expect(page.getByTestId("project-switcher")).toBeVisible();
+    await page.keyboard.press("Escape");
     await expectNoPageOverflow(page);
   });
 

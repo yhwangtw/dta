@@ -120,17 +120,75 @@
   --border-strong: color-mix(in srgb, var(--border) 78%, var(--text) 22%);
   --color-accent-fg: var(--accent-fg);
 
+  /* Design tokens — spacing, controls, type, shape, and motion. Components
+     should select from this scale instead of inventing nearby values. */
+  --space-0: 0;
+  --space-0-5: 2px;
+  --space-1: 4px;
+  --space-1-5: 6px;
+  --space-2: 8px;
+  --space-2-5: 10px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  --control-xs: 24px;
+  --control-sm: 28px;
+  --control-md: 32px;
+  --control-lg: 36px;
+  --control-touch: 44px;
+
   /* Design Tokens - Border Radius */
+  --radius-xs: 3px;
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
   --radius-full: 9999px;
 
   /* Design Tokens - Font Sizes */
+  --text-2xs: calc(10px * var(--font-scale));
   --text-xs: calc(11px * var(--font-scale));
   --text-sm: calc(12px * var(--font-scale));
+  --text-md: calc(13px * var(--font-scale));
   --text-base: calc(14px * var(--font-scale));
   --text-lg: calc(16px * var(--font-scale));
+  --text-xl: calc(18px * var(--font-scale));
+  --text-title: calc(20px * var(--font-scale));
+  --text-2xl: calc(22px * var(--font-scale));
+  --text-3xl: calc(28px * var(--font-scale));
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  --tracking-title: -0.02em;
+  --tracking-tight: -0.01em;
+  --tracking-normal: 0;
+  --tracking-subtle: 0.02em;
+  --tracking-label: 0.04em;
+  --tracking-wide: 0.06em;
+  --tracking-caps: 0.08em;
+
+  --leading-none: 1;
+  --leading-compact: 1.15;
+  --leading-tight: 1.25;
+  --leading-snug: 1.35;
+  --leading-ui: 1.4;
+  --leading-copy: 1.5;
+  --leading-relaxed: 1.6;
+  --leading-body: 1.7;
+  --leading-loose: 1.8;
+
+  --motion-fast: 120ms;
+  --motion-normal: 180ms;
+  --motion-slow: 240ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-emphasized: cubic-bezier(0.2, 0, 0, 1.2);
 
   /* Design Tokens - Semantic Colors */
   --color-error: #ef4444;
@@ -177,6 +235,11 @@
   --color-shadow-popup: 0 -4px 16px rgba(0,0,0,0.10);
   --color-shadow-dropdown: 0 2px 8px rgba(0,0,0,0.2);
   --color-shadow-input: 0 1px 2px rgba(20,30,24,0.07), 0 10px 28px -14px rgba(20,30,24,0.24);
+  --color-shadow-card: 0 4px 18px color-mix(in srgb, var(--text) 7%, transparent);
+  --color-shadow-raised: 0 12px 40px color-mix(in srgb, var(--text) 16%, transparent);
+  --color-image-overlay: rgba(0,0,0,0.84);
+  --color-image-overlay-control: rgba(255,255,255,0.12);
+  --color-on-image: rgba(255,255,255,0.9);
   --color-accent-border-focus: rgba(11,127,95,0.42);
   --color-accent-border-focus-strong: rgba(11,127,95,0.5);
   --color-accent-bg-subtle: rgba(11,127,95,0.05);
@@ -186,6 +249,8 @@
   --color-diff-add-bg: rgba(0,200,80,0.12);
   --color-diff-remove-bg: rgba(240,60,60,0.14);
   --color-white: #fff;
+  --tag-active-text: var(--color-white);
+  --tag-active-count-bg: rgba(255,255,255,0.28);
 
   /* Frosted-glass tokens for floating chrome (palette, dialogs, toasts,
      find bar, jump button, top bar). Derived from each skin's own surfaces
@@ -275,6 +340,8 @@ html.dark {
   --color-diff-add-bg: rgba(0,200,80,0.15);
   --color-diff-remove-bg: rgba(240,60,60,0.18);
   --color-white: #fff;
+  --tag-active-text: #1a1a1a;
+  --tag-active-count-bg: rgba(0,0,0,0.18);
   --color-accent-bg: rgba(52,211,153,0.12);
   --color-accent-bg-strong: rgba(52,211,153,0.17);
   --color-accent-border: rgba(52,211,153,0.32);
@@ -608,9 +675,12 @@ html.dark[data-skin="glass"] body {
    Component shape is independent from the selected color palette. TRAE uses
    semantic palette tokens so every skin remains a valid combination. */
 html[data-ui-style="trae"] {
+  --radius-xs: 6px;
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 18px;
+  --radius-xl: 22px;
+  --radius-2xl: 26px;
   --trae-canvas: var(--bg);
   --trae-surface: color-mix(in srgb, var(--bg-elev-1) 78%, transparent);
   --trae-surface-solid: var(--bg-elev-1);
@@ -650,7 +720,7 @@ html, body {
      right after Inter (Latin-only) so Han glyphs always resolve to a TC
      font, never to an SC-flavored system-ui default. */
   font-family: var(--font-ui);
-  font-size: calc(14px * var(--font-scale));
+  font-size: var(--text-base);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overscroll-behavior: none;
@@ -674,11 +744,11 @@ body {
   }
 
   :where(button, [role="button"]) {
-    min-block-size: 44px;
+    min-block-size: var(--control-touch);
   }
 
   :where(button[aria-label], button[title], [role="button"][aria-label]) {
-    min-inline-size: 44px;
+    min-inline-size: var(--control-touch);
   }
 }
 ::-webkit-scrollbar-track {
@@ -697,6 +767,16 @@ body {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
   border-radius: var(--radius-sm);
+}
+
+:where(button, input, textarea, select, [role="button"], [role="option"], [role="switch"]):disabled,
+:where([role="button"], [role="option"], [role="switch"])[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+:where(button, [role="button"], [role="option"], [role="switch"]):not(:disabled, [aria-disabled="true"]) {
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Respect reduced motion preference */
@@ -718,9 +798,14 @@ body {
   --safe-area-right: env(safe-area-inset-right, 0px);
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
   --safe-area-left: env(safe-area-inset-left, 0px);
-  --font-sans: 'Inter', 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', 'Noto Sans CJK TC', 'PingFang SC', 'Microsoft YaHei', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', 'Consolas', ui-monospace, monospace, 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei';
-  --font-system: system-ui, -apple-system, 'Segoe UI', 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+  --font-sans: 'Inter', 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', 'Noto Sans CJK TC', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  /* JetBrains Mono has no Han glyphs. Put the bundled TC subset immediately
+     after it so machine labels keep mono Latin/numerals without ever falling
+     through to an SC-flavoured system monospace for Traditional Chinese. */
+  --font-mono: 'JetBrains Mono', 'Noto Sans TC', 'SF Mono', 'Fira Code', 'Consolas', ui-monospace, monospace, 'PingFang TC', 'Microsoft JhengHei';
+  /* Noto Sans TC is CJK-only, so Latin still resolves to the user's system UI
+     face while Han glyphs remain explicitly Traditional Chinese. */
+  --font-system: 'Noto Sans TC', system-ui, -apple-system, 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei', sans-serif;
   --font-ui: var(--font-sans);
 }
 
@@ -735,8 +820,8 @@ pre, code {
 .markdown-body {
   min-width: 0;
   max-width: 100%;
-  font-size: calc(14px * var(--font-scale));
-  line-height: 1.7;
+  font-size: var(--text-base);
+  line-height: var(--leading-body);
   color: var(--text);
   overflow-wrap: anywhere;
   word-break: normal;
@@ -1113,7 +1198,7 @@ span.linenumber {
    in Inter — mono is for the machine parts, sans for the conversation. */
 .chrome-mono {
   font-family: var(--font-mono);
-  letter-spacing: 0.02em;
+  letter-spacing: var(--tracking-subtle);
 }
 
 /* Code blocks read as terminal panes: visible frame in both themes */

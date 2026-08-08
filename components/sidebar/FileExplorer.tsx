@@ -77,8 +77,8 @@ function GitBadge({ status }: { status: string }) {
   const letter = status === "??" ? "U" : status[0];
   const color =
     letter === "D" ? "var(--color-error-text)"
-    : letter === "A" || letter === "U" ? "var(--color-success, #22c55e)"
-    : "var(--color-warning-text-strong, #d97706)";
+    : letter === "A" || letter === "U" ? "var(--color-success)"
+    : "var(--color-warning-text-strong)";
   return <span className={styles.gitBadge} style={{ color }}>{letter}</span>;
 }
 
@@ -162,6 +162,11 @@ function TreeNode({
         className={`hover-bg hover-group ${styles.treeNode} ${!node.isDir && activePath === node.fullPath ? styles.treeNodeActive : ""}`}
         style={{ paddingLeft: 8 + depth * 14 }}
         tabIndex={-1}
+        role="treeitem"
+        aria-label={node.name}
+        aria-level={depth + 1}
+        aria-expanded={node.isDir ? open : undefined}
+        aria-selected={activePath === node.fullPath}
         data-fx-row
         data-dir={node.isDir ? "1" : "0"}
         data-open={open ? "1" : "0"}
@@ -436,6 +441,9 @@ export function FileExplorer({ cwd, onOpenFile, refreshKey, onAtMention, onOpenD
       {dragOver && <div className={styles.dropHint}>{t("explorer.dropToUpload")}</div>}
 
       <div ref={containerRef} className={styles.treeContainer} onKeyDown={onTreeKeyDown}
+        role="tree"
+        aria-label={t("sidebar.explorer")}
+        tabIndex={0}
         onContextMenu={(e) => {
           // Right-click on empty space → root-level ops.
           if ((e.target as HTMLElement).closest("[data-fx-row]")) return;

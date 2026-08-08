@@ -263,7 +263,7 @@ export function ChatMinimap({ messages, streamingMessage, scrollContainer, messa
       {nodes.map((node) => {
         const bookmarked = bookmarkedIndices?.has(node.visIdx) ?? false;
         const color = bookmarked
-          ? { bg: "var(--color-warning-text-strong, #d97706)", border: "var(--color-warning-text-strong, #d97706)" }
+          ? { bg: "var(--color-warning-text-strong)", border: "var(--color-warning-text-strong)" }
           : getNodeColor(node.msg);
         const isNearest = nearestIndex === node.index;
         const isUser = node.msg.role === "user";

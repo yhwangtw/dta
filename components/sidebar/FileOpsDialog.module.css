@@ -21,7 +21,7 @@
 
 .title {
   font-size: var(--text-base);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   color: var(--text);
   margin-bottom: 4px;
 }
@@ -83,9 +83,9 @@
 .danger {
   background: var(--color-error);
   border-color: var(--color-error);
-  color: #fff;
+  color: var(--color-white);
 }
-.danger:hover { opacity: 0.9; color: #fff; }
+.danger:hover { opacity: 0.9; color: var(--color-white); }
 
 :global(html[data-ui-style="trae"]) .overlay { background: var(--trae-overlay); backdrop-filter: blur(8px); }
 :global(html[data-ui-style="trae"]) .dialog { border-color: var(--trae-hairline); border-radius: 18px; background: var(--glass-bg); }

@@ -86,9 +86,12 @@ export function AnalyticsModal({ open, onClose }: Props) {
 
   return (
     <div className={styles.overlay} onClick={onClose}>
-      <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+      <div className={styles.modal} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="analytics-title">
         <div className={styles.header}>
-          <h2>Session Analytics</h2>
+          <div>
+            <h2 id="analytics-title">Session Analytics</h2>
+            <p>Usage and cost across your recent work</p>
+          </div>
           <button onClick={onClose} className={styles.closeButton} aria-label="Close">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
               <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />

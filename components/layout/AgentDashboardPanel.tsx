@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { showToast } from "@/hooks/useToast";
 import { useI18n } from "@/lib/i18n";
 import {
@@ -40,6 +40,27 @@ export function AgentDashboardPanel({ defaultCwd, onOpenSession, onCompareSessio
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [compareIds, setCompareIds] = useState<string[]>([]);
+  const [concurrencyOpen, setConcurrencyOpen] = useState(false);
+  const concurrencyRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!concurrencyOpen) return;
+    const closeMenu = (event: PointerEvent | KeyboardEvent) => {
+      if (event instanceof KeyboardEvent) {
+        if (event.key === "Escape") setConcurrencyOpen(false);
+        return;
+      }
+      if (!concurrencyRef.current?.contains(event.target as Node)) {
+        setConcurrencyOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", closeMenu);
+    document.addEventListener("keydown", closeMenu);
+    return () => {
+      document.removeEventListener("pointerdown", closeMenu);
+      document.removeEventListener("keydown", closeMenu);
+    };
+  }, [concurrencyOpen]);
 
   const load = useCallback(async (quiet = false) => {
     try {
@@ -175,7 +196,7 @@ export function AgentDashboardPanel({ defaultCwd, onOpenSession, onCompareSessio
     <section className={s.container} aria-label={t("agents.title")} data-testid="agent-dashboard">
       <div className={`${s.header} chrome-mono`}>
         <strong>{t("agents.title")}</strong>
-        <span className={`${s.daemonIndicator} ${error ? s.daemonOffline : ""}`}><i /> daemon</span>
+        <span className={`${s.daemonIndicator} ${error ? s.daemonOffline : ""}`}><i /><span>daemon</span></span>
         <button
           className={s.newButton}
           type="button"
@@ -185,7 +206,7 @@ export function AgentDashboardPanel({ defaultCwd, onOpenSession, onCompareSessio
         >
           <span aria-hidden="true">＋</span>{t("agents.new")}
         </button>
-        {onCompareSessions && (
+        {onCompareSessions && compareIds.length > 0 && (
           <button
             className={s.compareButton}
             type="button"
@@ -207,20 +228,44 @@ export function AgentDashboardPanel({ defaultCwd, onOpenSession, onCompareSessio
         <button className={filter === "done" ? s.summaryActive : ""} onClick={() => setFilter(filter === "done" ? "all" : "done")}>
           <strong>{doneCount}</strong><span>{t("agents.done")}</span>
         </button>
-        <label className={s.concurrencyControl}>
-          <select
+        <div className={s.concurrencyControl} ref={concurrencyRef}>
+          <button
+            type="button"
+            className={s.concurrencyTrigger}
             aria-label={t("agents.concurrencyLabel")}
-            value={maxConcurrency}
+            aria-haspopup="listbox"
+            aria-expanded={concurrencyOpen}
             disabled={savingConcurrency}
-            onChange={(event) => void updateConcurrency(Number(event.target.value))}
+            onClick={() => setConcurrencyOpen((open) => !open)}
           >
-            {Array.from(
-              { length: MAX_AGENT_RUN_CONCURRENCY - MIN_AGENT_RUN_CONCURRENCY + 1 },
-              (_, index) => MIN_AGENT_RUN_CONCURRENCY + index,
-            ).map((value) => <option key={value} value={value}>{value}</option>)}
-          </select>
+            <strong>{maxConcurrency}</strong>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m7 10 5 5 5-5" /></svg>
+          </button>
           <span>{t("agents.concurrency")}</span>
-        </label>
+          {concurrencyOpen && (
+            <div className={s.concurrencyMenu} role="listbox" aria-label={t("agents.concurrencyLabel")}>
+              {Array.from(
+                { length: MAX_AGENT_RUN_CONCURRENCY - MIN_AGENT_RUN_CONCURRENCY + 1 },
+                (_, index) => MIN_AGENT_RUN_CONCURRENCY + index,
+              ).map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  role="option"
+                  aria-selected={value === maxConcurrency}
+                  className={value === maxConcurrency ? s.concurrencyOptionActive : undefined}
+                  onClick={() => {
+                    setConcurrencyOpen(false);
+                    void updateConcurrency(value);
+                  }}
+                >
+                  {value}
+                  {value === maxConcurrency && <span aria-hidden="true">✓</span>}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
       <div className={s.filterBar}>
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>

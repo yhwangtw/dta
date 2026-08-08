@@ -1,21 +1,21 @@
 .noChanges {
   padding: 12px 16px;
-  font-size: calc(12px * var(--font-scale));
+  font-size: var(--text-sm);
   color: var(--text-dim);
   font-family: var(--font-mono);
 }
 
 .root {
   font-family: var(--font-mono);
-  font-size: calc(13px * var(--font-scale));
-  line-height: 1.6;
+  font-size: var(--text-md);
+  line-height: var(--leading-relaxed);
 }
 
 .hiddenSegment {
   padding: 2px 16px;
   color: var(--text-dim);
   background: var(--bg-panel);
-  font-size: calc(11px * var(--font-scale));
+  font-size: var(--text-xs);
   border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
 }
@@ -46,8 +46,8 @@
   text-align: right;
   color: var(--text-dim);
   user-select: none;
-  font-size: calc(11px * var(--font-scale));
-  line-height: 1.6;
+  font-size: var(--text-xs);
+  line-height: var(--leading-relaxed);
   border-right: 1px solid var(--border);
   background: var(--bg-panel);
   flex-shrink: 0;
@@ -58,7 +58,7 @@
   padding: 0 6px;
   user-select: none;
   flex-shrink: 0;
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
 }
 
 .prefixAdded {
@@ -129,7 +129,7 @@
   color: var(--accent-fg);
   cursor: pointer;
   font: inherit;
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
 }
 .annotationActions button:disabled { opacity: .45; cursor: not-allowed; }
 

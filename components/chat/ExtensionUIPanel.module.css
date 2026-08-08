@@ -64,9 +64,9 @@
 .statusKey,
 .widgetKey {
   font-family: var(--font-mono);
-  font-size: calc(10px * var(--font-scale));
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-wide);
   text-transform: uppercase;
 }
 
@@ -75,9 +75,9 @@
 .cardTitle {
   margin: 0;
   color: var(--text);
-  font-size: calc(14px * var(--font-scale));
-  font-weight: 650;
-  line-height: 1.35;
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-snug);
 }
 
 .headerActions { display: flex; align-items: center; gap: 6px; }
@@ -85,7 +85,7 @@
 .pendingCount {
   color: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: calc(10px * var(--font-scale));
+  font-size: var(--text-2xs);
 }
 
 .closeButton {
@@ -96,8 +96,8 @@
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: calc(18px * var(--font-scale));
-  line-height: 1;
+  font-size: var(--text-xl);
+  line-height: var(--leading-none);
 }
 
 .closeButton:hover { background: var(--bg-hover); color: var(--text); }
@@ -106,8 +106,8 @@
   margin: 0;
   padding: 14px;
   color: var(--text);
-  font-size: calc(13px * var(--font-scale));
-  line-height: 1.55;
+  font-size: var(--text-md);
+  line-height: var(--leading-relaxed);
 }
 
 .choices {
@@ -161,8 +161,8 @@
 .choiceSelected .choiceMark { border-color: var(--accent); }
 .choiceSelected .choiceMark::after { opacity: 1; transform: scale(1); }
 .choiceCopy { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
-.choiceLabel { font-size: calc(12px * var(--font-scale)); font-weight: 600; }
-.choiceDescription { color: var(--text-muted); font-size: calc(11px * var(--font-scale)); line-height: 1.35; }
+.choiceLabel { font-size: var(--text-sm); font-weight: var(--weight-semibold); }
+.choiceDescription { color: var(--text-muted); font-size: var(--text-xs); line-height: var(--leading-snug); }
 
 .textInput,
 .editor {
@@ -175,11 +175,11 @@
   background: var(--bg-panel);
   color: var(--text);
   font: inherit;
-  font-size: calc(12px * var(--font-scale));
+  font-size: var(--text-sm);
 }
 
 .textInput { height: 36px; padding: 0 10px; }
-.editor { min-height: 112px; resize: vertical; padding: 9px 10px; font-family: var(--font-mono); line-height: 1.5; }
+.editor { min-height: 112px; resize: vertical; padding: 9px 10px; font-family: var(--font-mono); line-height: var(--leading-copy); }
 .textInput:focus,
 .editor:focus { border-color: var(--color-accent-border); box-shadow: 0 0 0 2px var(--color-accent-bg); }
 
@@ -199,9 +199,9 @@
   width: 100%;
   padding: 0;
   color: var(--text);
-  font-size: calc(12px * var(--font-scale));
-  font-weight: 600;
-  line-height: 1.45;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-ui);
 }
 
 .questionHeader { flex: 0 0 auto; padding-top: 1px; color: var(--accent); }
@@ -226,8 +226,8 @@
   min-height: 32px;
   padding: 0 13px;
   border-radius: var(--radius-md);
-  font-size: calc(12px * var(--font-scale));
-  font-weight: 600;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
   cursor: pointer;
 }
 
@@ -241,7 +241,7 @@
 .error {
   margin: 8px 14px 0;
   color: var(--color-error-text);
-  font-size: calc(11px * var(--font-scale));
+  font-size: var(--text-xs);
 }
 
 .statusRow,
@@ -257,7 +257,7 @@
   border-radius: var(--radius-md);
   background: var(--bg-panel);
   color: var(--text-muted);
-  font-size: calc(11px * var(--font-scale));
+  font-size: var(--text-xs);
 }
 
 .statusChip { padding: 4px 8px; }
@@ -265,7 +265,7 @@
 .statusKey,
 .widgetKey { color: var(--text-dim); }
 .widget { align-items: flex-start; padding: 6px 8px; }
-.widgetText { white-space: pre-wrap; line-height: 1.4; }
+.widgetText { white-space: pre-wrap; line-height: var(--leading-ui); }
 
 @media (max-width: 700px) {
   .outer { padding: 0 8px 4px; }
@@ -317,7 +317,7 @@
 :global(html[data-ui-style="trae"]) .card {
   border-color: color-mix(in srgb, var(--text) 10%, transparent);
   border-radius: 22px;
-  box-shadow: 0 16px 46px rgba(24, 24, 28, 0.1);
+  box-shadow: var(--color-shadow-raised);
 }
 
 :global(html[data-ui-style="trae"]) .cardHeader {

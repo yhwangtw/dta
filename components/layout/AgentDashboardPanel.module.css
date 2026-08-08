@@ -1,4 +1,5 @@
 .container {
+  container-type: inline-size;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -15,7 +16,7 @@
   padding: 7px 10px 7px 12px;
   border-bottom: 1px solid var(--border);
   color: var(--text-muted);
-  font-size: calc(11.5px * var(--font-scale));
+  font-size: var(--text-sm);
 }
 .header strong { color: var(--text); }
 .daemonIndicator {
@@ -23,7 +24,7 @@
   align-items: center;
   gap: 4px;
   color: var(--text-dim);
-  font-size: calc(9px * var(--font-scale));
+  font-size: var(--text-2xs);
 }
 .daemonIndicator i {
   width: 6px;
@@ -56,7 +57,8 @@
   background: var(--color-accent-bg);
   border-color: var(--color-accent-border-subtle);
   color: var(--accent);
-  font-size: calc(10.5px * var(--font-scale));
+  font-size: var(--text-xs);
+  white-space: nowrap;
 }
 .newButton:hover { background: var(--color-accent-bg-strong); }
 .newButton:disabled { opacity: 0.45; cursor: default; }
@@ -68,8 +70,10 @@
   background: transparent;
   color: var(--accent);
   font: inherit;
-  font-size: calc(10px * var(--font-scale));
+  font-size: var(--text-2xs);
   cursor: pointer;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 .compareButton:hover:not(:disabled) { background: var(--color-accent-bg); }
 .compareButton:disabled { opacity: .4; cursor: not-allowed; }
@@ -83,8 +87,7 @@
   border-bottom: 1px solid var(--border);
   background: var(--bg-elev-1);
 }
-.summary button,
-.summary > div,
+.summary > button,
 .summary > .concurrencyControl {
   min-width: 0;
   padding: 5px 3px;
@@ -98,31 +101,78 @@
   color: var(--text-dim);
   font: inherit;
 }
-.summary button { cursor: pointer; }
-.summary button:hover,
+.concurrencyControl { position: relative; }
+.summary > button { cursor: pointer; }
+.summary > button:hover,
 .summary .summaryActive { background: var(--bg-hover); border-color: var(--border); color: var(--text-muted); }
-.summary strong { color: var(--text); font-size: calc(12px * var(--font-scale)); }
-.summary span { overflow: hidden; text-overflow: ellipsis; font-size: calc(8.5px * var(--font-scale)); white-space: nowrap; }
-.concurrencyControl select {
-  width: 44px;
-  min-height: 20px;
-  padding: 0 3px;
+.summary > button strong,
+.concurrencyTrigger strong { color: var(--text); font-size: var(--text-sm); }
+.summary > button > span,
+.concurrencyControl > span { overflow: hidden; text-overflow: ellipsis; font-size: var(--text-2xs); white-space: nowrap; }
+.concurrencyTrigger {
+  min-width: 42px;
+  min-height: 24px;
+  padding: 0 5px 0 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
   border: 1px solid transparent;
-  border-radius: 5px;
+  border-radius: 7px;
   outline: none;
   background: transparent;
   color: var(--text);
   font: inherit;
-  font-size: calc(12px * var(--font-scale));
-  font-weight: 700;
   cursor: pointer;
 }
-.concurrencyControl select:hover,
-.concurrencyControl select:focus-visible {
+.concurrencyTrigger strong { font-size: var(--text-sm); }
+.concurrencyTrigger svg { color: var(--text-dim); transition: transform 140ms ease; }
+.concurrencyTrigger[aria-expanded="true"] svg { transform: rotate(180deg); }
+.concurrencyTrigger:hover,
+.concurrencyTrigger:focus-visible,
+.concurrencyTrigger[aria-expanded="true"] {
   border-color: var(--color-accent-border-focus);
   background: var(--bg-hover);
 }
-.concurrencyControl select:disabled { opacity: 0.55; cursor: wait; }
+.concurrencyTrigger:disabled { opacity: 0.55; cursor: wait; }
+.concurrencyMenu {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% - 2px);
+  right: 2px;
+  width: 76px;
+  padding: 5px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 3px;
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  background: var(--glass-bg);
+  box-shadow: var(--color-shadow-dropdown);
+  backdrop-filter: blur(16px);
+}
+.concurrencyMenu button {
+  min-height: 30px;
+  padding: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: var(--text-xs);
+}
+.concurrencyMenu button:hover { background: var(--bg-hover); color: var(--text); }
+.concurrencyMenu .concurrencyOptionActive {
+  background: var(--color-accent-bg);
+  color: var(--accent);
+  font-weight: var(--weight-bold);
+}
+.concurrencyMenu button span { font-size: var(--text-2xs); }
 
 .filterBar {
   flex: 0 0 auto;
@@ -146,7 +196,7 @@
   background: transparent;
   color: var(--text);
   font: inherit;
-  font-size: calc(10.5px * var(--font-scale));
+  font-size: var(--text-xs);
 }
 .filterBar button {
   padding: 2px 4px;
@@ -173,9 +223,9 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: calc(11px * var(--font-scale));
+  font-size: var(--text-xs);
 }
-.groupHeader span { color: var(--text-dim); font-size: calc(9px * var(--font-scale)); }
+.groupHeader span { color: var(--text-dim); font-size: var(--text-2xs); }
 .groupPath {
   margin: 2px 0 6px;
   overflow: hidden;
@@ -183,7 +233,7 @@
   white-space: nowrap;
   color: var(--text-dim);
   font-family: var(--font-mono);
-  font-size: calc(8.5px * var(--font-scale));
+  font-size: var(--text-2xs);
 }
 .runList { display: flex; flex-direction: column; gap: 7px; }
 
@@ -206,7 +256,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--text);
-  font-size: calc(11.5px * var(--font-scale));
+  font-size: var(--text-sm);
 }
 .statusDot { width: 6px; height: 6px; flex-shrink: 0; border-radius: 50%; background: currentColor; }
 .branch {
@@ -218,18 +268,18 @@
   border-radius: 999px;
   background: var(--bg-hover);
   color: var(--text-dim);
-  font-size: calc(8px * var(--font-scale));
+  font-size: var(--text-2xs);
 }
 .cardMeta { margin-top: 5px; display: flex; align-items: center; gap: 6px; }
-.cardMeta time { margin-left: auto; color: var(--text-dim); font-size: calc(8.5px * var(--font-scale)); }
-.statusBadge { padding: 2px 5px; border-radius: 999px; background: var(--bg-hover); font-size: calc(8.5px * var(--font-scale)); }
+.cardMeta time { margin-left: auto; color: var(--text-dim); font-size: var(--text-2xs); }
+.statusBadge { padding: 2px 5px; border-radius: 999px; background: var(--bg-hover); font-size: var(--text-2xs); }
 .promptPreview {
   display: -webkit-box;
   margin: 7px 0 0;
   overflow: hidden;
   color: var(--text-muted);
-  font-size: calc(10px * var(--font-scale));
-  line-height: 1.4;
+  font-size: var(--text-2xs);
+  line-height: var(--leading-ui);
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
@@ -239,16 +289,16 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--text-dim);
-  font-size: calc(8.5px * var(--font-scale));
+  font-size: var(--text-2xs);
 }
-.runError { margin-top: 6px; color: var(--color-error-text); font-size: calc(9px * var(--font-scale)); line-height: 1.35; overflow-wrap: anywhere; }
+.runError { margin-top: 6px; color: var(--color-error-text); font-size: var(--text-2xs); line-height: var(--leading-snug); overflow-wrap: anywhere; }
 .cardActions { margin-top: 8px; display: flex; gap: 5px; flex-wrap: wrap; }
 .cardActions button {
   min-height: 25px;
   padding: 3px 7px;
   background: transparent;
   color: var(--text-muted);
-  font-size: calc(9.5px * var(--font-scale));
+  font-size: var(--text-2xs);
 }
 .cardActions button:hover:not(:disabled) { background: var(--bg-hover); color: var(--text); }
 .cardActions button:disabled { opacity: 0.45; cursor: default; }
@@ -272,11 +322,11 @@
   gap: 8px;
   color: var(--text-muted);
   text-align: center;
-  font-size: calc(10.5px * var(--font-scale));
+  font-size: var(--text-xs);
 }
 .empty svg { color: var(--text-dim); opacity: 0.72; }
-.empty strong { color: var(--text); font-size: calc(12.5px * var(--font-scale)); }
-.empty span { max-width: 230px; line-height: 1.45; }
+.empty strong { color: var(--text); font-size: var(--text-md); }
+.empty span { max-width: 230px; line-height: var(--leading-ui); }
 .empty .primaryButton { margin-top: 5px; }
 .skeleton { display: flex; flex-direction: column; gap: 7px; }
 .skeleton span { height: 96px; border-radius: 8px; background: var(--bg-elev-1); animation: pulse 1.2s ease-in-out infinite alternate; }
@@ -306,10 +356,10 @@
   padding: 0;
   border: 0;
   color: var(--text-muted);
-  font-size: calc(10.5px * var(--font-scale));
+  font-size: var(--text-xs);
 }
 .field > span,
-.fieldset > legend { color: var(--text-muted); font-weight: 600; }
+.fieldset > legend { color: var(--text-muted); font-weight: var(--weight-semibold); }
 .field input,
 .field textarea,
 .field select {
@@ -321,15 +371,15 @@
   background: var(--bg-elev-1);
   color: var(--text);
   font: inherit;
-  font-size: calc(11px * var(--font-scale));
+  font-size: var(--text-xs);
 }
 .field input,
 .field select { height: 34px; padding: 0 9px; }
-.field textarea { min-height: 130px; padding: 8px 9px; resize: vertical; line-height: 1.5; }
+.field textarea { min-height: 130px; padding: 8px 9px; resize: vertical; line-height: var(--leading-copy); }
 .field input:focus,
 .field textarea:focus,
 .field select:focus { border-color: var(--color-accent-border-focus); box-shadow: 0 0 0 2px var(--color-accent-bg); }
-.monoInput { font-family: var(--font-mono) !important; font-size: calc(10px * var(--font-scale)) !important; }
+.monoInput { font-family: var(--font-mono) !important; font-size: var(--text-2xs) !important; }
 .twoColumns { display: grid; grid-template-columns: 1.35fr 1fr; gap: 8px; }
 .segmented { display: grid; grid-template-columns: repeat(3, 1fr); padding: 2px; border: 1px solid var(--border); border-radius: 7px; background: var(--bg-elev-1); }
 .segment,
@@ -340,11 +390,11 @@
   background: transparent;
   color: var(--text-dim);
   font: inherit;
-  font-size: calc(9.5px * var(--font-scale));
+  font-size: var(--text-2xs);
   cursor: pointer;
 }
 .segmentActive { background: var(--color-accent-bg-strong); color: var(--accent); }
-.warning { color: var(--color-warning-text-strong); line-height: 1.4; }
+.warning { color: var(--color-warning-text-strong); line-height: var(--leading-ui); }
 .formActions {
   margin: 14px -12px -12px;
   padding: 10px 12px;
@@ -355,18 +405,19 @@
   background: var(--bg-panel);
 }
 .primaryButton,
-.secondaryButton { min-height: 31px; padding: 5px 10px; font-size: calc(10.5px * var(--font-scale)); }
+.secondaryButton { min-height: 31px; padding: 5px 10px; font-size: var(--text-xs); }
 .primaryButton { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
 .primaryButton:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
 .secondaryButton { background: var(--bg-elev-1); color: var(--text-muted); }
 .primaryButton:disabled { opacity: 0.45; cursor: default; }
 .formError,
-.listError { padding: 8px; border: 1px solid var(--color-error-border); border-radius: 7px; background: var(--color-error-bg); color: var(--color-error-text); font-size: calc(9.5px * var(--font-scale)); overflow-wrap: anywhere; }
+.listError { padding: 8px; border: 1px solid var(--color-error-border); border-radius: 7px; background: var(--color-error-bg); color: var(--color-error-text); font-size: var(--text-2xs); overflow-wrap: anywhere; }
 .listError { margin-bottom: 8px; }
 
 @media (max-width: 380px) {
   .twoColumns { grid-template-columns: 1fr; gap: 0; }
-  .summary span { font-size: calc(8px * var(--font-scale)); }
+  .summary > button > span,
+  .concurrencyControl > span { font-size: var(--text-2xs); }
 }
 
 /* TRAE: turn the operational dashboard into a calm card workspace. */
@@ -377,24 +428,32 @@
   border-bottom: 0;
   background: transparent;
 }
-:global(html[data-ui-style="trae"]) .header strong { font-size: calc(12px * var(--font-scale)); }
+:global(html[data-ui-style="trae"]) .header strong { font-size: var(--text-sm); }
 :global(html[data-ui-style="trae"]) .newButton { height: 30px; }
 :global(html[data-ui-style="trae"]) .newButton,
 :global(html[data-ui-style="trae"]) .primaryButton,
 :global(html[data-ui-style="trae"]) .secondaryButton,
 :global(html[data-ui-style="trae"]) .cardActions button { border-radius: 10px; }
 :global(html[data-ui-style="trae"]) .summary {
-  gap: 6px;
-  padding: 10px;
+  gap: 3px;
+  padding: 6px 10px;
   border: 0;
   background: transparent;
 }
-:global(html[data-ui-style="trae"]) .summary button,
-:global(html[data-ui-style="trae"]) .summary > div,
+:global(html[data-ui-style="trae"]) .summary > button,
 :global(html[data-ui-style="trae"]) .summary > .concurrencyControl {
-  min-height: 54px;
-  border-radius: 12px;
+  min-height: 40px;
+  flex-direction: row;
+  justify-content: center;
+  gap: 4px;
+  border-radius: 10px;
   background: var(--trae-surface);
+}
+
+@container (max-width: 360px) {
+  .header { gap: 6px; }
+  .daemonIndicator span { display: none; }
+  .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 :global(html[data-ui-style="trae"]) .filterBar {
   height: 40px;
@@ -411,6 +470,25 @@
   border-radius: 14px;
   background: var(--trae-surface-solid);
   box-shadow: var(--trae-card-shadow);
+}
+
+@media (pointer: coarse) {
+  .newButton,
+  .primaryButton,
+  .secondaryButton,
+  .cardActions button,
+  .concurrencyTrigger,
+  .concurrencyMenu button,
+  .summary > button,
+  :global(html[data-ui-style="trae"]) .newButton,
+  :global(html[data-ui-style="trae"]) .primaryButton,
+  :global(html[data-ui-style="trae"]) .secondaryButton,
+  :global(html[data-ui-style="trae"]) .cardActions button,
+  :global(html[data-ui-style="trae"]) .summary > button {
+    min-height: var(--control-touch);
+  }
+
+  .concurrencyTrigger { min-width: var(--control-touch); }
 }
 :global(html[data-ui-style="trae"]) .cardWaiting { border-color: var(--color-warning-border); }
 :global(html[data-ui-style="trae"]) .field input,

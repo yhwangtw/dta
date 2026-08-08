@@ -6,12 +6,12 @@
   background: var(--bg-elev-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+  box-shadow: var(--color-shadow-dropdown);
   padding: 4px;
   display: flex;
   flex-direction: column;
   gap: 1px;
-  font-size: calc(12px * var(--font-scale));
+  font-size: var(--text-sm);
   user-select: none;
   animation: contextMenuIn 0.1s ease-out;
 }
@@ -33,7 +33,7 @@
   border-radius: 5px;
   color: var(--text);
   font-family: inherit;
-  font-size: calc(12px * var(--font-scale));
+  font-size: var(--text-sm);
   text-align: left;
   cursor: pointer;
   white-space: nowrap;
@@ -95,7 +95,7 @@
   outline: none;
   color: var(--text);
   font-family: inherit;
-  font-size: calc(12px * var(--font-scale));
+  font-size: var(--text-sm);
 }
 
 .tagInput::placeholder {
@@ -114,20 +114,20 @@
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  font-size: calc(10.5px * var(--font-scale));
-  line-height: 1.2;
+  font-size: var(--text-xs);
+  line-height: var(--leading-tight);
   padding: 2px 7px;
   border-radius: 999px;
   border: 1px solid transparent;
-  font-weight: 500;
+  font-weight: var(--weight-medium);
 }
 
 .tagListRemove {
   background: none;
   border: none;
   color: inherit;
-  font-size: calc(12px * var(--font-scale));
-  line-height: 1;
+  font-size: var(--text-sm);
+  line-height: var(--leading-none);
   padding: 0 0 0 2px;
   cursor: pointer;
   opacity: 0.6;

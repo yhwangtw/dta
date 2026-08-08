@@ -19,6 +19,7 @@ describe("composer controls", () => {
     root = null;
     container?.remove();
     container = null;
+    localStorage.removeItem("pi-stream-send-mode");
     setLocale("en");
   });
 
@@ -82,6 +83,28 @@ describe("composer controls", () => {
     expect(container!.textContent).toContain("All built-in tools");
   });
 
+  it("exposes selector menus as listboxes and closes them with Escape", async () => {
+    await render(
+      <ThinkingSelector
+        thinkingLevel="auto"
+        isStreaming={false}
+        onThinkingLevelChange={vi.fn()}
+      />,
+    );
+
+    const trigger = container!.querySelector<HTMLButtonElement>(
+      'button[aria-label="Change reasoning level"]',
+    )!;
+    await act(async () => trigger.click());
+    expect(trigger.getAttribute("aria-expanded")).toBe("true");
+    expect(container!.querySelector('[role="listbox"]')).not.toBeNull();
+    expect(container!.querySelectorAll('[role="option"]').length).toBeGreaterThan(1);
+
+    await act(async () => document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })));
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+    expect(container!.querySelector('[role="listbox"]')).toBeNull();
+  });
+
   it("keeps the textarea full-width and the primary send action inside the composer card", async () => {
     setLocale("zh");
     await render(
@@ -126,5 +149,25 @@ describe("composer controls", () => {
     expect(panel.textContent).toContain("Composer");
     expect(panel.textContent).toContain("Reasoning");
     expect(panel.textContent).toContain("Tools");
+  });
+
+  it("uses a short streaming placeholder for the selected delivery mode", async () => {
+    await render(
+      <ChatInput
+        onSend={vi.fn()}
+        onAbort={vi.fn()}
+        onSteer={vi.fn()}
+        onFollowUp={vi.fn()}
+        isStreaming
+      />,
+    );
+
+    const textarea = container!.querySelector<HTMLTextAreaElement>("textarea")!;
+    expect(textarea.placeholder).toBe("Queue a follow-up…");
+
+    const steer = [...container!.querySelectorAll<HTMLButtonElement>("button")]
+      .find((button) => button.textContent === "Steer")!;
+    await act(async () => steer.click());
+    expect(textarea.placeholder).toBe("Steer the current run…");
   });
 });

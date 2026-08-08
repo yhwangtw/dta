@@ -1,31 +1,20 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import styles from "./models-config-forms.module.css";
 
 export function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-      <label style={{ fontSize: "calc(11px * var(--font-scale))", color: "var(--text-muted)", fontWeight: 500 }}>{label}</label>
+    <div className={styles.field}>
+      <label className={styles.label}>{label}</label>
       {children}
     </div>
   );
 }
 
-export const inputStyle = {
-  padding: "6px 9px",
-  background: "var(--bg-panel)",
-  border: "1px solid var(--border)",
-  borderRadius: 5,
-  color: "var(--text)",
-  fontSize: "calc(12px * var(--font-scale))",
-  outline: "none",
-  width: "100%",
-  boxSizing: "border-box" as const,
-};
-
 export function TextInput({ value, onChange, placeholder, mono }: { value: string; onChange: (v: string) => void; placeholder?: string; mono?: boolean }) {
   return <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
-    style={{ ...inputStyle, fontFamily: mono ? "var(--font-mono)" : "inherit" }} />;
+    className={`${styles.input} ${mono ? styles.mono : ""}`} />;
 }
 
 export function SecretTextInput({
@@ -54,14 +43,14 @@ export function SecretTextInput({
   }, [value]);
 
   return (
-    <div style={{ position: "relative", width: "100%", ...style }}>
+    <div className={styles.secretWrap} style={style}>
       <input
         type={visible ? "text" : "password"}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={onKeyDown}
         placeholder={placeholder}
-        style={{ ...inputStyle, paddingRight: 34, fontFamily: mono ? "var(--font-mono)" : "inherit" }}
+        className={`${styles.input} ${styles.secretInput} ${mono ? styles.mono : ""}`}
         autoComplete={autoComplete}
         spellCheck={spellCheck}
       />
@@ -70,22 +59,7 @@ export function SecretTextInput({
         onClick={() => setVisible((v) => !v)}
         aria-label={visible ? "Hide API key" : "Show API key"}
         title={visible ? "Hide API key" : "Show API key"}
-        style={{
-          position: "absolute",
-          right: 5,
-          top: "50%",
-          transform: "translateY(-50%)",
-          width: 32,
-          height: 32,
-          padding: 0,
-          border: "none",
-          background: "transparent",
-          color: "var(--text-dim)",
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
+        className={styles.revealButton}
       >
         {visible ? (
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -106,13 +80,13 @@ export function SecretTextInput({
 }
 
 export function NumInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
-  return <input type="number" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} style={inputStyle} />;
+  return <input type="number" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className={styles.input} />;
 }
 
 export function Select({ value, onChange, options, required }: { value: string; onChange: (v: string) => void; options: readonly string[]; required?: boolean }) {
   return (
     <select value={value} onChange={(e) => onChange(e.target.value)}
-      style={{ ...inputStyle, color: value ? "var(--text)" : "var(--text-dim)" }}>
+      className={`${styles.input} ${value ? "" : styles.selectEmpty}`}>
       {!required && <option value="">— inherit / none —</option>}
       {options.map((o) => <option key={o} value={o}>{o}</option>)}
     </select>
@@ -121,14 +95,14 @@ export function Select({ value, onChange, options, required }: { value: string; 
 
 export function Check({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
   return (
-    <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: "calc(12px * var(--font-scale))", color: "var(--text-muted)" }}>
+    <label className={styles.checkLabel}>
       <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)}
-        style={{ width: 13, height: 13, accentColor: "var(--accent)", cursor: "pointer" }} />
+        className={styles.checkInput} />
       {label}
     </label>
   );
 }
 
 export function SectionTitle({ children }: { children: React.ReactNode }) {
-  return <div style={{ fontSize: "calc(11px * var(--font-scale))", fontWeight: 600, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 2 }}>{children}</div>;
+  return <div className={styles.sectionTitle}>{children}</div>;
 }

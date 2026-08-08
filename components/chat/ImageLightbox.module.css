@@ -2,7 +2,7 @@
   position: fixed;
   inset: 0;
   z-index: 1200;
-  background: rgba(0, 0, 0, 0.82);
+  background: var(--color-image-overlay);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -14,8 +14,8 @@
   max-width: 94vw;
   max-height: 92vh;
   object-fit: contain;
-  border-radius: 4px;
-  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--color-shadow-modal);
 }
 
 .close {
@@ -24,12 +24,12 @@
   right: 18px;
   background: none;
   border: none;
-  color: rgba(255, 255, 255, 0.85);
-  font-size: calc(28px * var(--font-scale));
-  line-height: 1;
+  color: var(--color-on-image);
+  font-size: var(--text-3xl);
+  line-height: var(--leading-none);
   cursor: pointer;
 }
 
-:global(html[data-ui-style="trae"]) .overlay { background: rgba(13, 13, 16, 0.88); backdrop-filter: blur(10px); }
-:global(html[data-ui-style="trae"]) .image { border-radius: 14px; box-shadow: 0 24px 80px rgba(0,0,0,0.5); }
-:global(html[data-ui-style="trae"]) .close { display: grid; width: 44px; height: 44px; place-items: center; border-radius: 999px; background: rgba(255,255,255,0.1); }
+:global(html[data-ui-style="trae"]) .overlay { backdrop-filter: blur(10px); }
+:global(html[data-ui-style="trae"]) .image { border-radius: var(--radius-lg); box-shadow: var(--color-shadow-modal); }
+:global(html[data-ui-style="trae"]) .close { display: grid; width: var(--control-touch); height: var(--control-touch); place-items: center; border-radius: var(--radius-full); background: var(--color-image-overlay-control); }

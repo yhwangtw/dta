@@ -15,11 +15,12 @@
 
 .toggleBtn {
   display: inline-flex;
+  min-height: var(--control-sm);
   align-items: center;
   gap: 6px;
   margin: 2px 0 12px;
   padding: 3px 11px;
-  font-size: calc(11.5px * var(--font-scale));
+  font-size: var(--text-sm);
   border: 1px solid var(--border);
   border-radius: 999px;
   color: var(--text-muted);
@@ -33,5 +34,10 @@
   background: var(--bg-hover);
 }
 
-:global(html[data-ui-style="trae"]) .toggleBtn { min-height: 34px; border-color: transparent; border-radius: 999px; background: var(--trae-control); }
+:global(html[data-ui-style="trae"]) .toggleBtn { min-height: var(--control-lg); border-color: transparent; border-radius: var(--radius-full); background: var(--trae-control); }
 :global(html[data-ui-style="trae"]) .fade { background: linear-gradient(transparent, var(--trae-canvas)); }
+
+@media (pointer: coarse) {
+  .toggleBtn,
+  :global(html[data-ui-style="trae"]) .toggleBtn { min-height: var(--control-touch); }
+}

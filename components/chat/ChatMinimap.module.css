@@ -96,8 +96,8 @@
 }
 
 .tooltipText {
-  font-size: calc(11px * var(--font-scale));
-  line-height: 1.4;
+  font-size: var(--text-xs);
+  line-height: var(--leading-ui);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

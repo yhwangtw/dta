@@ -41,7 +41,7 @@
   border: none;
   outline: none;
   color: var(--text);
-  font-size: calc(13px * var(--font-scale));
+  font-size: var(--text-md);
   box-sizing: border-box;
 }
 
@@ -53,7 +53,7 @@
 
 .emptyMessage {
   padding: 20px 0;
-  font-size: calc(12px * var(--font-scale));
+  font-size: var(--text-sm);
   color: var(--text-dim);
   text-align: center;
 }
@@ -66,11 +66,11 @@
 
 .sectionHeader {
   grid-column: 1 / -1;
-  font-size: calc(10.5px * var(--font-scale));
-  font-weight: 600;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
   color: var(--text-dim);
   text-transform: uppercase;
-  letter-spacing: 0.07em;
+  letter-spacing: var(--tracking-caps);
 }
 
 .sectionHeaderPadding {
@@ -100,17 +100,17 @@
 }
 
 .cardTitle {
-  font-size: calc(12px * var(--font-scale));
-  font-weight: 600;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
   color: var(--text);
-  line-height: 1.3;
+  line-height: var(--leading-snug);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .cardSubtitle {
-  font-size: calc(10.5px * var(--font-scale));
+  font-size: var(--text-xs);
   color: var(--text-dim);
   margin-top: 2px;
 }
@@ -135,7 +135,7 @@
 :global(html[data-ui-style="trae"]) .modal { border-color: var(--trae-hairline); border-radius: 20px; background: var(--trae-canvas); }
 :global(html[data-ui-style="trae"]) .searchBar { min-height: 58px; margin: 10px; padding: 0 14px; border: 0; border-radius: 14px; background: var(--trae-control); }
 :global(html[data-ui-style="trae"]) .cardGridArea { padding: 8px 14px 18px; }
-:global(html[data-ui-style="trae"]) .sectionHeader { letter-spacing: 0.03em; text-transform: none; }
+:global(html[data-ui-style="trae"]) .sectionHeader { letter-spacing: var(--tracking-label); text-transform: none; }
 :global(html[data-ui-style="trae"]) .card { min-height: 64px; border-color: transparent; border-radius: 13px; background: var(--trae-surface-solid); box-shadow: var(--trae-card-shadow); }
 :global(html[data-ui-style="trae"]) .card:hover { box-shadow: var(--trae-hover-shadow); }
 :global(html[data-ui-style="trae"]) .plusIconBox { border: 0; border-radius: 9px; background: var(--trae-control); }

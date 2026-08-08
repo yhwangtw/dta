@@ -237,15 +237,6 @@ export function SkillsConfig({
           </div>
         </div>
 
-        {/* Footer */}
-        <div className={styles.footer}>
-          <button
-            onClick={onClose}
-            className={styles.closeButtonFooter}
-          >
-            Close
-          </button>
-        </div>
       </div>
     </div>
   );

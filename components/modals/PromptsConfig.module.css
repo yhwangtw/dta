@@ -6,7 +6,7 @@
   align-items: flex-start;
   justify-content: center;
   padding: 10vh 16px 16px;
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--color-overlay-heavy);
   backdrop-filter: blur(2px);
 }
 
@@ -18,9 +18,9 @@
   flex-direction: column;
   background: var(--bg-panel, var(--bg));
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: var(--radius-xl);
   overflow: hidden;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--color-shadow-modal);
 }
 
 .header {
@@ -32,8 +32,8 @@
 }
 
 .title {
-  font-size: calc(14px * var(--font-scale));
-  font-weight: 600;
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
   color: var(--text);
 }
 
@@ -41,8 +41,8 @@
   background: none;
   border: none;
   color: var(--text-dim);
-  font-size: calc(20px * var(--font-scale));
-  line-height: 1;
+  font-size: var(--text-title);
+  line-height: var(--leading-none);
   cursor: pointer;
   padding: 0 4px;
 }
@@ -75,13 +75,13 @@
 .slash {
   font-family: var(--font-mono);
   color: var(--text-dim);
-  font-size: calc(14px * var(--font-scale));
+  font-size: var(--text-base);
 }
 
 .nameInput {
   width: 160px;
   font-family: var(--font-mono);
-  font-size: calc(13px * var(--font-scale));
+  font-size: var(--text-md);
   padding: 5px 9px;
   border-radius: 7px;
   border: 1px solid var(--border);
@@ -95,7 +95,7 @@
 }
 
 .nameHint {
-  font-size: calc(10.5px * var(--font-scale));
+  font-size: var(--text-xs);
   color: var(--text-dim);
 }
 
@@ -109,8 +109,8 @@
   resize: vertical;
   min-height: 90px;
   font-family: inherit;
-  font-size: calc(13px * var(--font-scale));
-  line-height: 1.55;
+  font-size: var(--text-md);
+  line-height: var(--leading-relaxed);
   padding: 8px 10px;
   border-radius: 8px;
   border: 1px solid var(--border);
@@ -130,7 +130,7 @@
 }
 
 .cancelBtn {
-  font-size: calc(12px * var(--font-scale));
+  font-size: var(--text-sm);
   padding: 5px 12px;
   border-radius: 7px;
   border: 1px solid var(--border);
@@ -144,13 +144,13 @@
 }
 
 .saveBtn {
-  font-size: calc(12px * var(--font-scale));
-  font-weight: 500;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
   padding: 5px 14px;
   border-radius: 7px;
   border: 1px solid transparent;
   background: var(--color-accent);
-  color: var(--color-accent-fg, #fff);
+  color: var(--color-accent-fg);
   cursor: pointer;
 }
 
@@ -169,7 +169,7 @@
 }
 
 .empty {
-  font-size: calc(12.5px * var(--font-scale));
+  font-size: var(--text-md);
   color: var(--text-dim);
   padding: 8px 2px;
 }
@@ -207,12 +207,12 @@
 
 .itemName {
   font-family: var(--font-mono);
-  font-size: calc(12.5px * var(--font-scale));
+  font-size: var(--text-md);
   color: var(--color-accent);
 }
 
 .itemBody {
-  font-size: calc(11.5px * var(--font-scale));
+  font-size: var(--text-sm);
   color: var(--text-muted);
   white-space: nowrap;
   overflow: hidden;
@@ -226,7 +226,7 @@
 }
 
 .itemBtn {
-  font-size: calc(11.5px * var(--font-scale));
+  font-size: var(--text-sm);
   padding: 3px 9px;
   border-radius: 6px;
   border: 1px solid var(--border);
@@ -240,8 +240,8 @@
 }
 
 .itemBtnDanger:hover {
-  color: var(--color-error, #dc2626);
-  border-color: var(--color-error, #dc2626);
+  color: var(--color-error);
+  border-color: var(--color-error);
 }
 
 @media (max-width: 700px) {

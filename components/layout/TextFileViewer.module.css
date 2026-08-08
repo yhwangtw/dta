@@ -5,7 +5,7 @@
   align-items: center;
   justify-content: center;
   color: var(--text-muted);
-  font-size: calc(13px * var(--font-scale));
+  font-size: var(--text-md);
 }
 
 .errorState {
@@ -14,7 +14,7 @@
   align-items: center;
   justify-content: center;
   color: var(--color-error-text);
-  font-size: calc(13px * var(--font-scale));
+  font-size: var(--text-md);
 }
 
 /* Root container */
@@ -35,7 +35,7 @@
   min-height: 38px;
   padding: 4px 10px;
   border-bottom: 1px solid var(--border);
-  font-size: calc(11px * var(--font-scale));
+  font-size: var(--text-xs);
   color: var(--text-dim);
   background: var(--bg);
   flex-shrink: 0;
@@ -69,7 +69,7 @@
 .truncatedNotice {
   padding: 4px 16px;
   border-bottom: 1px solid var(--border);
-  font-size: calc(11px * var(--font-scale));
+  font-size: var(--text-xs);
   color: var(--color-warning-text);
   background: var(--color-warning-bg);
   flex-shrink: 0;
@@ -141,7 +141,7 @@
 /* Toggle buttons (shared) */
 .toggleButton {
   padding: 2px 8px;
-  font-size: calc(11px * var(--font-scale));
+  font-size: var(--text-xs);
   cursor: pointer;
 }
 
@@ -165,13 +165,13 @@
 .toggleActive {
   background: var(--bg-selected);
   color: var(--text);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
 }
 
 .toggleInactive {
   background: var(--bg-hover);
   color: var(--text-muted);
-  font-weight: 400;
+  font-weight: var(--weight-regular);
 }
 
 /* Change count badge */
@@ -194,7 +194,7 @@
   border: none;
   /* Always white: pages without their own background render transparent, and
      inheriting the app's dark theme puts default-black text on a dark bg. */
-  background: #ffffff;
+  background: var(--color-white);
 }
 
 /* Markdown preview */
@@ -214,7 +214,7 @@
 .findInput {
   width: 110px;
   padding: 2px 7px;
-  font-size: calc(11px * var(--font-scale));
+  font-size: var(--text-xs);
   font-family: var(--font-mono);
   border: 1px solid var(--border);
   border-radius: 5px;
@@ -228,7 +228,7 @@
 }
 
 .findCount {
-  font-size: calc(10px * var(--font-scale));
+  font-size: var(--text-2xs);
   color: var(--text-dim);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -246,8 +246,8 @@
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-mono);
-  font-size: calc(13px * var(--font-scale));
-  line-height: 1.6;
+  font-size: var(--text-md);
+  line-height: var(--leading-relaxed);
   tab-size: 2;
 }
 

@@ -36,7 +36,7 @@
   white-space: nowrap;
 }
 
-.toolbar strong { font-weight: 650; }
+.toolbar strong { font-weight: var(--weight-semibold); }
 .hint { color: var(--text-muted); }
 .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--color-accent-bg); }
 .toolbar button {
@@ -53,14 +53,17 @@
 
 .label {
   position: fixed;
+  max-width: min(520px, calc(100vw - 16px));
   pointer-events: none;
   padding: 3px 6px;
   border-radius: var(--radius-sm);
   background: var(--accent);
   color: var(--accent-fg);
   font-family: var(--font-mono);
-  font-size: 10px;
-  line-height: 1.2;
+  font-size: var(--text-2xs);
+  line-height: var(--leading-tight);
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 

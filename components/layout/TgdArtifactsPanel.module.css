@@ -12,11 +12,11 @@
   gap: 8px;
   padding: 8px 12px;
   border-bottom: 1px solid var(--border);
-  font-size: calc(11px * var(--font-scale));
+  font-size: var(--text-xs);
 }
 .brand {
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-caps);
   color: var(--color-accent);
 }
 .headerTitle { color: var(--text-muted); flex: 1; }
@@ -28,12 +28,13 @@
   gap: 2px;
 }
 .viewTab, .viewTabActive {
+  min-height: var(--control-xs);
   background: none;
   border: none;
   cursor: pointer;
   padding: 2px 8px;
   border-radius: 6px;
-  font-size: calc(11px * var(--font-scale));
+  font-size: var(--text-xs);
   font-family: inherit;
 }
 .viewTab { color: var(--text-dim); }
@@ -53,19 +54,23 @@
   color: var(--text-muted);
   cursor: pointer;
   text-align: left;
-  font-size: calc(12.5px * var(--font-scale));
+  font-size: var(--text-md);
 }
 .dirRow:hover { background: var(--bg-hover); color: var(--text); }
 .dirName { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .treeChevron { flex-shrink: 0; transition: transform 0.12s; }
 .treeChevron[data-open] { transform: rotate(90deg); }
-.treeLoading { padding: 8px 14px; font-size: calc(11px * var(--font-scale)); color: var(--text-dim); }
+.treeLoading { padding: 8px 14px; font-size: var(--text-xs); color: var(--text-dim); }
 .refresh {
+  width: var(--control-xs);
+  height: var(--control-xs);
   background: none;
   border: none;
   color: var(--text-dim);
   cursor: pointer;
-  padding: 2px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
   display: inline-flex;
 }
 .refresh:hover { color: var(--text); }
@@ -81,9 +86,9 @@
 
 .section { padding: 4px 0 8px; }
 .sectionTitle {
-  font-size: calc(10px * var(--font-scale));
+  font-size: var(--text-2xs);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: var(--tracking-wide);
   color: var(--text-dim);
   padding: 4px 12px;
 }
@@ -99,7 +104,7 @@
   color: var(--text);
   cursor: pointer;
   text-align: left;
-  font-size: calc(12.5px * var(--font-scale));
+  font-size: var(--text-md);
 }
 .fileRow:hover { background: var(--bg-hover); }
 .fileIcon { display: inline-flex; color: var(--text-muted); flex-shrink: 0; }
@@ -111,8 +116,8 @@
 }
 .featureHead { padding: 0 12px 4px; }
 .featureName {
-  font-size: calc(12.5px * var(--font-scale));
-  font-weight: 600;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
   color: var(--text);
   font-family: var(--font-mono);
 }
@@ -124,11 +129,11 @@
   padding: 2px 12px 6px;
 }
 .phaseChip {
-  font-size: calc(9px * var(--font-scale));
+  font-size: var(--text-2xs);
   padding: 1px 6px;
   border-radius: 999px;
   border: 1px solid transparent;
-  font-weight: 500;
+  font-weight: var(--weight-medium);
 }
 .phaseDone {
   background: var(--color-accent-bg);
@@ -143,14 +148,14 @@
 .protoGroup { padding: 2px 0 0 12px; }
 .protoLabel {
   display: block;
-  font-size: calc(9.5px * var(--font-scale));
+  font-size: var(--text-2xs);
   color: var(--text-dim);
   padding: 2px 0;
 }
 .protoGroup .fileRow { padding-left: 4px; }
 
 .noFeatures {
-  font-size: calc(11.5px * var(--font-scale));
+  font-size: var(--text-sm);
   color: var(--text-dim);
   padding: 10px 12px;
   border-top: 1px solid var(--border);
@@ -170,9 +175,9 @@
   padding: 24px;
   text-align: center;
   color: var(--text-muted);
-  font-size: calc(13px * var(--font-scale));
+  font-size: var(--text-md);
 }
-.emptyHint { font-size: calc(11.5px * var(--font-scale)); color: var(--text-dim); max-width: 220px; line-height: 1.5; }
+.emptyHint { font-size: var(--text-sm); color: var(--text-dim); max-width: 220px; line-height: var(--leading-copy); }
 
 :global(html[data-ui-style="trae"]) .container { background: var(--trae-canvas); }
 :global(html[data-ui-style="trae"]) .header {
@@ -204,3 +209,19 @@
 :global(html[data-ui-style="trae"]) .fileRow,
 :global(html[data-ui-style="trae"]) .dirRow { min-height: 34px; border-radius: 9px; }
 :global(html[data-ui-style="trae"]) .noFeatures { border: 0; }
+
+@media (pointer: coarse) {
+  .viewTab,
+  .viewTabActive,
+  .refresh,
+  .fileRow,
+  .dirRow,
+  :global(html[data-ui-style="trae"]) .viewTab,
+  :global(html[data-ui-style="trae"]) .viewTabActive,
+  :global(html[data-ui-style="trae"]) .fileRow,
+  :global(html[data-ui-style="trae"]) .dirRow {
+    min-height: var(--control-touch);
+  }
+
+  .refresh { width: var(--control-touch); }
+}

@@ -13,6 +13,7 @@ export interface DesignSnapshot {
   rect: DesignRect;
   viewport: { width: number; height: number };
   styles: Record<string, string>;
+  interaction?: Record<string, string | number | boolean>;
 }
 
 /**
@@ -26,6 +27,9 @@ export function formatDesignContext(snapshot: DesignSnapshot): string {
     .map(([name, value]) => `  ${name}: ${value}`)
     .join("\n");
   const rect = snapshot.rect;
+  const interactionLines = Object.entries(snapshot.interaction ?? {})
+    .map(([name, value]) => `  ${name}: ${String(value)}`)
+    .join("\n");
   return [
     "<design-context>",
     `Selected ${snapshot.tagName.toLowerCase()} at ${snapshot.selector}.`,
@@ -34,6 +38,8 @@ export function formatDesignContext(snapshot: DesignSnapshot): string {
     snapshot.text ? `Visible text: ${snapshot.text}` : "Visible text: (none)",
     "Computed styles:",
     styleLines || "  (none)",
+    "Interaction and accessibility:",
+    interactionLines || "  (none)",
     "HTML snapshot:",
     "```html",
     snapshot.html,

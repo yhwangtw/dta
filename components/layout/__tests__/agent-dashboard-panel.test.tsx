@@ -50,17 +50,22 @@ describe("AgentDashboardPanel", () => {
       await Promise.resolve();
     });
 
-    const select = container.querySelector<HTMLSelectElement>(
-      'select[aria-label="Concurrent agent slots"]',
+    const trigger = container.querySelector<HTMLButtonElement>(
+      'button[aria-label="Concurrent agent slots"]',
     );
-    expect(select).not.toBeNull();
-    expect([...select!.options].map((option) => option.value)).toEqual(
+    expect(trigger).not.toBeNull();
+    expect(trigger!.textContent).toContain("3");
+
+    await act(async () => {
+      trigger!.click();
+    });
+    const options = [...container.querySelectorAll<HTMLButtonElement>('[role="option"]')];
+    expect(options.map((option) => option.textContent?.replace("✓", ""))).toEqual(
       ["1", "2", "3", "4", "5", "6", "7", "8"],
     );
 
     await act(async () => {
-      select!.value = "5";
-      select!.dispatchEvent(new Event("change", { bubbles: true }));
+      options[4]!.click();
       await Promise.resolve();
       await Promise.resolve();
     });
@@ -69,6 +74,6 @@ describe("AgentDashboardPanel", () => {
       method: "PATCH",
       body: JSON.stringify({ maxConcurrency: 5 }),
     }));
-    expect(select!.value).toBe("5");
+    expect(trigger!.textContent).toContain("5");
   });
 });

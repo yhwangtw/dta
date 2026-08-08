@@ -12,7 +12,7 @@
   border-radius: 8px;
   padding: 7px 10px;
   cursor: pointer;
-  font-size: calc(12.5px * var(--font-scale));
+  font-size: var(--text-md);
   color: var(--text);
   text-align: left;
   transition: border-color 0.12s, background 0.12s;
@@ -35,7 +35,7 @@
 }
 
 .triggerName {
-  font-weight: 650;
+  font-weight: var(--weight-semibold);
   white-space: nowrap;
   flex-shrink: 0;
   max-width: 45%;
@@ -45,7 +45,7 @@
 
 .triggerPath {
   color: var(--text-dim);
-  font-size: calc(10.5px * var(--font-scale));
+  font-size: var(--text-xs);
   font-family: var(--font-mono);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -71,7 +71,7 @@
   .triggerEmpty {
     min-height: 48px;
     padding: 9px 11px;
-    font-size: calc(14px * var(--font-scale));
+    font-size: var(--text-base);
   }
 
   .triggerName {

@@ -146,9 +146,18 @@ describe("composer controls", () => {
     await act(async () => trigger.click());
     expect(trigger.getAttribute("aria-expanded")).toBe("true");
     expect(panel.className).toContain("bottomBarRightMobileOpen");
+    expect(panel.getAttribute("role")).toBe("region");
+    expect(panel.getAttribute("aria-label")).toBe("Composer controls");
     expect(panel.textContent).toContain("Composer");
     expect(panel.textContent).toContain("Reasoning");
     expect(panel.textContent).toContain("Tools");
+    expect(panel.textContent).toContain("Done");
+
+    const done = [...panel.querySelectorAll<HTMLButtonElement>("button")]
+      .find((button) => button.textContent === "Done")!;
+    await act(async () => done.click());
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+    expect(panel.className).not.toContain("bottomBarRightMobileOpen");
   });
 
   it("uses a short streaming placeholder for the selected delivery mode", async () => {
@@ -169,5 +178,27 @@ describe("composer controls", () => {
       .find((button) => button.textContent === "Steer")!;
     await act(async () => steer.click());
     expect(textarea.placeholder).toBe("Steer the current run…");
+  });
+
+  it("marks the disabled model control separately from active streaming actions", async () => {
+    await render(
+      <ChatInput
+        onSend={vi.fn()}
+        onAbort={vi.fn()}
+        onSteer={vi.fn()}
+        onFollowUp={vi.fn()}
+        isStreaming
+        model={{ provider: "openai", modelId: "gpt-test" }}
+        modelNames={{ "openai:gpt-test": "GPT Test" }}
+        modelList={[{ provider: "openai", id: "gpt-test", name: "GPT Test" }]}
+        onModelChange={vi.fn()}
+      />,
+    );
+
+    const modelButton = [...container!.querySelectorAll<HTMLButtonElement>("button")]
+      .find((button) => button.textContent === "GPT Test")!;
+    expect(modelButton.disabled).toBe(true);
+    expect(modelButton.parentElement?.className).toContain("modelControl");
+    expect(container!.querySelector('[role="group"][aria-label="Message delivery mode"]')).not.toBeNull();
   });
 });

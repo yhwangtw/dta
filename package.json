@@ -16,6 +16,7 @@
     "dev": "next dev -p 30141",
     "build": "next build --webpack",
     "start": "next start -p 30141",
+    "scheduler:watch": "node scripts/schedule-watchdog.mjs",
     "lint": "eslint .",
     "postinstall": "node scripts/patch-pi-brace-expansion.mjs",
     "test": "vitest run",
@@ -54,7 +55,8 @@
     "rehype-raw": "^7.0.0",
     "remark-gfm": "^4.0.1",
     "remark-math": "^6.0.0",
-    "typebox": "^1.1.38"
+    "typebox": "^1.1.38",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "@next/bundle-analyzer": "^16.2.11",
@@ -63,6 +65,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/react-syntax-highlighter": "^15.5.13",
+    "@types/web-push": "^3.6.4",
     "@vitejs/plugin-react": "^6.0.3",
     "eslint": "^9",
     "eslint-config-next": "^16.2.11",

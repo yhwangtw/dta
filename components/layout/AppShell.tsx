@@ -12,6 +12,7 @@ import { ChangesPanel } from "./ChangesPanel";
 import { TgdArtifactsPanel } from "./TgdArtifactsPanel";
 import { AgentDashboardPanel } from "./AgentDashboardPanel";
 import { SchedulePanel } from "./SchedulePanel";
+import { AttentionPanel } from "./AttentionPanel";
 import { DiffPanel } from "./DiffPanel";
 import type { DiffAnnotation } from "./DiffView";
 import { DesignInspector } from "./DesignInspector";
@@ -29,6 +30,7 @@ import { useSessions } from "@/hooks/useSessions";
 import { useTags } from "@/hooks/useTags";
 import { useCommandPalette } from "@/hooks/useCommandPalette";
 import { useToast, showToast } from "@/hooks/useToast";
+import { useAttentionCenter } from "@/hooks/useAttentionCenter";
 import { encodeFilePathForApi } from "@/lib/file-paths";
 import { onOpenFileRequest } from "@/lib/file-links";
 import { useI18n, translate } from "@/lib/i18n";
@@ -71,6 +73,7 @@ export function AppShell() {
   const { toggleTheme } = useTheme();
   const { locale, t } = useI18n();
   const { state, actions, refs, topBarRef } = useAppShellState();
+  const attention = useAttentionCenter();
   const { fileTabs, activeFileTabId, splitFileTabId, rightPanelOpen, setRightPanelOpen, setActiveFileTabId, handleOpenFile: openFileTab, handleCloseFileTab, handleCloseOthers, handleCloseAll, handleReorderTabs, handleTogglePin, handleOpenSplit } = useFileTabs();
 
   const [modelsConfigOpen, setModelsConfigOpen] = useState(false);
@@ -471,6 +474,18 @@ export function AppShell() {
     window.location.href = `/api/sessions/${encodeURIComponent(state.selectedSession.id)}/export-md`;
   }, [state.selectedSession]);
 
+  const handleCloneSession = useCallback(async () => {
+    const selected = state.selectedSession;
+    if (!selected) return;
+    try {
+      const response = await fetch(`/api/sessions/${encodeURIComponent(selected.id)}/clone`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+      const payload = await response.json() as { sessionId?: string; sessionFile?: string; cwd?: string; error?: string };
+      if (!response.ok || !payload.sessionId) throw new Error(payload.error ?? `HTTP ${response.status}`);
+      actions.handleSessionForked(payload.sessionId, payload.cwd ?? selected.cwd, payload.sessionFile);
+      showToast(t("session.cloned"), { type: "success" });
+    } catch (error) { showToast(`${t("session.cloneFailed")}: ${error instanceof Error ? error.message : error}`, { type: "error" }); }
+  }, [actions, state.selectedSession, t]);
+
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const exportMenuRef = useRef<HTMLDivElement>(null);
   const exportMenuPanelRef = useRef<HTMLDivElement>(null);
@@ -601,6 +616,21 @@ export function AppShell() {
           onSelectTagFilter={setActiveTagFilter}
           showExplorer={false}
         />
+      ) : panelView === "attention" ? (
+        <AttentionPanel
+          items={attention.items}
+          readIds={attention.readIds}
+          loading={attention.loading}
+          error={attention.error}
+          onRefresh={() => void attention.refresh()}
+          onMarkRead={attention.markItemRead}
+          onMarkAllRead={attention.markAllRead}
+          onOpenSession={handleOpenScheduledSession}
+          onOpenSource={(source) => {
+            setPanelView(source === "agent" ? "agents" : "schedule");
+            setSidebarOpen(true);
+          }}
+        />
       ) : panelView === "agents" ? (
         <AgentDashboardPanel
           defaultCwd={panelCwd}
@@ -685,6 +715,7 @@ export function AppShell() {
         skillsDisabled={!panelCwd}
         onOpenExtensions={() => setExtensionsConfigOpen(true)}
         appearanceOpen={appearanceOpen}
+        attentionUnreadCount={attention.unreadCount}
         onToggleAppearance={() => setAppearanceOpen((v) => !v)}
       />
       <MobileNavigation
@@ -700,6 +731,7 @@ export function AppShell() {
         onOpenExtensions={() => setExtensionsConfigOpen(true)}
         onOpenAppearance={() => setAppearanceOpen(true)}
         onOpenDesignMode={() => setDesignModeOpen(true)}
+        attentionUnreadCount={attention.unreadCount}
       />
       {/* Mobile overlay backdrop */}
       <div
@@ -843,6 +875,9 @@ export function AppShell() {
                     </small>
                   </button>
                   <div className={s.sessionMenuDivider} />
+                  <button type="button" className={s.sessionMenuItem} role="menuitem" disabled={!state.selectedSession} onClick={() => { void handleCloneSession(); setSessionMenuOpen(false); }}>
+                    <span>{t("session.clone")}</span><small>{t("session.cloneHint")}</small>
+                  </button>
                   <button type="button" className={s.sessionMenuItem} role="menuitem" disabled={!state.selectedSession} onClick={() => { handleExportSession(); setSessionMenuOpen(false); }}>
                     <span>{t("topbar.exportHtmlLabel")}</span><small>{t("topbar.exportHtmlHint")}</small>
                   </button>
@@ -903,6 +938,10 @@ export function AppShell() {
                     >
                       <strong>{t("topbar.exportMdLabel")}</strong>
                       <span className={s.exportMenuHint}>{t("topbar.exportMdHint")}</span>
+                    </button>
+                    <button onClick={() => { void handleCloneSession(); setExportMenuOpen(false); setMobileActionsOpen(false); }} className={s.exportMenuItem} role="menuitem">
+                      <strong>{t("session.clone")}</strong>
+                      <span className={s.exportMenuHint}>{t("session.cloneHint")}</span>
                     </button>
                   </div>,
                   document.body,

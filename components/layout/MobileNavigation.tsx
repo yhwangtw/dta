@@ -7,8 +7,10 @@ import s from "./AppShell.module.css";
 
 interface Props {
   panelView: PanelView;
+  homeActive: boolean;
   panelOpen: boolean;
   filePanelOpen: boolean;
+  onShowHome: () => void;
   onShowChat: () => void;
   onSelectView: (view: PanelView) => void;
   onOpenAnalytics: () => void;
@@ -27,9 +29,10 @@ interface NavButtonProps {
   label: string;
   onClick: () => void;
   expanded?: boolean;
+  badge?: number;
 }
 
-function NavButton({ active, icon, label, onClick, expanded }: NavButtonProps) {
+function NavButton({ active, icon, label, onClick, expanded, badge }: NavButtonProps) {
   return (
     <button
       type="button"
@@ -38,7 +41,10 @@ function NavButton({ active, icon, label, onClick, expanded }: NavButtonProps) {
       aria-current={active ? "page" : undefined}
       aria-expanded={expanded}
     >
-      <span className={s.mobileNavIcon} aria-hidden>{icon}</span>
+      <span className={s.mobileNavIcon} aria-hidden>
+        {icon}
+        {badge ? <span className={s.mobileNavBadge}>{Math.min(badge, 99)}</span> : null}
+      </span>
       <span>{label}</span>
     </button>
   );
@@ -81,8 +87,10 @@ const iconProps = {
 
 export function MobileNavigation({
   panelView,
+  homeActive,
   panelOpen,
   filePanelOpen,
+  onShowHome,
   onShowChat,
   onSelectView,
   onOpenAnalytics,
@@ -96,7 +104,7 @@ export function MobileNavigation({
 }: Props) {
   const [moreOpen, setMoreOpen] = useState(false);
   const { t } = useI18n();
-  const secondaryViewActive = panelOpen && ["attention", "agents", "schedule", "changes", "tgd"].includes(panelView);
+  const secondaryViewActive = panelOpen && ["sessions", "schedule", "files", "search", "changes", "tgd"].includes(panelView);
 
   useEffect(() => {
     if (!moreOpen) return;
@@ -124,28 +132,29 @@ export function MobileNavigation({
       )}
       <nav className={s.mobileNav} aria-label="Primary">
         <NavButton
-          active={!panelOpen && !filePanelOpen && !moreOpen}
+          active={homeActive && !moreOpen}
+          label={t("mobile.home")}
+          onClick={onShowHome}
+          icon={<svg {...iconProps}><path d="m3 11 9-8 9 8" /><path d="M5 10v10h14V10M9 20v-6h6v6" /></svg>}
+        />
+        <NavButton
+          active={panelOpen && panelView === "agents"}
+          label={t("mobile.agents")}
+          onClick={() => onSelectView("agents")}
+          icon={<svg {...iconProps}><rect x="4" y="4" width="16" height="16" rx="3" /><path d="M9 9h6M9 13h4" /><path d="M8 2v2M16 2v2" /></svg>}
+        />
+        <NavButton
+          active={panelOpen && panelView === "attention"}
+          label={t("mobile.reviews")}
+          badge={attentionUnreadCount}
+          onClick={() => onSelectView("attention")}
+          icon={<svg {...iconProps}><path d="M20 6 9 17l-5-5" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg>}
+        />
+        <NavButton
+          active={!homeActive && !panelOpen && !filePanelOpen && !moreOpen}
           label={t("mobile.chat")}
           onClick={onShowChat}
           icon={<svg {...iconProps}><path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>}
-        />
-        <NavButton
-          active={panelOpen && panelView === "sessions"}
-          label={t("mobile.sessions")}
-          onClick={() => onSelectView("sessions")}
-          icon={<svg {...iconProps}><rect x="4" y="4" width="16" height="16" rx="3" /><path d="M8 9h8M8 13h6M8 17h4" /></svg>}
-        />
-        <NavButton
-          active={panelOpen && panelView === "files"}
-          label={t("mobile.files")}
-          onClick={() => onSelectView("files")}
-          icon={<svg {...iconProps}><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h6l2 3h8a2 2 0 0 1 2 2z" /></svg>}
-        />
-        <NavButton
-          active={panelOpen && panelView === "search"}
-          label={t("mobile.search")}
-          onClick={() => onSelectView("search")}
-          icon={<svg {...iconProps}><circle cx="11" cy="11" r="7" /><line x1="20" y1="20" x2="16.5" y2="16.5" /></svg>}
         />
         <NavButton
           active={moreOpen || secondaryViewActive}
@@ -166,8 +175,9 @@ export function MobileNavigation({
           <div className={s.mobileMoreGroup}>
             <div className={s.mobileMoreGroupTitle}>{t("mobile.work")}</div>
             <div className={s.mobileMoreGrid}>
-              <MoreAction label={t("attention.title")} badge={attentionUnreadCount} active={panelOpen && panelView === "attention"} onClick={() => run(() => onSelectView("attention"))} icon={<svg {...iconProps}><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" /><path d="M10 21h4" /></svg>} />
-              <MoreAction label={t("agents.title")} active={panelOpen && panelView === "agents"} onClick={() => run(() => onSelectView("agents"))} icon={<svg {...iconProps}><rect x="4" y="4" width="16" height="16" rx="3" /><path d="M9 9h6M9 13h4" /></svg>} />
+              <MoreAction label={t("mobile.sessions")} active={panelOpen && panelView === "sessions"} onClick={() => run(() => onSelectView("sessions"))} icon={<svg {...iconProps}><rect x="4" y="4" width="16" height="16" rx="3" /><path d="M8 9h8M8 13h6M8 17h4" /></svg>} />
+              <MoreAction label={t("mobile.files")} active={panelOpen && panelView === "files"} onClick={() => run(() => onSelectView("files"))} icon={<svg {...iconProps}><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h6l2 3h8a2 2 0 0 1 2 2z" /></svg>} />
+              <MoreAction label={t("mobile.search")} active={panelOpen && panelView === "search"} onClick={() => run(() => onSelectView("search"))} icon={<svg {...iconProps}><circle cx="11" cy="11" r="7" /><line x1="20" y1="20" x2="16.5" y2="16.5" /></svg>} />
               <MoreAction label={t("schedule.title")} active={panelOpen && panelView === "schedule"} onClick={() => run(() => onSelectView("schedule"))} icon={<svg {...iconProps}><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M16 3v4M8 3v4M3 10h18" /></svg>} />
               <MoreAction label={t("mobile.changes")} active={panelOpen && panelView === "changes"} onClick={() => run(() => onSelectView("changes"))} icon={<svg {...iconProps}><line x1="6" y1="3" x2="6" y2="15" /><circle cx="18" cy="6" r="3" /><circle cx="6" cy="18" r="3" /><path d="M18 9a9 9 0 0 1-9 9" /></svg>} />
               <MoreAction label="tGD" active={panelOpen && panelView === "tgd"} onClick={() => run(() => onSelectView("tgd"))} icon={<svg {...iconProps}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>} />

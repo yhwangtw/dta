@@ -13,6 +13,7 @@ import { TgdArtifactsPanel } from "./TgdArtifactsPanel";
 import { AgentDashboardPanel } from "./AgentDashboardPanel";
 import { SchedulePanel } from "./SchedulePanel";
 import { AttentionPanel } from "./AttentionPanel";
+import { DtaHome } from "./DtaHome";
 import { DiffPanel } from "./DiffPanel";
 import type { DiffAnnotation } from "./DiffView";
 import { DesignInspector } from "./DesignInspector";
@@ -55,6 +56,7 @@ const ExtensionsConfig = lazy(() => import("../modals/ExtensionsConfig").then((m
 const PromptsConfig = lazy(() => import("../modals/PromptsConfig").then((m) => ({ default: m.PromptsConfig })));
 const AnalyticsModal = lazy(() => import("../modals/AnalyticsModal").then((m) => ({ default: m.AnalyticsModal })));
 const SessionImportDialog = lazy(() => import("../modals/SessionImportDialog").then((m) => ({ default: m.SessionImportDialog })));
+const MeetingAgentDialog = lazy(() => import("./MeetingAgentDialog").then((m) => ({ default: m.MeetingAgentDialog })));
 
 // Home dir for expanding ~/ file links; fetched once, shared across clicks.
 let homeDirPromise: Promise<string | null> | null = null;
@@ -85,6 +87,9 @@ export function AppShell() {
   const [sessionImportOpen, setSessionImportOpen] = useState(false);
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [homeOpen, setHomeOpen] = useState(false);
+  const [meetingAgentOpen, setMeetingAgentOpen] = useState(false);
+  const [pendingStartupPrompt, setPendingStartupPrompt] = useState<string | null>(null);
   const sidebarOpenRef = useRef(sidebarOpen);
   const autoCollapsedSidebarRef = useRef(false);
   const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
@@ -177,6 +182,14 @@ export function AppShell() {
   // other view switches to it (opening the panel if needed).
   const handleRailView = useCallback((view: PanelView) => {
     setMobileActionsOpen(false);
+    if (view === "home") {
+      setHomeOpen(true);
+      setPanelView("home");
+      setSidebarOpen(false);
+      setRightPanelOpen(false);
+      return;
+    }
+    setHomeOpen(false);
     if (view === "search") setSearchFocusSignal((signal) => signal + 1);
     if (view === panelView) {
       setSidebarOpen((open) => !open);
@@ -184,9 +197,10 @@ export function AppShell() {
       setPanelView(view);
       setSidebarOpen(true);
     }
-  }, [panelView]);
+  }, [panelView, setRightPanelOpen]);
 
   const handleShowMobileChat = useCallback(() => {
+    setHomeOpen(false);
     setSidebarOpen(false);
     setRightPanelOpen(false);
     setMobileActionsOpen(false);
@@ -214,11 +228,13 @@ export function AppShell() {
   }, [closeSidebarIfOverlay, openFileTab]);
 
   const handleSelectSessionFromSidebar = useCallback((session: SessionInfo, isRestore?: boolean) => {
+    setHomeOpen(false);
     actions.handleSelectSession(session, isRestore);
     if (!isRestore) closeSidebarIfOverlay();
   }, [actions, closeSidebarIfOverlay]);
 
   const handleNewSessionFromSidebar = useCallback((sessionId: string, cwd: string) => {
+    setHomeOpen(false);
     actions.handleNewSession(sessionId, cwd);
     closeSidebarIfOverlay();
   }, [actions, closeSidebarIfOverlay]);
@@ -571,7 +587,8 @@ export function AppShell() {
   const effectiveNewSessionCwd = centerView === "new"
     ? state.newSessionCwd
     : null;
-  const showChat = centerView === "session" || centerView === "new";
+  const showChat = !homeOpen && (centerView === "session" || centerView === "new");
+  const showDtaHome = homeOpen || (!showChat && (centerView === "project" || centerView === "welcome"));
 
   const activeFileTab = fileTabs.find((t) => t.id === activeFileTabId) ?? null;
   const splitFileTab = fileTabs.find((t) => t.id === splitFileTabId && t.id !== activeFileTabId) ?? null;
@@ -593,9 +610,23 @@ export function AppShell() {
 
   const panelCwd = state.selectedSession?.cwd ?? state.newSessionCwd ?? state.activeCwd ?? null;
 
+  const handleLaunchMeetingAgent = useCallback((prompt: string) => {
+    if (!panelCwd) {
+      showToast(t("meetingAgent.noWorkspace"), { type: "warning" });
+      return;
+    }
+    const tempId = typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+    setPendingStartupPrompt(prompt);
+    setMeetingAgentOpen(false);
+    setSidebarOpen(false);
+    handleNewSessionFromSidebar(tempId, panelCwd);
+  }, [handleNewSessionFromSidebar, panelCwd, t]);
+
   const sidebarContent = (
     <ErrorBoundary>
-      {panelView === "sessions" ? (
+      {panelView === "home" ? null : panelView === "sessions" ? (
         <SessionSidebar
           selectedSessionId={state.selectedSession?.id ?? null}
           onSelectSession={handleSelectSessionFromSidebar}
@@ -706,7 +737,8 @@ export function AppShell() {
     || analyticsOpen
     || sessionImportOpen
     || appearanceOpen
-    || shortcutsOpen;
+    || shortcutsOpen
+    || meetingAgentOpen;
 
   return (
     <>
@@ -720,6 +752,7 @@ export function AppShell() {
       {/* Icon rail — global navigation, always visible */}
       <IconRail
         panelView={panelView}
+        homeActive={showDtaHome}
         sidebarOpen={sidebarOpen}
         onSelectView={handleRailView}
         onOpenAnalytics={() => setAnalyticsOpen(true)}
@@ -733,9 +766,11 @@ export function AppShell() {
       />
       <MobileNavigation
         panelView={panelView}
+        homeActive={showDtaHome}
         panelOpen={sidebarOpen}
         filePanelOpen={rightPanelOpen}
         onShowChat={handleShowMobileChat}
+        onShowHome={() => handleRailView("home")}
         onSelectView={handleRailView}
         onOpenAnalytics={() => setAnalyticsOpen(true)}
         onOpenModels={() => setModelsConfigOpen(true)}
@@ -781,7 +816,7 @@ export function AppShell() {
             </svg>
           </button>
           <div className={s.sessionIdentity} data-testid="session-identity">
-            {visibleWorkspaceIdentity && (
+            {!showDtaHome && visibleWorkspaceIdentity && (
               <button
                 type="button"
                 className={s.workspaceIdentity}
@@ -807,11 +842,13 @@ export function AppShell() {
               </button>
             )}
             <div className={s.chatTitle} title={state.selectedSession ? getSessionDisplayTitle(state.selectedSession, 240) : undefined}>
-              {state.selectedSession
-                ? getSessionDisplayTitle(state.selectedSession)
-                : effectiveNewSessionCwd
-                  ? t("sidebar.new").toLowerCase()
-                  : "π"}
+              {showDtaHome
+                ? "Digital Transformation Agent"
+                : state.selectedSession
+                  ? getSessionDisplayTitle(state.selectedSession)
+                  : effectiveNewSessionCwd
+                    ? t("sidebar.new").toLowerCase()
+                    : "DTA"}
             </div>
           </div>
           {showChat && (
@@ -1110,7 +1147,18 @@ export function AppShell() {
 
         {/* Chat content */}
         <div className={s.chatContent}>
-          {state.parallelSessions.length > 0 && (state.selectedSession || effectiveNewSessionCwd) ? (
+          {showDtaHome ? (
+            <DtaHome
+              attentionCount={attention.unreadCount}
+              hasWorkspace={Boolean(panelCwd)}
+              onOpenAgents={() => handleRailView("agents")}
+              onOpenMeetingAgent={() => setMeetingAgentOpen(true)}
+              onOpenReviews={() => handleRailView("attention")}
+              onOpenSessions={() => handleRailView("sessions")}
+              onOpenWorkflows={() => handleRailView("tgd")}
+              onOpenKnowledge={() => handleRailView("search")}
+            />
+          ) : state.parallelSessions.length > 0 && (state.selectedSession || effectiveNewSessionCwd) ? (
             <div className={s.parallelContainer}>
               <div className={s.parallelPane}>
                 {showChat && (
@@ -1174,53 +1222,9 @@ export function AppShell() {
               onContextUsageChange={actions.setContextUsage}
               onSessionNamed={actions.bumpRefreshKey}
               onOpenModels={() => setModelsConfigOpen(true)}
+              startupPrompt={pendingStartupPrompt}
+              onStartupPromptConsumed={() => setPendingStartupPrompt(null)}
             />
-          ) : centerView === "project" ? (
-              <div className={s.placeholderContainer}>
-                <div className={s.placeholderIconBg}>
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={s.placeholderIcon}>
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                  </svg>
-                </div>
-                <div className={s.placeholderText}>
-                  <div className={s.placeholderTitle}>{t("welcome.selectSession")}</div>
-                  <div className={s.placeholderSubtitle}>
-                    {t("welcome.chooseFromSidebar")}
-                  </div>
-                </div>
-              </div>
-          ) : centerView === "welcome" ? (
-              <div className={s.welcomeContainer}>
-                <div className={s.welcomeIconBg}>
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                    <line x1="9" y1="10" x2="15" y2="10" />
-                  </svg>
-                </div>
-                <div className={s.placeholderText}>
-                  <div className={s.welcomeTitle}>
-                    <span className={s.piSymbol}>π</span>
-                    <span className={s.titleText}>with tGD</span>
-                  </div>
-                  <div className={s.welcomeSubtitle}>
-                    {t("welcome.subtitle")}
-                  </div>
-                </div>
-                <div className={s.welcomeSteps}>
-                  <div className={s.welcomeStep}>
-                    <span className={s.welcomeStepNumber}>1</span>
-                    <span className={s.welcomeStepText}>{t("welcome.step1")}</span>
-                  </div>
-                  <div className={s.welcomeStep}>
-                    <span className={s.welcomeStepNumber}>2</span>
-                    <span className={s.welcomeStepText}>{t("welcome.step2pre")} <strong style={{ color: "var(--text)" }}>+ {t("sidebar.new")}</strong> {t("welcome.step2post")}</span>
-                  </div>
-                  <div className={s.welcomeStep}>
-                    <span className={s.welcomeStepNumber}>3</span>
-                    <span className={s.welcomeStepText}>{t("welcome.step3pre")} <strong style={{ color: "var(--text)" }}>{t("sidebar.models")}</strong> {t("welcome.step3post")}</span>
-                  </div>
-                </div>
-              </div>
           ) : null}
         </div>
       </div>
@@ -1350,6 +1354,17 @@ export function AppShell() {
     )}
     {appearanceOpen && <AppearancePanel onClose={() => setAppearanceOpen(false)} />}
     {shortcutsOpen && <ShortcutsDialog onClose={() => setShortcutsOpen(false)} />}
+    {meetingAgentOpen && (
+      <Suspense fallback={null}><MeetingAgentDialog
+        cwd={panelCwd}
+        onClose={() => setMeetingAgentOpen(false)}
+        onChooseWorkspace={() => {
+          setMeetingAgentOpen(false);
+          handleOpenProjectSwitcher();
+        }}
+        onLaunch={handleLaunchMeetingAgent}
+      /></Suspense>
+    )}
     <DesignInspector active={designModeOpen && showChat} onClose={() => setDesignModeOpen(false)} onCapture={handleDesignCapture} />
     {/* Toast notifications — mount once at app root */}
     <ToastContainer />

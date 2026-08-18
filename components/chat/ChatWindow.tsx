@@ -47,6 +47,9 @@ interface Props {
   /** Wide-layout preference (⌘K → Toggle Wide Chat). */
   wideChat?: boolean;
   onOpenModels?: () => void;
+  /** A capability launcher may start a fresh session with a reviewed prompt. */
+  startupPrompt?: string | null;
+  onStartupPromptConsumed?: () => void;
 }
 
 const phaseSvg = (paths: React.ReactNode) => (
@@ -88,6 +91,33 @@ const PHASE_ACTIONS: { cmd: string; label: string; labelKey: MsgKey; descKey: Ms
 
 const CMD_ORDER = PHASE_ACTIONS.map((p) => p.cmd);
 
+const DTA_STARTERS: { labelKey: MsgKey; descKey: MsgKey; promptKey: MsgKey; icon: React.ReactNode }[] = [
+  {
+    labelKey: "dta.starter.meeting",
+    descKey: "dta.starter.meetingHint",
+    promptKey: "dta.starter.meetingPrompt",
+    icon: phaseSvg(<><path d="M21 15a3 3 0 0 1-3 3H8l-5 3V6a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3z" /><path d="M8 8h8M8 12h5" /></>),
+  },
+  {
+    labelKey: "dta.starter.pdlc",
+    descKey: "dta.starter.pdlcHint",
+    promptKey: "dta.starter.pdlcPrompt",
+    icon: phaseSvg(<><path d="M6 3v12M18 9v12" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="6" r="3" /><path d="M9 18h3a6 6 0 0 0 6-6V9" /></>),
+  },
+  {
+    labelKey: "dta.starter.actions",
+    descKey: "dta.starter.actionsHint",
+    promptKey: "dta.starter.actionsPrompt",
+    icon: phaseSvg(<><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></>),
+  },
+  {
+    labelKey: "dta.starter.knowledge",
+    descKey: "dta.starter.knowledgeHint",
+    promptKey: "dta.starter.knowledgePrompt",
+    icon: phaseSvg(<><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></>),
+  },
+];
+
 // Client-side shape of the /api/tgd/artifacts response (subset we use).
 interface TgdArtifactsClient {
   exists: boolean;
@@ -111,24 +141,12 @@ export function artifactPhaseCommands(
 }
 
 const TYPEWRITER_PHRASES = [
-  "ready when you are.",
-  "ask me anything.",
-  "let's build something cool.",
-  "explore your codebase.",
-  "draft an email.",
-  "summarize that paper.",
-  "plan your weekend.",
-  "explain it like I'm five.",
-  "pair-program with me.",
-  "fix that pesky bug.",
-  "translate to 中文.",
-  "write a haiku.",
-  "brainstorm ideas.",
-  "review my pull request.",
-  "what should we cook tonight?",
-  "ship it.",
-  "make it pretty.",
-  "rubber-duck with me.",
+  "capture decisions with evidence.",
+  "turn meetings into action.",
+  "keep every owner accountable.",
+  "move decisions through PDLC.",
+  "prepare the next human review.",
+  "connect department knowledge.",
 ];
 
 function Typewriter({ phrases }: { phrases: string[] }) {
@@ -193,7 +211,7 @@ function activityText(messages: import("@/lib/types").AssistantMessage[], toolRe
   return parts.join(" ");
 }
 
-export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked, modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionStatsChange, onContextUsageChange, onSessionNamed, isParallel, paneLabel, onClosePane, wideChat, onOpenModels }: Props) {
+export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked, modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionStatsChange, onContextUsageChange, onSessionNamed, isParallel, paneLabel, onClosePane, wideChat, onOpenModels, startupPrompt, onStartupPromptConsumed }: Props) {
   const {
     loading, error, runtimeFailure, messages, entryIds, streamState,
     agentRunning, modelNames, modelList, modelThinkingLevels, modelThinkingLevelMaps, toolPreset, thinkingLevel,
@@ -883,6 +901,15 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
   }, [findQuery, findScope]);
 
   const isEmptyNew = isNew && messages.length === 0 && !streamState.isStreaming && !agentRunning;
+  const consumedStartupPromptRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!startupPrompt || !isEmptyNew || consumedStartupPromptRef.current === startupPrompt) return;
+    consumedStartupPromptRef.current = startupPrompt;
+    onStartupPromptConsumed?.();
+    void handleSend(startupPrompt).then((sent) => {
+      if (!sent) chatInputRef?.current?.setText(startupPrompt);
+    });
+  }, [chatInputRef, handleSend, isEmptyNew, onStartupPromptConsumed, startupPrompt]);
   const lastAssistantOutcome = useMemo(() => {
     for (let index = messages.length - 1; index >= 0; index--) {
       if (messages[index].role === "assistant") return messages[index] as import("@/lib/types").AssistantMessage;
@@ -1037,8 +1064,8 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
               className={styles.welcomeHeader}
             >
               <div className={styles.welcomeTitleRow}>
-                <span className={styles.piSymbol}>π</span>
-                <span className={styles.titleText}>with tGD</span>
+                <span className={styles.piSymbol}>DTA</span>
+                <span className={styles.titleText}>Digital Transformation Agent</span>
                 <span className={styles.typewriterContainer}>
                   <Typewriter phrases={TYPEWRITER_PHRASES} />
                 </span>
@@ -1052,17 +1079,18 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                 </span>
               </div>
             </div>
-            {/* tGD Phase Quick Actions — stroke icons to match the app's icon system */}
+            {/* Department workflow starters — they only prefill the composer so
+                the user can review the prompt before sending. */}
             <div className={styles.quickActionsRow}>
-              {PHASE_ACTIONS.map((phase) => (
+              {DTA_STARTERS.map((starter) => (
                 <button
-                  key={phase.cmd}
-                  onClick={() => chatInputRef?.current?.setText(phase.cmd + " ")}
+                  key={starter.labelKey}
+                  onClick={() => chatInputRef?.current?.setText(t(starter.promptKey))}
                   className={styles.phaseButton}
-                  title={`${phase.cmd} — ${t(phase.descKey)}`}
+                  title={t(starter.descKey)}
                 >
-                  <span className={styles.phaseIcon} aria-hidden>{phase.icon}</span>
-                  <span className={styles.phaseLabel}>{t(phase.labelKey)}</span>
+                  <span className={styles.phaseIcon} aria-hidden>{starter.icon}</span>
+                  <span className={styles.phaseLabel}>{t(starter.labelKey)}</span>
                 </button>
               ))}
             </div>

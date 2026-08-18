@@ -26,7 +26,7 @@ interface MarkdownBodyProps {
   allowSafeHtml?: boolean;
   /** Absolute Markdown path used to resolve local relative image sources. */
   sourceFilePath?: string;
-  /** Enhance Pi Web's small semantic blockquote subset into output cards. */
+  /** Enhance DTA's small semantic blockquote subset into output cards. */
   structuredOutput?: boolean;
   /** Place turn evidence between explanatory prose and the first output card. */
   outputAccessory?: ReactNode;

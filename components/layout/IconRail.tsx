@@ -3,10 +3,11 @@
 import { useI18n } from "@/lib/i18n";
 import s from "./AppShell.module.css";
 
-export type PanelView = "sessions" | "attention" | "agents" | "schedule" | "files" | "search" | "changes" | "tgd";
+export type PanelView = "home" | "sessions" | "attention" | "agents" | "schedule" | "files" | "search" | "changes" | "tgd";
 
 interface IconRailProps {
   panelView: PanelView;
+  homeActive: boolean;
   sidebarOpen: boolean;
   onSelectView: (view: PanelView) => void;
   onOpenAnalytics: () => void;
@@ -26,6 +27,7 @@ interface IconRailProps {
  */
 export function IconRail({
   panelView,
+  homeActive,
   sidebarOpen,
   onSelectView,
   onOpenAnalytics,
@@ -41,6 +43,17 @@ export function IconRail({
 
   return (
     <nav className={s.rail} aria-label="Primary">
+      <button
+        type="button"
+        onClick={() => onSelectView("home")}
+        title={t("dta.nav.home")}
+        aria-label={t("dta.nav.home")}
+        aria-current={homeActive ? "page" : undefined}
+        className={`${s.railBrand} ${homeActive ? s.railBrandActive : ""}`}
+      >
+        DTA
+      </button>
+      <div className={s.railDivider} aria-hidden />
       <button
         onClick={() => onSelectView("sessions")}
         title={t("sidebar.sessions")}
@@ -88,6 +101,7 @@ export function IconRail({
           <path d="M12 13v3l2 1" />
         </svg>
       </button>
+      <div className={s.railDivider} aria-hidden />
       <button
         onClick={() => onSelectView("files")}
         title={t("sidebar.explorer")}
@@ -134,6 +148,7 @@ export function IconRail({
           <line x1="9" y1="13" x2="15" y2="13" /><line x1="9" y1="17" x2="13" y2="17" />
         </svg>
       </button>
+      <div className={s.railDivider} aria-hidden />
       <button onClick={onOpenAnalytics} title={t("topbar.analyticsTitle")} className={s.railButton}>
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" />

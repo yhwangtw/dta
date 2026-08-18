@@ -5,8 +5,8 @@ import type { MetadataRoute } from "next";
 // (Tailscale/tunnel) user lives in it.
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "pi web — coding agent",
-    short_name: "pi web",
+    name: "Digital Transformation Agent",
+    short_name: "DTA",
     description: "Web UI for the pi coding agent",
     start_url: "/",
     display: "standalone",

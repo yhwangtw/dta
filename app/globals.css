@@ -181,6 +181,8 @@
   --text-title: calc(20px * var(--font-scale));
   --text-2xl: calc(22px * var(--font-scale));
   --text-3xl: calc(28px * var(--font-scale));
+  --text-hero: calc(36px * var(--font-scale));
+  --text-display: calc(52px * var(--font-scale));
 
   --weight-regular: 400;
   --weight-medium: 500;

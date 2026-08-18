@@ -5,7 +5,7 @@ import {
   parseOutputSegments,
 } from "../output-design";
 
-describe("Pi Web output design grammar", () => {
+describe("DTA output design grammar", () => {
   it("keeps ordinary Markdown untouched", () => {
     expect(parseOutputSegments("Done.\n\n- one\n- two")).toEqual([
       { type: "markdown", content: "Done.\n\n- one\n- two" },

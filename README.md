@@ -1,7 +1,7 @@
-# tGD Pi Web
+# Digital Transformation Agent
 
 <p align="center">
-  <a href="https://github.com/yhwangtw/tgd-pi-web/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/yhwangtw/tgd-pi-web/actions/workflows/ci.yml/badge.svg?branch=main"></a>
+  <a href="https://github.com/yhwangtw/dta/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/yhwangtw/dta/actions/workflows/ci.yml/badge.svg?branch=main"></a>
   <img alt="Next.js 16" src="https://img.shields.io/badge/Next.js-16-000000?style=flat-square&logo=nextdotjs">
   <img alt="React 19" src="https://img.shields.io/badge/React-19-149ECA?style=flat-square&logo=react">
 </p>
@@ -14,35 +14,34 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/yhwangtw/tgd-pi-web/releases">Releases</a> ·
-  <a href="https://github.com/yhwangtw/tgd-pi-web/issues">Report a bug</a> ·
-  <a href="https://github.com/yhwangtw/tgd-pi-web/issues">Request a feature</a>
+  <a href="https://github.com/yhwangtw/dta/releases">Releases</a> ·
+  <a href="https://github.com/yhwangtw/dta/issues">Report a bug</a> ·
+  <a href="https://github.com/yhwangtw/dta/issues">Request a feature</a>
 </p>
 
-**A browser workspace for Pi Coding Agent and the complete tGD delivery workflow.**
+**A department agent platform and human control plane for digital transformation work.**
 
-tGD Pi Web turns Pi's local sessions into a visual engineering cockpit: chat with the agent in real time, inspect files and git changes, move between branches, restore snapshots, and follow work from Map through Release without leaving the browser.
+Digital Transformation Agent (DTA) connects meeting intelligence, PDLC workflows, action tracking, department knowledge, agent runs, and human review in one traceable workspace. It is designed for both people using the DTA interface and company-level orchestrators calling bounded department capabilities.
 
-![tGD Pi Web chat interface](./docs/screenshots/02-hero-chat.png)
+> DTA is being transformed from the former tGD Pi Web product. The existing Pi runtime, session, file, Git, schedule, and tGD foundations remain available while the department-agent experience is introduced incrementally.
 
-## Why tGD Pi Web?
+## Product direction
 
-Pi's terminal experience is fast and focused. This project adds the visual context needed for longer or parallel work:
+DTA treats chat as one interaction method rather than the product hierarchy:
 
-- See live output, run state, elapsed time, errors, queued messages, and context pressure.
-- Browse every local Pi session without starting an agent process.
-- Review files, diffs, tool calls, and git changes beside the conversation.
-- Track tGD artifacts and the seven delivery phases in the same workspace.
-- Navigate long conversations with search, bookmarks, a minimap, and branches.
-- Work comfortably on phones and desktops with safe-area-aware navigation, a compact pipeline, and touch-friendly message actions.
-- Keep everything local: the app makes no external runtime requests beyond the model endpoint you configure.
+- **Meeting Intelligence** — source-backed minutes, decisions, action items, owners, and due dates.
+- **PDLC Agent** — move approved decisions through requirements, design, delivery, and verification.
+- **Action Tracking** — keep follow-ups, blockers, and human decisions visible across meetings.
+- **Department Knowledge** — find approved decisions and artifacts without losing their context.
+- **Human control plane** — review evidence, resolve exceptions, and approve publication.
+- **Orchestrator entry point** — expose stable, bounded department-agent contracts to company automation.
 
 ## Who is this for?
 
-- Developers already using [Pi Coding Agent](https://github.com/earendil-works/pi).
-- Teams following the tGD workflow and storing artifacts in a sibling `<project>-tGD/` directory.
-- Engineers who want a browser-based review surface while the agent works locally.
-- Offline or enterprise environments using an internal model gateway and npm registry.
+- Department teams turning meetings and decisions into accountable follow-through.
+- Digital transformation teams operating multiple specialist agents.
+- Reviewers who need evidence, approval gates, version history, and execution records.
+- Enterprise environments using a company orchestrator, internal model gateway, or private network.
 
 ## Quick Start
 
@@ -56,13 +55,13 @@ Pi's terminal experience is fast and focused. This project adds the visual conte
 This project is distributed from GitHub source and is **not published to npm**.
 
 > [!IMPORTANT]
-> tGD Pi Web can read and edit files, inspect git repositories, and run shell commands in allowed workspaces. Keep it on localhost by default. For remote access, set `PIWEB_ACCESS_PASSWORD` and `PIWEB_SESSION_SECRET`, then place the service behind an authenticated private network or access proxy. See the [deployment guide](./deploy/README.md).
+> DTA can read and edit files, inspect git repositories, and run shell commands in allowed workspaces. Keep it on localhost by default. For remote access, set `PIWEB_ACCESS_PASSWORD` and `PIWEB_SESSION_SECRET`, then place the service behind an authenticated private network or access proxy. The legacy environment variable names remain temporarily for compatibility. See the [deployment guide](./deploy/README.md).
 
 Use a dedicated checkout for the supported one-step installation:
 
 ```bash
-git clone https://github.com/yhwangtw/tgd-pi-web.git
-cd tGD-pi-web
+git clone https://github.com/yhwangtw/dta.git
+cd dta
 bash setup.sh
 ```
 

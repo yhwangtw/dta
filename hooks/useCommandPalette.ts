@@ -164,7 +164,7 @@ const ACTIONS: PaletteResult[] = [
     id: "action:ui-style-original",
     kind: "action",
     title: "Interface: Original",
-    subtitle: "Use the original Pi Web component geometry",
+    subtitle: "Use the original workspace component geometry",
     keywords: "interface style original layout 介面 原版 版型",
     data: { action: "ui-style:original" } as { action: PaletteActionId },
   },

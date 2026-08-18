@@ -215,7 +215,7 @@ export async function createTrackedAgentServices(cwd: string): Promise<{
     agentDir,
     modelRuntime,
     resourceLoaderOptions: {
-      // Pi Web keeps Markdown as the default output and exposes one readable
+      // DTA keeps Markdown as the default output and exposes one readable
       // blockquote syntax for the few outcomes worth progressive enhancement.
       appendSystemPromptOverride: appendPiWebOutputGuidance,
       extensionsOverride(base: LoadExtensionsResult) {
@@ -264,7 +264,7 @@ export async function bindWebExtensions(
   // session_start and resources_discover and installs runtime error handling.
   // Source: https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/sdk.md
   const unsupported = (action: string) => async () => {
-    throw new Error(`Extension command action "${action}" is not supported by Pi Web`);
+    throw new Error(`Extension command action "${action}" is not supported by DTA`);
   };
   const commandContextActions: ExtensionCommandContextActions = {
     waitForIdle: () => session.waitForIdle(),

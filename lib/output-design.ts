@@ -15,7 +15,7 @@ const OUTPUT_DIRECTIVE = /^ {0,3}> ?\[!(RESULT|INFO|WARNING|ERROR)\](?:[ \t]+(.+
 const DETAILS_DIRECTIVE = /^\[!DETAILS\](?:[ \t]+(.+?))?[ \t]*$/i;
 
 /**
- * Pi Web output cards deliberately use readable Markdown blockquotes instead
+ * DTA output cards deliberately use readable Markdown blockquotes instead
  * of a proprietary JSON envelope. Outside the Web UI the answer still reads
  * as an ordinary quote, while the transcript can progressively enhance the
  * small subset of outcomes that benefit from structure.
@@ -88,7 +88,7 @@ export function hasStructuredOutputDirective(markdown: string): boolean {
   return parseOutputSegments(markdown).some((segment) => segment.type === "card");
 }
 
-export const PI_WEB_OUTPUT_GUIDANCE = `Pi Web renders normal Markdown as the default response format. Keep conversational answers, progress notes, and simple explanations as ordinary Markdown.
+export const PI_WEB_OUTPUT_GUIDANCE = `DTA renders normal Markdown as the default response format. Keep conversational answers, progress notes, and simple explanations as ordinary Markdown.
 
 When a completed task has one compact, high-value outcome that is easier to scan as structured evidence, append at most one primary output block using this readable Markdown form:
 

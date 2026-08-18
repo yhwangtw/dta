@@ -6,11 +6,11 @@ export const metadata: Metadata = {
   // Title is owned by the client-side <TabTitle /> (lib/attention.ts store) so
   // it can reflect session name + agent running state. Declaring it here too
   // would make React's metadata hoisting overwrite every dynamic update.
-  description: "Pi Coding Agent Web Interface",
+  description: "Digital Transformation Agent — department agent platform and human control plane",
   // Installed-app behavior on iOS (Android reads the PWA manifest instead).
   appleWebApp: {
     capable: true,
-    title: "pi web",
+    title: "DTA",
     statusBarStyle: "black-translucent",
   },
 };

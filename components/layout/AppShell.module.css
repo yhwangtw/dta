@@ -61,6 +61,37 @@
   cursor: pointer;
   transition: color 0.12s, background 0.12s;
 }
+.railBrand {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  margin-bottom: 1px;
+  padding: 0;
+  place-items: center;
+  border: 1px solid var(--color-accent-border);
+  border-radius: var(--radius-control-prominent);
+  background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+  color: var(--accent-fg);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-subtle);
+  box-shadow: 0 6px 18px var(--color-accent-glow);
+}
+.railBrand:hover { background: var(--accent-hover); }
+.railBrand:focus-visible,
+.railButton:focus-visible {
+  outline: 2px solid var(--color-accent-border-focus);
+  outline-offset: 2px;
+}
+.railBrandActive { box-shadow: 0 0 0 3px var(--color-accent-bg-strong), 0 6px 18px var(--color-accent-glow); }
+.railDivider {
+  width: 22px;
+  height: 1px;
+  margin: 3px 0;
+  background: var(--border);
+}
 .railBadge {
   position: absolute;
   top: 1px;
@@ -1115,9 +1146,28 @@
   }
 
   .mobileNavIcon {
+    position: relative;
     display: grid;
     place-items: center;
     height: 20px;
+  }
+
+  .mobileNavBadge {
+    position: absolute;
+    top: -6px;
+    right: -10px;
+    display: grid;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    place-items: center;
+    border: 2px solid var(--bg-elev-1);
+    border-radius: var(--radius-pill);
+    background: var(--color-error);
+    color: var(--color-error-fg);
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    line-height: var(--leading-none);
   }
 
   .mobileSheetBackdrop {
@@ -1392,6 +1442,12 @@
   width: var(--control-lg);
   height: var(--control-lg);
   border-radius: var(--radius-control-compact);
+}
+
+:global(html[data-ui-style="trae"]) .railBrand {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-card);
 }
 
 :global(html[data-ui-style="trae"]) .railButtonActive {

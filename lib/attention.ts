@@ -12,7 +12,7 @@ import { useSyncExternalStore } from "react";
 // document.title writes get clobbered on the next render.
 // ============================================================================
 
-const BASE_TITLE = "π with tGD";
+const BASE_TITLE = "DTA";
 
 let currentTitle = BASE_TITLE;
 let resetTimer: ReturnType<typeof setTimeout> | null = null;

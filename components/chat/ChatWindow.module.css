@@ -73,6 +73,7 @@
 }
 
 .piSymbol {
+  flex-shrink: 0;
   font-size: var(--text-3xl);
   font-weight: var(--weight-bold);
   letter-spacing: var(--tracking-title);
@@ -80,10 +81,14 @@
 }
 
 .titleText {
+  min-width: 0;
+  overflow: hidden;
   font-size: var(--text-2xl);
   color: var(--text);
   font-weight: var(--weight-bold);
   letter-spacing: var(--tracking-tight);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .typewriterContainer {

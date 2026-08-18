@@ -24,7 +24,7 @@ export function pushEnrollmentAllowed(request: Request): boolean {
 export function getVapidConfig(): VapidConfig {
   const envPublic = process.env.PIWEB_VAPID_PUBLIC_KEY;
   const envPrivate = process.env.PIWEB_VAPID_PRIVATE_KEY;
-  const subject = process.env.PIWEB_VAPID_SUBJECT || "mailto:local@tgd-pi-web.invalid";
+  const subject = process.env.PIWEB_VAPID_SUBJECT || "mailto:local@dta.invalid";
   if (envPublic && envPrivate) return { publicKey: envPublic, privateKey: envPrivate, subject };
   const path = vapidPath();
   if (existsSync(path)) {
@@ -67,7 +67,7 @@ export async function sendWebPush(url = "/?panel=attention"): Promise<void> {
   webpush.setVapidDetails(config.subject, config.publicKey, config.privateKey);
   const store = readSubscriptions();
   const stale = new Set<string>();
-  const payload = JSON.stringify({ title: "tGD Pi Web", body: "An agent needs your attention", url, tag: "pi-attention" });
+  const payload = JSON.stringify({ title: "Digital Transformation Agent", body: "An agent needs your attention", url, tag: "dta-attention" });
   await Promise.allSettled(store.subscriptions.map(async (subscription) => {
     try { await webpush.sendNotification(subscription, payload, { TTL: 86_400, urgency: "normal" }); }
     catch (error) {

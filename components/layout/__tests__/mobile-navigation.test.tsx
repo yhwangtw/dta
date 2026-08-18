@@ -20,6 +20,7 @@ describe("MobileNavigation", () => {
 
   async function renderNavigation() {
     const handlers = {
+      onShowHome: vi.fn(),
       onShowChat: vi.fn(),
       onSelectView: vi.fn(),
       onOpenAnalytics: vi.fn(),
@@ -34,8 +35,10 @@ describe("MobileNavigation", () => {
     await act(async () => root?.render(
       <MobileNavigation
         panelView="sessions"
+        homeActive={false}
         panelOpen
         filePanelOpen={false}
+        attentionUnreadCount={3}
         skillsDisabled={false}
         {...handlers}
       />,
@@ -46,13 +49,19 @@ describe("MobileNavigation", () => {
   it("switches between chat, primary panels, and secondary tools", async () => {
     const handlers = await renderNavigation();
     const button = (label: string) => [...container!.querySelectorAll<HTMLButtonElement>("button")]
-      .find((candidate) => candidate.textContent?.trim() === label)!;
+      .find((candidate) => candidate.textContent?.trim().endsWith(label))!;
+
+    await act(async () => button("Home").click());
+    expect(handlers.onShowHome).toHaveBeenCalledOnce();
 
     await act(async () => button("Chat").click());
     expect(handlers.onShowChat).toHaveBeenCalledOnce();
 
-    await act(async () => button("Files").click());
-    expect(handlers.onSelectView).toHaveBeenCalledWith("files");
+    await act(async () => button("Agents").click());
+    expect(handlers.onSelectView).toHaveBeenCalledWith("agents");
+
+    await act(async () => button("Reviews").click());
+    expect(handlers.onSelectView).toHaveBeenCalledWith("attention");
 
     const chat = button("Chat");
     const more = button("More");
@@ -63,8 +72,8 @@ describe("MobileNavigation", () => {
     expect(container!.textContent).toContain("Work");
     expect(container!.textContent).toContain("Settings");
 
-    await act(async () => button("Agents").click());
-    expect(handlers.onSelectView).toHaveBeenCalledWith("agents");
+    await act(async () => button("Files").click());
+    expect(handlers.onSelectView).toHaveBeenCalledWith("files");
     expect(container!.querySelector('section[aria-label="More"]')).toBeNull();
   });
 });

@@ -1,7 +1,7 @@
 self.addEventListener("push", (event) => {
   let payload = {};
   try { payload = event.data ? event.data.json() : {}; } catch { payload = {}; }
-  event.waitUntil(self.registration.showNotification(payload.title || "tGD Pi Web", { body: payload.body || "An agent needs your attention", icon: "/icon.svg", tag: payload.tag || "pi-attention", data: { url: payload.url || "/" } }));
+  event.waitUntil(self.registration.showNotification(payload.title || "Digital Transformation Agent", { body: payload.body || "An agent needs your attention", icon: "/icons/icon-192.png", tag: payload.tag || "dta-attention", data: { url: payload.url || "/" } }));
 });
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();

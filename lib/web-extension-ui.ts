@@ -348,7 +348,7 @@ export class WebExtensionUIBridge implements ExtensionUIContext {
   getAllThemes(): [] { return []; }
   getTheme(): undefined { return undefined; }
   setTheme(): { success: false; error: string } {
-    return { success: false, error: "Theme switching is controlled by Pi Web" };
+    return { success: false, error: "Theme switching is controlled by DTA" };
   }
   getToolsExpanded(): boolean { return false; }
   setToolsExpanded(): void {}

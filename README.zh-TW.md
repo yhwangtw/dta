@@ -1,7 +1,7 @@
-# tGD Pi Web
+# Digital Transformation Agent
 
 <p align="center">
-  <a href="https://github.com/yhwangtw/tgd-pi-web/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/yhwangtw/tgd-pi-web/actions/workflows/ci.yml/badge.svg?branch=main"></a>
+  <a href="https://github.com/yhwangtw/dta/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/yhwangtw/dta/actions/workflows/ci.yml/badge.svg?branch=main"></a>
   <img alt="Next.js 16" src="https://img.shields.io/badge/Next.js-16-000000?style=flat-square&logo=nextdotjs">
   <img alt="React 19" src="https://img.shields.io/badge/React-19-149ECA?style=flat-square&logo=react">
 </p>
@@ -14,35 +14,34 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/yhwangtw/tgd-pi-web/releases">版本發布</a> ·
-  <a href="https://github.com/yhwangtw/tgd-pi-web/issues">回報錯誤</a> ·
-  <a href="https://github.com/yhwangtw/tgd-pi-web/issues">建議功能</a>
+  <a href="https://github.com/yhwangtw/dta/releases">版本發布</a> ·
+  <a href="https://github.com/yhwangtw/dta/issues">回報錯誤</a> ·
+  <a href="https://github.com/yhwangtw/dta/issues">建議功能</a>
 </p>
 
-**為 Pi Coding Agent 與完整 tGD 交付流程打造的瀏覽器工作空間。**
+**用於數位轉型工作的部門 Agent 平台與 Human Control Plane。**
 
-tGD Pi Web 將 Pi 的本機 session 轉成視覺化工程駕駛艙：即時與 agent 對話、檢查檔案與 git 變更、切換分支、還原快照，並在同一個瀏覽器介面追蹤從 Map 到 Release 的完整工作。
+Digital Transformation Agent（DTA）把會議智慧、PDLC、行動追蹤、部門知識、Agent 執行與人工確認串進同一個可追蹤的工作空間，也能讓公司級 Orchestrator 呼叫有明確邊界的部門能力。
 
-![tGD Pi Web 對話介面](./docs/screenshots/02-hero-chat.png)
+> DTA 正由原本的 tGD Pi Web 逐步轉型。既有 Pi Runtime、Session、檔案、Git、排程與 tGD 基礎能力暫時保留，並逐步換成部門 Agent 的產品體驗。
 
-## 為什麼需要 tGD Pi Web？
+## DTA 的產品方向
 
-Pi 的終端體驗快速而專注；這個專案補上長時間或多工作流任務所需要的視覺脈絡：
+DTA 把對話視為操作方式，而不是整個產品的資訊架構：
 
-- 同時看到串流內容、執行狀態、經過時間、錯誤、排隊訊息與 context 壓力。
-- 直接瀏覽所有本機 Pi session，不需要先建立 AgentSession。
-- 在對話旁檢查檔案、diff、tool call 與 git 變更。
-- 在同一工作空間追蹤 tGD artifacts 與七個交付階段。
-- 透過搜尋、書籤、minimap 與分支導覽長篇對話。
-- 在手機與桌機上使用 safe-area 導覽、精簡階段列及適合觸控的訊息操作。
-- 保持本機優先：除了你設定的模型端點，應用程式執行時不會發出外部請求。
+- **會議智慧**：產生有來源依據的會議紀錄、決策、待辦、負責人與期限。
+- **PDLC Agent**：讓核准決策進入需求、設計、交付與驗證流程。
+- **行動追蹤**：跨會議追蹤後續事項、阻礙與人工決策。
+- **部門知識**：搜尋已核准的決策與產物，同時保留脈絡。
+- **Human Control Plane**：查核依據、處理例外並核准發布。
+- **Orchestrator 入口**：向公司自動化提供穩定且有邊界的部門 Agent 契約。
 
 ## 適合誰？
 
-- 已經使用 [Pi Coding Agent](https://github.com/earendil-works/pi) 的開發者。
-- 採用 tGD 流程，並把 artifacts 放在相鄰 `<project>-tGD/` 目錄的團隊。
-- 希望 agent 在本機工作時，也能有瀏覽器檢視與控制介面的工程師。
-- 使用內部模型 gateway 與 npm registry 的離線或企業環境。
+- 希望把會議與決策轉成可追蹤後續工作的部門團隊。
+- 負責管理多個專業 Agent 的數位轉型團隊。
+- 需要來源、人工關卡、版本與執行紀錄的審查者。
+- 使用公司 Orchestrator、內部模型 Gateway 或私有網路的企業環境。
 
 ## 快速開始
 
@@ -56,13 +55,13 @@ Pi 的終端體驗快速而專注；這個專案補上長時間或多工作流�
 本專案只透過 GitHub 原始碼發布，**不發布至 npm**。
 
 > [!IMPORTANT]
-> tGD Pi Web 能在允許的工作區讀寫檔案、檢查 git repository，並執行 shell 指令。預設只在 localhost 使用；若要遠端存取，請設定 `PIWEB_ACCESS_PASSWORD`，並放在具身分驗證的私人網路或 Access proxy 後方。詳見[部署指南](./deploy/README.md)。
+> DTA 能在允許的工作區讀寫檔案、檢查 git repository，並執行 shell 指令。預設只在 localhost 使用；若要遠端存取，請設定 `PIWEB_ACCESS_PASSWORD`，並放在具身分驗證的私人網路或 Access proxy 後方。舊環境變數名稱目前為相容性保留。詳見[部署指南](./deploy/README.md)。
 
 正式支援的一步式安裝請使用獨立 checkout：
 
 ```bash
-git clone https://github.com/yhwangtw/tgd-pi-web.git
-cd tGD-pi-web
+git clone https://github.com/yhwangtw/dta.git
+cd dta
 bash setup.sh
 ```
 

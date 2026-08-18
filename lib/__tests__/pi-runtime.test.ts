@@ -8,8 +8,8 @@ import {
 } from "../pi-runtime";
 import { PI_WEB_OUTPUT_GUIDANCE, appendPiWebOutputGuidance } from "../output-design";
 
-describe("Pi Web runtime integration", () => {
-  it("adds Pi Web's optional structured-output guidance without replacing user instructions", () => {
+describe("DTA runtime integration", () => {
+  it("adds DTA's optional structured-output guidance without replacing user instructions", () => {
     expect(appendPiWebOutputGuidance(["Project instructions"])).toEqual([
       "Project instructions",
       PI_WEB_OUTPUT_GUIDANCE,
@@ -107,7 +107,7 @@ describe("Pi Web runtime integration", () => {
     expect(waitForIdle).toHaveBeenCalledOnce();
     expect(navigateTree).toHaveBeenCalledWith("entry-1", { summarize: true });
     expect(reload).toHaveBeenCalledOnce();
-    await expect(bindings.commandContextActions.newSession()).rejects.toThrow("not supported by Pi Web");
+    await expect(bindings.commandContextActions.newSession()).rejects.toThrow("not supported by DTA");
   });
 
   it("delegates session replacement actions when hosted by AgentSessionRuntime", async () => {

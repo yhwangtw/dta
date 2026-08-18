@@ -1,16 +1,16 @@
 {
-  "name": "tgd-pi-web",
+  "name": "dta",
   "private": true,
   "version": "2026.08.13",
-  "description": "Web interface for Pi Coding Agent with tGD workflow integration",
+  "description": "Digital Transformation Agent — department agent platform and human control plane",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/openclawyhwang-hub/tGD-pi-web.git"
+    "url": "git+https://github.com/yhwangtw/dta.git"
   },
-  "homepage": "https://github.com/openclawyhwang-hub/tGD-pi-web#readme",
+  "homepage": "https://github.com/yhwangtw/dta#readme",
   "bugs": {
-    "url": "https://github.com/openclawyhwang-hub/tGD-pi-web/issues"
+    "url": "https://github.com/yhwangtw/dta/issues"
   },
   "scripts": {
     "dev": "next dev -p 30141",

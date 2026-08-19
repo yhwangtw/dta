@@ -29,7 +29,7 @@ Digital Transformation Agent（DTA）把會議智慧、PDLC、行動追蹤、部
 
 DTA 把對話視為操作方式，而不是整個產品的資訊架構：
 
-- **會議智慧**：產生有來源依據的會議紀錄、決策、待辦、負責人與期限。
+- **會議智慧**：產生有來源依據的會議紀錄、決策、待辦、負責人與期限；可貼入素材、使用瀏覽器語音輸入，或上傳文字、DOCX、音訊與影片。設定正式影音 provider 後，系統會產生帶時間戳的逐字稿、關鍵畫面證據與同步會議時間軸。
 - **PDLC Agent**：讓核准決策進入需求、設計、交付與驗證流程。
 - **行動追蹤**：跨會議追蹤後續事項、阻礙與人工決策。
 - **部門知識**：搜尋已核准的決策與產物，同時保留脈絡。
@@ -254,6 +254,17 @@ PW_CHROMIUM_PATH=/opt/pw-browsers/chromium npm run test:e2e
 
 | 設定 | 行為 |
 |---|---|
+| `AGENT_DEFAULT_TYPE` | DTA 預設能力；目前為 `meeting`，既有 Coding Agent session 不受影響 |
+| `DTA_DATA_DIR` | 保存 DTA metadata 與通用 artifacts；預設為 `~/.dta` |
+| `DTA_TRANSCRIPTION_PROVIDER` | `none`、僅供開發的 `mock`，或 `openai-compatible` |
+| `DTA_MOCK_TRANSCRIPT` | 僅供非 production mock provider 使用的明確測試逐字稿 |
+| `DTA_TRANSCRIPTION_BASE_URL` / `DTA_TRANSCRIPTION_MODEL` | 公司或相容的語音轉文字端點與模型 |
+| `DTA_TRANSCRIPTION_RESPONSE_FORMAT` | `auto`（建議）、`json`、`verbose_json` 或 `diarized_json` |
+| `DTA_VISION_PROVIDER` | `none`、僅供開發的 `mock`，或 `openai-compatible` 關鍵畫面分析 |
+| `DTA_VISION_BASE_URL` / `DTA_VISION_MODEL` | 公司或相容的多模態端點與模型 |
+| `DTA_MEDIA_PROCESSOR` | `ffmpeg`（預設）或 `none`；負責抽取影片音訊與關鍵影格 |
+| `DTA_MEDIA_MAX_DURATION_SECONDS` | 影音最長秒數，預設 14,400 秒 |
+| `DTA_VIDEO_MAX_KEYFRAMES` | 每支影片最多擷取的關鍵影格，預設 12 |
 | `PI_CODING_AGENT_DIR` | 覆寫預設的 `~/.pi/agent` 目錄 |
 | `PIWEB_ACCESS_PASSWORD` | 啟用套用於所有 route 的內建共用密碼閘門 |
 | `TGD_DIR` | 覆寫相鄰的 `<project>-tGD/` artifact 目錄 |
@@ -267,14 +278,24 @@ Session 仍使用 Pi 原生格式：
 ~/.pi/agent/sessions/<encoded-cwd>/<timestamp>_<uuid>.jsonl
 ```
 
+### Meeting Agent 基礎
+
+Meeting Agent session 會在既有 Pi session 上疊加 DTA 自有的 metadata 與 artifacts。Pi 仍是內部推理／工具 runtime；產品對外顯示的 Agent 身分與結構化 `MeetingResult` 不會暴露 Pi 細節。Meeting runtime 使用專用 system prompt 與受限的 `publish_meeting_result` 工具，並將 JSON、Markdown 成果保存到 `DTA_DATA_DIR`。
+
+Meeting-first 介面不再要求使用者選擇 repository 或檔案系統路徑。新會議會在 `DTA_DATA_DIR` 下由 DTA 管理的會議工作區執行；底層 cwd 僅為 runtime 相容性保留，不會出現在一般產品流程。直接開啟舊有 Coding Agent session 時，仍可沿用原本的專案工作區。
+
+瀏覽器語音辨識可直接把語音輸入逐字稿欄位，不保存錄音。影音上傳後會先保存原始 artifact；FFmpeg 會抽取影片音訊與關鍵影格，設定的轉錄與 Vision provider 會產生時間戳證據，DTA 再保存同步會議時間軸交給 Meeting Agent。內建 mock provider 僅供開發／測試，production 不會啟用。詳見 [Meeting media understanding](./docs/meeting-media-pipeline.md)。
+
+目前限制：metadata、artifact、同步影音處理與 active runtime state 仍屬本機／process-local，因此此階段只支援單一 replica。公司 Orchestrator routes、PM Agent、n8n、MinIO 與 distributed memory 留待後續里程碑。Docker image 已包含 FFmpeg，並以非 root 使用者執行。
+
 ## 架構
 
 ```text
-Browser                    Next.js server             AgentSessionRuntime
+Browser                    Generic Agent layer          Pi Agent runtime
   │                              │                            │
-  ├─ GET /api/sessions ─────────▶│ incremental .jsonl cache   │
-  ├─ POST /api/agent/[id] ──────▶│ startRpcSession() ────────▶│
-  ├─ GET /events (SSE) ─────────▶│◀──── session events ───────│
+  ├─ Meeting/Coding identity ───▶│ AgentMetadata + profile     │
+  ├─ POST /api/agent/[id] ──────▶│ PiAgentRuntime ────────────▶│
+  ├─ GET /events (SSE) ─────────▶│ normalized + native events  │
   ├─ GET /api/files/* ──────────▶│ allowed-root file access   │
   ├─ GET /api/git/* ────────────▶│ guarded git inspection     │
   └─ GET /api/tgd/artifacts ────▶│ sibling tGD directory      │

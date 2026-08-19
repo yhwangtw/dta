@@ -29,7 +29,7 @@ Digital Transformation Agent (DTA) connects meeting intelligence, PDLC workflows
 
 DTA treats chat as one interaction method rather than the product hierarchy:
 
-- **Meeting Intelligence** — source-backed minutes, decisions, action items, owners, and due dates.
+- **Meeting Intelligence** — source-backed minutes, decisions, action items, owners, and due dates. Paste material, use browser voice typing, or upload text, DOCX, audio, and video. Configured media providers produce timestamped transcripts, sampled visual evidence, and a synchronized meeting timeline.
 - **PDLC Agent** — move approved decisions through requirements, design, delivery, and verification.
 - **Action Tracking** — keep follow-ups, blockers, and human decisions visible across meetings.
 - **Department Knowledge** — find approved decisions and artifacts without losing their context.
@@ -264,6 +264,17 @@ PW_CHROMIUM_PATH=/opt/pw-browsers/chromium npm run test:e2e
 
 | Setting | Behavior |
 |---|---|
+| `AGENT_DEFAULT_TYPE` | Defaults the DTA capability to `meeting` while preserving Coding Agent sessions |
+| `DTA_DATA_DIR` | Stores DTA metadata and generic artifacts; defaults to `~/.dta` |
+| `DTA_TRANSCRIPTION_PROVIDER` | `none`, development-only `mock`, or `openai-compatible` |
+| `DTA_MOCK_TRANSCRIPT` | Explicit fixture used only by the mock transcription provider outside production |
+| `DTA_TRANSCRIPTION_BASE_URL` / `DTA_TRANSCRIPTION_MODEL` | Company or compatible speech-to-text endpoint and model |
+| `DTA_TRANSCRIPTION_RESPONSE_FORMAT` | `auto` (recommended), `json`, `verbose_json`, or `diarized_json` |
+| `DTA_VISION_PROVIDER` | `none`, development-only `mock`, or `openai-compatible` keyframe analysis |
+| `DTA_VISION_BASE_URL` / `DTA_VISION_MODEL` | Company or compatible multimodal endpoint and model |
+| `DTA_MEDIA_PROCESSOR` | `ffmpeg` (default) or `none`; extracts video audio and keyframes |
+| `DTA_MEDIA_MAX_DURATION_SECONDS` | Maximum accepted recording duration; defaults to 14,400 seconds |
+| `DTA_VIDEO_MAX_KEYFRAMES` | Maximum sampled keyframes per video; defaults to 12 |
 | `PI_CODING_AGENT_DIR` | Overrides the default `~/.pi/agent` directory |
 | `PIWEB_ACCESS_PASSWORD` | Enables the built-in shared-password gate for every route |
 | `PIWEB_SESSION_SECRET` | Signs access cookies independently from the password; use a random 32-byte-or-longer value for remote deployments |
@@ -278,14 +289,24 @@ Session files remain in Pi's native format:
 ~/.pi/agent/sessions/<encoded-cwd>/<timestamp>_<uuid>.jsonl
 ```
 
+### Meeting Agent foundation
+
+Meeting Agent sessions add DTA-owned metadata and artifacts on top of the existing Pi session. Pi remains the internal reasoning/tool runtime; the product-facing identity and structured `MeetingResult` do not expose Pi internals. The Meeting runtime uses a dedicated system prompt and a bounded `publish_meeting_result` tool, then stores JSON and Markdown outputs below `DTA_DATA_DIR`.
+
+The Meeting-first interface does not ask people to choose a repository or filesystem path. New meetings run inside a DTA-managed meeting workspace below `DTA_DATA_DIR`; the underlying cwd exists only for runtime compatibility and remains hidden from the normal product flow. Legacy Coding Agent sessions can still use their original project workspace when opened directly.
+
+Browser speech recognition can type directly into the transcript field without saving an audio recording. Uploaded media is preserved as an artifact. FFmpeg extracts video audio and sampled keyframes; configurable transcription and vision providers produce timestamped evidence; DTA then stores a synchronized timeline for the Meeting Agent. The bundled mock providers are development/test-only and disabled in production. See [Meeting media understanding](./docs/meeting-media-pipeline.md).
+
+Current limitation: local metadata/artifact storage, synchronous media processing, and active runtime state are process-local, so this phase remains single-replica. Company Orchestrator routes, PM Agent, n8n, MinIO, and distributed memory remain later milestones. The included Docker image installs FFmpeg and runs as a non-root user.
+
 ## Architecture
 
 ```text
-Browser                    Next.js server             AgentSessionRuntime
+Browser                    Generic Agent layer          Pi Agent runtime
   │                              │                            │
-  ├─ GET /api/sessions ─────────▶│ incremental .jsonl cache   │
-  ├─ POST /api/agent/[id] ──────▶│ startRpcSession() ────────▶│
-  ├─ GET /events (SSE) ─────────▶│◀──── session events ───────│
+  ├─ Meeting/Coding identity ───▶│ AgentMetadata + profile     │
+  ├─ POST /api/agent/[id] ──────▶│ PiAgentRuntime ────────────▶│
+  ├─ GET /events (SSE) ─────────▶│ normalized + native events  │
   ├─ GET /api/files/* ──────────▶│ allowed-root file access   │
   ├─ GET /api/git/* ────────────▶│ guarded git inspection     │
   └─ GET /api/tgd/artifacts ────▶│ sibling tGD directory      │

@@ -1,12 +1,15 @@
 import { readAgentRunStore } from "./agent-run-store";
+import { readAllAgentSessionMetadata } from "./agent-metadata-store";
+import { listMeetingRuns } from "./agents/meeting/meeting-result-store";
 import { readScheduleStore } from "./schedule-store";
 import { listAllSessions, readSessionFile } from "./session-reader";
 import type { AssistantMessage } from "./types";
 import type { AgentRun } from "./agent-run-types";
 import type { ScheduleRun } from "./schedule-types";
 import type { SessionInfo } from "./types";
+import type { StoredMeetingResult } from "./agents/meeting/meeting-types";
 
-export type AttentionSource = "agent" | "schedule" | "session";
+export type AttentionSource = "meeting" | "agent" | "schedule" | "session";
 export type AttentionSeverity = "warning" | "error";
 
 export interface AttentionItem {
@@ -53,9 +56,25 @@ export function buildAttentionItems(input: {
   agentRuns: AgentRun[];
   scheduleRuns: ScheduleRun[];
   sessions: SessionInfo[];
+  meetingRuns?: StoredMeetingResult[];
 }, now = new Date()): AttentionItem[] {
   const items: AttentionItem[] = [];
   const representedSessions = new Set<string>();
+
+  for (const run of input.meetingRuns ?? []) {
+    if (run.status !== "failed") continue;
+    if (run.sessionId) representedSessions.add(run.sessionId);
+    items.push({
+      id: `meeting:${run.runId}:failed`,
+      source: "meeting",
+      severity: "warning",
+      status: "failed",
+      title: run.result?.title || "Meeting result needs review",
+      summary: run.error?.trim() || "The meeting conversation ended without a reviewable result",
+      occurredAt: run.updatedAt,
+      sessionId: run.sessionId,
+    });
+  }
 
   for (const run of input.agentRuns) {
     if (run.status !== "waiting_for_input" && run.status !== "failed" && run.status !== "interrupted") continue;
@@ -118,14 +137,20 @@ export function buildAttentionItems(input: {
 }
 
 export async function collectAttentionItems(now = new Date()): Promise<AttentionItem[]> {
-  const [sessions, agentStore, scheduleStore] = await Promise.all([
+  const [sessions, agentStore, scheduleStore, meetingRuns] = await Promise.all([
     listAllSessions(),
     Promise.resolve(readAgentRunStore()),
     Promise.resolve(readScheduleStore()),
+    Promise.resolve(listMeetingRuns()),
   ]);
+  const metadata = readAllAgentSessionMetadata();
+  const domainSessionIds = new Set(Object.entries(metadata)
+    .filter(([, value]) => value.agentType !== "coding")
+    .map(([sessionId]) => sessionId));
   return buildAttentionItems({
-    agentRuns: agentStore.runs,
-    scheduleRuns: scheduleStore.runs,
-    sessions,
+    meetingRuns,
+    agentRuns: agentStore.runs.filter((run) => run.agentMetadata?.agentType !== undefined && run.agentMetadata.agentType !== "coding"),
+    scheduleRuns: scheduleStore.runs.filter((run) => Boolean(run.sessionId && domainSessionIds.has(run.sessionId))),
+    sessions: sessions.filter((session) => domainSessionIds.has(session.id)),
   }, now);
 }

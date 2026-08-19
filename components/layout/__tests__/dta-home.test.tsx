@@ -24,36 +24,45 @@ describe("DtaHome", () => {
       onOpenMeetingAgent: vi.fn(),
       onOpenReviews: vi.fn(),
       onOpenSessions: vi.fn(),
-      onOpenWorkflows: vi.fn(),
       onOpenKnowledge: vi.fn(),
+      onStartConversation: vi.fn().mockResolvedValue(undefined),
     };
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
 
     await act(async () => root?.render(
-      <DtaHome attentionCount={4} hasWorkspace={false} {...handlers} />,
+      <DtaHome attentionCount={4} {...handlers} />,
     ));
 
     expect(container.querySelector('[data-testid="dta-home"]')).not.toBeNull();
-    expect(container.textContent).toContain("Move digital transformation from intent to impact.");
-    expect(container.textContent).toContain("The transformation loop");
-    expect(container.textContent).toContain("For teams and company orchestrators");
-    expect(container.textContent).toContain("Meeting Intelligence");
-    expect(container.textContent).toContain("PDLC Agent");
-    expect(container.textContent).toContain("Available · Beta");
-    expect(container.textContent).toContain("Planned");
-    expect(container.textContent).toContain("Choose a department workspace");
+    expect(container.textContent).toContain("Turn every meeting into decisions and accountable action.");
+    expect(container.textContent).toContain("From conversation to action");
+    expect(container.textContent).toContain("Talk to Meeting Agent");
+    expect(container.textContent).toContain("Human-reviewed by default");
+    expect(container.textContent).toContain("New meeting");
+    expect(container.textContent).toContain("Meeting library");
+    expect(container.textContent).not.toContain("Choose a department workspace");
 
     const button = (label: string) => [...container!.querySelectorAll<HTMLButtonElement>("button")]
       .find((candidate) => candidate.textContent?.includes(label));
-    await act(async () => button("Start with meeting intelligence")?.click());
-    await act(async () => button("PDLC Agent")?.click());
-    await act(async () => button("Department Knowledge")?.click());
+    await act(async () => button("Create meeting minutes")?.click());
+    await act(async () => button("Meeting library")?.click());
+    await act(async () => button("Meeting knowledge")?.click());
+
+    const composer = container.querySelector<HTMLTextAreaElement>("#dta-meeting-message");
+    await act(async () => {
+      if (!composer) return;
+      const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")?.set;
+      setter?.call(composer, "Help me prepare the weekly meeting");
+      composer.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await act(async () => button("Start conversation")?.click());
 
     expect(handlers.onOpenMeetingAgent).toHaveBeenCalledOnce();
     expect(handlers.onOpenAgents).not.toHaveBeenCalled();
-    expect(handlers.onOpenWorkflows).toHaveBeenCalledOnce();
+    expect(handlers.onOpenSessions).toHaveBeenCalledOnce();
     expect(handlers.onOpenKnowledge).toHaveBeenCalledOnce();
+    expect(handlers.onStartConversation).toHaveBeenCalledWith("Help me prepare the weekly meeting");
   });
 });

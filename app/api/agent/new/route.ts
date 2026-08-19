@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { existsSync } from "fs";
 import { startRpcSession } from "@/lib/rpc-manager";
+import { isAgentMetadata } from "@/lib/agents/agent-types";
+import { writeAgentSessionMetadata } from "@/lib/agent-metadata-store";
+import { createRuntimeProfile } from "@/lib/runtime/runtime-profile";
+import { ensureMeetingRun } from "@/lib/agents/meeting/meeting-result-store";
 
 // POST /api/agent/new  body: { cwd: string; type: string; message: string; ... }
 // Spawns a brand-new pi session and immediately sends the first command.
@@ -18,10 +22,23 @@ export async function POST(req: Request) {
     }
 
     // Use a one-time key so startRpcSession's lock doesn't conflict with real session ids
-    const { provider, modelId, toolNames, thinkingLevel, ephemeral, ...promptCommand } = command as { provider?: string; modelId?: string; toolNames?: string[]; thinkingLevel?: string; ephemeral?: boolean; [key: string]: unknown };
+    const { provider, modelId, toolNames, thinkingLevel, ephemeral, agentMetadata, ...promptCommand } = command as { provider?: string; modelId?: string; toolNames?: string[]; thinkingLevel?: string; ephemeral?: boolean; agentMetadata?: unknown; [key: string]: unknown };
+    if (agentMetadata !== undefined && !isAgentMetadata(agentMetadata)) {
+      return NextResponse.json({ error: "Invalid agentMetadata" }, { status: 400 });
+    }
+    const profile = agentMetadata ? createRuntimeProfile(agentMetadata) : undefined;
 
     const tempKey = `__new__${Date.now()}`;
-    const { session, realSessionId } = await startRpcSession(tempKey, "", cwd, toolNames, { ephemeral: ephemeral === true });
+    const { session, realSessionId } = await startRpcSession(tempKey, "", cwd, toolNames, {
+      ephemeral: ephemeral === true,
+      ...(profile ? { profile } : {}),
+    });
+    if (agentMetadata) {
+      writeAgentSessionMetadata(realSessionId, agentMetadata);
+      if (agentMetadata.agentType === "meeting" && agentMetadata.runId) {
+        ensureMeetingRun(agentMetadata.runId, realSessionId);
+      }
+    }
 
     // Keep the files-route allowed-roots cache (see app/api/files/[...path]/route.ts)
     // in sync so the new cwd is immediately readable via /api/files. Without this,

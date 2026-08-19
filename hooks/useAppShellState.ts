@@ -90,7 +90,9 @@ export function useAppShellState(): {
   const [explorerRefreshKey, setExplorerRefreshKey] = useState(0);
   const [activeCwd, setActiveCwd] = useState<string | null>(null);
   const initialSessionId = searchParams.get("session");
-  const [initialSessionRestored, setInitialSessionRestored] = useState(false);
+  const [initialSessionRestored, setInitialSessionRestored] = useState(
+    () => !initialSessionId,
+  );
   const suppressCwdBumpRef = useRef(false);
   const selectedSessionRef = useRef<SessionInfo | null>(null);
   selectedSessionRef.current = selectedSession;
@@ -99,7 +101,9 @@ export function useAppShellState(): {
   // Keep the restore gate aligned with that live route instead of only reading
   // the initial URL once.
   useEffect(() => {
-    if (initialSessionId && selectedSession?.id !== initialSessionId) {
+    if (!initialSessionId) {
+      setInitialSessionRestored(true);
+    } else if (selectedSession?.id !== initialSessionId) {
       setInitialSessionRestored(false);
     }
   }, [initialSessionId, selectedSession?.id]);

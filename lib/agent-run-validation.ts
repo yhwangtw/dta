@@ -1,6 +1,7 @@
 import { stat } from "node:fs/promises";
 import { isAbsolute } from "node:path";
 import type { AgentRunInput } from "./agent-run-types";
+import { isAgentMetadata } from "./agents/agent-types";
 import {
   isAgentRunConcurrency,
   MAX_AGENT_RUN_CONCURRENCY,
@@ -79,6 +80,11 @@ export async function validateAgentRunInput(value: unknown): Promise<AgentRunInp
     throw new AgentRunValidationError("toolNames contains an unsupported tool");
   }
 
+  const agentMetadata = input.agentMetadata === undefined ? undefined : input.agentMetadata;
+  if (agentMetadata !== undefined && !isAgentMetadata(agentMetadata)) {
+    throw new AgentRunValidationError("agentMetadata is invalid");
+  }
+
   return {
     name,
     cwd,
@@ -87,6 +93,7 @@ export async function validateAgentRunInput(value: unknown): Promise<AgentRunInp
     modelId,
     thinkingLevel,
     toolNames: toolNames as string[],
+    ...(agentMetadata ? { agentMetadata } : {}),
   };
 }
 

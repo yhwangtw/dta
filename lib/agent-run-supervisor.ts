@@ -20,6 +20,9 @@ import { isWebExtensionUIDialogRequest, isWebExtensionUIEvent } from "./web-exte
 import { isTrustedAgentRunWorkspace } from "./agent-run-workspace";
 import { buildAgentRunReport } from "./agent-run-report";
 import type { AgentMessage } from "./types";
+import { createRuntimeProfile } from "./runtime/runtime-profile";
+import { writeAgentSessionMetadata } from "./agent-metadata-store";
+import { ensureMeetingRun, readMeetingRun } from "./agents/meeting/meeting-result-store";
 
 const KEEP_ALIVE_MS = 4 * 60_000;
 const MAX_RUN_MS = 24 * 60 * 60_000;
@@ -102,9 +105,14 @@ export class AgentRunSupervisor {
     parentRunId?: string;
   } = {}): AgentRun {
     const now = new Date().toISOString();
+    const id = randomUUID();
+    const agentMetadata = input.agentMetadata
+      ? { ...input.agentMetadata, runId: input.agentMetadata.runId ?? id }
+      : undefined;
     const run: AgentRun = {
       ...input,
-      id: randomUUID(),
+      ...(agentMetadata ? { agentMetadata } : {}),
+      id,
       trigger: options.trigger ?? "manual",
       status: "queued",
       createdAt: now,
@@ -132,6 +140,7 @@ export class AgentRunSupervisor {
       thinkingLevel: original.thinkingLevel,
       toolNames: [...original.toolNames],
       workspace: original.workspace ? { ...original.workspace } : undefined,
+      agentMetadata: original.agentMetadata ? { ...original.agentMetadata, runId: undefined } : undefined,
     }, {
       trigger: "retry",
       parentRunId: original.id,
@@ -198,10 +207,20 @@ export class AgentRunSupervisor {
     if (!this.active.has(runId)) return;
     const existing = readAgentRunStore().runs.find((run) => run.id === runId);
     const finishedAt = new Date().toISOString();
-    this.updateRun(runId, status, {
+    const meeting = existing?.agentMetadata?.agentType === "meeting" && existing.agentMetadata.runId
+      ? readMeetingRun(existing.agentMetadata.runId)
+      : null;
+    const effectiveStatus = status === "completed" && existing?.agentMetadata?.agentType === "meeting" && meeting?.status !== "completed"
+      ? "failed"
+      : status;
+    const effectiveError = effectiveStatus === "failed" && !error && existing?.agentMetadata?.agentType === "meeting"
+      ? "The Meeting Agent finished without publishing a structured result"
+      : error;
+    this.updateRun(runId, effectiveStatus, {
       finishedAt,
-      ...(error ? { error } : {}),
+      ...(effectiveError ? { error: effectiveError } : {}),
       ...(messages ? { report: buildAgentRunReport(messages, existing?.startedAt, finishedAt) } : {}),
+      ...(meeting?.result ? { result: meeting.result, artifacts: meeting.artifacts } : {}),
     });
     this.cleanup(runId);
     this.drain();
@@ -223,13 +242,20 @@ export class AgentRunSupervisor {
       if (!await isTrustedAgentRunWorkspace(run.cwd)) {
         throw new Error("Workspace is no longer trusted; open it as a project before retrying");
       }
-      const started = await startRpcSession(`__daemon__${run.id}`, "", run.cwd, run.toolNames);
+      const profile = run.agentMetadata ? createRuntimeProfile(run.agentMetadata) : undefined;
+      const started = await startRpcSession(`__daemon__${run.id}`, "", run.cwd, run.toolNames, { profile });
       if (!this.active.has(run.id)) {
         await started.session.send({ type: "abort" }).catch(() => {});
         return;
       }
       active.session = started.session;
       this.updateRun(run.id, "running", { sessionId: started.realSessionId });
+      if (run.agentMetadata) {
+        writeAgentSessionMetadata(started.realSessionId, run.agentMetadata);
+        if (run.agentMetadata.agentType === "meeting" && run.agentMetadata.runId) {
+          ensureMeetingRun(run.agentMetadata.runId, started.realSessionId);
+        }
+      }
       globalThis.__piAllowedRootsCache?.roots.add(run.cwd);
 
       active.unsubscribe = started.session.onEvent((rawEvent) => {

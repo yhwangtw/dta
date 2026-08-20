@@ -14,6 +14,7 @@ import { FilesPanel } from "./FilesPanel";
 import { SearchPanel } from "./SearchPanel";
 import { ChangesPanel } from "./ChangesPanel";
 import { TgdArtifactsPanel } from "./TgdArtifactsPanel";
+import { AgentDashboardPanel } from "./AgentDashboardPanel";
 import { SchedulePanel } from "./SchedulePanel";
 import { AttentionPanel } from "./AttentionPanel";
 import { DtaHome } from "./DtaHome";
@@ -421,6 +422,28 @@ export function AppShell() {
     }
   }, [actions, allSessions, handleSelectSessionFromSidebar, t]);
 
+  const handleCompareSessions = useCallback(async (sessionIds: string[]) => {
+    const sessions = await Promise.all(sessionIds.map(async (sessionId) => {
+      const known = allSessions.find((session) => session.id === sessionId);
+      if (known) return known;
+      try {
+        const response = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}`);
+        if (!response.ok) return null;
+        const payload = await response.json() as { info?: SessionInfo | null };
+        return payload.info ?? null;
+      } catch {
+        return null;
+      }
+    }));
+    const usable = sessions.filter((session): session is SessionInfo => Boolean(session));
+    if (usable.length < 2) {
+      showToast(t("extensionUI.noSession"), { type: "warning" });
+      return;
+    }
+    handleSelectSessionFromSidebar(usable[0]);
+    usable.slice(1, 3).forEach((session) => actions.openParallel(session));
+  }, [actions, allSessions, handleSelectSessionFromSidebar, t]);
+
   const handlePaletteSelectTag = useCallback(
     (tag: string) => setActiveTagFilter(tag),
     [],
@@ -620,6 +643,9 @@ export function AppShell() {
   }, [openFileTab, pendingReviewFiles, state.activeCwd, state.selectedSession?.cwd]);
 
   const panelCwd = state.selectedSession?.cwd ?? state.newSessionCwd ?? state.activeCwd ?? null;
+  const legacyShell = !showDtaHome
+    && Boolean(state.selectedSession)
+    && activeAgentMetadata?.agentType !== "meeting";
 
   const handleLaunchMeetingAgent = useCallback(({ prompt, runId, cwd }: { prompt: string; runId: string; cwd: string }) => {
     const tempId = typeof crypto.randomUUID === "function"
@@ -655,7 +681,7 @@ export function AppShell() {
   const sidebarContent = (
     <ErrorBoundary>
       {panelView === "home" ? null : panelView === "sessions" ? (
-        state.initialSessionId && !state.initialSessionRestored ? <SessionSidebar
+        legacyShell || (state.initialSessionId && !state.initialSessionRestored) ? <SessionSidebar
           selectedSessionId={state.selectedSession?.id ?? null}
           onSelectSession={handleSelectSessionFromSidebar}
           onNewSession={handleNewSessionFromSidebar}
@@ -694,7 +720,11 @@ export function AppShell() {
           }}
         />
       ) : panelView === "agents" ? (
-        <MeetingProcessingPanel
+        legacyShell ? <AgentDashboardPanel
+          defaultCwd={panelCwd}
+          onOpenSession={handleOpenScheduledSession}
+          onCompareSessions={handleCompareSessions}
+        /> : <MeetingProcessingPanel
           onNewMeeting={() => setMeetingAgentOpen(true)}
           onOpenSession={handleOpenScheduledSession}
         />
@@ -787,6 +817,12 @@ export function AppShell() {
         homeActive={showDtaHome}
         sidebarOpen={sidebarOpen}
         onSelectView={handleRailView}
+        legacyMode={legacyShell}
+        onOpenAnalytics={() => setAnalyticsOpen(true)}
+        onOpenModels={() => setModelsConfigOpen(true)}
+        onOpenSkills={() => setSkillsConfigOpen(true)}
+        skillsDisabled={!panelCwd}
+        onOpenExtensions={() => setExtensionsConfigOpen(true)}
         appearanceOpen={appearanceOpen}
         attentionUnreadCount={attention.unreadCount}
         onToggleAppearance={() => setAppearanceOpen((v) => !v)}
@@ -799,7 +835,14 @@ export function AppShell() {
         onShowChat={handleShowMobileChat}
         onShowHome={() => handleRailView("home")}
         onSelectView={handleRailView}
+        legacyMode={legacyShell}
+        onOpenAnalytics={() => setAnalyticsOpen(true)}
+        onOpenModels={() => setModelsConfigOpen(true)}
+        onOpenSkills={() => setSkillsConfigOpen(true)}
+        skillsDisabled={!panelCwd}
+        onOpenExtensions={() => setExtensionsConfigOpen(true)}
         onOpenAppearance={() => setAppearanceOpen(true)}
+        onOpenDesignMode={() => setDesignModeOpen(true)}
         attentionUnreadCount={attention.unreadCount}
       />
       {/* Mobile overlay backdrop */}

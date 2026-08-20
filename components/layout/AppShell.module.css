@@ -62,12 +62,18 @@
   transition: color 0.12s, background 0.12s;
 }
 .railIcon {
-  display: block;
+  display: grid;
   width: 18px;
   height: 18px;
   flex: 0 0 18px;
-  stroke-width: 1.8;
+  place-items: center;
   pointer-events: none;
+}
+.railIcon > svg {
+  display: block;
+  width: 18px;
+  height: 18px;
+  stroke-width: 1.8;
 }
 .railBrand {
   display: grid;
@@ -1133,6 +1139,10 @@
     background: var(--glass-bg);
     -webkit-backdrop-filter: blur(18px) saturate(1.4);
     backdrop-filter: blur(18px) saturate(1.4);
+  }
+
+  .mobileNav[data-legacy="true"] {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 
   .mobileNavButton {

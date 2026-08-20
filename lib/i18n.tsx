@@ -56,6 +56,7 @@ const MESSAGES = {
   "mobile.agents": { en: "Processing", zh: "處理中" },
   "mobile.reviews": { en: "Review", zh: "待審核" },
   "mobile.chat": { en: "Meeting", zh: "會議" },
+  "mobile.codingChat": { en: "Chat", zh: "對話" },
   "mobile.sessions": { en: "Meetings", zh: "會議紀錄" },
   "mobile.files": { en: "Files", zh: "檔案" },
   "mobile.search": { en: "Knowledge", zh: "會議知識" },

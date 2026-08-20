@@ -24,6 +24,7 @@ export interface AgentRunInput {
   thinkingLevel?: string;
   toolNames: string[];
   workspace?: AgentRunWorkspace;
+  agentMetadata?: AgentMetadata;
 }
 
 export interface AgentRunReport {
@@ -46,6 +47,9 @@ export interface AgentRun extends AgentRunInput {
   parentRunId?: string;
   error?: string;
   report?: AgentRunReport;
+  result?: unknown;
+  artifacts?: ArtifactReference[];
+  actions?: AgentAction[];
 }
 
 export interface AgentRunStore {
@@ -83,3 +87,5 @@ export function isAgentRunConcurrency(value: unknown): value is number {
     && Number(value) >= MIN_AGENT_RUN_CONCURRENCY
     && Number(value) <= MAX_AGENT_RUN_CONCURRENCY;
 }
+import type { AgentAction, AgentMetadata } from "./agents/agent-types";
+import type { ArtifactReference } from "./integrations/storage/artifact-store";

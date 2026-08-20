@@ -54,7 +54,7 @@ const AUTO_PROVIDER_FALLBACK_KEY = "pi-auto-provider-fallback";
 export function useAgentSession(opts: UseAgentSessionOptions) {
   const {
     session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked,
-    modelsRefreshKey, onBranchDataChange, onSystemPromptChange, onSessionNamed,
+    modelsRefreshKey, onBranchDataChange, onSystemPromptChange, onSessionNamed, startupAgentMetadata,
   } = opts;
 
   const isNew = session === null && newSessionCwd !== null;
@@ -597,6 +597,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         ...(piImages?.length ? { images: piImages } : {}),
         ...(selectedModel ? { provider: selectedModel.provider, modelId: selectedModel.modelId } : {}),
         ...(thinkingLevel !== "auto" ? { thinkingLevel } : {}),
+        ...(startupAgentMetadata ? { agentMetadata: startupAgentMetadata } : {}),
       }),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -615,7 +616,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       ephemeral: ephemeralNewSession,
     });
     return result.sessionId;
-  }, [newSessionCwd, newSessionModel, toolPreset, thinkingLevel, ephemeralNewSession, connectEvents, onSessionCreated]);
+  }, [newSessionCwd, newSessionModel, toolPreset, thinkingLevel, ephemeralNewSession, connectEvents, onSessionCreated, startupAgentMetadata]);
 
   const handleSend = useCallback(async (message: string, images?: AttachedImage[]): Promise<boolean> => {
     if (!message.trim() && !images?.length) return false;

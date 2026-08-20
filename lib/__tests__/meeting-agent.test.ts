@@ -27,4 +27,16 @@ describe("Meeting Agent prompt contract", () => {
     expect(prompt).toContain("Do not invent decisions, owners, dates, commitments, or consensus");
     expect(prompt).toContain("Not specified / 未指定");
   });
+
+  it("labels uploaded files as separate untrusted sources", () => {
+    const prompt = buildMeetingMinutesPrompt({
+      source: "Facilitator notes",
+      attachments: [{ name: "weekly-sync.vtt", content: "[00:05] Alex owns the pilot." }],
+      outputLanguage: "en",
+    });
+
+    expect(prompt).toContain("SOURCE: PASTED MEETING MATERIAL");
+    expect(prompt).toContain("SOURCE FILE: weekly-sync.vtt");
+    expect(prompt).toContain("[00:05] Alex owns the pilot");
+  });
 });

@@ -22,4 +22,14 @@ describe("POST /api/agent/new", () => {
     expect(harness.start).toHaveBeenCalledWith(expect.stringMatching(/^__new__/), "", cwd, undefined, { ephemeral: true });
     await expect(response.json()).resolves.toMatchObject({ sessionId: "memory-1", ephemeral: true });
   });
+
+  it("rejects malformed generic agent identity before starting Pi", async () => {
+    const response = await POST(new Request("http://localhost/api/agent/new", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cwd, type: "prompt", message: "hello", agentMetadata: { agentType: "meeting" } }),
+    }));
+    expect(response.status).toBe(400);
+    expect(harness.start).not.toHaveBeenCalled();
+  });
 });

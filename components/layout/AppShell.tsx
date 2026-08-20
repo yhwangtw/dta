@@ -6,6 +6,10 @@ import { SessionSidebar } from "../sidebar/SessionSidebar";
 import { ChatWindow } from "../chat/ChatWindow";
 import { ContextInspector } from "../chat/ContextInspector";
 import { FileViewer } from "./FileViewer";
+import { MeetingResultPanel } from "./MeetingResultPanel";
+import { MeetingLibraryPanel } from "./MeetingLibraryPanel";
+import { MeetingProcessingPanel } from "./MeetingProcessingPanel";
+import { MeetingKnowledgePanel } from "./MeetingKnowledgePanel";
 import { FilesPanel } from "./FilesPanel";
 import { SearchPanel } from "./SearchPanel";
 import { ChangesPanel } from "./ChangesPanel";
@@ -45,6 +49,7 @@ import { resolveWorkspaceIdentity, type WorkspaceIdentity } from "@/lib/workspac
 import { requestOpenProjectSwitcher } from "@/lib/project-switcher-events";
 import type { Worktree } from "@/lib/worktrees";
 import type { SessionInfo, SessionTreeNode } from "@/lib/types";
+import type { AgentMetadata } from "@/lib/agents/agent-types";
 import type { ChatInputHandle } from "../chat/ChatInput";
 import { getSessionDisplayTitle } from "../sidebar/session-utils";
 import s from "./AppShell.module.css";
@@ -90,6 +95,9 @@ export function AppShell() {
   const [homeOpen, setHomeOpen] = useState(false);
   const [meetingAgentOpen, setMeetingAgentOpen] = useState(false);
   const [pendingStartupPrompt, setPendingStartupPrompt] = useState<string | null>(null);
+  const [pendingStartupAgentMetadata, setPendingStartupAgentMetadata] = useState<AgentMetadata | null>(null);
+  const [activeAgentMetadata, setActiveAgentMetadata] = useState<AgentMetadata | null>(null);
+  const [rightPanelMode, setRightPanelMode] = useState<"files" | "meeting">("files");
   const sidebarOpenRef = useRef(sidebarOpen);
   const autoCollapsedSidebarRef = useRef(false);
   const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
@@ -212,6 +220,7 @@ export function AppShell() {
   }, []);
 
   const handleOpenDiff = useCallback((filePath: string) => {
+    setRightPanelMode("files");
     setDiffFile(filePath);
     setRightPanelOpen(true);
   }, [setRightPanelOpen]);
@@ -223,9 +232,34 @@ export function AppShell() {
   }, []);
 
   const handleOpenFile = useCallback((filePath: string, fileName: string, gotoLine?: number) => {
+    setRightPanelMode("files");
     openFileTab(filePath, fileName, gotoLine);
     closeSidebarIfOverlay();
   }, [closeSidebarIfOverlay, openFileTab]);
+
+  useEffect(() => {
+    const sessionId = state.selectedSession?.id;
+    if (!sessionId) {
+      setActiveAgentMetadata(null);
+      return;
+    }
+    const controller = new AbortController();
+    fetch(`/api/agent-sessions/${encodeURIComponent(sessionId)}/metadata`, { signal: controller.signal, cache: "no-store" })
+      .then((response) => response.ok ? response.json() : null)
+      .then((payload: { metadata?: AgentMetadata } | null) => {
+        if (controller.signal.aborted) return;
+        const metadata = payload?.metadata ?? null;
+        setActiveAgentMetadata(metadata);
+        if (metadata?.agentType === "meeting") {
+          setRightPanelMode("meeting");
+          setRightPanelOpen(true);
+        } else {
+          setRightPanelMode("files");
+        }
+      })
+      .catch(() => { if (!controller.signal.aborted) setActiveAgentMetadata(null); });
+    return () => controller.abort();
+  }, [setRightPanelOpen, state.selectedSession?.id]);
 
   const handleSelectSessionFromSidebar = useCallback((session: SessionInfo, isRestore?: boolean) => {
     setHomeOpen(false);
@@ -609,25 +643,45 @@ export function AppShell() {
   }, [openFileTab, pendingReviewFiles, state.activeCwd, state.selectedSession?.cwd]);
 
   const panelCwd = state.selectedSession?.cwd ?? state.newSessionCwd ?? state.activeCwd ?? null;
+  const legacyShell = !showDtaHome
+    && Boolean(state.selectedSession)
+    && activeAgentMetadata?.agentType !== "meeting";
 
-  const handleLaunchMeetingAgent = useCallback((prompt: string) => {
-    if (!panelCwd) {
-      showToast(t("meetingAgent.noWorkspace"), { type: "warning" });
-      return;
-    }
+  const handleLaunchMeetingAgent = useCallback(({ prompt, runId, cwd }: { prompt: string; runId: string; cwd: string }) => {
     const tempId = typeof crypto.randomUUID === "function"
       ? crypto.randomUUID()
       : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
     setPendingStartupPrompt(prompt);
+    setPendingStartupAgentMetadata({
+      agentType: "meeting",
+      agentId: "meeting-agent",
+      displayName: "Meeting Agent",
+      runId,
+    });
     setMeetingAgentOpen(false);
     setSidebarOpen(false);
-    handleNewSessionFromSidebar(tempId, panelCwd);
-  }, [handleNewSessionFromSidebar, panelCwd, t]);
+    handleNewSessionFromSidebar(tempId, cwd);
+  }, [handleNewSessionFromSidebar]);
+
+  const handleStartMeetingConversation = useCallback(async (message: string) => {
+    const response = await fetch("/api/meeting-agent/workspace", { method: "POST" });
+    const payload = await response.json() as {
+      workspace?: { cwd: string };
+      error?: string;
+    };
+    if (!response.ok || !payload.workspace?.cwd) {
+      throw new Error(payload.error || `HTTP ${response.status}`);
+    }
+    const runId = typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+    handleLaunchMeetingAgent({ prompt: message, runId, cwd: payload.workspace.cwd });
+  }, [handleLaunchMeetingAgent]);
 
   const sidebarContent = (
     <ErrorBoundary>
       {panelView === "home" ? null : panelView === "sessions" ? (
-        <SessionSidebar
+        legacyShell || (state.initialSessionId && !state.initialSessionRestored) ? <SessionSidebar
           selectedSessionId={state.selectedSession?.id ?? null}
           onSelectSession={handleSelectSessionFromSidebar}
           onNewSession={handleNewSessionFromSidebar}
@@ -646,6 +700,9 @@ export function AppShell() {
           activeTagFilter={activeTagFilter}
           onSelectTagFilter={setActiveTagFilter}
           showExplorer={false}
+        /> : <MeetingLibraryPanel
+          onNewMeeting={() => setMeetingAgentOpen(true)}
+          onOpenSession={handleOpenScheduledSession}
         />
       ) : panelView === "attention" ? (
         <AttentionPanel
@@ -663,11 +720,16 @@ export function AppShell() {
           }}
         />
       ) : panelView === "agents" ? (
-        <AgentDashboardPanel
+        legacyShell ? <AgentDashboardPanel
           defaultCwd={panelCwd}
           onOpenSession={handleOpenScheduledSession}
           onCompareSessions={handleCompareSessions}
+        /> : <MeetingProcessingPanel
+          onNewMeeting={() => setMeetingAgentOpen(true)}
+          onOpenSession={handleOpenScheduledSession}
         />
+      ) : panelView === "knowledge" ? (
+        <MeetingKnowledgePanel onOpenSession={handleOpenScheduledSession} />
       ) : panelView === "schedule" ? (
         <SchedulePanel
           defaultCwd={panelCwd}
@@ -755,6 +817,7 @@ export function AppShell() {
         homeActive={showDtaHome}
         sidebarOpen={sidebarOpen}
         onSelectView={handleRailView}
+        legacyMode={legacyShell}
         onOpenAnalytics={() => setAnalyticsOpen(true)}
         onOpenModels={() => setModelsConfigOpen(true)}
         onOpenSkills={() => setSkillsConfigOpen(true)}
@@ -772,6 +835,7 @@ export function AppShell() {
         onShowChat={handleShowMobileChat}
         onShowHome={() => handleRailView("home")}
         onSelectView={handleRailView}
+        legacyMode={legacyShell}
         onOpenAnalytics={() => setAnalyticsOpen(true)}
         onOpenModels={() => setModelsConfigOpen(true)}
         onOpenSkills={() => setSkillsConfigOpen(true)}
@@ -816,7 +880,13 @@ export function AppShell() {
             </svg>
           </button>
           <div className={s.sessionIdentity} data-testid="session-identity">
-            {!showDtaHome && visibleWorkspaceIdentity && (
+            {!showDtaHome && activeAgentMetadata?.agentType === "meeting" && (
+              <div className={s.managedMeetingContext}>
+                <span aria-hidden>●</span>
+                <strong>DTA Meeting Space</strong>
+              </div>
+            )}
+            {!showDtaHome && activeAgentMetadata?.agentType !== "meeting" && visibleWorkspaceIdentity && (
               <button
                 type="button"
                 className={s.workspaceIdentity}
@@ -842,6 +912,7 @@ export function AppShell() {
               </button>
             )}
             <div className={s.chatTitle} title={state.selectedSession ? getSessionDisplayTitle(state.selectedSession, 240) : undefined}>
+              {activeAgentMetadata?.agentType === "meeting" && <span className={s.agentIdentityBadge}>MEETING AGENT</span>}
               {showDtaHome
                 ? "Digital Transformation Agent"
                 : state.selectedSession
@@ -1096,18 +1167,24 @@ export function AppShell() {
               </button>
             );
           })()}
-          <button
-            type="button"
-            onClick={() => setRightPanelOpen((open) => !open)}
-            title={rightPanelOpen ? t("topbar.hideFilePanel") : t("topbar.showFilePanel")}
-            aria-label={rightPanelOpen ? t("topbar.hideFilePanel") : t("topbar.showFilePanel")}
-            className={`${s.topBarButton} ${s.filePanelToggle} ${rightPanelOpen ? s.filePanelToggleOpen : ""} hover-text`}
-            style={{ color: rightPanelOpen ? "var(--text)" : "var(--text-muted)" }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <rect x="3" y="3" width="18" height="18" rx="2" /><line x1="15" y1="3" x2="15" y2="21" />
-            </svg>
-          </button>
+          {showChat && (
+            <button
+              type="button"
+              onClick={() => setRightPanelOpen((open) => !open)}
+              title={activeAgentMetadata?.agentType === "meeting"
+                ? rightPanelOpen ? t("meetingResult.hidePanel") : t("meetingResult.showPanel")
+                : rightPanelOpen ? t("topbar.hideFilePanel") : t("topbar.showFilePanel")}
+              aria-label={activeAgentMetadata?.agentType === "meeting"
+                ? rightPanelOpen ? t("meetingResult.hidePanel") : t("meetingResult.showPanel")
+                : rightPanelOpen ? t("topbar.hideFilePanel") : t("topbar.showFilePanel")}
+              className={`${s.topBarButton} ${s.filePanelToggle} ${rightPanelOpen ? s.filePanelToggleOpen : ""} hover-text`}
+              style={{ color: rightPanelOpen ? "var(--text)" : "var(--text-muted)" }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <rect x="3" y="3" width="18" height="18" rx="2" /><line x1="15" y1="3" x2="15" y2="21" />
+              </svg>
+            </button>
+          )}
         </div>
 
         {/* Portalled to body because the top bar's backdrop-filter creates a
@@ -1150,13 +1227,12 @@ export function AppShell() {
           {showDtaHome ? (
             <DtaHome
               attentionCount={attention.unreadCount}
-              hasWorkspace={Boolean(panelCwd)}
               onOpenAgents={() => handleRailView("agents")}
               onOpenMeetingAgent={() => setMeetingAgentOpen(true)}
               onOpenReviews={() => handleRailView("attention")}
               onOpenSessions={() => handleRailView("sessions")}
-              onOpenWorkflows={() => handleRailView("tgd")}
-              onOpenKnowledge={() => handleRailView("search")}
+              onOpenKnowledge={() => handleRailView("knowledge")}
+              onStartConversation={handleStartMeetingConversation}
             />
           ) : state.parallelSessions.length > 0 && (state.selectedSession || effectiveNewSessionCwd) ? (
             <div className={s.parallelContainer}>
@@ -1178,6 +1254,7 @@ export function AppShell() {
                     onContextUsageChange={actions.setContextUsage}
                     onSessionNamed={actions.bumpRefreshKey}
                     onOpenModels={() => setModelsConfigOpen(true)}
+                    agentMetadata={activeAgentMetadata}
                     isParallel
                     paneLabel={state.selectedSession ? getSessionDisplayTitle(state.selectedSession) : undefined}
                   />
@@ -1223,7 +1300,12 @@ export function AppShell() {
               onSessionNamed={actions.bumpRefreshKey}
               onOpenModels={() => setModelsConfigOpen(true)}
               startupPrompt={pendingStartupPrompt}
-              onStartupPromptConsumed={() => setPendingStartupPrompt(null)}
+              startupAgentMetadata={pendingStartupAgentMetadata}
+              agentMetadata={activeAgentMetadata}
+              onStartupPromptConsumed={() => {
+                setPendingStartupPrompt(null);
+                setPendingStartupAgentMetadata(null);
+              }}
             />
           ) : null}
         </div>
@@ -1250,7 +1332,12 @@ export function AppShell() {
         {/* Right panel tab bar */}
         <div className={s.rightPanelTabBar} data-testid="right-panel-tab-bar">
           <div className={s.rightPanelTabBarInner}>
-            <TabBar
+            {activeAgentMetadata?.agentType === "meeting" && state.selectedSession && (
+              <div className={s.agentResultTabs} role="tablist" aria-label="Meeting workspace">
+                <button type="button" role="tab" aria-selected={rightPanelMode === "meeting"} onClick={() => setRightPanelMode("meeting")}>Meeting result</button>
+              </div>
+            )}
+            {rightPanelMode === "files" && <TabBar
               tabs={fileTabs}
               activeTabId={activeFileTabId ?? ""}
               onSelectTab={setActiveFileTabId}
@@ -1262,7 +1349,7 @@ export function AppShell() {
               onTogglePin={handleTogglePin}
               onOpenSplit={handleOpenSplit}
               splitTabId={splitFileTabId}
-            />
+            />}
           </div>
           {pendingReviewFiles.length > 0 && (
             <button type="button" className={s.reviewQueueButton} onClick={openNextReviewFile} title="Open next changed file">
@@ -1284,7 +1371,9 @@ export function AppShell() {
 
         {/* File content */}
         <div className={s.rightPanelContent}>
-          {diffFile && panelCwd ? (
+          {rightPanelMode === "meeting" && activeAgentMetadata?.agentType === "meeting" && state.selectedSession ? (
+            <MeetingResultPanel sessionId={state.selectedSession.id} />
+          ) : diffFile && panelCwd ? (
             <DiffPanel cwd={panelCwd} path={diffFile} onClose={() => setDiffFile(null)} onAnnotate={handleDiffAnnotation} />
           ) : activeFileTab?.filePath ? (
             <div className={`${s.fileWorkspace} ${splitFileTab ? s.fileWorkspaceSplit : ""}`}>
@@ -1356,12 +1445,7 @@ export function AppShell() {
     {shortcutsOpen && <ShortcutsDialog onClose={() => setShortcutsOpen(false)} />}
     {meetingAgentOpen && (
       <Suspense fallback={null}><MeetingAgentDialog
-        cwd={panelCwd}
         onClose={() => setMeetingAgentOpen(false)}
-        onChooseWorkspace={() => {
-          setMeetingAgentOpen(false);
-          handleOpenProjectSwitcher();
-        }}
         onLaunch={handleLaunchMeetingAgent}
       /></Suspense>
     )}

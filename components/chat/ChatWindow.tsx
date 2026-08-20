@@ -2,6 +2,7 @@
 
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { AgentMessage, SessionInfo, SessionTreeNode, ToolResultMessage } from "@/lib/types";
+import type { AgentMetadata } from "@/lib/agents/agent-types";
 import { MessageView } from "./MessageView";
 import { ChatInput, type ChatInputHandle, type MessageQuote } from "./ChatInput";
 import { ExtensionUIPanel, ExtensionWidgets } from "./ExtensionUIPanel";
@@ -49,6 +50,8 @@ interface Props {
   onOpenModels?: () => void;
   /** A capability launcher may start a fresh session with a reviewed prompt. */
   startupPrompt?: string | null;
+  startupAgentMetadata?: AgentMetadata | null;
+  agentMetadata?: AgentMetadata | null;
   onStartupPromptConsumed?: () => void;
 }
 
@@ -211,7 +214,7 @@ function activityText(messages: import("@/lib/types").AssistantMessage[], toolRe
   return parts.join(" ");
 }
 
-export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked, modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionStatsChange, onContextUsageChange, onSessionNamed, isParallel, paneLabel, onClosePane, wideChat, onOpenModels, startupPrompt, onStartupPromptConsumed }: Props) {
+export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked, modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionStatsChange, onContextUsageChange, onSessionNamed, isParallel, paneLabel, onClosePane, wideChat, onOpenModels, startupPrompt, startupAgentMetadata, agentMetadata, onStartupPromptConsumed }: Props) {
   const {
     loading, error, runtimeFailure, messages, entryIds, streamState,
     agentRunning, modelNames, modelList, modelThinkingLevels, modelThinkingLevelMaps, toolPreset, thinkingLevel,
@@ -229,10 +232,11 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
     handleEditRerun, handleAbortBash, handleExtensionUIResponse, handleAgentEventRef,
   } = useAgentSession({
     session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked,
-    modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionNamed,
+    modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionNamed, startupAgentMetadata,
   });
 
   const { t } = useI18n();
+  const meetingMode = (agentMetadata ?? startupAgentMetadata)?.agentType === "meeting";
   const scrollFollowMode = useScrollFollowMode();
 
   // ── tGD pipeline: detect which phases have run in this session ──
@@ -1100,13 +1104,13 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
       ) : (
       <>
       <style>{`::highlight(conversation-find) { background: var(--color-warning-bg-strong); color: var(--text); text-decoration: underline var(--color-warning-border); text-decoration-thickness: 1px; }`}</style>
-      {pipelineHidden || (!pipelineRelevant && !idlePipelineExpanded) ? (
+      {!meetingMode && (pipelineHidden || (!pipelineRelevant && !idlePipelineExpanded) ? (
         <button onClick={showPipeline} className={styles.pipelineShow} title={t("chat.showPipeline")}>
           tGD · {t("chat.workflow")} ▸
         </button>
       ) : (
         <TgdPipeline phases={tgdPhases} statusOf={phaseStatusOf} onRun={runPhase} onHide={hidePipeline} feature={currentFeature?.name ?? null} active={activeTgdRun} />
-      )}
+      ))}
       <div className="relative flex flex-1 overflow-hidden">
         {findOpen && (
           <div className={`${styles.findBar} glass absolute right-4 top-2 z-20 flex items-center gap-1 rounded-lg border px-2 py-1 shadow-[var(--color-shadow-dropdown)]`}>

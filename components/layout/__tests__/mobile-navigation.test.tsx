@@ -23,10 +23,6 @@ describe("MobileNavigation", () => {
       onShowHome: vi.fn(),
       onShowChat: vi.fn(),
       onSelectView: vi.fn(),
-      onOpenAnalytics: vi.fn(),
-      onOpenModels: vi.fn(),
-      onOpenSkills: vi.fn(),
-      onOpenExtensions: vi.fn(),
       onOpenAppearance: vi.fn(),
     };
     container = document.createElement("div");
@@ -39,7 +35,6 @@ describe("MobileNavigation", () => {
         panelOpen
         filePanelOpen={false}
         attentionUnreadCount={3}
-        skillsDisabled={false}
         {...handlers}
       />,
     ));
@@ -54,16 +49,16 @@ describe("MobileNavigation", () => {
     await act(async () => button("Home").click());
     expect(handlers.onShowHome).toHaveBeenCalledOnce();
 
-    await act(async () => button("Chat").click());
+    await act(async () => button("Meeting").click());
     expect(handlers.onShowChat).toHaveBeenCalledOnce();
 
-    await act(async () => button("Agents").click());
+    await act(async () => button("Processing").click());
     expect(handlers.onSelectView).toHaveBeenCalledWith("agents");
 
-    await act(async () => button("Reviews").click());
+    await act(async () => button("Review").click());
     expect(handlers.onSelectView).toHaveBeenCalledWith("attention");
 
-    const chat = button("Chat");
+    const chat = button("Meeting");
     const more = button("More");
     await act(async () => more.click());
     expect(container!.querySelector('section[aria-label="More"]')).not.toBeNull();
@@ -72,8 +67,8 @@ describe("MobileNavigation", () => {
     expect(container!.textContent).toContain("Work");
     expect(container!.textContent).toContain("Settings");
 
-    await act(async () => button("Files").click());
-    expect(handlers.onSelectView).toHaveBeenCalledWith("files");
+    await act(async () => button("Knowledge").click());
+    expect(handlers.onSelectView).toHaveBeenCalledWith("knowledge");
     expect(container!.querySelector('section[aria-label="More"]')).toBeNull();
   });
 });

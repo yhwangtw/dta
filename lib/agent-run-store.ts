@@ -9,6 +9,7 @@ import {
   type AgentRunStatus,
   type AgentRunStore,
 } from "./agent-run-types";
+import { isAgentMetadata } from "./agents/agent-types";
 
 const MAX_RUNS = 1_000;
 const RUN_STATUSES = new Set<AgentRunStatus>([
@@ -71,6 +72,9 @@ function isAgentRun(value: unknown): value is AgentRun {
     && isOptionalString(item.parentRunId)
     && isOptionalString(item.error)
     && isReport(item.report)
+    && (item.agentMetadata === undefined || isAgentMetadata(item.agentMetadata))
+    && (item.artifacts === undefined || Array.isArray(item.artifacts))
+    && (item.actions === undefined || Array.isArray(item.actions))
     && isWorkspace(item.workspace);
 }
 

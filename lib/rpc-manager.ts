@@ -11,6 +11,9 @@ import {
 import { cacheSessionPath } from "./session-reader";
 import { createSnapshot } from "./git-snapshot";
 import type { AgentSessionLike, ToolInfo } from "./pi-types";
+import type { AgentRuntimeProfile } from "./runtime/runtime-profile";
+import { moveAgentSessionMetadata, readAgentSessionMetadata } from "./agent-metadata-store";
+import { createRuntimeProfile } from "./runtime/runtime-profile";
 import { bindWebExtensions, createTrackedAgentServices, emitWebBeforeFork, type ExtensionProviderTracker } from "./pi-runtime";
 import type { ExtensionDiagnosticInfo, ExtensionProviderInfo } from "./extensions-info";
 import {
@@ -875,10 +878,15 @@ export async function startRpcSession(
   sessionFile: string,
   cwd: string,
   toolNames?: string[],
-  options: { ephemeral?: boolean } = {},
+  options: { ephemeral?: boolean; profile?: AgentRuntimeProfile } = {},
 ): Promise<{ session: AgentSessionWrapper; realSessionId: string }> {
   const registry = getRegistry();
   const locks = getLocks();
+  const effectiveProfile = options.profile
+    ?? (() => {
+      const metadata = readAgentSessionMetadata(sessionId);
+      return metadata ? createRuntimeProfile(metadata) : undefined;
+    })();
 
   const existing = registry.get(sessionId);
   if (existing?.isAlive()) return { session: existing, realSessionId: sessionId };
@@ -897,7 +905,9 @@ export async function startRpcSession(
     // Since v0.68.0, createAgentSession expects string[] tool names instead of Tool[] instances.
     // Pass all built-in coding tool names by default; for "all off", pass empty array.
     const allCodingToolNames = ["read", "bash", "edit", "write", "grep", "find", "ls"];
-    let selectedToolNames = toolNames === undefined ? undefined : withAskUserTool(toolNames);
+    let selectedToolNames = effectiveProfile?.activeToolNames
+      ? withAskUserTool(effectiveProfile.activeToolNames)
+      : toolNames === undefined ? undefined : withAskUserTool(toolNames);
     const webExtensionUI = new WebExtensionUIBridge({ acceptDialogs: false });
     const metadataBySession = new WeakMap<object, RuntimeSessionMetadata>();
     const createRuntime: CreateAgentSessionRuntimeFactory = async ({
@@ -906,15 +916,19 @@ export async function startRpcSession(
       sessionStartEvent,
     }) => {
       const tracked = await createTrackedAgentServices(runtimeCwd);
+      const profileTools = effectiveProfile?.customTools ?? [];
       let toolsOption: string[] | undefined;
       if (selectedToolNames !== undefined) {
-        toolsOption = selectedToolNames.length === 0 ? [] : [...allCodingToolNames, ASK_USER_TOOL_NAME];
+        toolsOption = selectedToolNames.length === 0
+          ? []
+          : [...allCodingToolNames, ASK_USER_TOOL_NAME, ...profileTools.map((tool) => tool.name)];
       }
+      const customTools = [createAskUserTool(webExtensionUI), ...profileTools];
       const result = await createAgentSessionFromServices({
         services: tracked.services,
         sessionManager: runtimeSessionManager,
         sessionStartEvent,
-        customTools: [createAskUserTool(webExtensionUI)],
+        customTools,
         ...(toolsOption !== undefined ? { tools: toolsOption } : {}),
       });
 
@@ -928,6 +942,9 @@ export async function startRpcSession(
       // the only way to truly clear it is to call agent.setSystemPrompt directly.
       if (selectedToolNames?.length === 0) {
         result.session.agent.state.systemPrompt = "";
+      }
+      if (effectiveProfile?.systemPrompt) {
+        result.session.agent.state.systemPrompt = effectiveProfile.systemPrompt;
       }
 
       metadataBySession.set(result.session, {
@@ -972,6 +989,7 @@ export async function startRpcSession(
       }
       registry.set(nextSessionId, activeWrapper);
       if (previousSessionId !== nextSessionId) {
+        moveAgentSessionMetadata(previousSessionId, nextSessionId);
         const nextSessionFile = activeWrapper.sessionFile;
         if (nextSessionFile) cacheSessionPath(nextSessionId, nextSessionFile);
       }

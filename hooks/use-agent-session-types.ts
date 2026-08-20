@@ -1,6 +1,7 @@
 "use client";
 
 import type { AgentMessage, SessionInfo, SessionTreeNode } from "@/lib/types";
+import type { AgentMetadata } from "@/lib/agents/agent-types";
 
 export interface SessionData {
   sessionId: string;
@@ -132,6 +133,7 @@ export interface UseAgentSessionOptions {
   setNewSessionModel?: (model: { provider: string; modelId: string } | null) => void;
   setToolPreset?: (preset: "none" | "default" | "full") => void;
   onSessionNamed?: () => void;
+  startupAgentMetadata?: AgentMetadata | null;
 }
 
 export type ThinkingLevelOption = "auto" | "off" | "minimal" | "low" | "medium" | "high" | "xhigh";

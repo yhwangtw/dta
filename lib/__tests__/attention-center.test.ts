@@ -6,6 +6,7 @@ import { buildAttentionItems } from "../attention-center";
 import type { AgentRun } from "../agent-run-types";
 import type { ScheduleRun } from "../schedule-types";
 import type { SessionInfo } from "../types";
+import type { StoredMeetingResult } from "../agents/meeting/meeting-types";
 
 function errorSession(id: string, modified: string, message: string): SessionInfo {
   const dir = mkdtempSync(join(tmpdir(), "pi-attention-"));
@@ -48,5 +49,19 @@ describe("attention center", () => {
     const result = buildAttentionItems({ agentRuns: [], scheduleRuns: [], sessions: [recent, old] }, now);
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({ source: "session", sessionId: "recent", summary: "rate limit" });
+  });
+
+  it("surfaces failed meeting results as meeting review items", () => {
+    const meetingRuns: StoredMeetingResult[] = [{
+      runId: "meeting-run-1",
+      sessionId: "meeting-session-1",
+      status: "failed",
+      artifacts: [],
+      error: "The Meeting Agent finished without publishing a structured result",
+      updatedAt: "2026-08-10T09:30:00.000Z",
+    }];
+    const result = buildAttentionItems({ agentRuns: [], scheduleRuns: [], sessions: [], meetingRuns }, new Date("2026-08-10T10:00:00.000Z"));
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ source: "meeting", status: "failed", sessionId: "meeting-session-1" });
   });
 });

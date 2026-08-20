@@ -5,7 +5,15 @@ export interface MeetingAgentInput {
   date?: string;
   participants?: string;
   objective?: string;
-  source: string;
+  source?: string;
+  attachments?: Array<{
+    name: string;
+    content?: string;
+    artifactId?: string;
+    transcriptArtifactId?: string;
+    visualAnalysisArtifactId?: string;
+    timelineArtifactId?: string;
+  }>;
   outputLanguage: MeetingOutputLanguage;
 }
 
@@ -17,7 +25,16 @@ function valueOrUnknown(value: string | undefined, language: MeetingOutputLangua
 
 export function buildMeetingMinutesPrompt(input: MeetingAgentInput): string {
   const language = input.outputLanguage === "zh-TW" ? "台灣繁體中文" : "English";
-  const source = input.source.trim();
+  const sourceSections: string[] = [];
+  const pastedSource = input.source?.trim();
+  if (pastedSource) sourceSections.push(`SOURCE: PASTED MEETING MATERIAL\n${pastedSource}`);
+  for (const attachment of input.attachments ?? []) {
+    const name = attachment.name.replace(/[\r\n\t]/g, " ").trim() || "unnamed";
+    const content = attachment.content?.trim();
+    if (content) sourceSections.push(`SOURCE FILE: ${name}${attachment.artifactId ? `\nSOURCE ARTIFACT ID: ${attachment.artifactId}` : ""}${attachment.transcriptArtifactId ? `\nTRANSCRIPT ARTIFACT ID: ${attachment.transcriptArtifactId}` : ""}${attachment.visualAnalysisArtifactId ? `\nVISUAL ANALYSIS ARTIFACT ID: ${attachment.visualAnalysisArtifactId}` : ""}${attachment.timelineArtifactId ? `\nTIMELINE ARTIFACT ID: ${attachment.timelineArtifactId}` : ""}\n${content}`);
+    else if (attachment.artifactId) sourceSections.push(`SOURCE ARTIFACT: ${name} (${attachment.artifactId})\nNo transcript was available; do not infer its contents.`);
+  }
+  const source = sourceSections.join("\n\n---\n\n") || "No readable meeting source was supplied.";
 
   return `You are the Digital Transformation Agent's Meeting Intelligence specialist.
 

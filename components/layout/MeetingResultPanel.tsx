@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { AgentMetadata } from "@/lib/agents/agent-types";
-import type { StoredMeetingResult } from "@/lib/agents/meeting/meeting-types";
+import type { MeetingReviewDecision, StoredMeetingResult } from "@/lib/agents/meeting/meeting-types";
 import { useI18n } from "@/lib/i18n";
 import s from "./MeetingResultPanel.module.css";
 
@@ -15,10 +15,29 @@ interface Payload {
   meetingRun: StoredMeetingResult | null;
 }
 
+const REVIEW_STATUS_KEY = {
+  draft: "meetingReview.status.draft",
+  needs_review: "meetingReview.status.needs_review",
+  approved: "meetingReview.status.approved",
+  changes_requested: "meetingReview.status.changes_requested",
+  rejected: "meetingReview.status.rejected",
+} as const;
+
+const REVIEW_HINT_KEY = {
+  draft: "meetingReview.hint.draft",
+  needs_review: "meetingReview.hint.needs_review",
+  approved: "meetingReview.hint.approved",
+  changes_requested: "meetingReview.hint.changes_requested",
+  rejected: "meetingReview.hint.rejected",
+} as const;
+
 export function MeetingResultPanel({ sessionId }: Props) {
   const { locale, t } = useI18n();
   const [payload, setPayload] = useState<Payload | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [reviewComment, setReviewComment] = useState("");
+  const [reviewing, setReviewing] = useState<MeetingReviewDecision | null>(null);
+  const [reviewError, setReviewError] = useState<string | null>(null);
 
   const load = useCallback(async (signal?: AbortSignal) => {
     try {
@@ -55,6 +74,28 @@ export function MeetingResultPanel({ sessionId }: Props) {
 
   const run = payload?.meetingRun;
   const result = run?.result;
+  const handoffs = run?.actions?.filter((action) => action.type === "handoff") ?? [];
+
+  const submitReview = async (decision: MeetingReviewDecision) => {
+    if (!run || reviewing) return;
+    setReviewing(decision);
+    setReviewError(null);
+    try {
+      const response = await fetch(`/api/meeting-agent/runs/${encodeURIComponent(run.runId)}/review`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ decision, ...(reviewComment.trim() ? { comment: reviewComment.trim() } : {}) }),
+      });
+      const body = await response.json() as { meetingRun?: StoredMeetingResult; error?: string };
+      if (!response.ok || !body.meetingRun) throw new Error(body.error || `HTTP ${response.status}`);
+      setPayload((current) => current ? { ...current, meetingRun: body.meetingRun! } : current);
+      setReviewComment("");
+    } catch (cause) {
+      setReviewError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setReviewing(null);
+    }
+  };
 
   if (error) return <div className={s.state} role="status">{error}</div>;
   if (!run || run.status === "running") {
@@ -88,6 +129,55 @@ export function MeetingResultPanel({ sessionId }: Props) {
         <h2>{result.title || t("meetingResult.title")}</h2>
         <p>{result.summary}</p>
       </header>
+
+      <section className={s.review} data-review-status={run.reviewStatus}>
+        <div className={s.reviewHeading}>
+          <div>
+            <span>{t("meetingReview.controlPlane")}</span>
+            <h3>{t(REVIEW_STATUS_KEY[run.reviewStatus])}</h3>
+          </div>
+          <strong>{t("meetingReview.revision").replace("{revision}", String(run.revision))}</strong>
+        </div>
+        <p>{t(REVIEW_HINT_KEY[run.reviewStatus])}</p>
+        {(run.reviewStatus === "needs_review" || run.reviewStatus === "approved") && <>
+          <label htmlFor={`meeting-review-${run.runId}`}>{t("meetingReview.comment")}</label>
+          <textarea
+            id={`meeting-review-${run.runId}`}
+            value={reviewComment}
+            onChange={(event) => setReviewComment(event.target.value)}
+            placeholder={t("meetingReview.commentPlaceholder")}
+            disabled={Boolean(reviewing)}
+            maxLength={5_000}
+          />
+          <div className={s.reviewActions}>
+            {run.reviewStatus === "needs_review" && <button type="button" className={s.approve} disabled={Boolean(reviewing)} onClick={() => void submitReview("approved")}>{reviewing === "approved" ? t("meetingReview.saving") : t("meetingReview.approve")}</button>}
+            <button type="button" disabled={Boolean(reviewing) || !reviewComment.trim()} onClick={() => void submitReview("changes_requested")}>{reviewing === "changes_requested" ? t("meetingReview.saving") : t("meetingReview.requestChanges")}</button>
+            <button type="button" className={s.reject} disabled={Boolean(reviewing) || !reviewComment.trim()} onClick={() => void submitReview("rejected")}>{reviewing === "rejected" ? t("meetingReview.saving") : t("meetingReview.reject")}</button>
+          </div>
+        </>}
+        {reviewError && <div className={s.reviewError} role="alert">{reviewError}</div>}
+        {run.reviewHistory.length > 0 && <details className={s.reviewHistory}>
+          <summary>{t("meetingReview.history")} · {run.reviewHistory.length}</summary>
+          <ol>{[...run.reviewHistory].reverse().map((entry, index) => <li key={`${entry.reviewedAt}-${index}`}>
+            <strong>{t(REVIEW_STATUS_KEY[entry.status])}</strong>
+            <small>{entry.actorId} · {new Intl.DateTimeFormat(locale === "zh" ? "zh-TW" : "en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(entry.reviewedAt))}</small>
+            {entry.comment && <p>{entry.comment}</p>}
+          </li>)}</ol>
+        </details>}
+      </section>
+
+      {handoffs.length > 0 && <section className={s.handoffs}>
+        <h3>{t("meetingResult.handoffs")} <span>{handoffs.length}</span></h3>
+        <p className={s.handoffHint}>{run.reviewStatus === "approved" ? t("meetingResult.handoffReleased") : t("meetingResult.handoffPending")}</p>
+        <ul>{handoffs.map((handoff, index) => <li key={`${handoff.target ?? "agent"}-${index}`}>
+          <div>
+            <small>{t("meetingResult.nextAgent")}</small>
+            <strong>{handoff.target === "pm-agent" ? "PM Agent" : handoff.target || t("meetingResult.agentUnspecified")}</strong>
+          </div>
+          <span data-released={run.reviewStatus === "approved"}>{run.reviewStatus === "approved" ? t("meetingResult.readyForOrchestrator") : t("meetingResult.awaitingApproval")}</span>
+          {handoff.reason && <p>{handoff.reason}</p>}
+        </li>)}</ul>
+      </section>}
 
       <section>
         <h3>{t("meetingResult.decisions")} <span>{result.decisions.length}</span></h3>

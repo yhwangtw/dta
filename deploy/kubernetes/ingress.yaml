@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: dta-agent-platform
+  # Add the annotations required by the company's Keycloak-aware auth proxy.
+  # That proxy must validate tokens and overwrite x-forwarded-access-token;
+  # never trust a client-supplied copy of that header.
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - dta.example.com
+      secretName: dta-agent-platform-tls
+  rules:
+    - host: dta.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: dta-agent-platform
+                port:
+                  name: http

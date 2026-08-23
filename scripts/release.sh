@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# tGD-pi-web release script
+# Digital Transformation Agent release script
 # Usage: bash scripts/release.sh [YYYY.MM.DD]
 # Default: today's date (Asia/Taipei)
 #

@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "agents": [
+    {
+      "id": "knowledge-agent",
+      "displayName": "Knowledge Agent",
+      "description": "Creates governed knowledge briefs from approved department sources.",
+      "systemPrompt": "Create source-backed knowledge briefs. Preserve citations, distinguish facts from assumptions, and ask for approval before recommending publication.",
+      "enabledByDefault": false,
+      "workflowAllowlist": [
+        "knowledge-publish"
+      ],
+      "skills": [
+        {
+          "id": "knowledge-brief",
+          "name": "Knowledge brief",
+          "description": "Turn approved source material into a traceable knowledge brief.",
+          "tags": [
+            "knowledge",
+            "brief",
+            "governance"
+          ],
+          "inputModes": [
+            "text/plain",
+            "application/json"
+          ],
+          "outputModes": [
+            "text/markdown",
+            "application/json"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -19,7 +19,17 @@ describe("POST /api/agent/new", () => {
   it("creates an in-memory Pi runtime when ephemeral is selected", async () => {
     const response = await POST(new Request("http://localhost/api/agent/new", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cwd, type: "prompt", message: "hello", ephemeral: true }) }));
     expect(response.status).toBe(200);
-    expect(harness.start).toHaveBeenCalledWith(expect.stringMatching(/^__new__/), "", cwd, undefined, { ephemeral: true });
+    expect(harness.start).toHaveBeenCalledWith(expect.stringMatching(/^__new__/), "", cwd, undefined, {
+      ephemeral: true,
+      profile: {
+        metadata: {
+          agentType: "coding",
+          agentId: "coding-agent",
+          displayName: "Coding Agent",
+          userId: "local-user",
+        },
+      },
+    });
     await expect(response.json()).resolves.toMatchObject({ sessionId: "memory-1", ephemeral: true });
   });
 

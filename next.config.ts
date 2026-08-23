@@ -15,6 +15,10 @@ try {
 } catch { /* package not found, use default */ }
 
 const nextConfig: NextConfig = {
+  // Produce a traced runtime bundle for the container stage. Company-specific
+  // configuration is still read from process.env when the container starts;
+  // it is never embedded by this build setting.
+  output: "standalone",
   // Never infer the workspace from lockfiles in parent directories. Without
   // these roots, a stray ~/package-lock.json can make output tracing scan the
   // entire home directory and make builds appear to hang.

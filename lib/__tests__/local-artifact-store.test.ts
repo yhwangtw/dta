@@ -18,6 +18,7 @@ describe("LocalArtifactStore", () => {
     const artifact = await store.get(reference.id);
     expect(Buffer.from(artifact.data).toString("utf8")).toBe("# Minutes");
     expect(artifact.metadata).toEqual({ runId: "run-1" });
+    await expect(store.list()).resolves.toEqual([expect.objectContaining({ id: reference.id, metadata: { runId: "run-1" } })]);
     await store.delete(reference.id);
     await expect(store.get(reference.id)).rejects.toBeInstanceOf(ArtifactNotFoundError);
   });

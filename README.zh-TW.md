@@ -23,7 +23,7 @@
 
 Digital Transformation Agent（DTA）把會議智慧、PDLC、行動追蹤、部門知識、Agent 執行與人工確認串進同一個可追蹤的工作空間，也能讓公司級 Orchestrator 呼叫有明確邊界的部門能力。
 
-> DTA 正由原本的 tGD Pi Web 逐步轉型。既有 Pi Runtime、Session、檔案、Git、排程與 tGD 基礎能力暫時保留，並逐步換成部門 Agent 的產品體驗。
+> DTA 內部重用已驗證的 Pi Session／Runtime 基礎設施，但對外的 Agent Contract、A2A、產品識別與領域成果都不暴露 Pi 實作細節。
 
 ## DTA 的產品方向
 
@@ -65,7 +65,7 @@ cd dta
 bash setup.sh
 ```
 
-安裝腳本是正式支援的一步式 production 流程。Git checkout 會先用 `origin/main` 取代本地原始碼，再檢查 Node.js 與 npm、安裝相依套件、執行 TypeScript 驗證、建立 production build，並可選擇啟動 production server。若使用原始碼壓縮檔，已知的舊版殘留會先移至 `~/.tgd-pi-web-backups/`（可用 `TGD_SETUP_BACKUP_DIR` 覆寫）。
+安裝腳本是正式支援的一步式原始碼安裝流程。Git checkout 會先用 `origin/main` 取代本地原始碼，再檢查 Node.js 與 npm、安裝相依套件、執行 TypeScript 驗證、建立 production build，並可選擇啟動 server。已知的舊版殘留會先移至 `~/.dta-backups/`（可用 `DTA_SETUP_BACKUP_DIR` 覆寫）。
 
 > [!WARNING]
 > 一般使用者的 Git 安裝以 `origin/main` 為唯一真相。執行 `bash setup.sh` 會透過 `git reset --hard origin/main` 與 `git clean -fd` 放棄本地 commit、tracked 修改及未被 ignore 的 untracked 檔案；`.env`、`node_modules`、`.next` 等 ignored runtime 狀態會保留。
@@ -91,46 +91,16 @@ TypeScript 驗證失敗時，`setup.sh` 會顯示完整錯誤並立即停止，�
 若 Git checkout 必須刻意離線使用，可明確跳過遠端同步：
 
 ```bash
-TGD_SETUP_OFFLINE=1 bash setup.sh
+DTA_SETUP_OFFLINE=1 bash setup.sh
 ```
 
-## 瀏覽器內的 tGD 流程
+## 架構與公司部署
 
-階段列會固定顯示在目前 session 上方：
+- [Agent 架構、外部契約、安全邊界與目前限制](./docs/architecture.md)
+- [同一顆 image、runtime config、Keycloak、Vault 與 Kubernetes 指南](./docs/deployment.md)
+- [完整環境變數範本](./.env.example)
 
-```text
-Map → Define → Plan → Develop → Verify → Review → Release
-```
-
-- **以 artifacts 為準的狀態** — Map、Define、Plan 依照磁碟上的真實檔案判斷完成狀態，不使用樂觀 UI 狀態。
-- **feature-aware 進度** — 階段列會追蹤最近 `/tgd-*` 指令指定的 feature；若沒有指定，則使用最近更新的 feature。
-- **Artifact explorer** — 可檢視依階段整理的文件，或完整瀏覽相鄰 tGD 目錄，包括 scans、wiki 與 prototypes。
-- **先預覽再送出的階段操作** — 點擊階段只會把對應指令填入輸入框，讓你確認後再送出。
-- **Git 還原點** — 每次執行前建立 git-backed snapshot，不會碰觸你的 index 或 `HEAD`。
-
-預期目錄結構：
-
-```text
-parent/
-├── your-project/
-└── your-project-tGD/
-    ├── CONTEXT.md
-    ├── TRACKING-PLAN.md
-    ├── CHANGELOG.md
-    ├── REGRESSION-CATALOG.md
-    ├── wiki/
-    └── feature-name/
-        ├── PRD.md
-        ├── SPEC.md
-        ├── DESIGN.md
-        ├── TASKS.md
-        ├── TEST-REPORT.md
-        ├── REVIEW.md
-        ├── METRICS.md
-        └── prototype/
-```
-
-若 artifacts 位於其他位置，可設定 `TGD_DIR`。
+同一顆 image 可在外部環境使用 local／mock adapter，也可進公司後換成 Keycloak、公司 LLM Gateway、MinIO 與 n8n；連線資料與秘密都不會寫進 image。
 
 ## 介面導覽
 
@@ -189,7 +159,7 @@ parent/
 - 支援搜尋、標籤、釘選、封存、自動命名、HTML/Markdown 匯出與用量分析。
 - 提供對話搜尋、user turn 導覽、書籤、minimap、長訊息收合與 always-follow 串流模式。
 - Project switcher 支援最近專案、釘選、探索、檔案系統自動完成與 linked git worktrees。
-- 可重複使用的 prompt templates，並與內建 `/tgd-*` 指令整合。
+- 可重複使用的部門與 Coding workflow prompt templates。
 
 ### 檔案與 git
 
@@ -237,10 +207,10 @@ parent/
 > [!WARNING]
 > 執行 `npm run build` 或 `npm run test:e2e` 前，必須先停止 `npm run dev`。同時執行 Next.js build 會污染開發伺服器使用中的 `.next/`。
 
-Playwright 刻意不儲存在 `package.json`，需要臨時安裝：
+Playwright test runner 已鎖定在 `package.json`。先安裝一次 Chromium 測試 binary，再執行測試：
 
 ```bash
-npm i -D --no-save @playwright/test
+npx playwright install chromium
 npm run test:e2e
 ```
 
@@ -255,7 +225,14 @@ PW_CHROMIUM_PATH=/opt/pw-browsers/chromium npm run test:e2e
 | 設定 | 行為 |
 |---|---|
 | `AGENT_DEFAULT_TYPE` | DTA 預設能力；目前為 `meeting`，既有 Coding Agent session 不受影響 |
+| `DTA_ENABLED_AGENTS` | 啟用 `meeting-agent,pm-agent` 等 server-side Agent |
+| `DTA_AGENT_MANIFEST_PATH` | 掛載額外部門 Agent 的 prompt、skills 與 workflow allowlist，不需重建 image |
 | `DTA_DATA_DIR` | 保存 DTA metadata 與通用 artifacts；預設為 `~/.dta` |
+| `DTA_AUTH_MODE` / `KEYCLOAK_*` | 使用 Keycloak token 保護外部 Agent Contract 與 A2A |
+| `LLM_BASE_URL` / `LLM_MODEL` | 為 server-side Agent run 註冊公司 LLM Gateway |
+| `DTA_ARTIFACT_STORE` / `MINIO_*` | 選擇 local 或 MinIO artifact storage |
+| `DTA_MEMORY_STORE` / `POSTGRES_URL` / `REDIS_URL` | 選擇 local、Postgres 或 Redis 對話記憶，並設定 TTL 與數量上限 |
+| `DTA_WORKFLOW_PROVIDER` / `N8N_*` | 選擇停用、mock 或設定完成的 n8n workflow tools |
 | `DTA_TRANSCRIPTION_PROVIDER` | `none`、僅供開發的 `mock`，或 `openai-compatible` |
 | `DTA_MOCK_TRANSCRIPT` | 僅供非 production mock provider 使用的明確測試逐字稿 |
 | `DTA_TRANSCRIPTION_BASE_URL` / `DTA_TRANSCRIPTION_MODEL` | 公司或相容的語音轉文字端點與模型 |
@@ -265,9 +242,11 @@ PW_CHROMIUM_PATH=/opt/pw-browsers/chromium npm run test:e2e
 | `DTA_MEDIA_PROCESSOR` | `ffmpeg`（預設）或 `none`；負責抽取影片音訊與關鍵影格 |
 | `DTA_MEDIA_MAX_DURATION_SECONDS` | 影音最長秒數，預設 14,400 秒 |
 | `DTA_VIDEO_MAX_KEYFRAMES` | 每支影片最多擷取的關鍵影格，預設 12 |
+| `DTA_UPLOAD_SCANNER` | 選擇不掃描，或 fail-closed 的公司 HTTP 惡意檔案掃描器 |
+| `DTA_AUDIT_LOG_*` / `DTA_METRICS_*` | 設定 hash chain audit events 與受保護的 Prometheus metrics |
+| `DTA_RATE_LIMIT_*` / `DTA_RETENTION_*` | 設定 process-local quota 與 opt-in local artifact 保存期限 |
 | `PI_CODING_AGENT_DIR` | 覆寫預設的 `~/.pi/agent` 目錄 |
 | `PIWEB_ACCESS_PASSWORD` | 啟用套用於所有 route 的內建共用密碼閘門 |
-| `TGD_DIR` | 覆寫相鄰的 `<project>-tGD/` artifact 目錄 |
 | `models.json` | 模型與 provider 清單，包含自訂 `baseUrl` |
 | `auth.json` | 由 Pi 管理的各 provider API credential |
 | Project picker | 選擇並驗證目前 working directory |
@@ -286,27 +265,16 @@ Meeting-first 介面不再要求使用者選擇 repository 或檔案系統路徑
 
 瀏覽器語音辨識可直接把語音輸入逐字稿欄位，不保存錄音。影音上傳後會先保存原始 artifact；FFmpeg 會抽取影片音訊與關鍵影格，設定的轉錄與 Vision provider 會產生時間戳證據，DTA 再保存同步會議時間軸交給 Meeting Agent。內建 mock provider 僅供開發／測試，production 不會啟用。詳見 [Meeting media understanding](./docs/meeting-media-pipeline.md)。
 
-目前限制：metadata、artifact、同步影音處理與 active runtime state 仍屬本機／process-local，因此此階段只支援單一 replica。公司 Orchestrator routes、PM Agent、n8n、MinIO 與 distributed memory 留待後續里程碑。Docker image 已包含 FFmpeg，並以非 root 使用者執行。
+目前限制：active Pi session ownership、normalized event replay、run／review records 與 Meeting／PM records 仍屬 process-local／file-backed，因此即使對話記憶改用 Postgres 或 Redis，此階段仍維持單一 replica。公司 Orchestrator routes、PM Agent、可設定的部門 Agents、A2A、Keycloak、n8n、MinIO、audit 與 metrics 已可使用；詳見[目前 production 限制](./docs/architecture.md#current-production-limitations)。
 
 ## 架構
 
-```text
-Browser                    Generic Agent layer          Pi Agent runtime
-  │                              │                            │
-  ├─ Meeting/Coding identity ───▶│ AgentMetadata + profile     │
-  ├─ POST /api/agent/[id] ──────▶│ PiAgentRuntime ────────────▶│
-  ├─ GET /events (SSE) ─────────▶│ normalized + native events  │
-  ├─ GET /api/files/* ──────────▶│ allowed-root file access   │
-  ├─ GET /api/git/* ────────────▶│ guarded git inspection     │
-  └─ GET /api/tgd/artifacts ────▶│ sibling tGD directory      │
-```
-
-唯讀瀏覽只解析 session 檔，不會建立 `AgentSession`。送出訊息時，伺服器才會為每個 active session 建立一個 in-process runtime wrapper，並透過 SSE 串流事件。Session 替換由 Pi 負責；wrapper 會把 cwd scoped services、extensions、registry key 與事件訂閱重綁至新的 `AgentSession`。
+完整的 generic runtime、Meeting／PM 邊界、外部 Agent Contract、A2A、Keycloak、審核閘門、adapter 與 production 限制，請看 [DTA Agent Platform Architecture](./docs/architecture.md)。
 
 ## 專案結構
 
 ```text
-app/api/        sessions、agent commands/events、schedules、files、git、tGD、config
+app/api/        Agent Contract、runs/events、sessions、schedules、files、git、config
 components/     layout、chat、sidebar、modals 與共用 UI
 hooks/          agent orchestration、streaming、scrolling、sessions、theme
 lib/            RPC lifecycle、scheduling、session parsing、security、i18n、snapshots
@@ -319,7 +287,7 @@ public/fonts/   內建本機字型
 
 ## 離線與隔離網路環境
 
-瀏覽器應用程式本身不會在 runtime 發出外部請求，字型與 UI assets 都已內建；只有設定的 LLM endpoint 必須可連線。
+字型與 UI assets 都已內建；runtime 只會連線到設定中啟用的 LLM／media gateway、Keycloak、MinIO、Postgres／Redis、n8n 與選用的上傳掃描器。
 
 - **內部 npm registry：** clone repository，或把 GitHub Release 原始碼壓縮檔解壓到乾淨目錄，設定內部 registry，再執行 `bash setup.sh`。只有需要 immutable CI-style 安裝時才使用 `npm ci && npm run build`。
 - **可攜式目錄：** 在相同 OS 與架構的連網機器執行 `npm ci && npm run build`，複製完整目錄後執行 `npm run start`。
@@ -341,13 +309,13 @@ public/fonts/   內建本機字型
 
 本專案沒有 hosted session backend。它讀取本機 Pi 檔案，並且只連線到你設定的模型或 provider endpoint。
 
-### tGD Pi Web 關閉時，排程仍會執行嗎？
+### DTA 關閉時，排程仍會執行嗎？
 
 不會。排程器位於本機 Node server 內；要準時執行需保持 `npm start` 運作。重新啟動後，每個排程會依設定選擇**補跑一次**或**略過**。
 
-### 為什麼 `package.json` 沒有 Playwright？
+### 為什麼 Playwright 瀏覽器要分開安裝？
 
-Playwright 的 transitive postinstall 可能下載瀏覽器 binary，導致離線或 Nexus 環境的 `npm ci` 失敗。因此 CI 會在 E2E 前用 `--no-save` 臨時安裝。
+Test runner 已由 lockfile 鎖定以確保可重現安裝；瀏覽器 binary 則屬於執行環境。CI 會明確安裝 Chromium，離線／公司環境也可預裝後透過 `PW_CHROMIUM_PATH` 指定。
 
 ### 為什麼 compact 後的 session 檔仍然很長？
 
@@ -373,7 +341,7 @@ PR 通過 CI 並合併後，使用快速發版流程：
 gh workflow run release.yml -f tag=vYYYY.MM.DD
 ```
 
-請使用目前的 UTC 日期；同一天再次發布時，加入 `vYYYY.MM.DD-1` 這類流水號，未來日期會被拒絕。單一 workflow 會更新 `package.json` 與 `package-lock.json`、建立 release commit 與 annotated tag，接著發布 GitHub Release；它的驗證推送不會再啟動一輪 CI。既有的 `v*` tag 推送方式仍可使用。這個流程**不會發布至 npm**。
+請使用目前的 UTC 日期；同一天再次發布時，加入 `vYYYY.MM.DD-1` 這類流水號，未來日期會被拒絕。單一 workflow 會更新 `package.json` 與 `package-lock.json`、建立 release commit 與 annotated tag，接著建置並 smoke-test 自包含的 `amd64`／`arm64` image、阻擋 High／Critical CVE、連同 SBOM／provenance attestation 發布到 GHCR，最後才建立 GitHub Release。它的驗證推送不會再啟動一輪 CI；既有的 `v*` tag 推送方式仍可使用。這個流程**不會發布至 npm**。
 
 ## 授權
 

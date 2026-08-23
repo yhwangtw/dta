@@ -15,6 +15,7 @@ import {
 import type { ExtensionProviderInfo } from "./extensions-info";
 import { appendPiWebOutputGuidance } from "./output-design";
 import { createPiModelRuntime } from "./pi-model-runtime";
+import { loadDtaConfig } from "./config/env";
 
 interface ProviderModelLike {
   id: string;
@@ -156,6 +157,30 @@ export function trackExtensionProviders<T extends TrackableModelRuntime>(runtime
   return tracker;
 }
 
+export function registerConfiguredLlmProvider(runtime: TrackableModelRuntime): boolean {
+  const config = loadDtaConfig();
+  if (!config.llmBaseUrl || !config.llmModel) return false;
+  runtime.registerProvider(config.llmProviderId, {
+    name: "DTA Company LLM Gateway",
+    baseUrl: config.llmBaseUrl,
+    api: config.llmApi,
+    // Keep the credential in the container environment. Pi resolves this
+    // reference at request time and never persists the secret in its catalog.
+    apiKey: config.llmAuthHeader ? "$LLM_API_KEY" : "dta-keyless",
+    authHeader: config.llmAuthHeader,
+    models: [{
+      id: config.llmModel,
+      name: config.llmModel,
+      reasoning: true,
+      input: config.llmSupportsImages ? ["text", "image"] : ["text"],
+      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+      contextWindow: config.llmContextWindow,
+      maxTokens: config.llmMaxTokens,
+    }],
+  });
+  return true;
+}
+
 export function initializeWebTheme(
   settings: { getTheme(): string | undefined },
   initialize: (themeName?: string, enableWatcher?: boolean) => void = initTheme,
@@ -205,6 +230,7 @@ export async function createTrackedAgentServices(cwd: string): Promise<{
   const agentDir = getAgentDir();
   const modelRuntime = await createPiModelRuntime({ agentDir });
   const providerTracker = trackExtensionProviders(modelRuntime);
+  registerConfiguredLlmProvider(modelRuntime);
 
   // Pi explicitly supports loading async provider factories without starting a
   // session (the same path used by `pi --list-models`). Keep model discovery on

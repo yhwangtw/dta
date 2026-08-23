@@ -244,5 +244,125 @@ export function createFixtures(root: string): { cwd: string } {
     outputLines.map((l) => JSON.stringify(l)).join("\n") + "\n",
   );
 
+  // ── DTA domain-Agent fixtures ────────────────────────────────────────
+  // These sessions exercise the real Meeting/PM metadata and result panels
+  // without requiring a live model provider in browser acceptance tests.
+  const meetingSessionId = "11112222-3333-4444-8555-666677778888";
+  const pmSessionId = "99990000-aaaa-4bbb-8ccc-ddddeeeeffff";
+  const meetingRunId = "meeting-e2e-001";
+  const pmRunId = "pm-e2e-001";
+  const dtaTimestamp = "2026-08-23T09:00:00.000Z";
+
+  const domainSession = (input: { id: string; title: string; prompt: string; answer: string }) => [
+    { type: "session", version: 3, id: input.id, timestamp: dtaTimestamp, cwd },
+    { type: "message", id: `${input.id.slice(0, 8)}-user`, parentId: null, timestamp: dtaTimestamp, message: { role: "user", content: input.prompt, timestamp: Date.parse(dtaTimestamp) } },
+    { type: "message", id: `${input.id.slice(0, 8)}-assistant`, parentId: `${input.id.slice(0, 8)}-user`, timestamp: dtaTimestamp, message: { role: "assistant", content: [{ type: "text", text: input.answer }], timestamp: Date.parse(dtaTimestamp) + 1_000 } },
+    { type: "session_info", id: `${input.id.slice(0, 8)}-info`, parentId: `${input.id.slice(0, 8)}-assistant`, name: input.title },
+  ];
+
+  writeFileSync(
+    path.join(sessionsDir, `2026-08-23T09-00-00_${meetingSessionId}.jsonl`),
+    domainSession({
+      id: meetingSessionId,
+      title: "DTA Weekly Meeting",
+      prompt: "Create review-ready meeting minutes.",
+      answer: "The structured meeting record is ready for human review.",
+    }).map((line) => JSON.stringify(line)).join("\n") + "\n",
+  );
+  writeFileSync(
+    path.join(sessionsDir, `2026-08-23T09-05-00_${pmSessionId}.jsonl`),
+    domainSession({
+      id: pmSessionId,
+      title: "DTA PM Analysis",
+      prompt: "Turn the approved requirement into delivery artifacts.",
+      answer: "The PM artifact set is ready.",
+    }).map((line) => JSON.stringify(line)).join("\n") + "\n",
+  );
+
+  const dtaDataDir = path.join(root, "dta-data");
+  mkdirSync(path.join(dtaDataDir, "metadata"), { recursive: true });
+  mkdirSync(path.join(dtaDataDir, "meeting-runs"), { recursive: true });
+  mkdirSync(path.join(dtaDataDir, "pm-runs"), { recursive: true });
+  mkdirSync(path.join(root, "dta-workspace"), { recursive: true });
+  writeFileSync(path.join(dtaDataDir, "metadata", "sessions.json"), JSON.stringify({
+    version: 1,
+    sessions: {
+      [meetingSessionId]: { agentType: "meeting", agentId: "meeting-agent", displayName: "Meeting Agent", runId: meetingRunId, conversationId: "conversation-e2e" },
+      [pmSessionId]: { agentType: "pm", agentId: "pm-agent", displayName: "PM Agent", runId: pmRunId, conversationId: "conversation-e2e" },
+    },
+  }, null, 2) + "\n");
+  writeFileSync(path.join(dtaDataDir, "meeting-runs", `${meetingRunId}.json`), JSON.stringify({
+    runId: meetingRunId,
+    sessionId: meetingSessionId,
+    status: "completed",
+    result: {
+      title: "DTA Weekly Meeting",
+      summary: "The team approved a governed Meeting-to-PM handoff.",
+      decisions: [{ text: "Use human approval before releasing requirements.", owner: "Elon" }],
+      actionItems: [{ title: "Prepare the PM handoff", owner: "DTA", dueDate: "2026-08-25" }],
+      requirements: [{ title: "Approval-gated handoff", description: "Only approved requirements may be sent to PM Agent." }],
+    },
+    artifacts: [],
+    actions: [{ type: "handoff", target: "pm-agent", reason: "An approved product requirement was discovered." }],
+    reviewStatus: "needs_review",
+    revision: 1,
+    reviewHistory: [],
+    updatedAt: dtaTimestamp,
+  }, null, 2) + "\n");
+  writeFileSync(path.join(dtaDataDir, "pm-runs", `${pmRunId}.json`), JSON.stringify({
+    runId: pmRunId,
+    sessionId: pmSessionId,
+    status: "completed",
+    result: {
+      requirementSummary: "Create an approval-gated Meeting-to-PM delivery flow.",
+      artifacts: [
+        { type: "URD", artifactId: "e2e-urd", title: "Meeting Handoff URD" },
+        { type: "PRD", artifactId: "e2e-prd", title: "Meeting Handoff PRD" },
+        { type: "USER_STORY", artifactId: "e2e-story", title: "Reviewer handoff story" },
+        { type: "ACCEPTANCE_CRITERIA", artifactId: "e2e-ac", title: "Handoff acceptance criteria" },
+        { type: "DESIGN", artifactId: "e2e-design", title: "Handoff design context" },
+        { type: "TASK_PLAN", artifactId: "e2e-plan", title: "Handoff delivery plan" },
+      ],
+      recommendedActions: [{ type: "workflow", target: "pm-create-jira-epic", reason: "Publish after approval." }],
+    },
+    artifacts: [],
+    actions: [{ type: "workflow", target: "pm-create-jira-epic", reason: "Publish after approval." }],
+    updatedAt: dtaTimestamp,
+  }, null, 2) + "\n");
+
+  writeFileSync(path.join(root, "agent", "agent-runs.json"), JSON.stringify({
+    version: 1,
+    runs: [
+      {
+        id: "contract-pm-e2e",
+        requestId: "message-pm-e2e",
+        name: "PM Agent: governed handoff",
+        cwd: path.join(root, "dta-workspace"),
+        prompt: "Create PM artifacts.",
+        toolNames: [],
+        trigger: "manual",
+        status: "completed",
+        createdAt: "2026-08-23T09:05:00.000Z",
+        finishedAt: "2026-08-23T09:06:00.000Z",
+        agentMetadata: { agentType: "pm", agentId: "pm-agent", displayName: "PM Agent", runId: pmRunId, userId: "local-user", conversationId: "conversation-e2e" },
+        artifacts: [],
+      },
+      {
+        id: "contract-meeting-e2e",
+        requestId: "message-meeting-e2e",
+        name: "Meeting Agent: DTA Weekly Meeting",
+        cwd: path.join(root, "dta-workspace"),
+        prompt: "Create meeting minutes.",
+        toolNames: [],
+        trigger: "manual",
+        status: "completed",
+        createdAt: "2026-08-23T09:00:00.000Z",
+        finishedAt: "2026-08-23T09:01:00.000Z",
+        agentMetadata: { agentType: "meeting", agentId: "meeting-agent", displayName: "Meeting Agent", runId: meetingRunId, userId: "local-user", conversationId: "conversation-e2e" },
+        artifacts: [],
+      },
+    ],
+  }, null, 2) + "\n");
+
   return { cwd };
 }

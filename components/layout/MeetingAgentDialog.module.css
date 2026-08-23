@@ -204,7 +204,7 @@
 
 @media (max-width: 640px) {
   .overlay { align-items: end; padding: 8px; }
-  .dialog { max-height: calc(100dvh - var(--mobile-nav-height) - 12px); border-radius: var(--radius-dialog) var(--radius-dialog) var(--radius-card) var(--radius-card); }
+  .dialog { max-height: calc(100dvh - var(--mobile-nav-height, 54px) - 12px); border-radius: var(--radius-dialog) var(--radius-dialog) var(--radius-card) var(--radius-card); }
   .header { padding: 18px 16px 15px; }
   .form { padding: 16px 16px 0; }
   .twoColumns,

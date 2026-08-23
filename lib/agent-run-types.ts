@@ -19,6 +19,7 @@ export interface AgentRunInput {
   name: string;
   cwd: string;
   prompt: string;
+  requestId?: string;
   provider?: string;
   modelId?: string;
   thinkingLevel?: string;

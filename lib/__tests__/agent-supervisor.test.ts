@@ -5,6 +5,7 @@ const harness = vi.hoisted(() => ({
   store: { version: 1, runs: [] } as AgentRunStore,
   persistError: null as Error | null,
   startRpcSession: vi.fn(),
+  sessions: new Map<string, unknown>(),
   trusted: true,
 }));
 
@@ -18,7 +19,12 @@ vi.mock("../agent-run-store", () => ({
 }));
 
 vi.mock("../rpc-manager", () => ({
-  startRpcSession: harness.startRpcSession,
+  startRpcSession: async (...args: unknown[]) => {
+    const started = await harness.startRpcSession(...args) as { realSessionId: string; session: unknown };
+    harness.sessions.set(started.realSessionId, started.session);
+    return started;
+  },
+  getRpcSession: vi.fn((sessionId: string) => harness.sessions.get(sessionId)),
 }));
 
 vi.mock("../agent-run-workspace", () => ({
@@ -61,6 +67,7 @@ beforeEach(() => {
   harness.store = { version: 1, runs: [] };
   harness.persistError = null;
   harness.startRpcSession.mockReset();
+  harness.sessions.clear();
   harness.trusted = true;
 });
 
@@ -225,5 +232,26 @@ describe("AgentRunSupervisor", () => {
 
     expect(() => supervisor.setMaxConcurrency(5)).toThrow("disk full");
     expect(supervisor.maxConcurrency).toBe(2);
+  });
+
+  it("AC-2.10: scopes request idempotency to the authenticated user and Agent", () => {
+    const supervisor = new AgentRunSupervisor({ maxConcurrency: 0 });
+    const common = {
+      ...input("Contract"),
+      requestId: "shared-request-id",
+      agentMetadata: {
+        agentType: "meeting" as const,
+        agentId: "meeting-agent",
+        displayName: "Meeting Agent",
+      },
+    };
+
+    const first = supervisor.enqueue({ ...common, agentMetadata: { ...common.agentMetadata, userId: "user-1" } });
+    const duplicate = supervisor.enqueue({ ...common, agentMetadata: { ...common.agentMetadata, userId: "user-1" } });
+    const otherUser = supervisor.enqueue({ ...common, agentMetadata: { ...common.agentMetadata, userId: "user-2" } });
+
+    expect(duplicate.id).toBe(first.id);
+    expect(otherUser.id).not.toBe(first.id);
+    expect(harness.store.runs).toHaveLength(2);
   });
 });

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.dta.agent-platform</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/opt/homebrew/bin/node</string>
+        <string>node_modules/next/dist/bin/next</string>
+        <string>start</string>
+        <string>-p</string>
+        <string>30141</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>/Users/CHANGE_ME_USER/dta</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>NODE_ENV</key><string>production</string>
+        <key>HOSTNAME</key><string>127.0.0.1</string>
+        <key>DTA_DATA_DIR</key><string>/Users/CHANGE_ME_USER/.dta</string>
+    </dict>
+    <key>RunAtLoad</key><true/>
+    <key>KeepAlive</key><true/>
+    <key>StandardOutPath</key><string>/tmp/dta-agent-platform.log</string>
+    <key>StandardErrorPath</key><string>/tmp/dta-agent-platform.error.log</string>
+</dict>
+</plist>

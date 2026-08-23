@@ -57,11 +57,33 @@ describe("attention center", () => {
       sessionId: "meeting-session-1",
       status: "failed",
       artifacts: [],
+      actions: [],
+      reviewStatus: "draft",
+      revision: 0,
+      reviewHistory: [],
       error: "The Meeting Agent finished without publishing a structured result",
       updatedAt: "2026-08-10T09:30:00.000Z",
     }];
     const result = buildAttentionItems({ agentRuns: [], scheduleRuns: [], sessions: [], meetingRuns }, new Date("2026-08-10T10:00:00.000Z"));
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({ source: "meeting", status: "failed", sessionId: "meeting-session-1" });
+  });
+
+  it("surfaces unapproved meeting results for human review", () => {
+    const meetingRuns: StoredMeetingResult[] = [{
+      runId: "meeting-run-review",
+      sessionId: "meeting-session-review",
+      status: "completed",
+      artifacts: [],
+      actions: [],
+      reviewStatus: "needs_review",
+      revision: 1,
+      reviewHistory: [],
+      result: { summary: "Pilot decision", decisions: [], actionItems: [], requirements: [] },
+      updatedAt: "2026-08-10T09:45:00.000Z",
+    }];
+    const result = buildAttentionItems({ agentRuns: [], scheduleRuns: [], sessions: [], meetingRuns }, new Date("2026-08-10T10:00:00.000Z"));
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ source: "meeting", status: "waiting_for_input", sessionId: "meeting-session-review" });
   });
 });

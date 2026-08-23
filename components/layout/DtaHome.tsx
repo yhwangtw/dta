@@ -2,14 +2,17 @@
 
 import { useState, type FormEvent, type KeyboardEvent } from "react";
 import { useI18n } from "@/lib/i18n";
+import type { DepartmentAgentSummary } from "./DepartmentAgentDialog";
 import s from "./DtaHome.module.css";
 
 interface DtaHomeProps {
   attentionCount: number;
   onOpenAgents: () => void;
   onOpenMeetingAgent: () => void;
+  onOpenPMAgent: () => void;
+  departmentAgents: DepartmentAgentSummary[];
+  onOpenDepartmentAgent: (agent: DepartmentAgentSummary) => void;
   onOpenReviews: () => void;
-  onOpenSessions: () => void;
   onOpenKnowledge: () => void;
   onStartConversation: (message: string) => Promise<void>;
 }
@@ -30,8 +33,10 @@ export function DtaHome({
   attentionCount,
   onOpenAgents,
   onOpenMeetingAgent,
+  onOpenPMAgent,
+  departmentAgents,
+  onOpenDepartmentAgent,
   onOpenReviews,
-  onOpenSessions,
   onOpenKnowledge,
   onStartConversation,
 }: DtaHomeProps) {
@@ -147,7 +152,7 @@ export function DtaHome({
               <span className={s.cardAction}>{t("dta.agent.open")} <span aria-hidden>→</span></span>
             </button>
 
-            <button type="button" className={s.agentCard} onClick={onOpenSessions}>
+            <button type="button" className={s.agentCard} onClick={onOpenPMAgent}>
               <span className={`${s.agentIcon} ${s.agentIconCyan}`}>
                 <svg {...iconProps}><path d="M6 3v12M18 9v12" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="6" r="3" /><path d="M9 18h3a6 6 0 0 0 6-6V9" /></svg>
               </span>
@@ -156,6 +161,18 @@ export function DtaHome({
               <p>{t("dta.agent.pdlcHint")}</p>
               <span className={s.cardAction}>{t("dta.agent.openMeetings")} <span aria-hidden>→</span></span>
             </button>
+
+            {departmentAgents.map((agent) => (
+              <button type="button" className={s.agentCard} onClick={() => onOpenDepartmentAgent(agent)} key={agent.id}>
+                <span className={`${s.agentIcon} ${s.agentIconCyan}`}>
+                  <svg {...iconProps}><rect x="4" y="4" width="16" height="16" rx="3" /><path d="M9 9h6M9 13h4" /><path d="M8 2v2M16 2v2" /></svg>
+                </span>
+                <span className={s.status}>{t("dta.status.foundation")}</span>
+                <strong>{agent.displayName}</strong>
+                <p>{agent.description}</p>
+                <span className={s.cardAction}>{t("dta.agent.open")} <span aria-hidden>→</span></span>
+              </button>
+            ))}
 
             <button type="button" className={s.agentCard} onClick={onOpenReviews}>
               <span className={s.agentIcon}>

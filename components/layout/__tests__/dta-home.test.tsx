@@ -22,8 +22,10 @@ describe("DtaHome", () => {
     const handlers = {
       onOpenAgents: vi.fn(),
       onOpenMeetingAgent: vi.fn(),
+      onOpenPMAgent: vi.fn(),
+      departmentAgents: [{ id: "knowledge-agent", agentType: "department" as const, displayName: "Knowledge Agent", description: "Creates governed knowledge briefs." }],
+      onOpenDepartmentAgent: vi.fn(),
       onOpenReviews: vi.fn(),
-      onOpenSessions: vi.fn(),
       onOpenKnowledge: vi.fn(),
       onStartConversation: vi.fn().mockResolvedValue(undefined),
     };
@@ -41,14 +43,17 @@ describe("DtaHome", () => {
     expect(container.textContent).toContain("Talk to Meeting Agent");
     expect(container.textContent).toContain("Human-reviewed by default");
     expect(container.textContent).toContain("New meeting");
-    expect(container.textContent).toContain("Meeting library");
+    expect(container.textContent).toContain("PM Agent");
+    expect(container.textContent).toContain("Start PM analysis");
+    expect(container.textContent).toContain("Knowledge Agent");
     expect(container.textContent).not.toContain("Choose a department workspace");
 
     const button = (label: string) => [...container!.querySelectorAll<HTMLButtonElement>("button")]
       .find((candidate) => candidate.textContent?.includes(label));
     await act(async () => button("Create meeting minutes")?.click());
-    await act(async () => button("Meeting library")?.click());
+    await act(async () => button("Start PM analysis")?.click());
     await act(async () => button("Meeting knowledge")?.click());
+    await act(async () => button("Knowledge Agent")?.click());
 
     const composer = container.querySelector<HTMLTextAreaElement>("#dta-meeting-message");
     await act(async () => {
@@ -61,8 +66,9 @@ describe("DtaHome", () => {
 
     expect(handlers.onOpenMeetingAgent).toHaveBeenCalledOnce();
     expect(handlers.onOpenAgents).not.toHaveBeenCalled();
-    expect(handlers.onOpenSessions).toHaveBeenCalledOnce();
+    expect(handlers.onOpenPMAgent).toHaveBeenCalledOnce();
     expect(handlers.onOpenKnowledge).toHaveBeenCalledOnce();
+    expect(handlers.onOpenDepartmentAgent).toHaveBeenCalledWith(handlers.departmentAgents[0]);
     expect(handlers.onStartConversation).toHaveBeenCalledWith("Help me prepare the weekly meeting");
   });
 });

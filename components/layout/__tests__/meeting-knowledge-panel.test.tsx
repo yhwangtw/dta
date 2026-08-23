@@ -24,6 +24,9 @@ describe("MeetingKnowledgePanel", () => {
           runId: "run-ready",
           sessionId: "session-ready",
           status: "completed",
+          reviewStatus: "approved",
+          revision: 1,
+          reviewHistory: [{ status: "approved", actorId: "reviewer", reviewedAt: "2026-08-20T08:00:00.000Z", revision: 1 }],
           updatedAt: "2026-08-20T08:00:00.000Z",
           artifacts: [],
           result: {
@@ -32,6 +35,23 @@ describe("MeetingKnowledgePanel", () => {
             decisions: [{ text: "Launch the pilot", owner: "Elon" }],
             actionItems: [{ title: "Prepare rollout", owner: "Mina" }],
             requirements: [{ title: "Audit trail", description: "Keep evidence references." }],
+          },
+        },
+        {
+          runId: "run-unapproved",
+          sessionId: "session-unapproved",
+          status: "completed",
+          reviewStatus: "needs_review",
+          revision: 1,
+          reviewHistory: [],
+          updatedAt: "2026-08-20T07:30:00.000Z",
+          artifacts: [],
+          result: {
+            title: "Unapproved private draft",
+            summary: "This must not be searchable yet.",
+            decisions: [],
+            actionItems: [],
+            requirements: [],
           },
         },
         {
@@ -54,6 +74,7 @@ describe("MeetingKnowledgePanel", () => {
     expect(container.querySelector('[data-testid="meeting-knowledge"]')).not.toBeNull();
     expect(container.textContent).toContain("Meeting knowledge");
     expect(container.textContent).toContain("Transformation sync");
+    expect(container.textContent).not.toContain("Unapproved private draft");
     expect(container.textContent).not.toContain("runtime detail");
 
     const search = container.querySelector<HTMLInputElement>('input[type="search"]')!;

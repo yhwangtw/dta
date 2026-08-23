@@ -9,20 +9,25 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'UTC date tag to create (e.g. v2026.07.19 or v2026.07.19-1)'
+        description: 'UTC date tag to create (e.g. v2026.08.23 or v2026.08.23-1)'
         required: true
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: release
   cancel-in-progress: false
 
 jobs:
-  release:
+  prepare:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: write
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+      version: ${{ steps.version.outputs.version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -40,39 +45,25 @@ jobs:
           else
             TAG="$GITHUB_REF_NAME"
           fi
-
           if ! [[ "$TAG" =~ ^v[0-9]{4}\.[0-9]{2}\.[0-9]{2}(-[1-9][0-9]*)?$ ]]; then
-            echo "Expected a UTC date tag such as v2026.07.19 or v2026.07.19-1, got: $TAG" >&2
+            echo "Expected a UTC date tag such as v2026.08.23 or v2026.08.23-1, got: $TAG" >&2
             exit 1
           fi
-
           VERSION="${TAG#v}" node <<'NODE'
           const version = process.env.VERSION;
-          const match = version.match(
-            /^(\d{4})\.(\d{2})\.(\d{2})(?:-([1-9]\d*))?$/,
-          );
+          const match = version.match(/^(\d{4})\.(\d{2})\.(\d{2})(?:-([1-9]\d*))?$/);
           if (!match) throw new Error(`Invalid calendar version: ${version}`);
           const [, yearText, monthText, dayText] = match;
           const [year, month, day] = [yearText, monthText, dayText].map(Number);
           const date = new Date(Date.UTC(year, month - 1, day));
-          if (
-            date.getUTCFullYear() !== year ||
-            date.getUTCMonth() !== month - 1 ||
-            date.getUTCDate() !== day
-          ) {
+          if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) {
             throw new Error(`Invalid calendar version: ${version}`);
           }
           NODE
-
-          # A previously-created historical tag may be resumed when its
-          # GitHub Release is missing. A future tag is never valid, and every
-          # brand-new workflow-dispatch tag must describe today's UTC date.
           BASE_TAG="${TAG%%-*}"
           TODAY="$(date -u +v%Y.%m.%d)"
           TAG_EXISTS=false
-          if git rev-parse --verify --quiet "refs/tags/$TAG" >/dev/null; then
-            TAG_EXISTS=true
-          fi
+          if git rev-parse --verify --quiet "refs/tags/$TAG" >/dev/null; then TAG_EXISTS=true; fi
           if [[ "$BASE_TAG" > "$TODAY" ]]; then
             echo "Future release dates are not allowed (today: $TODAY), got: $TAG" >&2
             exit 1
@@ -81,10 +72,8 @@ jobs:
             echo "New releases must use today's UTC date ($TODAY), got: $TAG" >&2
             exit 1
           fi
-
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
-          echo "Tag: $TAG, Version: ${TAG#v}"
 
       - name: Prepare release commit and tag
         if: github.event_name == 'workflow_dispatch'
@@ -103,100 +92,192 @@ jobs:
               echo "Tag $TAG is not reachable from main" >&2
               exit 1
             fi
-            echo "Tag $TAG already exists with the expected version; resuming release creation."
+            echo "Tag $TAG already exists with the expected version; resuming release."
             exit 0
           fi
-
           VERSION="$VERSION" node <<'NODE'
           const fs = require('node:fs');
-
-          const version = process.env.VERSION;
           for (const file of ['package.json', 'package-lock.json']) {
             const contents = JSON.parse(fs.readFileSync(file, 'utf8'));
-            contents.version = version;
-            if (file === 'package-lock.json' && contents.packages?.['']) {
-              contents.packages[''].version = version;
-            }
+            contents.version = process.env.VERSION;
+            if (file === 'package-lock.json' && contents.packages?.['']) contents.packages[''].version = process.env.VERSION;
             fs.writeFileSync(file, `${JSON.stringify(contents, null, 2)}\n`);
           }
           NODE
-
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add package.json package-lock.json
-
-          if ! git diff --cached --quiet; then
-            git commit -m "chore: release $TAG [skip ci]"
-          fi
-
+          if ! git diff --cached --quiet; then git commit -m "chore: release $TAG [skip ci]"; fi
           git tag -a "$TAG" -m "Release $TAG"
           git push --atomic origin HEAD:main "refs/tags/$TAG"
 
+  container:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    env:
+      REGISTRY: ghcr.io
+      IMAGE_NAME: ${{ github.repository }}
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve image metadata
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=${{ needs.prepare.outputs.tag }}
+            type=raw,value=${{ needs.prepare.outputs.version }}
+            type=raw,value=latest
+
+      - name: Resolve build timestamp
+        id: build
+        run: |
+          echo "created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+          echo "revision=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Build amd64 verification image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          load: true
+          platforms: linux/amd64
+          tags: dta-release-verification:local
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            BUILD_VERSION=${{ needs.prepare.outputs.version }}
+            BUILD_REVISION=${{ steps.build.outputs.revision }}
+            BUILD_CREATED=${{ steps.build.outputs.created }}
+
+      - name: Smoke-test the exact image
+        run: |
+          docker run -d --name dta-release-smoke -p 30141:30141 \
+            -e DTA_AUTH_MODE=none \
+            -e DTA_ARTIFACT_STORE=local \
+            -e DTA_WORKFLOW_PROVIDER=none \
+            -e DTA_TRANSCRIPTION_PROVIDER=none \
+            -e DTA_VISION_PROVIDER=none \
+            -e DTA_UPLOAD_SCANNER=none \
+            dta-release-verification:local
+          trap 'docker logs dta-release-smoke; docker rm -f dta-release-smoke' EXIT
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:30141/health >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          exit 1
+
+      - name: Scan verification image for High and Critical CVEs
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: dta-release-verification:local
+          format: table
+          exit-code: '1'
+          ignore-unfixed: false
+          severity: HIGH,CRITICAL
+          scanners: vuln
+
+      - name: Build and push attested multi-architecture image
+        id: push
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          provenance: mode=max
+          sbom: true
+          build-args: |
+            BUILD_VERSION=${{ needs.prepare.outputs.version }}
+            BUILD_REVISION=${{ steps.build.outputs.revision }}
+            BUILD_CREATED=${{ steps.build.outputs.created }}
+
+      - name: Generate release SBOM
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.push.outputs.digest }}
+          format: cyclonedx
+          output: dta-${{ needs.prepare.outputs.version }}.cdx.json
+          scanners: vuln
+        env:
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v7
+        with:
+          name: dta-${{ needs.prepare.outputs.version }}-sbom
+          path: dta-${{ needs.prepare.outputs.version }}.cdx.json
+          retention-days: 90
+
+      - name: Attest image provenance
+        uses: actions/attest@v4
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
+
+      - name: Attest image SBOM
+        uses: actions/attest@v4
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          sbom-path: dta-${{ needs.prepare.outputs.version }}.cdx.json
+          push-to-registry: true
+
+  github-release:
+    needs: [prepare, container]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
+          fetch-depth: 0
+
       - name: Generate categorized changelog
         env:
-          VERSION: ${{ steps.version.outputs.tag }}
-        run: |
-          PREV_TAG=$(git describe --tags --abbrev=0 "${VERSION}^" 2>/dev/null || echo "")
-
-          if [ -n "$PREV_TAG" ]; then
-            COMMITS=$(git log --pretty=format:"%s|||%h" "$PREV_TAG".."$VERSION")
-          else
-            COMMITS=$(git log --pretty=format:"%s|||%h" -30)
-          fi
-
-          FEATS=""; FIXES=""; DOCS=""; REFACTORS=""; CHORES=""; OTHERS=""
-
-          while IFS= read -r line; do
-            [ -z "$line" ] && continue
-            MSG="${line%%|||*}"
-            HASH="${line##*|||}"
-            DISPLAY_MSG="$MSG"
-
-            case "$MSG" in
-              feat*:*|feat*) FEATS="${FEATS}- ${DISPLAY_MSG#*: } (\`$HASH\`)\n" ;;
-              fix*:*|fix*)   FIXES="${FIXES}- ${DISPLAY_MSG#*: } (\`$HASH\`)\n" ;;
-              docs*:*|docs*) DOCS="${DOCS}- ${DISPLAY_MSG#*: } (\`$HASH\`)\n" ;;
-              refactor*:*)   REFACTORS="${REFACTORS}- ${DISPLAY_MSG#*: } (\`$HASH\`)\n" ;;
-              chore*:*|ci*:*) CHORES="${CHORES}- ${DISPLAY_MSG#*: } (\`$HASH\`)\n" ;;
-              *)             OTHERS="${OTHERS}- ${DISPLAY_MSG} (\`$HASH\`)\n" ;;
-            esac
-          done <<< "$COMMITS"
-
-          build_section() {
-            local title="$1" content="$2"
-            if [ -n "$content" ]; then
-              echo "### $title"
-              echo -e "$content"
-            fi
-          }
-
-          {
-            echo "## tGD-pi-web $VERSION"
-            echo ""
-            build_section "✨ Features" "$FEATS"
-            build_section "🐛 Bug Fixes" "$FIXES"
-            build_section "📝 Documentation" "$DOCS"
-            build_section "♻️ Refactoring" "$REFACTORS"
-            build_section "🔧 Chores" "$CHORES"
-            build_section "📦 Other Changes" "$OTHERS"
-
-            if [ -n "$PREV_TAG" ]; then
-              echo "---"
-              echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/${PREV_TAG}...${VERSION}"
-            fi
-          } > /tmp/release-notes.md
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: node scripts/generate-release-notes.mjs "${{ needs.prepare.outputs.tag }}" /tmp/release-notes.md
 
       - name: Create GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if gh release view "${{ steps.version.outputs.tag }}" >/dev/null 2>&1; then
-            echo "GitHub Release already exists: ${{ steps.version.outputs.tag }}"
+          if gh release view "${{ needs.prepare.outputs.tag }}" >/dev/null 2>&1; then
+            echo "GitHub Release already exists: ${{ needs.prepare.outputs.tag }}"
             exit 0
           fi
-
-          gh release create "${{ steps.version.outputs.tag }}" \
+          gh release create "${{ needs.prepare.outputs.tag }}" \
             --verify-tag \
-            --title "tGD-pi-web ${{ steps.version.outputs.tag }}" \
+            --title "Digital Transformation Agent ${{ needs.prepare.outputs.tag }}" \
             --notes-file /tmp/release-notes.md \
             --latest

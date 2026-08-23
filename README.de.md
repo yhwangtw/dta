@@ -228,10 +228,10 @@ Das mobile Layout hält aktive Phase, Gespräch, Composer, Modellsteuerung und H
 > [!WARNING]
 > Beende `npm run dev`, bevor du `npm run build` oder `npm run test:e2e` ausführst. Ein gleichzeitiger Next.js Build beschädigt das vom Entwicklungsserver verwendete `.next/`-Verzeichnis.
 
-Playwright wird absichtlich ad hoc installiert und nicht in `package.json` gespeichert:
+Der Playwright-Test-Runner ist in `package.json` fest versioniert. Installiere das Chromium-Test-Binary einmal und starte dann die Suite:
 
 ```bash
-npm i -D --no-save @playwright/test
+npx playwright install chromium
 npm run test:e2e
 ```
 
@@ -315,9 +315,9 @@ Das Projekt enthält kein gehostetes Session-Backend. Es liest lokale Pi-Dateien
 
 Nein. Der Scheduler läuft im lokalen Node-Server. Für pünktliche Ausführungen muss `npm start` aktiv bleiben. Nach einem Neustart holt jeder Zeitplan gemäß seiner Richtlinie einmal nach oder überspringt den verpassten Lauf.
 
-### Warum steht Playwright nicht in `package.json`?
+### Warum wird der Playwright-Browser separat installiert?
 
-Sein transitives Postinstall kann Browser-Binärdateien herunterladen und `npm ci` in Offline- oder Nexus-Umgebungen beschädigen. CI installiert es vor E2E mit `--no-save`.
+Der Test-Runner ist für reproduzierbare Installationen im Lockfile fixiert; Browser-Binaries bleiben Teil der Laufzeitumgebung. CI installiert Chromium explizit, während Offline- oder Unternehmensumgebungen ein vorinstalliertes Binary über `PW_CHROMIUM_PATH` angeben können.
 
 ### Warum bleibt eine Session-Datei nach dem Compact lang?
 

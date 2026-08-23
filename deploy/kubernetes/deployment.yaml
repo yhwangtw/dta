@@ -1,0 +1,152 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dta-agent-platform
+  labels:
+    app.kubernetes.io/name: dta-agent-platform
+spec:
+  # Pi session and run supervision are process-local. Keep this at one until a
+  # distributed run/session store and worker ownership protocol are added.
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: dta-agent-platform
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: dta-agent-platform
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: dta
+          image: registry.example.com/dta-agent-platform:1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 30141
+          envFrom:
+            - configMapRef:
+                name: dta-agent-platform
+          env:
+            - name: LLM_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: dta-agent-platform-secrets
+                  key: LLM_API_KEY
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: dta-agent-platform-secrets
+                  key: MINIO_ACCESS_KEY
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: dta-agent-platform-secrets
+                  key: MINIO_SECRET_KEY
+            - name: N8N_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: dta-agent-platform-secrets
+                  key: N8N_API_KEY
+                  optional: true
+            - name: DTA_TRANSCRIPTION_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: dta-agent-platform-secrets
+                  key: DTA_TRANSCRIPTION_API_KEY
+                  optional: true
+            - name: DTA_VISION_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: dta-agent-platform-secrets
+                  key: DTA_VISION_API_KEY
+                  optional: true
+            - name: PIWEB_SESSION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: dta-agent-platform-secrets
+                  key: PIWEB_SESSION_SECRET
+                  optional: true
+            - name: POSTGRES_URL
+              valueFrom:
+                secretKeyRef:
+                  name: dta-agent-platform-secrets
+                  key: POSTGRES_URL
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: dta-agent-platform-secrets
+                  key: REDIS_URL
+                  optional: true
+            - name: DTA_UPLOAD_SCANNER_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: dta-agent-platform-secrets
+                  key: DTA_UPLOAD_SCANNER_API_KEY
+                  optional: true
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 30
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "2"
+              memory: 4Gi
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: workspace
+              mountPath: /workspace
+            - name: tmp
+              mountPath: /tmp
+            - name: next-cache
+              mountPath: /app/.next/cache
+            - name: agent-config
+              mountPath: /etc/dta
+              readOnly: true
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: dta-agent-platform-data
+        - name: workspace
+          emptyDir: {}
+        - name: tmp
+          emptyDir:
+            sizeLimit: 2Gi
+        - name: next-cache
+          emptyDir:
+            sizeLimit: 1Gi
+        - name: agent-config
+          configMap:
+            name: dta-agent-platform
+            items:
+              - key: agents.json
+                path: agents.json

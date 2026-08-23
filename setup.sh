@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# tGD-pi-web — 一鍵安裝 + Production 啟動
+# Digital Transformation Agent — 一鍵安裝 + Production 啟動
 # 需要：Node.js 22+
 #
 set -e
@@ -16,6 +16,12 @@ NC='\033[0m'
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
+# DTA names are canonical. The legacy variables remain read-only fallbacks so
+# existing private installations do not break during migration.
+DTA_SETUP_OFFLINE="${DTA_SETUP_OFFLINE:-${TGD_SETUP_OFFLINE:-0}}"
+DTA_SETUP_SOURCE_SYNCED="${DTA_SETUP_SOURCE_SYNCED:-${TGD_SETUP_SOURCE_SYNCED:-0}}"
+DTA_SETUP_BACKUP_DIR="${DTA_SETUP_BACKUP_DIR:-${TGD_SETUP_BACKUP_DIR:-$HOME/.dta-backups}}"
+
 # ── Git checkout 以 origin/main 為唯一真相 ───────────
 # End-user installations are disposable checkouts. Always replace tracked
 # changes, local commits, and non-ignored untracked files with origin/main,
@@ -23,22 +29,22 @@ cd "$SCRIPT_DIR"
 # node_modules, and .next remains untouched. Source archives have no .git and
 # skip this step; an offline Git checkout can explicitly opt out.
 if [ -e "$SCRIPT_DIR/.git" ] \
-  && [ "${TGD_SETUP_SOURCE_SYNCED:-0}" != "1" ] \
-  && [ "${TGD_SETUP_OFFLINE:-0}" != "1" ]; then
+  && [ "$DTA_SETUP_SOURCE_SYNCED" != "1" ] \
+  && [ "$DTA_SETUP_OFFLINE" != "1" ]; then
   echo -e "${CYAN}${BOLD}♻️  同步遠端正式版 origin/main...${NC}"
   echo -e "  ${YELLOW}本地 commit、tracked 修改與未追蹤程式碼將被放棄。${NC}"
   git fetch --prune origin main
   git reset --hard origin/main
   git clean -fd
   echo -e "  ${GREEN}✅ 本地程式碼已同步為 origin/main${NC}"
-  export TGD_SETUP_SOURCE_SYNCED=1
+  export DTA_SETUP_SOURCE_SYNCED=1
   exec bash "$SCRIPT_DIR/setup.sh" "$@"
 fi
 
-echo -e "${CYAN}${BOLD}🚀 tGD-pi-web 一鍵安裝${NC}"
+echo -e "${CYAN}${BOLD}🚀 Digital Transformation Agent 一鍵安裝${NC}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-if [ -e "$SCRIPT_DIR/.git" ] && [ "${TGD_SETUP_OFFLINE:-0}" = "1" ]; then
+if [ -e "$SCRIPT_DIR/.git" ] && [ "$DTA_SETUP_OFFLINE" = "1" ]; then
   echo -e "${YELLOW}⚠️  離線模式：跳過 origin/main 同步，使用目前本地原始碼。${NC}"
 fi
 
@@ -69,7 +75,7 @@ for relative_path in "${LEGACY_FILES[@]}"; do
 done
 
 if [ "${#FOUND_LEGACY_FILES[@]}" -gt 0 ]; then
-  backup_root="${TGD_SETUP_BACKUP_DIR:-$HOME/.tgd-pi-web-backups}"
+  backup_root="$DTA_SETUP_BACKUP_DIR"
   project_name="$(basename "$SCRIPT_DIR")"
   backup_dir="$backup_root/${project_name}-$(date -u +%Y%m%dT%H%M%SZ)-$$"
 

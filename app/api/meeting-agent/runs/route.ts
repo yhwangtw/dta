@@ -1,11 +1,26 @@
 import { listMeetingRuns } from "@/lib/agents/meeting/meeting-result-store";
+import { AuthenticationError, assertRunAccess, authenticateRequest, authenticationErrorResponse } from "@/lib/auth/request-auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request): Promise<Response> {
-  const rawLimit = Number.parseInt(new URL(request.url).searchParams.get("limit") ?? "100", 10);
-  const limit = Number.isInteger(rawLimit) ? rawLimit : 100;
-  return Response.json({ runs: listMeetingRuns(limit) }, {
-    headers: { "Cache-Control": "no-store" },
-  });
+  try {
+    const principal = await authenticateRequest(request);
+    const rawLimit = Number.parseInt(new URL(request.url).searchParams.get("limit") ?? "100", 10);
+    const limit = Number.isInteger(rawLimit) ? rawLimit : 100;
+    const runs = listMeetingRuns(Math.min(500, limit * 5)).filter((run) => {
+      try {
+        assertRunAccess(principal, run.userId);
+        return true;
+      } catch {
+        return false;
+      }
+    }).slice(0, Math.max(1, Math.min(limit, 500)));
+    return Response.json({ runs }, {
+      headers: { "Cache-Control": "no-store" },
+    });
+  } catch (error) {
+    if (error instanceof AuthenticationError) return authenticationErrorResponse(error);
+    return Response.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
+  }
 }

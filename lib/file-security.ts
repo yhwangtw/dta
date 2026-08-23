@@ -46,6 +46,8 @@ export async function getAllowedRoots(): Promise<Set<string>> {
 
   const sessions = await listAllSessions();
   const roots = new Set<string>();
+  const { loadDtaConfig } = await import("./config/env");
+  roots.add(loadDtaConfig().agentWorkspaceDir);
   const { resolveTgdDir } = await import("./tgd-artifacts");
   for (const s of sessions) {
     if (s.cwd) {

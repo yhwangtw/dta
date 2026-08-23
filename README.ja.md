@@ -228,10 +228,10 @@ artifacts が別の場所にある場合は `TGD_DIR` を設定してくださ�
 > [!WARNING]
 > `npm run build` または `npm run test:e2e` の前に `npm run dev` を停止してください。同時に Next.js build を実行すると、開発サーバーが使用中の `.next/` が破損します。
 
-Playwright は意図的に `package.json` へ保存していません。必要時に一時インストールします。
+Playwright のテストランナーは `package.json` に固定されています。Chromium のテスト用バイナリを一度インストールしてから実行します。
 
 ```bash
-npm i -D --no-save @playwright/test
+npx playwright install chromium
 npm run test:e2e
 ```
 
@@ -315,9 +315,9 @@ public/fonts/   同梱ローカルフォント
 
 いいえ。スケジューラはローカル Node server 内で動作します。定刻実行には `npm start` を起動したままにしてください。再起動後は各スケジュールの設定に従い、1 回補完実行するかスキップします。
 
-### なぜ Playwright が `package.json` にないのですか？
+### なぜ Playwright のブラウザは別にインストールするのですか？
 
-transitive postinstall がブラウザ binary をダウンロードし、オフラインまたは Nexus 環境の `npm ci` を壊す可能性があるためです。CI は E2E の前に `--no-save` で一時インストールします。
+テストランナーは再現可能なインストールのため lockfile で固定し、ブラウザ binary は実行環境側で管理します。CI は Chromium を明示的にインストールし、オフライン／社内環境では事前導入した binary を `PW_CHROMIUM_PATH` で指定できます。
 
 ### compact 後もセッションファイルが長いのはなぜですか？
 

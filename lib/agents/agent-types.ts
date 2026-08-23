@@ -1,4 +1,4 @@
-export type AgentType = "coding" | "meeting" | "pm";
+export type AgentType = "coding" | "meeting" | "pm" | "department";
 
 export interface AgentMetadata {
   agentType: AgentType;
@@ -19,7 +19,7 @@ export interface AgentAction {
 
 export type GenericAgentEvent =
   | { type: "run_started"; runId: string }
-  | { type: "status"; message: string }
+  | { type: "status"; message: string; state?: "running" | "waiting_for_input" }
   | { type: "tool_started"; tool: string }
   | { type: "tool_completed"; tool: string; result?: unknown }
   | { type: "artifact_created"; artifactId: string; artifactType: string }
@@ -27,7 +27,11 @@ export type GenericAgentEvent =
   | { type: "completed"; result: unknown }
   | { type: "failed"; error: string };
 
-const AGENT_TYPES = new Set<AgentType>(["coding", "meeting", "pm"]);
+const AGENT_TYPES = new Set<AgentType>(["coding", "meeting", "pm", "department"]);
+
+export function isDomainAgentType(value: AgentType | undefined): boolean {
+  return Boolean(value && value !== "coding");
+}
 
 export function isAgentMetadata(value: unknown): value is AgentMetadata {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;

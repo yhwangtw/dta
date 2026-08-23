@@ -84,13 +84,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # @playwright/test is deliberately not a devDependency: its transitive
-      # postinstall downloads browser binaries, which breaks offline/Nexus
-      # installs at the company. CI installs it ad hoc without touching
-      # package.json / package-lock.json.
-      - name: Install Playwright (not in package.json — offline installs)
-        run: npm i -D --no-save @playwright/test
-
       - name: Install Playwright chromium
         run: npx playwright install --with-deps chromium
 
@@ -124,3 +117,56 @@ jobs:
 
       - name: Audit (high+critical only)
         run: npm run audit:production
+
+  container:
+    name: Container build, smoke & CVE scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: [build]
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build verification image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          load: true
+          tags: dta-ci:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            BUILD_VERSION=ci
+            BUILD_REVISION=${{ github.sha }}
+
+      - name: Smoke-test health and readiness
+        run: |
+          docker run -d --name dta-ci -p 30141:30141 \
+            -e DTA_AUTH_MODE=none \
+            -e DTA_ARTIFACT_STORE=local \
+            -e DTA_WORKFLOW_PROVIDER=none \
+            -e DTA_TRANSCRIPTION_PROVIDER=none \
+            -e DTA_VISION_PROVIDER=none \
+            -e DTA_UPLOAD_SCANNER=none \
+            dta-ci:${{ github.sha }}
+          trap 'docker logs dta-ci; docker rm -f dta-ci' EXIT
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:30141/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:30141/ready >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          exit 1
+
+      - name: Fail on High or Critical image CVEs
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: dta-ci:${{ github.sha }}
+          format: table
+          exit-code: '1'
+          ignore-unfixed: false
+          severity: HIGH,CRITICAL
+          scanners: vuln

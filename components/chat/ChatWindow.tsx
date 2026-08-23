@@ -2,7 +2,7 @@
 
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { AgentMessage, SessionInfo, SessionTreeNode, ToolResultMessage } from "@/lib/types";
-import type { AgentMetadata } from "@/lib/agents/agent-types";
+import { isDomainAgentType, type AgentMetadata } from "@/lib/agents/agent-types";
 import { MessageView } from "./MessageView";
 import { ChatInput, type ChatInputHandle, type MessageQuote } from "./ChatInput";
 import { ExtensionUIPanel, ExtensionWidgets } from "./ExtensionUIPanel";
@@ -236,7 +236,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
   });
 
   const { t } = useI18n();
-  const meetingMode = (agentMetadata ?? startupAgentMetadata)?.agentType === "meeting";
+  const domainAgentMode = isDomainAgentType((agentMetadata ?? startupAgentMetadata)?.agentType);
   const scrollFollowMode = useScrollFollowMode();
 
   // ── tGD pipeline: detect which phases have run in this session ──
@@ -280,7 +280,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
   // artifacts in the tGD dir; develop/verify/review/release act on the code
   // repo, so those stay transcript-driven (hybrid below). Refetch on cwd
   // change and whenever the agent stops (artifacts appear after it writes).
-  const tgdCwd = session?.cwd ?? newSessionCwd ?? null;
+  const tgdCwd = domainAgentMode ? null : session?.cwd ?? newSessionCwd ?? null;
   const [tgdArtifacts, setTgdArtifacts] = useState<TgdArtifactsClient | null>(null);
   useEffect(() => {
     if (!tgdCwd) { setTgdArtifacts(null); return; }
@@ -1079,7 +1079,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                   web <span className={styles.versionValue}>v{process.env.NEXT_PUBLIC_APP_VERSION ?? "0.0.0"}</span>
                 </span>
                 <span className={styles.versionLabel}>
-                  pi <span className={styles.versionValue}>v{process.env.NEXT_PUBLIC_PI_VERSION ?? "0.0.0"}</span>
+                  runtime <span className={styles.versionValue}>v{process.env.NEXT_PUBLIC_PI_VERSION ?? "0.0.0"}</span>
                 </span>
               </div>
             </div>
@@ -1104,7 +1104,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
       ) : (
       <>
       <style>{`::highlight(conversation-find) { background: var(--color-warning-bg-strong); color: var(--text); text-decoration: underline var(--color-warning-border); text-decoration-thickness: 1px; }`}</style>
-      {!meetingMode && (pipelineHidden || (!pipelineRelevant && !idlePipelineExpanded) ? (
+      {!domainAgentMode && (pipelineHidden || (!pipelineRelevant && !idlePipelineExpanded) ? (
         <button onClick={showPipeline} className={styles.pipelineShow} title={t("chat.showPipeline")}>
           tGD · {t("chat.workflow")} ▸
         </button>

@@ -20,7 +20,7 @@ export function MeetingKnowledgePanel({ onOpenSession }: Props) {
     const controller = new AbortController();
     fetch("/api/meeting-agent/runs?limit=200", { cache: "no-store", signal: controller.signal })
       .then(async (response) => response.ok ? response.json() as Promise<{ runs?: StoredMeetingResult[] }> : { runs: [] })
-      .then((payload) => setRuns((payload.runs ?? []).filter((run) => run.status === "completed" && Boolean(run.result))))
+      .then((payload) => setRuns((payload.runs ?? []).filter((run) => run.status === "completed" && run.reviewStatus === "approved" && Boolean(run.result))))
       .catch(() => setRuns([]))
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();

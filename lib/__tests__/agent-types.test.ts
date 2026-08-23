@@ -20,4 +20,34 @@ describe("generic agent contract", () => {
       .toEqual({ type: "tool_started", tool: "publish_meeting_result" });
     expect(normalizePiAgentEvent({ type: "model_change" }, "run-1")).toBeNull();
   });
+
+  it("normalizes human input and terminal outcomes without leaking Pi event shapes", () => {
+    expect(normalizePiAgentEvent({
+      type: "extension_ui_request",
+      id: "question-1",
+      method: "ask_user",
+      questions: [{
+        id: "scope",
+        question: "Which project should own this action?",
+        options: [],
+        allowOther: true,
+      }],
+    }, "run-1")).toEqual({
+      type: "waiting_for_input",
+      prompt: "Which project should own this action?",
+    });
+    expect(normalizePiAgentEvent({
+      type: "extension_ui_closed",
+      id: "question-1",
+      reason: "answered",
+    }, "run-1")).toEqual({
+      type: "status",
+      state: "running",
+      message: "User input received",
+    });
+    expect(normalizePiAgentEvent({
+      type: "agent_end",
+      messages: [{ role: "assistant", stopReason: "error", errorMessage: "Provider unavailable" }],
+    }, "run-1")).toEqual({ type: "failed", error: "Provider unavailable" });
+  });
 });

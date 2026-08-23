@@ -62,15 +62,21 @@ export function buildAttentionItems(input: {
   const representedSessions = new Set<string>();
 
   for (const run of input.meetingRuns ?? []) {
-    if (run.status !== "failed") continue;
+    const awaitsReview = run.status === "completed"
+      && (run.reviewStatus === "needs_review" || run.reviewStatus === "changes_requested");
+    if (run.status !== "failed" && !awaitsReview) continue;
     if (run.sessionId) representedSessions.add(run.sessionId);
     items.push({
-      id: `meeting:${run.runId}:failed`,
+      id: `meeting:${run.runId}:${run.status === "failed" ? "failed" : run.reviewStatus}`,
       source: "meeting",
       severity: "warning",
-      status: "failed",
+      status: run.status === "failed" ? "failed" : "waiting_for_input",
       title: run.result?.title || "Meeting result needs review",
-      summary: run.error?.trim() || "The meeting conversation ended without a reviewable result",
+      summary: run.status === "failed"
+        ? run.error?.trim() || "The meeting conversation ended without a reviewable result"
+        : run.reviewStatus === "changes_requested"
+          ? run.reviewHistory.at(-1)?.comment || "Changes were requested before this meeting can be approved"
+          : "Review the source evidence and approve or return this meeting result",
       occurredAt: run.updatedAt,
       sessionId: run.sessionId,
     });

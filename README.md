@@ -23,7 +23,7 @@
 
 Digital Transformation Agent (DTA) connects meeting intelligence, PDLC workflows, action tracking, department knowledge, agent runs, and human review in one traceable workspace. It is designed for both people using the DTA interface and company-level orchestrators calling bounded department capabilities.
 
-> DTA is being transformed from the former tGD Pi Web product. The existing Pi runtime, session, file, Git, schedule, and tGD foundations remain available while the department-agent experience is introduced incrementally.
+> DTA reuses the proven Pi session/runtime infrastructure internally, but its public Agent Contract, A2A surface, product identity, and domain results are runtime-neutral.
 
 ## Product direction
 
@@ -65,7 +65,7 @@ cd dta
 bash setup.sh
 ```
 
-The setup script is the supported one-step production path. In a Git checkout it first replaces local source changes with `origin/main`, then checks Node.js and npm, installs dependencies, runs TypeScript validation, creates a production build, and can start the production server. For source archives, known obsolete files are moved to `~/.tgd-pi-web-backups/` (override with `TGD_SETUP_BACKUP_DIR`) before the build. The Web always uses its pinned local Pi runtime; when an installed global `pi` CLI has a different version, interactive setup offers to synchronize it while unattended setup only prints the exact opt-in command.
+The setup script is the supported one-step source installation path. In a Git checkout it first replaces local source changes with `origin/main`, then checks Node.js and npm, installs dependencies, runs TypeScript validation, creates a production build, and can start the server. Known obsolete files from older installations are moved to `~/.dta-backups/` (override with `DTA_SETUP_BACKUP_DIR`). The Web always uses its pinned internal Pi runtime.
 
 > [!WARNING]
 > `origin/main` is the source of truth for end-user Git installations. Running `bash setup.sh` discards local commits, tracked changes, and non-ignored untracked files with `git reset --hard origin/main` and `git clean -fd`. Ignored runtime state such as `.env`, `node_modules`, and `.next` is retained.
@@ -91,46 +91,16 @@ bash setup.sh
 For a deliberately offline Git checkout, skip remote synchronization explicitly:
 
 ```bash
-TGD_SETUP_OFFLINE=1 bash setup.sh
+DTA_SETUP_OFFLINE=1 bash setup.sh
 ```
 
-## tGD Workflow in the Browser
+## Architecture and company deployment
 
-The phase bar remains visible above the active session:
+- [Agent architecture, external contracts, security boundary, and limitations](./docs/architecture.md)
+- [Build-once Docker, runtime configuration, Keycloak, Vault, and Kubernetes guide](./docs/deployment.md)
+- [Complete environment template](./.env.example)
 
-```text
-Map → Define → Plan → Develop → Verify → Review → Release
-```
-
-- **Artifact-backed status** — Map, Define, and Plan are completed from real files on disk, not optimistic UI state.
-- **Feature-aware progress** — the bar follows the feature named in the latest `/tgd-*` command, or the most recently updated feature.
-- **Artifact explorer** — browse curated phase documents or the complete sibling tGD directory, including scans, wiki pages, and prototypes.
-- **Prompt-first phase actions** — clicking a phase places the matching command in the composer so you can review it before sending.
-- **Git restore points** — the server captures a git-backed snapshot before each run without touching your index or `HEAD`.
-
-Expected artifact layout:
-
-```text
-parent/
-├── your-project/
-└── your-project-tGD/
-    ├── CONTEXT.md
-    ├── TRACKING-PLAN.md
-    ├── CHANGELOG.md
-    ├── REGRESSION-CATALOG.md
-    ├── wiki/
-    └── feature-name/
-        ├── PRD.md
-        ├── SPEC.md
-        ├── DESIGN.md
-        ├── TASKS.md
-        ├── TEST-REPORT.md
-        ├── REVIEW.md
-        ├── METRICS.md
-        └── prototype/
-```
-
-Set `TGD_DIR` when your artifact directory lives elsewhere.
+The same image runs locally with local/mock adapters and in the company with Keycloak, the company LLM gateway, MinIO, and n8n. Connection information and secrets are never baked into the image.
 
 ## Interface Tour
 
@@ -197,8 +167,8 @@ The mobile layout keeps the active phase, transcript, composer, model controls, 
 - Search, tags, pins, archive, auto-naming, HTML/Markdown export, and usage analytics.
 - Conversation find, user-turn navigation, bookmarks, minimap, long-message collapse, and optional always-follow streaming.
 - Project switcher with recent projects, pins, discovery, filesystem completion, and linked git worktrees.
-- Reusable prompt templates alongside built-in `/tgd-*` commands.
-- Local hybrid semantic search spans session history, tGD artifacts, and project source, alongside exact filename/content search.
+- Reusable prompt templates for department and coding workflows.
+- Local hybrid semantic search spans session history, DTA artifacts, and project source, alongside exact filename/content search.
 
 ### Files and git
 
@@ -247,10 +217,10 @@ The mobile layout keeps the active phase, transcript, composer, model controls, 
 > [!WARNING]
 > Stop `npm run dev` before `npm run build` or `npm run test:e2e`. A concurrent Next.js build corrupts the running development server's `.next/` directory.
 
-Playwright is intentionally installed ad hoc and is not saved in `package.json`:
+The Playwright test runner is pinned in `package.json`. Install the Chromium test binary once, then run the suite:
 
 ```bash
-npm i -D --no-save @playwright/test
+npx playwright install chromium
 npm run test:e2e
 ```
 
@@ -265,7 +235,14 @@ PW_CHROMIUM_PATH=/opt/pw-browsers/chromium npm run test:e2e
 | Setting | Behavior |
 |---|---|
 | `AGENT_DEFAULT_TYPE` | Defaults the DTA capability to `meeting` while preserving Coding Agent sessions |
+| `DTA_ENABLED_AGENTS` | Enables registered server-side Agents such as `meeting-agent,pm-agent` |
+| `DTA_AGENT_MANIFEST_PATH` | Mounts additional department Agent prompts, skills, and workflow allowlists without rebuilding the image |
 | `DTA_DATA_DIR` | Stores DTA metadata and generic artifacts; defaults to `~/.dta` |
+| `DTA_AUTH_MODE` / `KEYCLOAK_*` | Protects the external Agent Contract and A2A with Keycloak tokens |
+| `LLM_BASE_URL` / `LLM_MODEL` | Registers a company LLM gateway for server-side Agent runs |
+| `DTA_ARTIFACT_STORE` / `MINIO_*` | Selects local or MinIO artifact storage |
+| `DTA_MEMORY_STORE` / `POSTGRES_URL` / `REDIS_URL` | Selects local, Postgres, or Redis conversation memory with configured TTL and cap |
+| `DTA_WORKFLOW_PROVIDER` / `N8N_*` | Selects disabled, mock, or configured n8n workflow tools |
 | `DTA_TRANSCRIPTION_PROVIDER` | `none`, development-only `mock`, or `openai-compatible` |
 | `DTA_MOCK_TRANSCRIPT` | Explicit fixture used only by the mock transcription provider outside production |
 | `DTA_TRANSCRIPTION_BASE_URL` / `DTA_TRANSCRIPTION_MODEL` | Company or compatible speech-to-text endpoint and model |
@@ -275,10 +252,12 @@ PW_CHROMIUM_PATH=/opt/pw-browsers/chromium npm run test:e2e
 | `DTA_MEDIA_PROCESSOR` | `ffmpeg` (default) or `none`; extracts video audio and keyframes |
 | `DTA_MEDIA_MAX_DURATION_SECONDS` | Maximum accepted recording duration; defaults to 14,400 seconds |
 | `DTA_VIDEO_MAX_KEYFRAMES` | Maximum sampled keyframes per video; defaults to 12 |
+| `DTA_UPLOAD_SCANNER` | Selects no scanner or a fail-closed company HTTP malware scanner for uploads |
+| `DTA_AUDIT_LOG_*` / `DTA_METRICS_*` | Configures hash-chained audit events and protected Prometheus metrics |
+| `DTA_RATE_LIMIT_*` / `DTA_RETENTION_*` | Configures process-local quotas and opt-in local artifact retention |
 | `PI_CODING_AGENT_DIR` | Overrides the default `~/.pi/agent` directory |
 | `PIWEB_ACCESS_PASSWORD` | Enables the built-in shared-password gate for every route |
 | `PIWEB_SESSION_SECRET` | Signs access cookies independently from the password; use a random 32-byte-or-longer value for remote deployments |
-| `TGD_DIR` | Overrides the sibling `<project>-tGD/` artifact directory |
 | `models.json` | Model/provider catalog, including custom `baseUrl` values |
 | `auth.json` | Per-provider API credentials managed by Pi |
 | Project picker | Selects and validates the active working directory |
@@ -297,27 +276,16 @@ The Meeting-first interface does not ask people to choose a repository or filesy
 
 Browser speech recognition can type directly into the transcript field without saving an audio recording. Uploaded media is preserved as an artifact. FFmpeg extracts video audio and sampled keyframes; configurable transcription and vision providers produce timestamped evidence; DTA then stores a synchronized timeline for the Meeting Agent. The bundled mock providers are development/test-only and disabled in production. See [Meeting media understanding](./docs/meeting-media-pipeline.md).
 
-Current limitation: local metadata/artifact storage, synchronous media processing, and active runtime state are process-local, so this phase remains single-replica. Company Orchestrator routes, PM Agent, n8n, MinIO, and distributed memory remain later milestones. The included Docker image installs FFmpeg and runs as a non-root user.
+Current limitation: active Pi session ownership, normalized event replay, run/review records, and Meeting/PM records remain process-local/file-backed, so this phase stays single-replica even when conversation memory uses Postgres or Redis. Company Orchestrator routes, PM Agent, configurable department Agents, A2A, Keycloak, n8n, MinIO, audit, and metrics are available now. See [the exact production limitations](./docs/architecture.md#current-production-limitations).
 
 ## Architecture
 
-```text
-Browser                    Generic Agent layer          Pi Agent runtime
-  │                              │                            │
-  ├─ Meeting/Coding identity ───▶│ AgentMetadata + profile     │
-  ├─ POST /api/agent/[id] ──────▶│ PiAgentRuntime ────────────▶│
-  ├─ GET /events (SSE) ─────────▶│ normalized + native events  │
-  ├─ GET /api/files/* ──────────▶│ allowed-root file access   │
-  ├─ GET /api/git/* ────────────▶│ guarded git inspection     │
-  └─ GET /api/tgd/artifacts ────▶│ sibling tGD directory      │
-```
-
-Read-only browsing parses session files without creating an `AgentSession`. Sending a message creates one in-process runtime wrapper per active session and streams events over SSE. Pi owns session replacement; the wrapper rebinds cwd-scoped services, extensions, registry keys, and event subscriptions to the new `AgentSession`.
+See [DTA Agent Platform Architecture](./docs/architecture.md) for the generic runtime, Meeting/PM boundaries, external Agent Contract, A2A, Keycloak, review gate, adapters, and production limitations.
 
 ## Project Structure
 
 ```text
-app/api/        sessions, agent commands/events, schedules, files, git, tGD, config
+app/api/        Agent Contract, runs/events, sessions, schedules, files, git, config
 components/     layout, chat, sidebar, modals, and shared UI
 hooks/          agent orchestration, streaming, scrolling, sessions, theme
 lib/            RPC lifecycle, scheduling, session parsing, security, i18n, snapshots
@@ -330,7 +298,7 @@ See [`AGENTS.md`](./AGENTS.md) for the detailed architecture, invariants, and de
 
 ## Offline and Air-Gapped Use
 
-The browser app itself makes no external runtime requests. Fonts and UI assets are bundled. Only the configured LLM endpoint must be reachable.
+Fonts and UI assets are bundled. At runtime DTA contacts only the adapters enabled by configuration: the LLM/media gateways, Keycloak, MinIO, Postgres/Redis, n8n, and optional upload scanner.
 
 - **Internal npm registry:** clone this repository or extract a GitHub Release source archive into a clean directory, configure npm for the internal registry, then run `bash setup.sh`. Use `npm ci && npm run build` only when an immutable CI-style install is required.
 - **Portable directory:** on a networked machine with the same OS and architecture, run `npm ci && npm run build`, copy the complete directory, then run `npm run start`.
@@ -352,13 +320,13 @@ No. It is a local browser interface over Pi's session files and agent runtime. P
 
 The application does not include a hosted session backend. It reads local Pi files and contacts only the model/provider endpoints you configure.
 
-### Do schedules run while tGD Pi Web is stopped?
+### Do schedules run while DTA is stopped?
 
 The agent execution runtime still needs the local Node server. Keep `npm start` running; for a separate wake/health process, run `npm run scheduler:watch` under launchd/systemd. After a restart, each schedule applies its configured **run once** or **skip** missed-run policy.
 
-### Why is Playwright not in `package.json`?
+### Why is the Playwright browser installed separately?
 
-Its transitive postinstall may download browser binaries and break offline or Nexus-based `npm ci`. CI installs it with `--no-save` before E2E.
+The test runner is lockfile-pinned for reproducible installs, while browser binaries remain a separate environment concern. CI installs Chromium explicitly; offline/company environments can preinstall it and provide `PW_CHROMIUM_PATH`.
 
 ### Why can a compacted session still be long?
 
@@ -384,7 +352,7 @@ After a PR passes CI and is merged, use the fast release path:
 gh workflow run release.yml -f tag=vYYYY.MM.DD
 ```
 
-Use the current UTC date. For another release on the same day, append a sequence suffix such as `vYYYY.MM.DD-1`; future-dated tags are rejected. One workflow updates `package.json` and `package-lock.json`, creates the release commit and annotated tag, then publishes the GitHub Release. Its authenticated push does not start another CI cycle. Pushing an already-versioned `v*` tag remains supported. The workflow does **not** publish to npm.
+Use the current UTC date. For another release on the same day, append a sequence suffix such as `vYYYY.MM.DD-1`; future-dated tags are rejected. One workflow updates `package.json` and `package-lock.json`, creates the release commit and annotated tag, builds and smoke-tests the self-contained `amd64`/`arm64` image, blocks High/Critical CVEs, publishes it to GHCR with SBOM/provenance attestations, and only then creates the GitHub Release. Its authenticated push does not start another CI cycle. Pushing an already-versioned `v*` tag remains supported. The workflow does **not** publish to npm.
 
 ## License
 

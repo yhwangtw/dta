@@ -1,5 +1,4 @@
 import { randomUUID } from "node:crypto";
-import { startRpcSession, type AgentEvent, type AgentSessionWrapper } from "./rpc-manager";
 import {
   mutateAgentRunStore,
   readAgentRunStore,
@@ -15,24 +14,29 @@ import {
   type AgentRunInput,
   type AgentRunStatus,
 } from "./agent-run-types";
-import type { WebExtensionUIEvent } from "./web-extension-ui";
-import { isWebExtensionUIDialogRequest, isWebExtensionUIEvent } from "./web-extension-ui-types";
 import { isTrustedAgentRunWorkspace } from "./agent-run-workspace";
 import { buildAgentRunReport } from "./agent-run-report";
 import type { AgentMessage } from "./types";
-import { createRuntimeProfile } from "./runtime/runtime-profile";
-import { writeAgentSessionMetadata } from "./agent-metadata-store";
-import { ensureMeetingRun, readMeetingRun } from "./agents/meeting/meeting-result-store";
+import { failMeetingRun, readMeetingRun } from "./agents/meeting/meeting-result-store";
+import { failPMRun, readPMRun } from "./agents/pm/pm-result-store";
+import {
+  AgentExecutionService,
+  getAgentExecutionService,
+  type AgentExecutionHandle,
+} from "./agents/agent-execution-service";
+import { getAgentEventBus } from "./agents/agent-event-bus";
+import { getMemoryStore } from "./integrations/memory";
+import { conversationMemoryKey } from "./integrations/memory/memory-key";
 
 const KEEP_ALIVE_MS = 4 * 60_000;
 const MAX_RUN_MS = 24 * 60 * 60_000;
 
 interface ActiveRun {
-  session: AgentSessionWrapper | null;
+  session: AgentExecutionHandle | null;
   unsubscribe: (() => void) | null;
   keepAlive: ReturnType<typeof setInterval> | null;
   timeout: ReturnType<typeof setTimeout> | null;
-  pendingDialogs: Set<string>;
+  waitingForInput: boolean;
 }
 
 export class AgentRunNotFoundError extends Error {}
@@ -45,34 +49,23 @@ function configuredConcurrency(): number {
     : DEFAULT_AGENT_RUN_CONCURRENCY;
 }
 
-function eventRunError(event: AgentEvent): string | null {
-  if (event.type !== "agent_end" || !Array.isArray(event.messages)) return null;
-  const messages = event.messages as Array<{ role?: string; stopReason?: string; errorMessage?: string }>;
-  for (let index = messages.length - 1; index >= 0; index--) {
-    const message = messages[index];
-    if (message?.role !== "assistant") continue;
-    if (message.stopReason === "error") return message.errorMessage || "Model call failed";
-    if (message.stopReason === "aborted") return "The agent run was aborted";
-    return null;
-  }
-  return null;
-}
-
 function cloneRun(run: AgentRun): AgentRun {
   return structuredClone(run);
 }
 
 export class AgentRunSupervisor {
   private maxConcurrencyValue: number;
+  private readonly executionService: AgentExecutionService;
   private readonly active = new Map<string, ActiveRun>();
   private started = false;
   private draining = false;
 
-  constructor(options: { maxConcurrency?: number } = {}) {
+  constructor(options: { maxConcurrency?: number; executionService?: AgentExecutionService } = {}) {
     const persisted = options.maxConcurrency === undefined
       ? readAgentRunStore().maxConcurrency
       : undefined;
     this.maxConcurrencyValue = options.maxConcurrency ?? persisted ?? configuredConcurrency();
+    this.executionService = options.executionService ?? getAgentExecutionService();
   }
 
   get maxConcurrency(): number {
@@ -104,6 +97,12 @@ export class AgentRunSupervisor {
     trigger?: AgentRun["trigger"];
     parentRunId?: string;
   } = {}): AgentRun {
+    if (input.requestId) {
+      const existing = readAgentRunStore().runs.find((run) => run.requestId === input.requestId
+        && run.agentMetadata?.agentId === input.agentMetadata?.agentId
+        && run.agentMetadata?.userId === input.agentMetadata?.userId);
+      if (existing) return cloneRun(existing);
+    }
     const now = new Date().toISOString();
     const id = randomUUID();
     const agentMetadata = input.agentMetadata
@@ -121,6 +120,7 @@ export class AgentRunSupervisor {
     mutateAgentRunStore((store) => {
       store.runs.unshift(run);
     });
+    getAgentEventBus().publish(run.id, { type: "status", message: "Run queued", state: "running" });
     this.drain();
     return cloneRun(run);
   }
@@ -161,9 +161,10 @@ export class AgentRunSupervisor {
 
     const active = this.active.get(runId);
     if (active?.session) {
-      await active.session.send({ type: "abort" }).catch(() => {});
+      await active.session.abort().catch(() => {});
     }
     if (active) this.cleanup(runId);
+    getAgentEventBus().publish(runId, { type: "failed", error: result.error || "Run cancelled" });
     this.drain();
     return result;
   }
@@ -189,12 +190,14 @@ export class AgentRunSupervisor {
           return cloneRun(run);
         });
         if (!reserved) break;
+        getAgentEventBus().publish(reserved.id, { type: "run_started", runId: reserved.id });
+        getAgentEventBus().publish(reserved.id, { type: "status", message: "Agent run started", state: "running" });
         this.active.set(reserved.id, {
           session: null,
           unsubscribe: null,
           keepAlive: null,
           timeout: null,
-          pendingDialogs: new Set(),
+          waitingForInput: false,
         });
         void this.execute(reserved);
       }
@@ -207,21 +210,58 @@ export class AgentRunSupervisor {
     if (!this.active.has(runId)) return;
     const existing = readAgentRunStore().runs.find((run) => run.id === runId);
     const finishedAt = new Date().toISOString();
-    const meeting = existing?.agentMetadata?.agentType === "meeting" && existing.agentMetadata.runId
+    let meeting = existing?.agentMetadata?.agentType === "meeting" && existing.agentMetadata.runId
       ? readMeetingRun(existing.agentMetadata.runId)
       : null;
-    const effectiveStatus = status === "completed" && existing?.agentMetadata?.agentType === "meeting" && meeting?.status !== "completed"
+    let pm = existing?.agentMetadata?.agentType === "pm" && existing.agentMetadata.runId
+      ? readPMRun(existing.agentMetadata.runId)
+      : null;
+    const domainResult = meeting ?? pm;
+    const domainType = existing?.agentMetadata?.agentType;
+    const requiresStructuredResult = domainType === "meeting" || domainType === "pm";
+    const effectiveStatus = status === "completed" && requiresStructuredResult && domainResult?.status !== "completed"
       ? "failed"
       : status;
-    const effectiveError = effectiveStatus === "failed" && !error && existing?.agentMetadata?.agentType === "meeting"
-      ? "The Meeting Agent finished without publishing a structured result"
+    const effectiveError = effectiveStatus === "failed" && !error && requiresStructuredResult
+      ? `The ${domainType === "meeting" ? "Meeting" : "PM"} Agent finished without publishing a structured result`
       : error;
+    if (effectiveStatus === "failed" && existing?.agentMetadata?.runId && domainResult?.status !== "completed") {
+      if (domainType === "meeting") meeting = failMeetingRun(existing.agentMetadata.runId, effectiveError || "Meeting Agent run failed");
+      if (domainType === "pm") pm = failPMRun(existing.agentMetadata.runId, effectiveError || "PM Agent run failed");
+    }
+    const result = meeting?.result ?? pm?.result ?? existing?.result;
+    const artifacts = meeting?.artifacts ?? pm?.artifacts ?? existing?.artifacts;
+    const actions = meeting?.actions ?? pm?.actions ?? existing?.actions;
     this.updateRun(runId, effectiveStatus, {
       finishedAt,
       ...(effectiveError ? { error: effectiveError } : {}),
       ...(messages ? { report: buildAgentRunReport(messages, existing?.startedAt, finishedAt) } : {}),
-      ...(meeting?.result ? { result: meeting.result, artifacts: meeting.artifacts } : {}),
+      ...(result !== undefined ? { result } : {}),
+      ...(artifacts?.length ? { artifacts } : {}),
+      ...(actions?.length ? { actions } : {}),
     });
+    const eventBus = getAgentEventBus();
+    for (const artifact of artifacts ?? []) {
+      eventBus.publish(runId, { type: "artifact_created", artifactId: artifact.id, artifactType: artifact.type });
+    }
+    if (effectiveStatus === "completed") {
+      eventBus.publish(runId, { type: "completed", result: result ?? null });
+    } else {
+      eventBus.publish(runId, { type: "failed", error: effectiveError || "Agent run failed" });
+    }
+    const memoryKey = existing?.agentMetadata ? conversationMemoryKey(existing.agentMetadata) : null;
+    if (memoryKey) {
+      void getMemoryStore().appendConversationMemory(memoryKey, {
+        type: "agent_result",
+        occurredAt: finishedAt,
+        runId,
+        agentId: existing?.agentMetadata?.agentId,
+        status: effectiveStatus,
+        ...(result !== undefined ? { result } : {}),
+        ...(artifacts?.length ? { artifacts } : {}),
+        ...(effectiveError ? { error: effectiveError } : {}),
+      }).catch(() => {});
+    }
     this.cleanup(runId);
     this.drain();
   }
@@ -242,70 +282,82 @@ export class AgentRunSupervisor {
       if (!await isTrustedAgentRunWorkspace(run.cwd)) {
         throw new Error("Workspace is no longer trusted; open it as a project before retrying");
       }
-      const profile = run.agentMetadata ? createRuntimeProfile(run.agentMetadata) : undefined;
-      const started = await startRpcSession(`__daemon__${run.id}`, "", run.cwd, run.toolNames, { profile });
+      const started = await this.executionService.createSession({
+        cwd: run.cwd,
+        sessionId: `__daemon__${run.id}`,
+        toolNames: run.toolNames,
+        ...(run.agentMetadata ? { metadata: run.agentMetadata } : {}),
+      });
       if (!this.active.has(run.id)) {
-        await started.session.send({ type: "abort" }).catch(() => {});
+        await started.abort().catch(() => {});
         return;
       }
-      active.session = started.session;
-      this.updateRun(run.id, "running", { sessionId: started.realSessionId });
-      if (run.agentMetadata) {
-        writeAgentSessionMetadata(started.realSessionId, run.agentMetadata);
-        if (run.agentMetadata.agentType === "meeting" && run.agentMetadata.runId) {
-          ensureMeetingRun(run.agentMetadata.runId, started.realSessionId);
-        }
-      }
-      globalThis.__piAllowedRootsCache?.roots.add(run.cwd);
+      active.session = started;
+      this.updateRun(run.id, "running", {
+        sessionId: started.sessionId,
+        agentMetadata: started.metadata,
+      });
 
-      active.unsubscribe = started.session.onEvent((rawEvent) => {
-        const event = rawEvent as AgentEvent | WebExtensionUIEvent;
-        if (isWebExtensionUIEvent(event)) {
-          if (isWebExtensionUIDialogRequest(event)) {
-            active.pendingDialogs.add(event.id);
-            this.updateRun(run.id, "waiting_for_input");
-            void import("./web-push").then(({ sendWebPush }) => sendWebPush(`/?session=${encodeURIComponent(started.realSessionId)}`)).catch(() => {});
-          } else if (event.type === "extension_ui_closed") {
-            active.pendingDialogs.delete(event.id);
-            if (active.pendingDialogs.size === 0) this.updateRun(run.id, "running");
-          }
+      active.unsubscribe = started.subscribe((event) => {
+        if (event.type === "waiting_for_input") {
+          active.waitingForInput = true;
+          this.updateRun(run.id, "waiting_for_input");
+          getAgentEventBus().publish(run.id, event);
+          void import("./web-push")
+            .then(({ sendWebPush }) => sendWebPush(`/?session=${encodeURIComponent(started.sessionId)}`))
+            .catch(() => {});
           return;
         }
-        if (event.type === "agent_end") {
-          const error = eventRunError(event);
-          if (error) void import("./web-push").then(({ sendWebPush }) => sendWebPush(`/?session=${encodeURIComponent(started.realSessionId)}`)).catch(() => {});
-          this.finish(run.id, error ? "failed" : "completed", error ?? undefined, event.messages as AgentMessage[]);
+        if (event.type === "status" && event.state === "running" && active.waitingForInput) {
+          active.waitingForInput = false;
+          this.updateRun(run.id, "running");
+          getAgentEventBus().publish(run.id, event);
+          return;
+        }
+        if (event.type === "failed") {
+          void import("./web-push")
+            .then(({ sendWebPush }) => sendWebPush(`/?session=${encodeURIComponent(started.sessionId)}`))
+            .catch(() => {});
+          this.finish(run.id, "failed", event.error);
+          return;
+        }
+        if (event.type === "completed") {
+          const messages = Array.isArray(event.result) ? event.result as AgentMessage[] : undefined;
+          this.finish(run.id, "completed", undefined, messages);
+          return;
+        }
+        if (event.type === "tool_started" || event.type === "tool_completed" || event.type === "status") {
+          getAgentEventBus().publish(run.id, event);
         }
       });
 
       if (run.provider && run.modelId) {
-        await started.session.send({
+        await started.send({
           type: "set_model",
           provider: run.provider,
           modelId: run.modelId,
         });
       }
       if (run.thinkingLevel) {
-        await started.session.send({ type: "set_thinking_level", level: run.thinkingLevel });
+        await started.send({ type: "set_thinking_level", level: run.thinkingLevel });
       }
 
       active.keepAlive = setInterval(() => {
-        if (!started.session.isAlive()) {
-          this.finish(run.id, "failed", "The agent session closed before the run completed");
-          return;
-        }
-        void started.session.send({ type: "get_state" })
+        void started.getState()
+          .then((state) => {
+            if (!state.running) this.finish(run.id, "failed", "The agent session closed before the run completed");
+          })
           .catch((error) => this.finish(run.id, "failed", String(error)));
       }, KEEP_ALIVE_MS);
       active.keepAlive.unref?.();
 
       active.timeout = setTimeout(() => {
-        void started.session.send({ type: "abort" }).catch(() => {});
+        void started.abort().catch(() => {});
         this.finish(run.id, "failed", "Agent run exceeded the 24-hour limit");
       }, MAX_RUN_MS);
       active.timeout.unref?.();
 
-      await started.session.send({
+      await started.send({
         type: "prompt",
         message: run.prompt,
         awaitCompletion: true,

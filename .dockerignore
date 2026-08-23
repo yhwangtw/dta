@@ -1,4 +1,5 @@
 .git
+.gitnexus
 .github
 .next
 node_modules
@@ -10,5 +11,9 @@ artifacts
 .env.*
 !.env.example
 npm-debug.log*
+.npmrc
+.yarnrc*
 *.pem
+*.key
+*.p12
 .DS_Store

@@ -1,16 +1,23 @@
 import { NextResponse } from "next/server";
 import { existsSync } from "fs";
-import { startRpcSession } from "@/lib/rpc-manager";
 import { isAgentMetadata } from "@/lib/agents/agent-types";
-import { writeAgentSessionMetadata } from "@/lib/agent-metadata-store";
-import { createRuntimeProfile } from "@/lib/runtime/runtime-profile";
-import { ensureMeetingRun } from "@/lib/agents/meeting/meeting-result-store";
+import { AgentRegistryError } from "@/lib/agents/agent-registry";
+import { getAgentExecutionService } from "@/lib/agents/agent-execution-service";
+import {
+  AuthenticationError,
+  assertRateLimit,
+  authenticateRequest,
+  authenticationErrorResponse,
+  resolveActingUserId,
+} from "@/lib/auth/request-auth";
 
 // POST /api/agent/new  body: { cwd: string; type: string; message: string; ... }
 // Spawns a brand-new pi session and immediately sends the first command.
 // Returns { sessionId, data } where sessionId is pi's real session id.
 export async function POST(req: Request) {
   try {
+    const principal = await authenticateRequest(req);
+    assertRateLimit(principal, "agent");
     const body = await req.json() as { cwd?: string; [key: string]: unknown };
     const { cwd, ...command } = body;
 
@@ -26,39 +33,25 @@ export async function POST(req: Request) {
     if (agentMetadata !== undefined && !isAgentMetadata(agentMetadata)) {
       return NextResponse.json({ error: "Invalid agentMetadata" }, { status: 400 });
     }
-    const profile = agentMetadata ? createRuntimeProfile(agentMetadata) : undefined;
-
+    const authenticatedMetadata = agentMetadata
+      ? { ...agentMetadata, userId: resolveActingUserId(principal, agentMetadata.userId) }
+      : undefined;
     const tempKey = `__new__${Date.now()}`;
-    const { session, realSessionId } = await startRpcSession(tempKey, "", cwd, toolNames, {
+    const { session, result } = await getAgentExecutionService().startSession({
+      cwd,
+      sessionId: tempKey,
+      command: promptCommand,
+      provider,
+      modelId,
+      thinkingLevel,
+      toolNames,
       ephemeral: ephemeral === true,
-      ...(profile ? { profile } : {}),
+      ...(authenticatedMetadata ? { metadata: authenticatedMetadata } : { userId: principal.id }),
     });
-    if (agentMetadata) {
-      writeAgentSessionMetadata(realSessionId, agentMetadata);
-      if (agentMetadata.agentType === "meeting" && agentMetadata.runId) {
-        ensureMeetingRun(agentMetadata.runId, realSessionId);
-      }
-    }
 
-    // Keep the files-route allowed-roots cache (see app/api/files/[...path]/route.ts)
-    // in sync so the new cwd is immediately readable via /api/files. Without this,
-    // a file request under a brand-new cwd would 403 for up to the cache TTL.
-    globalThis.__piAllowedRootsCache?.roots.add(cwd);
-
-    // Apply pre-selected model before sending the prompt
-    if (provider && modelId) {
-      await session.send({ type: "set_model", provider, modelId });
-    }
-
-    // Apply pre-selected thinking level before sending the prompt
-    if (thinkingLevel) {
-      await session.send({ type: "set_thinking_level", level: thinkingLevel });
-    }
-
-    const result = await session.send(promptCommand);
-
-    return NextResponse.json({ success: true, sessionId: realSessionId, ephemeral: ephemeral === true, data: result });
+    return NextResponse.json({ success: true, sessionId: session.sessionId, ephemeral: ephemeral === true, data: result });
   } catch (error) {
-    return NextResponse.json({ error: String(error) }, { status: 500 });
+    if (error instanceof AuthenticationError) return authenticationErrorResponse(error);
+    return NextResponse.json({ error: String(error) }, { status: error instanceof AgentRegistryError ? 400 : 500 });
   }
 }

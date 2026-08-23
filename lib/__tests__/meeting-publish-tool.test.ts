@@ -19,7 +19,12 @@ describe("publish_meeting_result", () => {
     }, undefined, undefined, {} as never);
 
     const stored = readMeetingRun(runId);
-    expect(stored).toMatchObject({ status: "completed", result: { title: "Weekly sync" } });
+    expect(stored).toMatchObject({
+      status: "completed",
+      reviewStatus: "needs_review",
+      revision: 1,
+      result: { title: "Weekly sync" },
+    });
     expect(stored?.artifacts.map((artifact) => artifact.type)).toEqual(["meeting_result", "meeting_minutes"]);
   });
 });

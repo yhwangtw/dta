@@ -4,7 +4,8 @@ DTA processes meeting recordings as two evidence streams and joins them by times
 
 ```text
 video/audio upload
-  -> LocalArtifactStore (original source)
+  -> optional fail-closed malware scan
+  -> configured ArtifactStore (original source)
   -> FFprobe (duration and streams)
   -> FFmpeg audio extraction -> transcription provider -> timestamped transcript artifact
   -> FFmpeg keyframes -> vision provider -> visual analysis artifact
@@ -45,6 +46,8 @@ The Meeting Agent receives the timeline content plus artifact identifiers. It mu
 - FFmpeg runs without a shell, inside a private temporary directory that is deleted after processing.
 - Provider requests have bounded timeouts. Provider response text included in errors is truncated.
 - Original media and derived artifacts use the configured `ArtifactStore`; local files are mode `0600`.
+- Artifact ownership is inherited by every derived transcript, audio, keyframe, vision, and timeline record; download/delete APIs enforce the authenticated owner or explicit operational role.
+- `DTA_UPLOAD_SCANNER=http` sends the bytes to a configured company scanner before storage. A configured scanner fails closed unless `DTA_UPLOAD_SCANNER_FAIL_OPEN=true` is explicitly accepted.
 
 ## Production limitations
 

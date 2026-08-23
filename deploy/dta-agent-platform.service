@@ -1,0 +1,25 @@
+[Unit]
+Description=Digital Transformation Agent platform
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=CHANGE_ME_USER
+WorkingDirectory=/opt/dta
+ExecStart=/usr/bin/node node_modules/next/dist/bin/next start -p 30141
+Environment=NODE_ENV=production
+Environment=HOSTNAME=0.0.0.0
+Environment=DTA_DATA_DIR=/var/lib/dta
+Environment=DTA_AGENT_WORKSPACE=/var/lib/dta/workspace
+Environment=PI_CODING_AGENT_DIR=/var/lib/dta/pi
+EnvironmentFile=-/etc/dta/dta.env
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,16 +1,17 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
+import { constants } from "node:fs";
 import { join } from "node:path";
 import { getDtaDataDir } from "@/lib/config/env";
-import type { Artifact, ArtifactInput, ArtifactReference, ArtifactStore } from "./artifact-store";
+import { ArtifactNotFoundError, type Artifact, type ArtifactDescriptor, type ArtifactInput, type ArtifactReference, type ArtifactStore } from "./artifact-store";
+
+export { ArtifactNotFoundError } from "./artifact-store";
 
 interface StoredArtifactMetadata extends ArtifactReference {
   metadata?: Record<string, unknown>;
 }
 
 const SAFE_ID = /^[0-9a-f-]{36}$/i;
-
-export class ArtifactNotFoundError extends Error {}
 
 export class LocalArtifactStore implements ArtifactStore {
   constructor(private readonly root = join(getDtaDataDir(), "artifacts")) {}
@@ -64,11 +65,30 @@ export class LocalArtifactStore implements ArtifactStore {
     const paths = this.paths(id);
     await Promise.all([rm(paths.data, { force: true }), rm(paths.metadata, { force: true })]);
   }
-}
 
-let defaultStore: LocalArtifactStore | null = null;
+  async list(): Promise<ArtifactDescriptor[]> {
+    let names: string[];
+    try {
+      names = await readdir(this.root);
+    } catch {
+      return [];
+    }
+    const descriptors = await Promise.all(names
+      .filter((name) => name.endsWith(".json"))
+      .map(async (name): Promise<ArtifactDescriptor | null> => {
+        try {
+          const parsed = JSON.parse(await readFile(join(this.root, name), "utf8")) as StoredArtifactMetadata;
+          if (!SAFE_ID.test(parsed.id) || typeof parsed.createdAt !== "string") return null;
+          return parsed;
+        } catch {
+          return null;
+        }
+      }));
+    return descriptors.filter((descriptor): descriptor is ArtifactDescriptor => descriptor !== null);
+  }
 
-export function getArtifactStore(): LocalArtifactStore {
-  defaultStore ??= new LocalArtifactStore();
-  return defaultStore;
+  async healthCheck(): Promise<void> {
+    await mkdir(this.root, { recursive: true });
+    await access(this.root, constants.R_OK | constants.W_OK);
+  }
 }

@@ -7,6 +7,7 @@ import { ChatWindow } from "../chat/ChatWindow";
 import { ContextInspector } from "../chat/ContextInspector";
 import { FileViewer } from "./FileViewer";
 import { MeetingResultPanel } from "./MeetingResultPanel";
+import { PMResultPanel } from "./PMResultPanel";
 import { MeetingLibraryPanel } from "./MeetingLibraryPanel";
 import { MeetingProcessingPanel } from "./MeetingProcessingPanel";
 import { MeetingKnowledgePanel } from "./MeetingKnowledgePanel";
@@ -18,6 +19,7 @@ import { AgentDashboardPanel } from "./AgentDashboardPanel";
 import { SchedulePanel } from "./SchedulePanel";
 import { AttentionPanel } from "./AttentionPanel";
 import { DtaHome } from "./DtaHome";
+import type { DepartmentAgentSummary } from "./DepartmentAgentDialog";
 import { DiffPanel } from "./DiffPanel";
 import type { DiffAnnotation } from "./DiffView";
 import { DesignInspector } from "./DesignInspector";
@@ -49,7 +51,7 @@ import { resolveWorkspaceIdentity, type WorkspaceIdentity } from "@/lib/workspac
 import { requestOpenProjectSwitcher } from "@/lib/project-switcher-events";
 import type { Worktree } from "@/lib/worktrees";
 import type { SessionInfo, SessionTreeNode } from "@/lib/types";
-import type { AgentMetadata } from "@/lib/agents/agent-types";
+import { isDomainAgentType, type AgentMetadata } from "@/lib/agents/agent-types";
 import type { ChatInputHandle } from "../chat/ChatInput";
 import { getSessionDisplayTitle } from "../sidebar/session-utils";
 import s from "./AppShell.module.css";
@@ -62,6 +64,8 @@ const PromptsConfig = lazy(() => import("../modals/PromptsConfig").then((m) => (
 const AnalyticsModal = lazy(() => import("../modals/AnalyticsModal").then((m) => ({ default: m.AnalyticsModal })));
 const SessionImportDialog = lazy(() => import("../modals/SessionImportDialog").then((m) => ({ default: m.SessionImportDialog })));
 const MeetingAgentDialog = lazy(() => import("./MeetingAgentDialog").then((m) => ({ default: m.MeetingAgentDialog })));
+const PMAgentDialog = lazy(() => import("./PMAgentDialog").then((m) => ({ default: m.PMAgentDialog })));
+const DepartmentAgentDialog = lazy(() => import("./DepartmentAgentDialog").then((m) => ({ default: m.DepartmentAgentDialog })));
 
 // Home dir for expanding ~/ file links; fetched once, shared across clicks.
 let homeDirPromise: Promise<string | null> | null = null;
@@ -94,10 +98,13 @@ export function AppShell() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [homeOpen, setHomeOpen] = useState(false);
   const [meetingAgentOpen, setMeetingAgentOpen] = useState(false);
+  const [pmAgentOpen, setPMAgentOpen] = useState(false);
+  const [departmentAgent, setDepartmentAgent] = useState<DepartmentAgentSummary | null>(null);
+  const [departmentAgents, setDepartmentAgents] = useState<DepartmentAgentSummary[]>([]);
   const [pendingStartupPrompt, setPendingStartupPrompt] = useState<string | null>(null);
   const [pendingStartupAgentMetadata, setPendingStartupAgentMetadata] = useState<AgentMetadata | null>(null);
   const [activeAgentMetadata, setActiveAgentMetadata] = useState<AgentMetadata | null>(null);
-  const [rightPanelMode, setRightPanelMode] = useState<"files" | "meeting">("files");
+  const [rightPanelMode, setRightPanelMode] = useState<"files" | "meeting" | "pm">("files");
   const sidebarOpenRef = useRef(sidebarOpen);
   const autoCollapsedSidebarRef = useRef(false);
   const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
@@ -160,6 +167,17 @@ export function AppShell() {
   useEffect(() => {
     document.documentElement.lang = locale === "zh" ? "zh-Hant-TW" : "en";
   }, [locale]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch("/api/agents", { cache: "no-store", signal: controller.signal })
+      .then(async (response) => response.ok ? response.json() as Promise<{ agents?: DepartmentAgentSummary[] }> : { agents: [] })
+      .then((payload) => {
+        if (!controller.signal.aborted) setDepartmentAgents((payload.agents ?? []).filter((agent) => agent.agentType === "department"));
+      })
+      .catch(() => { if (!controller.signal.aborted) setDepartmentAgents([]); });
+    return () => controller.abort();
+  }, []);
 
   // On narrow screens the sidebar is a full-width overlay — starting open
   // would cover the whole app with the toggle button underneath it.
@@ -250,9 +268,12 @@ export function AppShell() {
         if (controller.signal.aborted) return;
         const metadata = payload?.metadata ?? null;
         setActiveAgentMetadata(metadata);
-        if (metadata?.agentType === "meeting") {
-          setRightPanelMode("meeting");
+        if (metadata?.agentType === "meeting" || metadata?.agentType === "pm") {
+          setRightPanelMode(metadata.agentType);
           setRightPanelOpen(true);
+        } else if (isDomainAgentType(metadata?.agentType)) {
+          setRightPanelMode("files");
+          setRightPanelOpen(false);
         } else {
           setRightPanelMode("files");
         }
@@ -643,9 +664,10 @@ export function AppShell() {
   }, [openFileTab, pendingReviewFiles, state.activeCwd, state.selectedSession?.cwd]);
 
   const panelCwd = state.selectedSession?.cwd ?? state.newSessionCwd ?? state.activeCwd ?? null;
+  const activeDomainAgent = isDomainAgentType(activeAgentMetadata?.agentType);
   const legacyShell = !showDtaHome
     && Boolean(state.selectedSession)
-    && activeAgentMetadata?.agentType !== "meeting";
+    && !activeDomainAgent;
 
   const handleLaunchMeetingAgent = useCallback(({ prompt, runId, cwd }: { prompt: string; runId: string; cwd: string }) => {
     const tempId = typeof crypto.randomUUID === "function"
@@ -677,6 +699,28 @@ export function AppShell() {
       : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
     handleLaunchMeetingAgent({ prompt: message, runId, cwd: payload.workspace.cwd });
   }, [handleLaunchMeetingAgent]);
+
+  const handleLaunchPMAgent = useCallback(({ prompt, runId, cwd }: { prompt: string; runId: string; cwd: string }) => {
+    const tempId = typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+    setPendingStartupPrompt(prompt);
+    setPendingStartupAgentMetadata({ agentType: "pm", agentId: "pm-agent", displayName: "PM Agent", runId });
+    setPMAgentOpen(false);
+    setSidebarOpen(false);
+    handleNewSessionFromSidebar(tempId, cwd);
+  }, [handleNewSessionFromSidebar]);
+
+  const handleLaunchDepartmentAgent = useCallback(({ prompt, runId, cwd, agent }: { prompt: string; runId: string; cwd: string; agent: DepartmentAgentSummary }) => {
+    const tempId = typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+    setPendingStartupPrompt(prompt);
+    setPendingStartupAgentMetadata({ agentType: "department", agentId: agent.id, displayName: agent.displayName, runId });
+    setDepartmentAgent(null);
+    setSidebarOpen(false);
+    handleNewSessionFromSidebar(tempId, cwd);
+  }, [handleNewSessionFromSidebar]);
 
   const sidebarContent = (
     <ErrorBoundary>
@@ -800,7 +844,8 @@ export function AppShell() {
     || sessionImportOpen
     || appearanceOpen
     || shortcutsOpen
-    || meetingAgentOpen;
+    || meetingAgentOpen
+    || pmAgentOpen;
 
   return (
     <>
@@ -880,13 +925,17 @@ export function AppShell() {
             </svg>
           </button>
           <div className={s.sessionIdentity} data-testid="session-identity">
-            {!showDtaHome && activeAgentMetadata?.agentType === "meeting" && (
+            {!showDtaHome && activeDomainAgent && activeAgentMetadata && (
               <div className={s.managedMeetingContext}>
                 <span aria-hidden>●</span>
-                <strong>DTA Meeting Space</strong>
+                <strong>{activeAgentMetadata.agentType === "meeting"
+                  ? "DTA Meeting Space"
+                  : activeAgentMetadata.agentType === "pm"
+                    ? "DTA PM Space"
+                    : `DTA ${activeAgentMetadata.displayName} Space`}</strong>
               </div>
             )}
-            {!showDtaHome && activeAgentMetadata?.agentType !== "meeting" && visibleWorkspaceIdentity && (
+            {!showDtaHome && !activeDomainAgent && visibleWorkspaceIdentity && (
               <button
                 type="button"
                 className={s.workspaceIdentity}
@@ -913,6 +962,8 @@ export function AppShell() {
             )}
             <div className={s.chatTitle} title={state.selectedSession ? getSessionDisplayTitle(state.selectedSession, 240) : undefined}>
               {activeAgentMetadata?.agentType === "meeting" && <span className={s.agentIdentityBadge}>MEETING AGENT</span>}
+              {activeAgentMetadata?.agentType === "pm" && <span className={s.agentIdentityBadge}>PM AGENT</span>}
+              {activeAgentMetadata?.agentType === "department" && <span className={s.agentIdentityBadge}>{activeAgentMetadata.displayName.toUpperCase()}</span>}
               {showDtaHome
                 ? "Digital Transformation Agent"
                 : state.selectedSession
@@ -922,7 +973,7 @@ export function AppShell() {
                     : "DTA"}
             </div>
           </div>
-          {showChat && (
+          {showChat && activeAgentMetadata?.agentType !== "department" && (
             <button
               type="button"
               className={s.mobileActionsToggle}
@@ -1173,9 +1224,13 @@ export function AppShell() {
               onClick={() => setRightPanelOpen((open) => !open)}
               title={activeAgentMetadata?.agentType === "meeting"
                 ? rightPanelOpen ? t("meetingResult.hidePanel") : t("meetingResult.showPanel")
+                : activeAgentMetadata?.agentType === "pm"
+                  ? rightPanelOpen ? t("pmResult.hidePanel") : t("pmResult.showPanel")
                 : rightPanelOpen ? t("topbar.hideFilePanel") : t("topbar.showFilePanel")}
               aria-label={activeAgentMetadata?.agentType === "meeting"
                 ? rightPanelOpen ? t("meetingResult.hidePanel") : t("meetingResult.showPanel")
+                : activeAgentMetadata?.agentType === "pm"
+                  ? rightPanelOpen ? t("pmResult.hidePanel") : t("pmResult.showPanel")
                 : rightPanelOpen ? t("topbar.hideFilePanel") : t("topbar.showFilePanel")}
               className={`${s.topBarButton} ${s.filePanelToggle} ${rightPanelOpen ? s.filePanelToggleOpen : ""} hover-text`}
               style={{ color: rightPanelOpen ? "var(--text)" : "var(--text-muted)" }}
@@ -1229,8 +1284,10 @@ export function AppShell() {
               attentionCount={attention.unreadCount}
               onOpenAgents={() => handleRailView("agents")}
               onOpenMeetingAgent={() => setMeetingAgentOpen(true)}
+              onOpenPMAgent={() => setPMAgentOpen(true)}
+              departmentAgents={departmentAgents}
+              onOpenDepartmentAgent={setDepartmentAgent}
               onOpenReviews={() => handleRailView("attention")}
-              onOpenSessions={() => handleRailView("sessions")}
               onOpenKnowledge={() => handleRailView("knowledge")}
               onStartConversation={handleStartMeetingConversation}
             />
@@ -1337,6 +1394,11 @@ export function AppShell() {
                 <button type="button" role="tab" aria-selected={rightPanelMode === "meeting"} onClick={() => setRightPanelMode("meeting")}>Meeting result</button>
               </div>
             )}
+            {activeAgentMetadata?.agentType === "pm" && state.selectedSession && (
+              <div className={s.agentResultTabs} role="tablist" aria-label="PM workspace">
+                <button type="button" role="tab" aria-selected={rightPanelMode === "pm"} onClick={() => setRightPanelMode("pm")}>{t("pmResult.title")}</button>
+              </div>
+            )}
             {rightPanelMode === "files" && <TabBar
               tabs={fileTabs}
               activeTabId={activeFileTabId ?? ""}
@@ -1373,6 +1435,8 @@ export function AppShell() {
         <div className={s.rightPanelContent}>
           {rightPanelMode === "meeting" && activeAgentMetadata?.agentType === "meeting" && state.selectedSession ? (
             <MeetingResultPanel sessionId={state.selectedSession.id} />
+          ) : rightPanelMode === "pm" && activeAgentMetadata?.agentType === "pm" && state.selectedSession ? (
+            <PMResultPanel sessionId={state.selectedSession.id} />
           ) : diffFile && panelCwd ? (
             <DiffPanel cwd={panelCwd} path={diffFile} onClose={() => setDiffFile(null)} onAnnotate={handleDiffAnnotation} />
           ) : activeFileTab?.filePath ? (
@@ -1447,6 +1511,19 @@ export function AppShell() {
       <Suspense fallback={null}><MeetingAgentDialog
         onClose={() => setMeetingAgentOpen(false)}
         onLaunch={handleLaunchMeetingAgent}
+      /></Suspense>
+    )}
+    {pmAgentOpen && (
+      <Suspense fallback={null}><PMAgentDialog
+        onClose={() => setPMAgentOpen(false)}
+        onLaunch={handleLaunchPMAgent}
+      /></Suspense>
+    )}
+    {departmentAgent && (
+      <Suspense fallback={null}><DepartmentAgentDialog
+        agent={departmentAgent}
+        onClose={() => setDepartmentAgent(null)}
+        onLaunch={handleLaunchDepartmentAgent}
       /></Suspense>
     )}
     <DesignInspector active={designModeOpen && showChat} onClose={() => setDesignModeOpen(false)} onCapture={handleDesignCapture} />

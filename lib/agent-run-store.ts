@@ -57,6 +57,7 @@ function isAgentRun(value: unknown): value is AgentRun {
     && typeof item.name === "string"
     && typeof item.cwd === "string"
     && typeof item.prompt === "string"
+    && isOptionalString(item.requestId)
     && RUN_TRIGGERS.has(item.trigger ?? "")
     && RUN_STATUSES.has(item.status as AgentRunStatus)
     && typeof item.createdAt === "string"

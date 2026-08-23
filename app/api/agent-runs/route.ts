@@ -10,6 +10,15 @@ import {
   inspectAgentRunWorkspace,
   isTrustedAgentRunWorkspace,
 } from "@/lib/agent-run-workspace";
+import { codingAgentMetadata } from "@/lib/agents/agent-types";
+import {
+  assertAdminAccess,
+  assertRunAccess,
+  AuthenticationError,
+  authenticateRequest,
+  authenticationErrorResponse,
+  resolveActingUserId,
+} from "@/lib/auth/request-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -44,8 +53,10 @@ function encodeCursor(offset: number): string {
 }
 
 export async function GET(req: Request): Promise<Response> {
-  const supervisor = ensureAgentRunSupervisor();
-  const url = new URL(req.url);
+  try {
+    const principal = await authenticateRequest(req);
+    const supervisor = ensureAgentRunSupervisor();
+    const url = new URL(req.url);
   const statusParam = url.searchParams.get("status");
   if (statusParam && !STATUSES.has(statusParam as AgentRunStatus)) {
     return Response.json({ error: "Unsupported status" }, { status: 400 });
@@ -60,6 +71,8 @@ export async function GET(req: Request): Promise<Response> {
   const cwd = url.searchParams.get("cwd");
   const query = url.searchParams.get("q")?.trim().toLocaleLowerCase() ?? "";
   const baseRuns = readAgentRunStore().runs.filter((run) => {
+    try { assertRunAccess(principal, run.agentMetadata?.userId); }
+    catch { return false; }
     if (cwd && run.cwd !== cwd) return false;
     if (!query) return true;
     return `${run.name}\n${run.cwd}\n${run.prompt}`.toLocaleLowerCase().includes(query);
@@ -73,7 +86,7 @@ export async function GET(req: Request): Promise<Response> {
   const runs = filtered.slice(offset, offset + limit);
   const nextOffset = offset + runs.length;
 
-  return Response.json({
+    return Response.json({
     runs,
     counts,
     maxConcurrency: supervisor.maxConcurrency,
@@ -81,23 +94,32 @@ export async function GET(req: Request): Promise<Response> {
     nextCursor: nextOffset < filtered.length ? encodeCursor(nextOffset) : null,
   }, {
     headers: { "Cache-Control": "no-store" },
-  });
+    });
+  } catch (error) {
+    if (error instanceof AuthenticationError) return authenticationErrorResponse(error);
+    return Response.json({ error: "Unable to list Agent runs" }, { status: 500 });
+  }
 }
 
 export async function POST(req: Request): Promise<Response> {
   const invalidType = requiresJson(req);
   if (invalidType) return invalidType;
   try {
+    const principal = await authenticateRequest(req);
     const input = await validateAgentRunInput(await req.json());
+    const agentMetadata = input.agentMetadata
+      ? { ...input.agentMetadata, userId: resolveActingUserId(principal, input.agentMetadata.userId) }
+      : { ...codingAgentMetadata(), userId: principal.id };
     if (!await isTrustedAgentRunWorkspace(input.cwd)) {
       return Response.json({
         error: "Workspace is not trusted. Open it as a project before starting a background agent.",
       }, { status: 403 });
     }
     const workspace = await inspectAgentRunWorkspace(input.cwd);
-    const run = ensureAgentRunSupervisor().enqueue({ ...input, workspace });
+    const run = ensureAgentRunSupervisor().enqueue({ ...input, agentMetadata, workspace });
     return Response.json({ run }, { status: 202 });
   } catch (error) {
+    if (error instanceof AuthenticationError) return authenticationErrorResponse(error);
     const status = error instanceof AgentRunValidationError || error instanceof SyntaxError ? 400 : 500;
     return Response.json({
       error: error instanceof Error ? error.message : String(error),
@@ -109,12 +131,15 @@ export async function PATCH(req: Request): Promise<Response> {
   const invalidType = requiresJson(req);
   if (invalidType) return invalidType;
   try {
+    const principal = await authenticateRequest(req);
+    assertAdminAccess(principal);
     const { maxConcurrency } = validateAgentRunConfigInput(await req.json());
     const applied = ensureAgentRunSupervisor().setMaxConcurrency(maxConcurrency);
     return Response.json({ maxConcurrency: applied }, {
       headers: { "Cache-Control": "no-store" },
     });
   } catch (error) {
+    if (error instanceof AuthenticationError) return authenticationErrorResponse(error);
     const status = error instanceof AgentRunValidationError
       || error instanceof SyntaxError
       || error instanceof RangeError

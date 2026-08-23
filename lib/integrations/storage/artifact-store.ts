@@ -10,6 +10,8 @@ export type ArtifactType =
   | "meeting_minutes"
   | "urd"
   | "prd"
+  | "user_story"
+  | "acceptance_criteria"
   | "design"
   | "task_plan";
 
@@ -35,8 +37,18 @@ export interface Artifact extends ArtifactReference {
   metadata?: Record<string, unknown>;
 }
 
+export interface ArtifactDescriptor extends ArtifactReference {
+  metadata?: Record<string, unknown>;
+}
+
 export interface ArtifactStore {
   put(input: ArtifactInput): Promise<ArtifactReference>;
   get(id: string): Promise<Artifact>;
   delete?(id: string): Promise<void>;
+  list?(): Promise<ArtifactDescriptor[]>;
+  healthCheck?(): Promise<void>;
 }
+
+export class ArtifactNotFoundError extends Error {}
+export class ArtifactStoreConfigurationError extends Error {}
+export class ArtifactStoreOperationError extends Error {}

@@ -24,4 +24,16 @@ describe("agent runtime profiles", () => {
     expect(() => createRuntimeProfile({ agentType: "meeting", agentId: "meeting-agent", displayName: "Meeting Agent" }))
       .toThrow("requires a runId");
   });
+
+  it("gives PM Agent a dedicated prompt and structured publishing tool", () => {
+    const profile = createRuntimeProfile({
+      agentType: "pm",
+      agentId: "pm-agent",
+      displayName: "PM Agent",
+      runId: "pm-run-12345678",
+    });
+    expect(profile.systemPrompt).toContain("Product Management specialist");
+    expect(profile.activeToolNames).toEqual(["ask_user", "publish_pm_result"]);
+    expect(profile.customTools?.map((tool) => tool.name)).toEqual(["publish_pm_result"]);
+  });
 });

@@ -1,12 +1,19 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   bindWebExtensions,
   createAgentModelCatalogRefresher,
   emitWebBeforeFork,
   initializeWebTheme,
+  registerConfiguredLlmProvider,
   trackExtensionProviders,
 } from "../pi-runtime";
 import { PI_WEB_OUTPUT_GUIDANCE, appendPiWebOutputGuidance } from "../output-design";
+
+const ORIGINAL_ENV = { ...process.env };
+
+afterEach(() => {
+  process.env = { ...ORIGINAL_ENV };
+});
 
 describe("DTA runtime integration", () => {
   it("adds DTA's optional structured-output guidance without replacing user instructions", () => {
@@ -37,6 +44,29 @@ describe("DTA runtime integration", () => {
     initializeWebTheme({ getTheme: () => "dark" }, initialize);
 
     expect(initialize).toHaveBeenCalledWith("dark", false);
+  });
+
+  it("registers the company LLM from environment without embedding its secret", () => {
+    process.env.LLM_PROVIDER_ID = "department-gateway";
+    process.env.LLM_BASE_URL = "https://llm.example.com/v1";
+    process.env.LLM_MODEL = "company-model";
+    process.env.LLM_API_KEY = "secret-value";
+    const registerProvider = vi.fn();
+    const runtime = {
+      registerProvider,
+      unregisterProvider: vi.fn(),
+      getModels: () => [],
+      getAvailableSnapshot: () => [],
+      getProvider: () => undefined,
+    };
+
+    expect(registerConfiguredLlmProvider(runtime)).toBe(true);
+    expect(registerProvider).toHaveBeenCalledWith("department-gateway", expect.objectContaining({
+      baseUrl: "https://llm.example.com/v1",
+      apiKey: "$LLM_API_KEY",
+      models: [expect.objectContaining({ id: "company-model" })],
+    }));
+    expect(JSON.stringify(registerProvider.mock.calls)).not.toContain("secret-value");
   });
 
   it("tracks successful and failed extension provider registrations", () => {

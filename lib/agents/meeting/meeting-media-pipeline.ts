@@ -1,10 +1,11 @@
 import type { ArtifactReference, ArtifactStore } from "@/lib/integrations/storage/artifact-store";
-import { getArtifactStore } from "@/lib/integrations/storage/local-artifact-store";
+import { getArtifactStore } from "@/lib/integrations/storage/artifact-store-factory";
 import { getMediaProcessor, type MediaProcessor } from "@/lib/integrations/media/media-processor";
 import { buildMeetingMediaTimeline } from "@/lib/integrations/media/meeting-timeline";
 import type { MediaProbe, TranscriptResult, VisualAnalysisResult } from "@/lib/integrations/media/media-types";
 import { getTranscriptionProvider, type TranscriptionProvider } from "@/lib/integrations/transcription/transcription-provider";
 import { getVisionProvider, type VisionProvider } from "@/lib/integrations/vision/vision-provider";
+import { artifactOwnershipMetadata, type ArtifactOwnership } from "@/lib/integrations/storage/artifact-access";
 
 export interface MeetingMediaUnderstanding {
   content?: string;
@@ -29,13 +30,20 @@ interface Dependencies {
   visionProvider?: VisionProvider;
 }
 
-async function storeTranscript(store: ArtifactStore, name: string, sourceArtifactId: string, provider: TranscriptionProvider, transcript: TranscriptResult): Promise<ArtifactReference> {
+async function storeTranscript(
+  store: ArtifactStore,
+  name: string,
+  sourceArtifactId: string,
+  provider: TranscriptionProvider,
+  transcript: TranscriptResult,
+  ownership: ArtifactOwnership,
+): Promise<ArtifactReference> {
   return store.put({
     type: "transcript",
     title: `${name} — transcript`,
     mimeType: "application/json; charset=utf-8",
     data: JSON.stringify(transcript, null, 2),
-    metadata: { sourceArtifactId, provider: provider.name, segmentCount: transcript.segments?.length ?? 0, language: transcript.language },
+    metadata: { ...ownership, sourceArtifactId, provider: provider.name, segmentCount: transcript.segments?.length ?? 0, language: transcript.language },
   });
 }
 
@@ -49,6 +57,7 @@ export async function understandMeetingMedia(input: {
   const transcriptionProvider = dependencies.transcriptionProvider ?? getTranscriptionProvider();
   const visionProvider = dependencies.visionProvider ?? getVisionProvider();
   const artifact = await store.get(input.artifactId);
+  const ownership = artifactOwnershipMetadata(artifact.metadata);
   const warnings: string[] = [];
   let probe: MediaProbe | undefined;
   let transcript: TranscriptResult | undefined;
@@ -79,7 +88,7 @@ export async function understandMeetingMedia(input: {
           title: `${input.name} — extracted audio`,
           mimeType: extracted.mimeType,
           data: extracted.data,
-          metadata: { sourceArtifactId: artifact.id, originalName: extracted.fileName, processor: processor.name },
+          metadata: { ...ownership, sourceArtifactId: artifact.id, originalName: extracted.fileName, processor: processor.name },
         });
         audioArtifactId = audioReference.id;
         transcriptionArtifact = await store.get(audioReference.id);
@@ -87,7 +96,7 @@ export async function understandMeetingMedia(input: {
       transcript = await transcriptionProvider.transcribe(transcriptionArtifact);
       transcript.text = transcript.text.trim();
       if (!transcript.text) throw new Error("Transcription returned no text");
-      const transcriptReference = await storeTranscript(store, input.name, artifact.id, transcriptionProvider, transcript);
+      const transcriptReference = await storeTranscript(store, input.name, artifact.id, transcriptionProvider, transcript, ownership);
       transcriptArtifactId = transcriptReference.id;
       transcriptionStatus = "ready";
     } catch (error) {
@@ -111,7 +120,7 @@ export async function understandMeetingMedia(input: {
           title: `${input.name} — keyframe ${index + 1}`,
           mimeType: frame.mimeType,
           data: frame.data,
-          metadata: { sourceArtifactId: artifact.id, timestampSeconds: frame.timestampSeconds, processor: processor.name },
+          metadata: { ...ownership, sourceArtifactId: artifact.id, timestampSeconds: frame.timestampSeconds, processor: processor.name },
         });
         keyframeArtifactIds.push(reference.id);
       }
@@ -121,7 +130,7 @@ export async function understandMeetingMedia(input: {
         title: `${input.name} — visual analysis`,
         mimeType: "application/json; charset=utf-8",
         data: JSON.stringify(visual, null, 2),
-        metadata: { sourceArtifactId: artifact.id, provider: visionProvider.name, keyframeArtifactIds },
+        metadata: { ...ownership, sourceArtifactId: artifact.id, provider: visionProvider.name, keyframeArtifactIds },
       });
       visualAnalysisArtifactId = visualReference.id;
       visionStatus = "ready";
@@ -142,6 +151,7 @@ export async function understandMeetingMedia(input: {
       mimeType: "text/markdown; charset=utf-8",
       data: content,
       metadata: {
+        ...ownership,
         sourceArtifactId: artifact.id,
         transcriptArtifactId,
         visualAnalysisArtifactId,

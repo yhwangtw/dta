@@ -1,4 +1,5 @@
 import type { ArtifactReference } from "@/lib/integrations/storage/artifact-store";
+import type { AgentAction } from "@/lib/agents/agent-types";
 
 export interface MeetingResult {
   title?: string;
@@ -17,12 +18,39 @@ export interface MeetingResult {
   }>;
 }
 
+export type MeetingReviewStatus =
+  | "draft"
+  | "needs_review"
+  | "approved"
+  | "changes_requested"
+  | "rejected";
+
+export type MeetingReviewDecision = Extract<
+  MeetingReviewStatus,
+  "approved" | "changes_requested" | "rejected"
+>;
+
+export interface MeetingReviewEvent {
+  status: MeetingReviewDecision;
+  actorId: string;
+  comment?: string;
+  reviewedAt: string;
+  revision: number;
+}
+
 export interface StoredMeetingResult {
   runId: string;
   sessionId?: string;
+  userId?: string;
+  projectId?: string;
+  conversationId?: string;
   status: "running" | "completed" | "failed";
   result?: MeetingResult;
   artifacts: ArtifactReference[];
+  actions: AgentAction[];
+  reviewStatus: MeetingReviewStatus;
+  revision: number;
+  reviewHistory: MeetingReviewEvent[];
   error?: string;
   updatedAt: string;
 }

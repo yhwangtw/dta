@@ -144,13 +144,15 @@ Do not mount a Vault token, Docker socket, host root filesystem, or privileged s
 ```text
 Git commit
   -> locked npm install and tests
-  -> Docker build from maintained Node 22 slim base
+  -> Docker build from the pinned official Node 22 Alpine 3.23 base
   -> SBOM/CVE scan
   -> approved registry
   -> Kubernetes deployment
 ```
 
 Do not suppress CVEs. Rebuild against the current maintained base image and update the lockfile/dependency when a finding has a fix. Scan both OS and npm layers. Secrets must not be build arguments, copied `.env` files, image layers, or labels.
+
+The final runtime stage keeps Node.js, Bash, Git, and FFmpeg, but removes npm, npx, Yarn, and Corepack after the application build. Company deployment changes therefore happen through the published image plus runtime configuration, not by installing packages inside a running container.
 
 To pull a released image before mirroring it:
 

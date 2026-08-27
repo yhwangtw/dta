@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { AgentMetadata } from "@/lib/agents/agent-types";
 import type { StoredPMResult } from "@/lib/agents/pm/pm-types";
 import { useI18n } from "@/lib/i18n";
+import { WorkflowActionsPanel } from "./WorkflowActionsPanel";
 import s from "./MeetingResultPanel.module.css";
 
 interface Props { sessionId: string }
@@ -52,6 +53,7 @@ export function PMResultPanel({ sessionId }: Props) {
       <h3>{t("pmResult.artifacts")} <span>{run.result.artifacts.length}</span></h3>
       <div className={s.artifacts}>{run.result.artifacts.map((artifact) => <a key={artifact.artifactId} href={`/api/artifacts/${encodeURIComponent(artifact.artifactId)}`} target="_blank" rel="noreferrer"><span>{artifact.type}</span><strong>{artifact.title}</strong></a>)}</div>
     </section>
+    <WorkflowActionsPanel agentId="pm-agent" sourceRunId={run.runId} sourceVersion={run.updatedAt} />
     <section>
       <h3>{t("pmResult.recommendedActions")} <span>{run.actions.length}</span></h3>
       {run.actions.length === 0 ? <p className={s.empty}>{t("pmResult.noActions")}</p> : <ul>{run.actions.map((action, index) => <li key={`${action.type}-${action.target ?? index}`}><strong>{action.target || action.type}</strong>{action.reason && <p>{action.reason}</p>}<small>{action.type}</small></li>)}</ul>}

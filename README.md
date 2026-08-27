@@ -35,6 +35,7 @@ DTA treats chat as one interaction method rather than the product hierarchy:
 - **Department Knowledge** — find approved decisions and artifacts without losing their context.
 - **Human control plane** — review evidence, resolve exceptions, and approve publication.
 - **Orchestrator entry point** — expose stable, bounded department-agent contracts to company automation.
+- **Multiple operator entry points** — use the same Agent core through Web, interactive TUI, batch CLI, REST, or A2A; retain native Pi CLI as an explicit developer-only Coding Agent mode.
 
 ## Who is this for?
 
@@ -80,6 +81,17 @@ npm start
 
 Open [http://localhost:30141](http://localhost:30141).
 
+The Web is optional. From a source checkout, the same server-side Agents are
+available through an interactive terminal or batch command:
+
+```bash
+npm run tui -- meeting
+npm run dta -- run meeting --task "Generate minutes" --transcript ./notes.txt
+```
+
+See [DTA Terminal Interfaces](./docs/cli.md) for `serve`, TUI, uploads, sessions,
+review, Keycloak, and native Pi Coding Agent mode.
+
 ### Update an existing checkout
 
 ```bash
@@ -101,6 +113,8 @@ DTA_SETUP_OFFLINE=1 bash setup.sh
 - [Complete environment template](./.env.example)
 
 The same image runs locally with local/mock adapters and in the company with Keycloak, the company LLM gateway, MinIO, and n8n. Connection information and secrets are never baked into the image.
+
+Department workflows are built visually in n8n and registered through configuration; DTA keeps the Agent runtime, approval gate, normalized payload, audit trail, and external Agent contract. See [the n8n integration guide](./docs/n8n.md).
 
 ## Interface Tour
 
@@ -207,6 +221,12 @@ The mobile layout keeps the active phase, transcript, composer, model controls, 
 |---|---|
 | `bash setup.sh` | Replace local source with `origin/main`, validate, install, build, and optionally start production |
 | `npm run dev` | Optionally start the development server on port `30141` |
+| `npm run dta -- serve` | Start the production DTA Web/API server |
+| `npm run tui -- meeting` | Open the interactive Meeting Agent terminal |
+| `npm run dta -- run meeting …` | Run a batch Meeting Agent task |
+| `npm run dta -- sessions` | List generic domain Agent runs |
+| `npm run dta -- review RUN_ID …` | Review a Meeting result |
+| `npm run dta -- pi` | Launch native Pi Coding Agent developer mode |
 | `node_modules/.bin/tsc --noEmit` | Typecheck |
 | `npx eslint .` | Lint |
 | `npm test` | Run Vitest unit tests |
@@ -280,7 +300,7 @@ Current limitation: active Pi session ownership, normalized event replay, run/re
 
 ## Architecture
 
-See [DTA Agent Platform Architecture](./docs/architecture.md) for the generic runtime, Meeting/PM boundaries, external Agent Contract, A2A, Keycloak, review gate, adapters, and production limitations.
+See [DTA Agent Platform Architecture](./docs/architecture.md) for the generic runtime, Meeting/PM boundaries, external Agent Contract, A2A, Keycloak, review gate, adapters, and production limitations. See [DTA Terminal Interfaces](./docs/cli.md) for the shared Web/TUI/CLI model.
 
 ## Project Structure
 
@@ -314,7 +334,9 @@ No. Install and update it from the GitHub repository or a GitHub Release source 
 
 ### Does it replace Pi?
 
-No. It is a local browser interface over Pi's session files and agent runtime. Pi remains the underlying coding agent.
+No. Pi remains the pinned internal reasoning/session runtime and the native
+Coding Agent terminal. DTA adds runtime-neutral Meeting/PM policy, contracts,
+artifacts, review, Web, TUI, CLI, REST, and A2A around that foundation.
 
 ### Does the app upload my sessions?
 

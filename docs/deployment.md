@@ -33,14 +33,21 @@ curl http://127.0.0.1:30141/ready
 curl http://127.0.0.1:30141/.well-known/agent-card.json
 ```
 
-The UI is optional. Any shell with Node.js 22 can use the bundled HTTP client:
+The UI is optional. The production image installs the `dta` executable, while a
+source checkout exposes the same commands through `npm run dta --`:
 
 ```bash
 DTA_BASE_URL=http://127.0.0.1:30141 \
-  npm run agent -- meeting --task "Generate meeting minutes" --transcript ./notes.txt
+  dta run meeting --task "Generate meeting minutes" --transcript ./notes.txt
+
+dta tui meeting
+dta sessions --agent meeting
 ```
 
 For Keycloak-protected environments, pass the access token through `DTA_ACCESS_TOKEN`; the CLI does not persist it.
+The CLI/TUI can upload Meeting text, DOCX, audio, and video through the same
+bounded extraction endpoint as the Web UI. `dta pi` remains a separate native
+Coding Agent developer entry point. See [`docs/cli.md`](./cli.md).
 
 `/health` is a liveness endpoint. `/ready` returns HTTP 503 when a selected adapter is missing required configuration; optional disabled media capabilities are warnings and do not make local mode unready.
 
@@ -82,7 +89,10 @@ DTA_UPLOAD_SCANNER_URL=https://malware-scanner.example.com/scan
 
 DTA_WORKFLOW_PROVIDER=n8n
 N8N_BASE_URL=https://n8n.example.com
+N8N_EDITOR_URL=https://n8n.example.com
 ```
+
+See [n8n integration](./n8n.md) for the webhook contract, workflow allowlists, approval gate, idempotency headers, and local mock mode.
 
 API keys and storage credentials come from Secrets, never the ConfigMap or image. See `.env.example` for the complete list.
 
@@ -122,7 +132,7 @@ kubectl rollout status deployment/dta-agent-platform
 kubectl get pods,service,ingress
 ```
 
-The sample enforces one replica, non-root UID/GID, `RuntimeDefault` seccomp, no service-account token, no privilege escalation, a read-only root filesystem, and all Linux capabilities dropped. It mounts writable volumes only at `/data`, `/workspace`, `/tmp`, and the Next cache.
+The sample enforces one replica, non-root UID/GID, `RuntimeDefault` seccomp, no service-account token, no privilege escalation, a read-only root filesystem, and all Linux capabilities dropped. It mounts writable volumes only at `/data`, `/workspace`, `/tmp`, and the Next cache. Startup, readiness, and liveness probes are separate; service-link injection is disabled and pod termination receives 60 seconds for graceful shutdown.
 
 The sample also mounts `/etc/dta/agents.json` read-only. `POSTGRES_URL`, media/model keys, MinIO credentials, n8n credentials, and the upload-scanner key come from Secret references. For MinIO, configure a bucket lifecycle rule matching `DTA_ARTIFACT_RETENTION_DAYS`; application-side retention intentionally does not list production buckets.
 
@@ -144,7 +154,8 @@ Do not mount a Vault token, Docker socket, host root filesystem, or privileged s
 ```text
 Git commit
   -> locked npm install and tests
-  -> Docker build from the pinned official Node 22 Alpine 3.23 base
+  -> Docker build with a pinned official Node 22 Debian builder
+  -> Minimal pinned Wolfi runtime with Node 22, Git, and FFmpeg
   -> SBOM/CVE scan
   -> approved registry
   -> Kubernetes deployment
@@ -152,7 +163,7 @@ Git commit
 
 Do not suppress CVEs. Rebuild against the current maintained base image and update the lockfile/dependency when a finding has a fix. Scan both OS and npm layers. Secrets must not be build arguments, copied `.env` files, image layers, or labels.
 
-The final runtime stage keeps Node.js, Bash, Git, and FFmpeg, but removes npm, npx, Yarn, and Corepack after the application build. Company deployment changes therefore happen through the published image plus runtime configuration, not by installing packages inside a running container.
+The final runtime stage uses a digest-pinned Wolfi base and exact package versions for Node.js, Bash, Git, and FFmpeg. npm, npx, Yarn, and Corepack are not installed in the runtime stage. Company deployment changes therefore happen through the published image plus runtime configuration, not by installing packages inside a running container. The builder and runtime both use glibc-compatible distributions so traced native Node modules are not copied across incompatible C libraries.
 
 To pull a released image before mirroring it:
 

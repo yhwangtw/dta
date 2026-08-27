@@ -1,8 +1,11 @@
-ARG NODE_IMAGE=node:22.23.2-alpine3.23@sha256:46825fbbd4e996a78b7a2cdc08d75e38a5a505bdab95dcda55605359bf124bc6
+ARG NODE_IMAGE=node:22.23.2-bookworm-slim@sha256:83f487e0a63425e5b4d146fb5e5be574bcbe1b7b843d3ebafdd95eaf7767a7e5
+ARG RUNTIME_IMAGE=cgr.dev/chainguard/wolfi-base@sha256:19f7a7b40a11c435311e3784bd134c6b6f19677462440da48f96d5c84eefd669
 FROM ${NODE_IMAGE} AS dependencies
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN apk add --no-cache ca-certificates git gcompat
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends ca-certificates git \
+  && rm -rf /var/lib/apt/lists/*
 COPY package.json package-lock.json ./
 COPY scripts/patch-pi-brace-expansion.mjs ./scripts/patch-pi-brace-expansion.mjs
 RUN npm ci
@@ -14,7 +17,7 @@ COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
 
-FROM ${NODE_IMAGE} AS runtime
+FROM ${RUNTIME_IMAGE} AS runtime
 WORKDIR /app
 ARG BUILD_VERSION=development
 ARG BUILD_REVISION=unknown
@@ -32,26 +35,34 @@ ENV NODE_ENV=production \
     DTA_DATA_DIR=/data \
     DTA_AGENT_WORKSPACE=/workspace \
     PI_CODING_AGENT_DIR=/data/pi
-RUN apk upgrade --no-cache \
-  && apk add --no-cache bash ca-certificates ffmpeg git gcompat \
-  && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack /opt/yarn-v* \
-  && rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack /usr/local/bin/yarn /usr/local/bin/yarnpkg \
-  && mkdir -p /data /workspace \
+RUN apk update \
+  && apk add --no-cache \
+    bash=5.3-r12 \
+    ca-certificates=20260611-r0 \
+    ffmpeg-8.1=8.1.2-r2 \
+    git=2.55.0-r4 \
+    nodejs-22=22.23.2-r1 \
+  && addgroup -S -g 1000 node \
+  && adduser -S -D -H -u 1000 -G node node \
+  && mkdir -p /data /workspace /usr/local/bin \
   && chown -R node:node /data /workspace /app
 COPY --from=builder --chown=node:node /app/package.json /app/package-lock.json ./
 COPY --from=builder --chown=node:node /app/.next/standalone ./
 COPY --from=builder --chown=node:node /app/.next/static ./.next/static
 COPY --from=builder --chown=node:node /app/public ./public
-COPY --from=builder --chown=node:node /app/scripts/dta-agent.mjs ./scripts/dta-agent.mjs
+COPY --from=builder --chown=node:node /app/scripts/dta.mjs /app/scripts/dta-core.mjs /app/scripts/dta-agent.mjs ./scripts/
 # Next.js standalone tracing does not include Pi's non-JavaScript runtime assets.
 # Copy only the assets and built-in documentation Pi resolves at runtime; avoid
 # copying Pi's nested development dependency tree into the production image.
 COPY --from=builder --chown=node:node /app/node_modules/@earendil-works/pi-coding-agent/dist/core/export-html ./node_modules/@earendil-works/pi-coding-agent/dist/core/export-html
 COPY --from=builder --chown=node:node /app/node_modules/@earendil-works/pi-coding-agent/dist/modes/interactive/assets ./node_modules/@earendil-works/pi-coding-agent/dist/modes/interactive/assets
 COPY --from=builder --chown=node:node /app/node_modules/@earendil-works/pi-coding-agent/dist/modes/interactive/theme ./node_modules/@earendil-works/pi-coding-agent/dist/modes/interactive/theme
+COPY --from=builder --chown=node:node /app/node_modules/@earendil-works/pi-coding-agent/dist/cli.js ./node_modules/@earendil-works/pi-coding-agent/dist/cli.js
 COPY --from=builder --chown=node:node /app/node_modules/@earendil-works/pi-coding-agent/README.md /app/node_modules/@earendil-works/pi-coding-agent/CHANGELOG.md ./node_modules/@earendil-works/pi-coding-agent/
 COPY --from=builder --chown=node:node /app/node_modules/@earendil-works/pi-coding-agent/docs ./node_modules/@earendil-works/pi-coding-agent/docs
 COPY --from=builder --chown=node:node /app/node_modules/@earendil-works/pi-coding-agent/examples ./node_modules/@earendil-works/pi-coding-agent/examples
+RUN chmod 0555 /app/scripts/dta.mjs /app/scripts/dta-agent.mjs \
+  && ln -s /app/scripts/dta.mjs /usr/local/bin/dta
 USER node
 EXPOSE 30141
 VOLUME ["/data"]

@@ -1,11 +1,11 @@
 import { loadDtaConfig, type DtaConfig } from "@/lib/config/env";
-import { WorkflowExecutionError, type WorkflowExecutor } from "./workflow-executor";
+import { WorkflowExecutionError, type WorkflowExecutionContext, type WorkflowExecutor } from "./workflow-executor";
 import { recordAuditEvent } from "@/lib/observability/audit-log";
 
 export class N8nWorkflowExecutor implements WorkflowExecutor {
   constructor(private readonly config: DtaConfig = loadDtaConfig()) {}
 
-  async execute(workflow: string, payload: unknown): Promise<unknown> {
+  async execute(workflow: string, payload: unknown, context: WorkflowExecutionContext = {}): Promise<unknown> {
     const endpoint = this.config.n8nWorkflows[workflow];
     if (!endpoint) throw new WorkflowExecutionError(`n8n workflow is not configured: ${workflow}`);
     if (!this.config.n8nBaseUrl) throw new WorkflowExecutionError("N8N_BASE_URL is not configured");
@@ -18,10 +18,22 @@ export class N8nWorkflowExecutor implements WorkflowExecutor {
     if (url.protocol !== "https:" && url.protocol !== "http:") {
       throw new WorkflowExecutionError("n8n workflow URL must use HTTP or HTTPS");
     }
+    let configuredBase: URL;
+    try {
+      configuredBase = new URL(`${this.config.n8nBaseUrl}/`);
+    } catch {
+      throw new WorkflowExecutionError("N8N_BASE_URL is invalid");
+    }
+    if (url.origin !== configuredBase.origin) {
+      throw new WorkflowExecutionError("n8n workflow URL must use the configured N8N_BASE_URL origin");
+    }
     const headers = new Headers({ "Content-Type": "application/json", Accept: "application/json" });
     if (this.config.n8nApiKey) {
       headers.set(this.config.n8nAuthHeader, `${this.config.n8nAuthScheme} ${this.config.n8nApiKey}`.trim());
     }
+    headers.set("X-DTA-Workflow-Id", workflow);
+    if (context.executionId) headers.set("X-DTA-Execution-Id", context.executionId);
+    if (context.idempotencyKey) headers.set("Idempotency-Key", context.idempotencyKey);
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.config.n8nTimeoutMs);
     try {
@@ -31,6 +43,7 @@ export class N8nWorkflowExecutor implements WorkflowExecutor {
         body: JSON.stringify(payload ?? null),
         signal: controller.signal,
         cache: "no-store",
+        redirect: "error",
       });
       const text = await response.text();
       if (!response.ok) throw new WorkflowExecutionError(`n8n workflow ${workflow} failed with HTTP ${response.status}`);

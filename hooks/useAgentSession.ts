@@ -598,12 +598,22 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         ...(selectedModel ? { provider: selectedModel.provider, modelId: selectedModel.modelId } : {}),
         ...(thinkingLevel !== "auto" ? { thinkingLevel } : {}),
         ...(startupAgentMetadata ? { agentMetadata: startupAgentMetadata } : {}),
+        // Create the runtime first so the browser can subscribe to SSE before
+        // a fast first response emits all of its events.
+        deferPrompt: true,
       }),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const result = await res.json() as { sessionId: string };
     sessionIdRef.current = result.sessionId;
-    connectEvents(result.sessionId);
+    if (!(await connectEvents(result.sessionId))) {
+      console.warn("SSE stream not open before first prompt — early events may be missed");
+    }
+    await sendAgentCommand(result.sessionId, {
+      type: "prompt",
+      message,
+      ...(piImages?.length ? { images: piImages } : {}),
+    });
     onSessionCreated?.({
       id: result.sessionId,
       path: "",

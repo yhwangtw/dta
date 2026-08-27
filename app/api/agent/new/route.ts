@@ -29,7 +29,7 @@ export async function POST(req: Request) {
     }
 
     // Use a one-time key so startRpcSession's lock doesn't conflict with real session ids
-    const { provider, modelId, toolNames, thinkingLevel, ephemeral, agentMetadata, ...promptCommand } = command as { provider?: string; modelId?: string; toolNames?: string[]; thinkingLevel?: string; ephemeral?: boolean; agentMetadata?: unknown; [key: string]: unknown };
+    const { provider, modelId, toolNames, thinkingLevel, ephemeral, agentMetadata, deferPrompt, ...promptCommand } = command as { provider?: string; modelId?: string; toolNames?: string[]; thinkingLevel?: string; ephemeral?: boolean; agentMetadata?: unknown; deferPrompt?: boolean; [key: string]: unknown };
     if (agentMetadata !== undefined && !isAgentMetadata(agentMetadata)) {
       return NextResponse.json({ error: "Invalid agentMetadata" }, { status: 400 });
     }
@@ -37,16 +37,39 @@ export async function POST(req: Request) {
       ? { ...agentMetadata, userId: resolveActingUserId(principal, agentMetadata.userId) }
       : undefined;
     const tempKey = `__new__${Date.now()}`;
-    const { session, result } = await getAgentExecutionService().startSession({
+    const executionService = getAgentExecutionService();
+    const sessionInput = {
       cwd,
       sessionId: tempKey,
+      toolNames,
+      ephemeral: ephemeral === true,
+      ...(authenticatedMetadata ? { metadata: authenticatedMetadata } : { userId: principal.id }),
+    };
+
+    // The browser needs the real session id before it can subscribe to SSE.
+    // Let it explicitly defer the first prompt, connect to the event stream,
+    // then POST the prompt through /api/agent/[id]. This prevents fast model
+    // responses from completing before the browser is listening.
+    if (deferPrompt === true) {
+      if (!!provider !== !!modelId) {
+        return NextResponse.json({ error: "provider and modelId must be set together" }, { status: 400 });
+      }
+      const session = await executionService.createSession(sessionInput);
+      if (provider && modelId) {
+        await session.send({ type: "set_model", provider, modelId });
+      }
+      if (thinkingLevel) {
+        await session.send({ type: "set_thinking_level", level: thinkingLevel });
+      }
+      return NextResponse.json({ success: true, sessionId: session.sessionId, ephemeral: ephemeral === true, data: null });
+    }
+
+    const { session, result } = await executionService.startSession({
+      ...sessionInput,
       command: promptCommand,
       provider,
       modelId,
       thinkingLevel,
-      toolNames,
-      ephemeral: ephemeral === true,
-      ...(authenticatedMetadata ? { metadata: authenticatedMetadata } : { userId: principal.id }),
     });
 
     return NextResponse.json({ success: true, sessionId: session.sessionId, ephemeral: ephemeral === true, data: result });

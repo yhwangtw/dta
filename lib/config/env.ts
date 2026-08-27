@@ -47,6 +47,7 @@ export interface DtaConfig {
   workflowProvider: WorkflowProviderName;
   enableWorkflowTools: boolean;
   n8nBaseUrl?: string;
+  n8nEditorUrl?: string;
   n8nApiKey?: string;
   n8nAuthHeader: string;
   n8nAuthScheme: string;
@@ -176,6 +177,7 @@ export function loadDtaConfig(env: NodeJS.ProcessEnv = process.env): DtaConfig {
     workflowProvider: enumValue(env.DTA_WORKFLOW_PROVIDER, ["none", "mock", "n8n"] as const, env.NODE_ENV === "production" ? "none" : "mock"),
     enableWorkflowTools: booleanValue(env.DTA_ENABLE_WORKFLOW_TOOLS, false),
     ...(optional(env.N8N_BASE_URL) ? { n8nBaseUrl: optional(env.N8N_BASE_URL)?.replace(/\/+$/, "") } : {}),
+    ...(optional(env.N8N_EDITOR_URL) ? { n8nEditorUrl: optional(env.N8N_EDITOR_URL)?.replace(/\/+$/, "") } : {}),
     ...(optional(env.N8N_API_KEY) ? { n8nApiKey: optional(env.N8N_API_KEY) } : {}),
     n8nAuthHeader: optional(env.N8N_AUTH_HEADER) ?? "Authorization",
     n8nAuthScheme: optional(env.N8N_AUTH_SCHEME) ?? "Bearer",

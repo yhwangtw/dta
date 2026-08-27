@@ -8,6 +8,8 @@ spec:
   # Pi session and run supervision are process-local. Keep this at one until a
   # distributed run/session store and worker ownership protocol are added.
   replicas: 1
+  revisionHistoryLimit: 3
+  progressDeadlineSeconds: 600
   strategy:
     type: Recreate
   selector:
@@ -19,6 +21,8 @@ spec:
         app.kubernetes.io/name: dta-agent-platform
     spec:
       automountServiceAccountToken: false
+      enableServiceLinks: false
+      terminationGracePeriodSeconds: 60
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
@@ -106,6 +110,14 @@ spec:
             initialDelaySeconds: 20
             periodSeconds: 30
             timeoutSeconds: 5
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 24
           readinessProbe:
             httpGet:
               path: /ready
@@ -113,6 +125,7 @@ spec:
             initialDelaySeconds: 10
             periodSeconds: 15
             timeoutSeconds: 5
+            failureThreshold: 3
           resources:
             requests:
               cpu: 250m

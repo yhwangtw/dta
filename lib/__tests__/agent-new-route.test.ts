@@ -42,4 +42,17 @@ describe("POST /api/agent/new", () => {
     expect(response.status).toBe(400);
     expect(harness.start).not.toHaveBeenCalled();
   });
+
+  it("can create a session without racing the first prompt ahead of SSE", async () => {
+    const response = await POST(new Request("http://localhost/api/agent/new", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cwd, type: "prompt", message: "hello", deferPrompt: true }),
+    }));
+
+    expect(response.status).toBe(200);
+    expect(harness.start).toHaveBeenCalledTimes(1);
+    expect(harness.send).not.toHaveBeenCalled();
+    await expect(response.json()).resolves.toMatchObject({ sessionId: "memory-1", data: null });
+  });
 });

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { AgentMetadata } from "@/lib/agents/agent-types";
 import type { MeetingReviewDecision, StoredMeetingResult } from "@/lib/agents/meeting/meeting-types";
 import { useI18n } from "@/lib/i18n";
+import { WorkflowActionsPanel } from "./WorkflowActionsPanel";
 import s from "./MeetingResultPanel.module.css";
 
 interface Props {
@@ -165,6 +166,8 @@ export function MeetingResultPanel({ sessionId }: Props) {
           </li>)}</ol>
         </details>}
       </section>
+
+      <WorkflowActionsPanel agentId="meeting-agent" sourceRunId={run.runId} sourceVersion={`${run.revision}:${run.reviewStatus}:${run.updatedAt}`} />
 
       {handoffs.length > 0 && <section className={s.handoffs}>
         <h3>{t("meetingResult.handoffs")} <span>{handoffs.length}</span></h3>

@@ -5,7 +5,7 @@
 Digital Transformation Agent (DTA) is a Meeting-first department Agent platform and human control plane. It owns the department's domain Agents, evidence, artifacts, review state, and execution history. A company Orchestrator may call it through a stable HTTP contract or A2A, but does not need to know which internal runtime performs the reasoning loop.
 
 ```text
-Company Orchestrator / CLI / DTA Web UI
+Company Orchestrator / Web / TUI / CLI / REST
                  |
         Agent Contract or A2A v1
                  |
@@ -24,7 +24,11 @@ Company Orchestrator / CLI / DTA Web UI
                             local     MinIO
 ```
 
-The browser UI is a client of this platform, not the domain boundary. It can be replaced later without replacing Meeting Agent, PM Agent, the external APIs, or the runtime adapters.
+Web, TUI, and batch CLI are clients of this platform, not the domain boundary.
+They can be replaced independently without replacing Meeting Agent, PM Agent,
+the external APIs, or the runtime adapters. Native `dta pi` is the explicit
+developer exception: it enters Pi Coding Agent directly and does not claim to
+activate DTA domain policy.
 
 ## Existing infrastructure retained
 
@@ -153,6 +157,6 @@ Postgres and Redis memory adapters are implemented. They do not yet replace the 
 5. A2A remote URL/raw media parts are not fetched; use DTA upload/reference flows.
 6. Browser Keycloak login is delegated to the company ingress/auth proxy. DTA validates API tokens, run ownership, artifact ownership, and operational roles but does not implement a full IAM administration UI.
 7. n8n workflow tools are disabled by default; enable them only after side-effect and credential policies are approved.
-8. The bundled `npm run agent -- meeting|pm` CLI is an HTTP client, not a second runtime. It needs a running DTA server and currently accepts transcript/text/JSON input rather than binary media upload.
+8. The bundled CLI and interactive TUI are HTTP/SSE clients, not second runtimes. They need a running DTA server. Meeting file uploads use the same bounded extraction endpoint as the Web UI; native `dta pi` is deliberately a separate developer-only Coding Agent mode.
 9. Application rate limits and active-run concurrency are process-local. Enforce distributed quotas at the company gateway if DTA is later scaled beyond one replica.
 10. Automatic retention can enumerate only the local artifact store. Production MinIO deployments must apply the equivalent bucket lifecycle policy; approved Meeting artifacts are protected by default in local retention.

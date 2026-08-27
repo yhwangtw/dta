@@ -12,11 +12,16 @@
   "bugs": {
     "url": "https://github.com/yhwangtw/dta/issues"
   },
+  "bin": {
+    "dta": "./scripts/dta.mjs"
+  },
   "scripts": {
     "dev": "next dev -p 30141",
     "build": "next build --webpack",
     "start": "next start -p 30141",
+    "dta": "node scripts/dta.mjs",
     "agent": "node scripts/dta-agent.mjs",
+    "tui": "node scripts/dta.mjs tui",
     "scheduler:watch": "node scripts/schedule-watchdog.mjs",
     "lint": "eslint .",
     "postinstall": "node scripts/patch-pi-brace-expansion.mjs",

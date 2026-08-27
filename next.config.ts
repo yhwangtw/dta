@@ -30,7 +30,10 @@ const nextConfig: NextConfig = {
   // bottom buttons (Models/Theme) — disable it.
   devIndicators: false,
   serverExternalPackages: ["@earendil-works/pi-coding-agent", "@earendil-works/pi-ai"],
-  allowedDevOrigins: ['192.168.*.*'],
+  // The desktop preview may open the same local dev server through either
+  // localhost or 127.0.0.1. Next 16 otherwise serves the HTML but blocks the
+  // dev client/HMR request, leaving the page visible but not interactive.
+  allowedDevOrigins: ["localhost", "127.0.0.1", "192.168.*.*"],
   env: {
     NEXT_PUBLIC_APP_VERSION: version,
     NEXT_PUBLIC_PI_VERSION: piVersion,

@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
-import { join, dirname } from "path";
+import { readFileSync, writeFileSync, existsSync } from "fs";
+import { join } from "path";
 import { getAgentDir } from "@earendil-works/pi-coding-agent";
+import { authenticateRequest, AuthenticationError, authenticationErrorResponse, type RequestPrincipal } from "@/lib/auth/request-auth";
+import { assertSessionAccess } from "@/lib/auth/session-access";
+import { ensureStateDirectory, userStatePath } from "@/lib/auth/user-state";
 
 // Archived-session ids — same storage pattern as pins.json. Archiving hides a
 // session from the default list without touching its .jsonl file.
@@ -11,12 +14,12 @@ interface ArchiveFile {
   archived: string[];
 }
 
-function getArchivePath(): string {
-  return join(getAgentDir(), "archive.json");
+function getArchivePath(principal: RequestPrincipal): string {
+  return userStatePath(principal, join(getAgentDir(), "archive.json"), "archive.json");
 }
 
-function readArchive(): ArchiveFile {
-  const path = getArchivePath();
+function readArchive(principal: RequestPrincipal): ArchiveFile {
+  const path = getArchivePath(principal);
   if (!existsSync(path)) return { archived: [] };
   try {
     const raw = JSON.parse(readFileSync(path, "utf8")) as Partial<ArchiveFile>;
@@ -26,31 +29,39 @@ function readArchive(): ArchiveFile {
   }
 }
 
-function writeArchive(data: ArchiveFile): void {
-  const path = getArchivePath();
-  const dir = dirname(path);
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-  writeFileSync(path, JSON.stringify(data, null, 2), "utf8");
+function writeArchive(principal: RequestPrincipal, data: ArchiveFile): void {
+  const path = getArchivePath(principal);
+  ensureStateDirectory(path);
+  writeFileSync(path, JSON.stringify(data, null, 2), { encoding: "utf8", mode: 0o600 });
 }
 
 // GET /api/sessions/archive — archived session ids.
-export async function GET() {
-  return NextResponse.json(readArchive());
+export async function GET(req: Request) {
+  try {
+    const principal = await authenticateRequest(req);
+    return NextResponse.json(readArchive(principal));
+  } catch (error) {
+    if (error instanceof AuthenticationError) return authenticationErrorResponse(error);
+    return NextResponse.json({ error: String(error) }, { status: 500 });
+  }
 }
 
 // POST /api/sessions/archive  body: { id } — archive a session (idempotent).
 export async function POST(req: Request) {
   try {
+    const principal = await authenticateRequest(req);
     const body = await req.json() as { id?: unknown };
     if (typeof body.id !== "string" || !body.id) {
       return NextResponse.json({ error: "id is required" }, { status: 400 });
     }
-    const { archived } = readArchive();
+    assertSessionAccess(principal, body.id);
+    const { archived } = readArchive(principal);
     if (!archived.includes(body.id)) {
-      writeArchive({ archived: [body.id, ...archived] });
+      writeArchive(principal, { archived: [body.id, ...archived] });
     }
-    return NextResponse.json(readArchive());
+    return NextResponse.json(readArchive(principal));
   } catch (error) {
+    if (error instanceof AuthenticationError) return authenticationErrorResponse(error);
     return NextResponse.json({ error: String(error) }, { status: 500 });
   }
 }
@@ -58,14 +69,17 @@ export async function POST(req: Request) {
 // DELETE /api/sessions/archive  body: { id } — unarchive.
 export async function DELETE(req: Request) {
   try {
+    const principal = await authenticateRequest(req);
     const body = await req.json() as { id?: unknown };
     if (typeof body.id !== "string" || !body.id) {
       return NextResponse.json({ error: "id is required" }, { status: 400 });
     }
-    const { archived } = readArchive();
-    writeArchive({ archived: archived.filter((x) => x !== body.id) });
-    return NextResponse.json(readArchive());
+    assertSessionAccess(principal, body.id);
+    const { archived } = readArchive(principal);
+    writeArchive(principal, { archived: archived.filter((x) => x !== body.id) });
+    return NextResponse.json(readArchive(principal));
   } catch (error) {
+    if (error instanceof AuthenticationError) return authenticationErrorResponse(error);
     return NextResponse.json({ error: String(error) }, { status: 500 });
   }
 }

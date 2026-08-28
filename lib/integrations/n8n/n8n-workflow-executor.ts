@@ -34,6 +34,11 @@ export class N8nWorkflowExecutor implements WorkflowExecutor {
     headers.set("X-DTA-Workflow-Id", workflow);
     if (context.executionId) headers.set("X-DTA-Execution-Id", context.executionId);
     if (context.idempotencyKey) headers.set("Idempotency-Key", context.idempotencyKey);
+    if (context.runId) headers.set("X-DTA-Run-Id", context.runId);
+    if (context.userId) headers.set("X-DTA-User-Id", context.userId);
+    if (context.actorId) headers.set("X-DTA-Actor-Id", context.actorId);
+    if (context.projectId) headers.set("X-DTA-Project-Id", context.projectId);
+    if (context.conversationId) headers.set("X-DTA-Conversation-Id", context.conversationId);
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.config.n8nTimeoutMs);
     try {
@@ -47,12 +52,12 @@ export class N8nWorkflowExecutor implements WorkflowExecutor {
       });
       const text = await response.text();
       if (!response.ok) throw new WorkflowExecutionError(`n8n workflow ${workflow} failed with HTTP ${response.status}`);
-      recordAuditEvent({ action: "workflow.execute", actorId: "agent-runtime", resourceType: "n8n_workflow", resourceId: workflow, outcome: "success", metadata: { status: response.status } });
+      recordAuditEvent({ action: "workflow.execute", actorId: context.actorId ?? "agent-runtime", resourceType: "n8n_workflow", resourceId: workflow, outcome: "success", metadata: { status: response.status, ...(context.runId ? { runId: context.runId } : {}), ...(context.userId ? { actingUserId: context.userId } : {}) } });
       if (!text.trim()) return { ok: true };
       try { return JSON.parse(text) as unknown; }
       catch { return { ok: true, output: text.slice(0, 100_000) }; }
     } catch (error) {
-      recordAuditEvent({ action: "workflow.execute", actorId: "agent-runtime", resourceType: "n8n_workflow", resourceId: workflow, outcome: "failure" });
+      recordAuditEvent({ action: "workflow.execute", actorId: context.actorId ?? "agent-runtime", resourceType: "n8n_workflow", resourceId: workflow, outcome: "failure", metadata: { ...(context.runId ? { runId: context.runId } : {}), ...(context.userId ? { actingUserId: context.userId } : {}) } });
       if (error instanceof WorkflowExecutionError) throw error;
       if (error instanceof Error && error.name === "AbortError") throw new WorkflowExecutionError(`n8n workflow ${workflow} timed out`);
       throw new WorkflowExecutionError(error instanceof Error ? error.message : String(error));

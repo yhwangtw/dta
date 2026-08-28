@@ -215,6 +215,7 @@ function activityText(messages: import("@/lib/types").AssistantMessage[], toolRe
 }
 
 export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked, modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionStatsChange, onContextUsageChange, onSessionNamed, isParallel, paneLabel, onClosePane, wideChat, onOpenModels, startupPrompt, startupAgentMetadata, agentMetadata, onStartupPromptConsumed }: Props) {
+  const domainAgentMode = isDomainAgentType((agentMetadata ?? startupAgentMetadata)?.agentType);
   const {
     loading, error, runtimeFailure, messages, entryIds, streamState,
     agentRunning, modelNames, modelList, modelThinkingLevels, modelThinkingLevelMaps, toolPreset, thinkingLevel,
@@ -232,11 +233,10 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
     handleEditRerun, handleAbortBash, handleExtensionUIResponse, handleAgentEventRef,
   } = useAgentSession({
     session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked,
-    modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionNamed, startupAgentMetadata,
+    modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionNamed, startupAgentMetadata, domainAgentMode,
   });
 
   const { t } = useI18n();
-  const domainAgentMode = isDomainAgentType((agentMetadata ?? startupAgentMetadata)?.agentType);
   const scrollFollowMode = useScrollFollowMode();
 
   // ── tGD pipeline: detect which phases have run in this session ──
@@ -959,7 +959,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
       model={displayModelValue}
       modelNames={modelNames}
       modelList={modelList}
-      onModelChange={handleModelChange}
+      onModelChange={domainAgentMode ? undefined : handleModelChange}
       onCompact={session ? handleCompact : undefined}
       onAbortCompaction={handleAbortCompaction}
       isCompacting={isCompacting}
@@ -968,7 +968,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
       autoCompactionUpdating={autoCompactionUpdating}
       onAutoCompactionChange={session ? handleAutoCompactionChange : undefined}
       toolPreset={toolPreset}
-      onToolPresetChange={session || isNew ? handleToolPresetChange : undefined}
+      onToolPresetChange={!domainAgentMode && (session || isNew) ? handleToolPresetChange : undefined}
       thinkingLevel={thinkingLevel}
       onThinkingLevelChange={session || isNew ? handleThinkingLevelChange : undefined}
       availableThinkingLevels={availableThinkingLevels}

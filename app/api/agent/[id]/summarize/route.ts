@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { getRpcSession, startRpcSession } from "@/lib/rpc-manager";
+import { authorizeSessionRequest } from "@/lib/auth/session-access";
+import { AuthenticationError, authenticationErrorResponse } from "@/lib/auth/request-auth";
 
 interface PiMessage {
   role: string;
@@ -13,6 +15,7 @@ export async function POST(
   const { id } = await params;
 
   try {
+    await authorizeSessionRequest(req, id);
     let session = getRpcSession(id);
     if (!session?.isAlive()) {
       const { resolveSessionPath } = await import("@/lib/session-reader");
@@ -107,6 +110,7 @@ export async function POST(
 
     return NextResponse.json({ name: rawTitle });
   } catch (error) {
+    if (error instanceof AuthenticationError) return authenticationErrorResponse(error);
     if (error instanceof Error && error.name === "AbortError") {
       return NextResponse.json({ error: "Title generation timed out" }, { status: 504 });
     }

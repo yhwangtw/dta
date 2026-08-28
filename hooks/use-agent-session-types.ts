@@ -134,6 +134,7 @@ export interface UseAgentSessionOptions {
   setToolPreset?: (preset: "none" | "default" | "full") => void;
   onSessionNamed?: () => void;
   startupAgentMetadata?: AgentMetadata | null;
+  domainAgentMode?: boolean;
 }
 
 export type ThinkingLevelOption = "auto" | "off" | "minimal" | "low" | "medium" | "high" | "xhigh";

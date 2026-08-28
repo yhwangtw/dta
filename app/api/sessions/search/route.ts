@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { resolveSessionPath, listAllSessions, getSessionEntries } from "@/lib/session-reader";
 import { searchSessionEntries, type SessionSearchMatch } from "@/lib/session-search";
+import { authenticateRequest, AuthenticationError, authenticationErrorResponse } from "@/lib/auth/request-auth";
+import { accessibleSessionIds } from "@/lib/auth/session-access";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +24,8 @@ interface SearchHit {
 // skipped with a `truncated` flag in the response.
 export async function GET(req: Request) {
   try {
+    const principal = await authenticateRequest(req);
+    const allowed = accessibleSessionIds(principal);
     const url = new URL(req.url);
     const q = url.searchParams.get("q")?.trim() ?? "";
     const limit = Math.min(parseInt(url.searchParams.get("limit") ?? "200", 10) || 200, 500);
@@ -30,7 +34,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ hits: [], truncated: false, query: q });
     }
 
-    const all = await listAllSessions();
+    const all = (await listAllSessions()).filter((session) => !allowed || allowed.has(session.id));
     // Most-recent first
     all.sort((a, b) => new Date(b.modified).getTime() - new Date(a.modified).getTime());
     const slice = all.slice(0, limit);
@@ -89,6 +93,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ hits, truncated, query: q, scanned: slice.length });
   } catch (error) {
+    if (error instanceof AuthenticationError) return authenticationErrorResponse(error);
     return NextResponse.json({ error: String(error) }, { status: 500 });
   }
 }

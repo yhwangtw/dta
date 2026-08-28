@@ -8,6 +8,8 @@ import {
   resolveModelCatalogSource,
   type ModelCatalogSource,
 } from "@/lib/model-catalog";
+import { authorizeSessionRequest, enforceCodingRequest } from "@/lib/auth/session-access";
+import { AuthenticationError, authenticationErrorResponse } from "@/lib/auth/request-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -79,6 +81,12 @@ export async function GET(req: Request) {
   if (!sessionId) {
     return Response.json({ error: "sessionId is required" }, { status: 400 });
   }
+  try {
+    await authorizeSessionRequest(req, sessionId);
+  } catch (error) {
+    if (error instanceof AuthenticationError) return authenticationErrorResponse(error);
+    return Response.json({ error: String(error) }, { status: 500 });
+  }
   const sessionCwd = await storedSessionCwd(sessionId);
   if (!sessionCwd) {
     return Response.json({ error: "Session not found" }, { status: 404 });
@@ -96,6 +104,8 @@ export async function GET(req: Request) {
 // New-workspace discovery is an explicit JSON POST so a cross-origin GET
 // cannot make the local server execute an arbitrary project's extensions.
 export async function POST(req: Request) {
+  const denied = await enforceCodingRequest(req);
+  if (denied) return denied;
   if (!req.headers.get("content-type")?.toLowerCase().startsWith("application/json")) {
     return Response.json({ error: "Content-Type must be application/json" }, { status: 415 });
   }

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
 import type { AttentionItem, AttentionResponse } from "@/lib/attention-center";
 
-const STORAGE_KEY = "pi-attention-read-v1";
+const STORAGE_PREFIX = "dta-attention-read-v1";
 const POLL_MS = 15_000;
 
 interface AttentionSnapshot {
@@ -21,7 +21,7 @@ let snapshot: AttentionSnapshot = {
   error: null,
   updatedAt: null,
 };
-let hydrated = false;
+let hydratedScope: string | null = null;
 let pendingLoad: Promise<void> | null = null;
 const listeners = new Set<() => void>();
 
@@ -35,11 +35,16 @@ function subscribe(listener: () => void): () => void {
   return () => listeners.delete(listener);
 }
 
-function hydrateReadIds(): void {
-  if (hydrated || typeof window === "undefined") return;
-  hydrated = true;
+function storageKey(scope: string): string {
+  return `${STORAGE_PREFIX}:${scope}`;
+}
+
+function hydrateReadIds(scope: string): void {
+  if (hydratedScope === scope || typeof window === "undefined") return;
+  hydratedScope = scope;
+  snapshot = { ...snapshot, readIds: new Set() };
   try {
-    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]") as unknown;
+    const parsed = JSON.parse(localStorage.getItem(storageKey(scope)) ?? "[]") as unknown;
     if (Array.isArray(parsed)) {
       snapshot = { ...snapshot, readIds: new Set(parsed.filter((value): value is string => typeof value === "string").slice(-500)) };
     }
@@ -47,17 +52,18 @@ function hydrateReadIds(): void {
 }
 
 function persistReadIds(ids: ReadonlySet<string>): void {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify([...ids].slice(-500))); } catch { /* best effort */ }
+  if (!hydratedScope) return;
+  try { localStorage.setItem(storageKey(hydratedScope), JSON.stringify([...ids].slice(-500))); } catch { /* best effort */ }
 }
 
 async function loadAttention(quiet = false): Promise<void> {
-  hydrateReadIds();
   if (pendingLoad) return pendingLoad;
   if (!quiet) emit({ ...snapshot, loading: true });
   pendingLoad = fetch("/api/attention", { cache: "no-store" })
     .then(async (response) => {
       const body = await response.json() as Partial<AttentionResponse> & { error?: string };
-      if (!response.ok || !Array.isArray(body.items)) throw new Error(body.error || `HTTP ${response.status}`);
+      if (!response.ok || !Array.isArray(body.items) || typeof body.userScope !== "string") throw new Error(body.error || `HTTP ${response.status}`);
+      hydrateReadIds(body.userScope);
       emit({ ...snapshot, items: body.items, loading: false, error: null, updatedAt: body.serverTime ?? new Date().toISOString() });
     })
     .catch((reason) => emit({ ...snapshot, loading: false, error: reason instanceof Error ? reason.message : String(reason) }))
@@ -66,7 +72,6 @@ async function loadAttention(quiet = false): Promise<void> {
 }
 
 function markRead(ids: string[]): void {
-  hydrateReadIds();
   if (ids.length === 0) return;
   const next = new Set(snapshot.readIds);
   ids.forEach((id) => next.add(id));

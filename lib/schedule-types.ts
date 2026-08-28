@@ -16,6 +16,7 @@ export type ScheduleRunStatus =
 
 export interface AgentSchedule {
   id: string;
+  ownerId?: string;
   name: string;
   cwd: string;
   prompt: string;
@@ -36,6 +37,7 @@ export interface AgentSchedule {
 
 export interface ScheduleRun {
   id: string;
+  ownerId?: string;
   scheduleId: string;
   scheduleName: string;
   trigger: "scheduled" | "manual";

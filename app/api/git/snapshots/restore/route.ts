@@ -1,12 +1,15 @@
 import { NextResponse } from "next/server";
 import { getAllowedRoots } from "@/lib/file-security";
 import { restoreSnapshot } from "@/lib/git-snapshot";
+import { enforceCodingRequest } from "@/lib/auth/session-access";
 
 export const dynamic = "force-dynamic";
 
 // POST /api/git/snapshots/restore  body: { cwd, sessionId, id }
 // Reverts the working tree to the snapshot, touching only the changed files.
 export async function POST(req: Request) {
+  const denied = await enforceCodingRequest(req);
+  if (denied) return denied;
   try {
     const body = await req.json() as { cwd?: string; sessionId?: string; id?: string };
     const { cwd, sessionId, id } = body;

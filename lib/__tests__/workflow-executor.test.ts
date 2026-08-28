@@ -34,13 +34,26 @@ describe("workflow adapters", () => {
       }),
     });
     const executor = new N8nWorkflowExecutor(config);
-    await executor.execute("meeting-create-jira", { title: "Pilot" }, { executionId: "exec-1", idempotencyKey: "idem-1" });
+    await executor.execute("meeting-create-jira", { title: "Pilot" }, {
+      executionId: "exec-1",
+      idempotencyKey: "idem-1",
+      runId: "run-1",
+      userId: "user-1",
+      actorId: "reviewer-1",
+      projectId: "project-1",
+      conversationId: "conversation-1",
+    });
 
     const request = fetchMock.mock.calls[0][1];
     const headers = new Headers(request?.headers);
     expect(headers.get("X-DTA-Workflow-Id")).toBe("meeting-create-jira");
     expect(headers.get("X-DTA-Execution-Id")).toBe("exec-1");
     expect(headers.get("Idempotency-Key")).toBe("idem-1");
+    expect(headers.get("X-DTA-Run-Id")).toBe("run-1");
+    expect(headers.get("X-DTA-User-Id")).toBe("user-1");
+    expect(headers.get("X-DTA-Actor-Id")).toBe("reviewer-1");
+    expect(headers.get("X-DTA-Project-Id")).toBe("project-1");
+    expect(headers.get("X-DTA-Conversation-Id")).toBe("conversation-1");
     await expect(executor.execute("meeting-notify-teams", {})).rejects.toThrow("configured N8N_BASE_URL origin");
   });
 

@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { getAllowedRoots } from "@/lib/file-security";
 import { isGitRepo, listSnapshots, createSnapshot } from "@/lib/git-snapshot";
+import { enforceCodingRequest } from "@/lib/auth/session-access";
 
 export const dynamic = "force-dynamic";
 
 // GET /api/git/snapshots?cwd=…&sessionId=… — list restore points for a session.
 export async function GET(req: Request) {
+  const denied = await enforceCodingRequest(req);
+  if (denied) return denied;
   const url = new URL(req.url);
   const cwd = url.searchParams.get("cwd");
   const sessionId = url.searchParams.get("sessionId");
@@ -24,6 +27,8 @@ export async function GET(req: Request) {
 
 // POST /api/git/snapshots  body: { cwd, sessionId, label? } — create one manually.
 export async function POST(req: Request) {
+  const denied = await enforceCodingRequest(req);
+  if (denied) return denied;
   try {
     const body = await req.json() as { cwd?: string; sessionId?: string; label?: string };
     const { cwd, sessionId } = body;

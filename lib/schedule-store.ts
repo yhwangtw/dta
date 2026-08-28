@@ -44,6 +44,7 @@ function isSchedule(value: unknown): value is AgentSchedule {
     && typeof item.createdAt === "string" && typeof item.updatedAt === "string"
     && (item.nextRunAt === null || typeof item.nextRunAt === "string")
     && isOptionalString(item.provider) && isOptionalString(item.modelId)
+    && isOptionalString(item.ownerId)
     && (!!item.provider === !!item.modelId)
     && isOptionalString(item.thinkingLevel) && isOptionalString(item.lastRunAt)
     && (item.lastRunStatus === undefined || RUN_STATUSES.has(item.lastRunStatus));
@@ -56,7 +57,7 @@ function isRun(value: unknown): value is ScheduleRun {
     && typeof item.scheduleName === "string" && typeof item.startedAt === "string"
     && typeof item.scheduledFor === "string" && RUN_STATUSES.has(item.status ?? "")
     && RUN_TRIGGERS.has(item.trigger ?? "") && isOptionalString(item.finishedAt)
-    && isOptionalString(item.sessionId) && isOptionalString(item.error);
+    && isOptionalString(item.sessionId) && isOptionalString(item.error) && isOptionalString(item.ownerId);
 }
 
 export function readScheduleStore(path = scheduleStorePath()): ScheduleStore {

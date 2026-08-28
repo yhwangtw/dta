@@ -23,6 +23,7 @@ import {
 import { streamFile, wrapDocxPreviewHtml } from "@/lib/file-stream";
 import { readTextPrefixSync } from "@/lib/text-prefix";
 import { validateEntryName } from "@/lib/file-name";
+import { enforceCodingRequest } from "@/lib/auth/session-access";
 
 async function handleRead(
   filePath: string,
@@ -194,6 +195,8 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
 ) {
+  const denied = await enforceCodingRequest(request);
+  if (denied) return denied;
   try {
     const { path: segments } = await params;
     const filePath = filePathFromSegments(segments);
@@ -259,6 +262,8 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
 ) {
+  const denied = await enforceCodingRequest(request);
+  if (denied) return denied;
   try {
     const { path: segments } = await params;
     const filePath = filePathFromSegments(segments);
@@ -304,6 +309,8 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
 ) {
+  const denied = await enforceCodingRequest(request);
+  if (denied) return denied;
   try {
     const { path: segments } = await params;
     const filePath = filePathFromSegments(segments);
@@ -388,9 +395,11 @@ export async function POST(
 // gates this behind an explicit confirm; the allowed-roots check above is the
 // hard boundary.
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
 ) {
+  const denied = await enforceCodingRequest(request);
+  if (denied) return denied;
   try {
     const { path: segments } = await params;
     const filePath = filePathFromSegments(segments);

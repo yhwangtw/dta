@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getRpcSession, startRpcSession, type AgentSessionWrapper } from "@/lib/rpc-manager";
 import { buildExtensionsReport, collectExtensionResources } from "@/lib/extensions-info";
+import { authorizeSessionRequest } from "@/lib/auth/session-access";
+import { assertCodingAccess, AuthenticationError, authenticationErrorResponse } from "@/lib/auth/request-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -21,11 +23,13 @@ async function ensureSession(id: string): Promise<AgentSessionWrapper | null> {
 // GET /api/agent/[id]/extensions — what the session's extensions registered
 // (commands / tools / flags) plus the load diagnostics.
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
   try {
+    const { principal } = await authorizeSessionRequest(req, id);
+    assertCodingAccess(principal);
     const session = await ensureSession(id);
     if (!session) return NextResponse.json({ error: "Session not found" }, { status: 404 });
     const runner = session.inner.extensionRunner;
@@ -40,6 +44,7 @@ export async function GET(
       runtime: session.getRuntimeDiagnostics(),
     }));
   } catch (error) {
+    if (error instanceof AuthenticationError) return authenticationErrorResponse(error);
     return NextResponse.json({ error: String(error) }, { status: 500 });
   }
 }
@@ -55,6 +60,8 @@ export async function POST(
 ) {
   const { id } = await params;
   try {
+    const { principal } = await authorizeSessionRequest(req, id);
+    assertCodingAccess(principal);
     const body = await req.json() as { action?: string; name?: string; value?: boolean | string; shortcut?: string };
 
     if (body.action === "run_shortcut") {
@@ -94,6 +101,7 @@ export async function POST(
 
     return NextResponse.json({ error: "Unknown action" }, { status: 400 });
   } catch (error) {
+    if (error instanceof AuthenticationError) return authenticationErrorResponse(error);
     return NextResponse.json({ error: String(error) }, { status: 500 });
   }
 }

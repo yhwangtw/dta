@@ -24,7 +24,7 @@ export function createRuntimeProfile(metadata: AgentMetadata, registry: AgentReg
     return {
       metadata,
       systemPrompt: MEETING_AGENT_SYSTEM_PROMPT,
-      customTools: [createPublishMeetingResultTool(metadata.runId, metadata), ...(enableWorkflowTools ? [createExecuteWorkflowTool("meeting")] : [])],
+      customTools: [createPublishMeetingResultTool(metadata.runId, metadata), ...(enableWorkflowTools ? [createExecuteWorkflowTool("meeting", undefined, metadata)] : [])],
       activeToolNames: [ASK_USER_TOOL_NAME, PUBLISH_MEETING_RESULT_TOOL_NAME, ...(enableWorkflowTools ? [EXECUTE_WORKFLOW_TOOL_NAME] : [])],
     };
   }
@@ -33,7 +33,7 @@ export function createRuntimeProfile(metadata: AgentMetadata, registry: AgentReg
     return {
       metadata,
       systemPrompt: PM_AGENT_SYSTEM_PROMPT,
-      customTools: [createPublishPMResultTool(metadata.runId, metadata), ...(enableWorkflowTools ? [createExecuteWorkflowTool("pm")] : [])],
+      customTools: [createPublishPMResultTool(metadata.runId, metadata), ...(enableWorkflowTools ? [createExecuteWorkflowTool("pm", undefined, metadata)] : [])],
       activeToolNames: [ASK_USER_TOOL_NAME, PUBLISH_PM_RESULT_TOOL_NAME, ...(enableWorkflowTools ? [EXECUTE_WORKFLOW_TOOL_NAME] : [])],
     };
   }
@@ -49,7 +49,7 @@ export function createRuntimeProfile(metadata: AgentMetadata, registry: AgentReg
         definition.systemPrompt,
       ].join("\n\n"),
       customTools: workflowEnabled
-        ? [createExecuteWorkflowTool({ agentId: metadata.agentId, allowedWorkflows: workflowAllowlist })]
+        ? [createExecuteWorkflowTool({ agentId: metadata.agentId, allowedWorkflows: workflowAllowlist }, undefined, metadata)]
         : [],
       activeToolNames: [ASK_USER_TOOL_NAME, ...(workflowEnabled ? [EXECUTE_WORKFLOW_TOOL_NAME] : [])],
     };

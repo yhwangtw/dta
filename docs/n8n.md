@@ -35,8 +35,13 @@ DTA sends these headers on every invocation:
 - `X-DTA-Workflow-Id`
 - `X-DTA-Execution-Id`
 - `Idempotency-Key`
+- `X-DTA-Run-Id`
+- `X-DTA-User-Id`
+- `X-DTA-Actor-Id`
+- `X-DTA-Project-Id` (when present)
+- `X-DTA-Conversation-Id` (when present)
 
-n8n workflows should pass the idempotency key into downstream systems when they support one, or persist it before causing a side effect.
+n8n must authenticate the DTA webhook credential and treat these scope headers as server-generated authorization context. Reject a missing run/user scope for user-owned workflows, and do not trust a caller-supplied `userId` from an arbitrary payload. Workflows should pass the idempotency key into downstream systems when they support one, or persist it before causing a side effect.
 
 ## Request envelope
 

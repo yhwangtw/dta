@@ -95,6 +95,7 @@ export function AppShell() {
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
   const [sessionImportOpen, setSessionImportOpen] = useState(false);
   const [appearanceOpen, setAppearanceOpen] = useState(false);
+  const [codingWorkspaceAccess, setCodingWorkspaceAccess] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [homeOpen, setHomeOpen] = useState(false);
   const [meetingAgentOpen, setMeetingAgentOpen] = useState(false);
@@ -167,6 +168,17 @@ export function AppShell() {
   useEffect(() => {
     document.documentElement.lang = locale === "zh" ? "zh-Hant-TW" : "en";
   }, [locale]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch("/api/auth/me", { cache: "no-store", signal: controller.signal })
+      .then((response) => response.ok ? response.json() : null)
+      .then((payload: { capabilities?: { codingWorkspace?: boolean } } | null) => {
+        if (!controller.signal.aborted) setCodingWorkspaceAccess(payload?.capabilities?.codingWorkspace === true);
+      })
+      .catch(() => { if (!controller.signal.aborted) setCodingWorkspaceAccess(false); });
+    return () => controller.abort();
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -303,6 +315,7 @@ export function AppShell() {
   const palette = useCommandPalette({
     sessions: allSessions,
     tags,
+    allowCodingActions: codingWorkspaceAccess,
     activeTag: activeTagFilter,
     onClearTag: () => setActiveTagFilter(null),
   });
@@ -356,12 +369,12 @@ export function AppShell() {
       // ⇧⌘M — Models (plain ⌘M is the macOS minimize shortcut, unreachable)
       if (key === "m" && e.shiftKey) {
         e.preventDefault();
-        setModelsConfigOpen(true);
+        if (codingWorkspaceAccess) setModelsConfigOpen(true);
         return;
       }
       if (key === "/" && !e.shiftKey) {
         e.preventDefault();
-        if (effectiveCwdForPalette) setSkillsConfigOpen(true);
+        if (codingWorkspaceAccess && effectiveCwdForPalette) setSkillsConfigOpen(true);
         return;
       }
       if (key === "b" && !e.shiftKey) {
@@ -376,7 +389,7 @@ export function AppShell() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [palette, effectiveCwdForPalette, setRightPanelOpen]);
+  }, [palette, effectiveCwdForPalette, setRightPanelOpen, codingWorkspaceAccess]);
 
   // Register the action callbacks the palette can fire.
   useEffect(() => {
@@ -665,7 +678,8 @@ export function AppShell() {
 
   const panelCwd = state.selectedSession?.cwd ?? state.newSessionCwd ?? state.activeCwd ?? null;
   const activeDomainAgent = isDomainAgentType(activeAgentMetadata?.agentType);
-  const legacyShell = !showDtaHome
+  const legacyShell = codingWorkspaceAccess
+    && !showDtaHome
     && Boolean(state.selectedSession)
     && !activeDomainAgent;
 
@@ -1310,7 +1324,7 @@ export function AppShell() {
                     onSessionStatsChange={actions.setSessionStats}
                     onContextUsageChange={actions.setContextUsage}
                     onSessionNamed={actions.bumpRefreshKey}
-                    onOpenModels={() => setModelsConfigOpen(true)}
+                    onOpenModels={codingWorkspaceAccess ? () => setModelsConfigOpen(true) : undefined}
                     agentMetadata={activeAgentMetadata}
                     isParallel
                     paneLabel={state.selectedSession ? getSessionDisplayTitle(state.selectedSession) : undefined}
@@ -1329,7 +1343,7 @@ export function AppShell() {
                     onSessionCreated={actions.handleSessionCreated}
                     onSessionForked={actions.handleSessionForked}
                     onSessionNamed={actions.bumpRefreshKey}
-                    onOpenModels={() => setModelsConfigOpen(true)}
+                    onOpenModels={codingWorkspaceAccess ? () => setModelsConfigOpen(true) : undefined}
                     isParallel
                     paneLabel={getSessionDisplayTitle(session)}
                     onClosePane={state.parallelActiveId === session.id || state.parallelSessions.length > 1
@@ -1355,7 +1369,7 @@ export function AppShell() {
               onSessionStatsChange={actions.setSessionStats}
               onContextUsageChange={actions.setContextUsage}
               onSessionNamed={actions.bumpRefreshKey}
-              onOpenModels={() => setModelsConfigOpen(true)}
+              onOpenModels={codingWorkspaceAccess ? () => setModelsConfigOpen(true) : undefined}
               startupPrompt={pendingStartupPrompt}
               startupAgentMetadata={pendingStartupAgentMetadata}
               agentMetadata={activeAgentMetadata}

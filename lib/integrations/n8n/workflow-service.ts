@@ -173,6 +173,11 @@ export class WorkflowService {
       const result = await this.executor.execute(workflow.id, envelope, {
         executionId: execution.id,
         idempotencyKey,
+        runId: source.runId,
+        ...(source.userId ? { userId: source.userId } : {}),
+        actorId: input.actorId,
+        ...(source.projectId ? { projectId: source.projectId } : {}),
+        ...(source.conversationId ? { conversationId: source.conversationId } : {}),
       });
       const completed = completeWorkflowExecution(execution.id, result);
       recordAuditEvent({
@@ -181,7 +186,7 @@ export class WorkflowService {
         resourceType: "n8n_workflow",
         resourceId: workflow.id,
         outcome: "success",
-        metadata: { executionId: execution.id, sourceRunId: source.runId, agentId: agent.id },
+        metadata: { executionId: execution.id, sourceRunId: source.runId, agentId: agent.id, ...(source.userId ? { actingUserId: source.userId } : {}) },
       });
       return { execution: completed, replayed: false };
     } catch (error) {
@@ -193,7 +198,7 @@ export class WorkflowService {
         resourceType: "n8n_workflow",
         resourceId: workflow.id,
         outcome: "failure",
-        metadata: { executionId: execution.id, sourceRunId: source.runId, agentId: agent.id },
+        metadata: { executionId: execution.id, sourceRunId: source.runId, agentId: agent.id, ...(source.userId ? { actingUserId: source.userId } : {}) },
       });
       throw new WorkflowServiceError(message, 502, "WORKFLOW_EXECUTION_FAILED");
     }

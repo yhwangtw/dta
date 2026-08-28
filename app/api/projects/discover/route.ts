@@ -3,6 +3,7 @@ import { readdirSync, existsSync } from "fs";
 import { homedir } from "os";
 import path from "path";
 import { IGNORED_NAMES } from "@/lib/file-security";
+import { enforceCodingRequest } from "@/lib/auth/session-access";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +28,9 @@ declare global {
 // Shallow scan of the home directory for git repos (dirs containing .git),
 // so the project switcher has candidates even before any session exists.
 // BFS, bounded, doesn't descend into found repos; cached for 60s.
-export async function GET() {
+export async function GET(req: Request) {
+  const denied = await enforceCodingRequest(req);
+  if (denied) return denied;
   const now = Date.now();
   const cached = globalThis.__piDiscoverCache;
   if (cached && cached.expiresAt > now) {

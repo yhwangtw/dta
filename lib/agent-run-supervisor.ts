@@ -304,7 +304,7 @@ export class AgentRunSupervisor {
           this.updateRun(run.id, "waiting_for_input");
           getAgentEventBus().publish(run.id, event);
           void import("./web-push")
-            .then(({ sendWebPush }) => sendWebPush(`/?session=${encodeURIComponent(started.sessionId)}`))
+            .then(({ sendWebPush }) => sendWebPush(run.agentMetadata?.userId, `/?session=${encodeURIComponent(started.sessionId)}`))
             .catch(() => {});
           return;
         }
@@ -316,7 +316,7 @@ export class AgentRunSupervisor {
         }
         if (event.type === "failed") {
           void import("./web-push")
-            .then(({ sendWebPush }) => sendWebPush(`/?session=${encodeURIComponent(started.sessionId)}`))
+            .then(({ sendWebPush }) => sendWebPush(run.agentMetadata?.userId, `/?session=${encodeURIComponent(started.sessionId)}`))
             .catch(() => {});
           this.finish(run.id, "failed", event.error);
           return;

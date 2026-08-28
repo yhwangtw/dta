@@ -1,12 +1,15 @@
 import { NextResponse } from "next/server";
 import { getAllowedRoots, isPathAllowed } from "@/lib/file-security";
 import { grepProject } from "@/lib/grep";
+import { enforceCodingRequest } from "@/lib/auth/session-access";
 
 export const dynamic = "force-dynamic";
 
 // GET /api/files/grep?cwd=<abs>&q=<text>&case=1
 // Full-text search under an allowed project root (ripgrep, JS fallback).
 export async function GET(req: Request) {
+  const denied = await enforceCodingRequest(req);
+  if (denied) return denied;
   const url = new URL(req.url);
   const cwd = url.searchParams.get("cwd") ?? "";
   const q = url.searchParams.get("q") ?? "";

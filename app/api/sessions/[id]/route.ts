@@ -13,6 +13,10 @@ import {
 } from "@/lib/session-reader";
 import { getRpcSession } from "@/lib/rpc-manager";
 import type { SessionEntry, SessionHeader } from "@/lib/types";
+import { authorizeSessionRequest, canAccessSession } from "@/lib/auth/session-access";
+import { AuthenticationError, authenticationErrorResponse } from "@/lib/auth/request-auth";
+import { deleteAgentSessionMetadata } from "@/lib/agent-metadata-store";
+import { recordAuditEvent } from "@/lib/observability/audit-log";
 
 export async function GET(
   req: Request,
@@ -20,6 +24,7 @@ export async function GET(
 ) {
   const { id } = await params;
   try {
+    await authorizeSessionRequest(req, id);
     const live = getRpcSession(id);
     let filePath = await resolveSessionPath(id);
     let header: SessionHeader | null = null;
@@ -98,6 +103,7 @@ export async function GET(
       ...(agentState !== undefined ? { agentState } : {}),
     });
   } catch (error) {
+    if (error instanceof AuthenticationError) return authenticationErrorResponse(error);
     return NextResponse.json({ error: String(error) }, { status: 500 });
   }
 }
@@ -109,6 +115,7 @@ export async function PATCH(
 ) {
   const { id } = await params;
   try {
+    const { principal, metadata } = await authorizeSessionRequest(req, id);
     const { name } = await req.json() as { name?: string };
     if (typeof name !== "string") {
       return NextResponse.json({ error: "name is required" }, { status: 400 });
@@ -119,19 +126,29 @@ export async function PATCH(
     }
     const sm = SessionManager.open(filePath);
     sm.appendSessionInfo(name.trim());
+    recordAuditEvent({
+      action: "session.rename",
+      actorId: principal.id,
+      resourceType: "agent_session",
+      resourceId: id,
+      outcome: "success",
+      metadata: { actingUserId: metadata?.userId ?? principal.id },
+    });
     return NextResponse.json({ ok: true });
   } catch (error) {
+    if (error instanceof AuthenticationError) return authenticationErrorResponse(error);
     return NextResponse.json({ error: String(error) }, { status: 500 });
   }
 }
 
 // DELETE /api/sessions/[id]
 export async function DELETE(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
   try {
+    const { principal, metadata } = await authorizeSessionRequest(req, id);
     const filePath = await resolveSessionPath(id);
     if (!filePath) {
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
@@ -155,8 +172,8 @@ export async function DELETE(
         try {
           const content = readFileSync(childPath, "utf8");
           const lines = content.split("\n");
-          const header = JSON.parse(lines[0]) as { type?: string; parentSession?: string };
-          if (header.type === "session" && header.parentSession === filePath) {
+          const header = JSON.parse(lines[0]) as { type?: string; id?: string; parentSession?: string };
+          if (header.type === "session" && header.parentSession === filePath && typeof header.id === "string" && canAccessSession(principal, header.id)) {
             // Rewrite header with new parentSession
             header.parentSession = parentSessionPath;
             lines[0] = JSON.stringify(header);
@@ -169,8 +186,18 @@ export async function DELETE(
     getRpcSession(id)?.destroy();
     unlinkSync(filePath);
     invalidateSessionPathCache(id);
+    deleteAgentSessionMetadata(id);
+    recordAuditEvent({
+      action: "session.delete",
+      actorId: principal.id,
+      resourceType: "agent_session",
+      resourceId: id,
+      outcome: "success",
+      metadata: { actingUserId: metadata?.userId ?? principal.id },
+    });
     return NextResponse.json({ ok: true });
   } catch (error) {
+    if (error instanceof AuthenticationError) return authenticationErrorResponse(error);
     return NextResponse.json({ error: String(error) }, { status: 500 });
   }
 }

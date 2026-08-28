@@ -3,6 +3,8 @@ import { SessionManager } from "@earendil-works/pi-coding-agent";
 import { getRpcSession, startRpcSession, type AgentSessionWrapper } from "@/lib/rpc-manager";
 import { resolveSessionPath } from "@/lib/session-reader";
 import { buildContextReport } from "@/lib/context-report";
+import { authorizeSessionRequest } from "@/lib/auth/session-access";
+import { assertCodingAccess, AuthenticationError, authenticationErrorResponse } from "@/lib/auth/request-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -16,13 +18,16 @@ async function ensureSession(id: string): Promise<AgentSessionWrapper | null> {
   return session;
 }
 
-export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   try {
+    const { principal } = await authorizeSessionRequest(req, id);
+    assertCodingAccess(principal);
     const session = await ensureSession(id);
     if (!session) return NextResponse.json({ error: "Session not found" }, { status: 404 });
     return NextResponse.json(buildContextReport(session.inner, session.cwd));
   } catch (error) {
+    if (error instanceof AuthenticationError) return authenticationErrorResponse(error);
     return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 }

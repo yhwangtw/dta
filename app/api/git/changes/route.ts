@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { execFile } from "child_process";
 import { promisify } from "util";
 import { getAllowedRoots } from "@/lib/file-security";
+import { enforceCodingRequest } from "@/lib/auth/session-access";
 
 const execFileAsync = promisify(execFile);
 
@@ -24,6 +25,8 @@ async function git(cwd: string, args: string[]): Promise<string> {
 // GET /api/git/changes?cwd=… — working-tree changes for a session cwd.
 // The cwd must be one of the session roots (same policy as the file API).
 export async function GET(req: Request) {
+  const denied = await enforceCodingRequest(req);
+  if (denied) return denied;
   const url = new URL(req.url);
   const cwd = url.searchParams.get("cwd");
   if (!cwd) {

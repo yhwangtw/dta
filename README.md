@@ -246,7 +246,8 @@ PW_CHROMIUM_PATH=/opt/pw-browsers/chromium npm run test:e2e
 | `DTA_ENABLED_AGENTS` | Enables registered server-side Agents such as `meeting-agent,pm-agent` |
 | `DTA_AGENT_MANIFEST_PATH` | Mounts additional department Agent prompts, skills, and workflow allowlists without rebuilding the image |
 | `DTA_DATA_DIR` | Stores DTA metadata and generic artifacts; defaults to `~/.dta` |
-| `DTA_AUTH_MODE` / `KEYCLOAK_*` | Protects the external Agent Contract and A2A with Keycloak tokens |
+| `DTA_AUTH_MODE` / `KEYCLOAK_*` | Protects browser APIs, the external Agent Contract, and A2A with Keycloak tokens and owner checks |
+| `DTA_CODING_REQUIRED_ROLES` | Allows designated users to open the Coding Agent and repository tools; defaults to `dta-coding-access` |
 | `LLM_BASE_URL` / `LLM_MODEL` | Registers a company LLM gateway for server-side Agent runs |
 | `DTA_ARTIFACT_STORE` / `MINIO_*` | Selects local or MinIO artifact storage |
 | `DTA_MEMORY_STORE` / `POSTGRES_URL` / `REDIS_URL` | Selects local, Postgres, or Redis conversation memory with configured TTL and cap |
@@ -280,11 +281,11 @@ Session files remain in Pi's native format:
 
 Meeting Agent sessions add DTA-owned metadata and artifacts on top of the existing Pi session. Pi remains the internal reasoning/tool runtime; the product-facing identity and structured `MeetingResult` do not expose Pi internals. The Meeting runtime uses a dedicated system prompt and a bounded `publish_meeting_result` tool, then stores JSON and Markdown outputs below `DTA_DATA_DIR`.
 
-The Meeting-first interface does not ask people to choose a repository or filesystem path. New meetings run inside a DTA-managed meeting workspace below `DTA_DATA_DIR`; the underlying cwd exists only for runtime compatibility and remains hidden from the normal product flow. Legacy Coding Agent sessions can still use their original project workspace when opened directly.
+The Meeting-first interface does not ask people to choose a repository or filesystem path. New meetings run inside a DTA-managed meeting workspace below `DTA_DATA_DIR`; the underlying cwd exists only for runtime compatibility and remains hidden from the normal product flow. Legacy Coding Agent sessions can still use their original project workspace in local mode. In Keycloak mode they are hidden unless the owner has a configured Coding role; Meeting/PM users cannot reach File, Git, Pi extension, shell, or repository APIs.
 
 Browser speech recognition can type directly into the transcript field without saving an audio recording. Uploaded media is preserved as an artifact. FFmpeg extracts video audio and sampled keyframes; configurable transcription and vision providers produce timestamped evidence; DTA then stores a synchronized timeline for the Meeting Agent. The bundled mock providers are development/test-only and disabled in production. See [Meeting media understanding](./docs/meeting-media-pipeline.md).
 
-Current limitation: active Pi session ownership, normalized event replay, run/review records, and Meeting/PM records remain process-local/file-backed, so this phase stays single-replica even when conversation memory uses Postgres or Redis. Company Orchestrator routes, PM Agent, configurable department Agents, A2A, Keycloak, n8n, MinIO, audit, and metrics are available now. See [the exact production limitations](./docs/architecture.md#current-production-limitations).
+Session ownership is persisted as `Pi sessionId → userId/projectId/runId` metadata under `DTA_DATA_DIR`. Run supervision, normalized event replay, and Meeting/PM records remain process-local/file-backed, so this phase stays single-replica even when conversation memory uses Postgres or Redis. Company Orchestrator routes, PM Agent, configurable department Agents, A2A, Keycloak, n8n, MinIO, audit, and metrics are available now. See [the exact production limitations](./docs/architecture.md#current-production-limitations).
 
 ## Architecture
 

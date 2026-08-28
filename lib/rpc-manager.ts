@@ -12,7 +12,7 @@ import { cacheSessionPath } from "./session-reader";
 import { createSnapshot } from "./git-snapshot";
 import type { AgentSessionLike, ToolInfo } from "./pi-types";
 import type { AgentRuntimeProfile } from "./runtime/runtime-profile";
-import { moveAgentSessionMetadata, readAgentSessionMetadata } from "./agent-metadata-store";
+import { copyAgentSessionMetadata, readAgentSessionMetadata } from "./agent-metadata-store";
 import { createRuntimeProfile } from "./runtime/runtime-profile";
 import { bindWebExtensions, createTrackedAgentServices, emitWebBeforeFork, type ExtensionProviderTracker } from "./pi-runtime";
 import type { ExtensionDiagnosticInfo, ExtensionProviderInfo } from "./extensions-info";
@@ -989,7 +989,7 @@ export async function startRpcSession(
       }
       registry.set(nextSessionId, activeWrapper);
       if (previousSessionId !== nextSessionId) {
-        moveAgentSessionMetadata(previousSessionId, nextSessionId);
+        copyAgentSessionMetadata(previousSessionId, nextSessionId);
         const nextSessionFile = activeWrapper.sessionFile;
         if (nextSessionFile) cacheSessionPath(nextSessionId, nextSessionFile);
       }

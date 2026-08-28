@@ -4,6 +4,7 @@ import { promisify } from "util";
 import { resolve, relative, sep } from "path";
 import { stat } from "fs/promises";
 import { getAllowedRoots } from "@/lib/file-security";
+import { enforceCodingRequest } from "@/lib/auth/session-access";
 
 const execFileAsync = promisify(execFile);
 const MAX_BUFFER = 4 * 1024 * 1024;
@@ -114,6 +115,8 @@ async function testDiagnostics(cwd: string, relPath: string): Promise<Diagnostic
 }
 
 export async function GET(req: Request) {
+  const denied = await enforceCodingRequest(req);
+  if (denied) return denied;
   const url = new URL(req.url);
   const checked = await validate(url.searchParams.get("cwd"), url.searchParams.get("path"));
   if ("error" in checked) return NextResponse.json({ error: checked.error }, { status: checked.status });

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { resolveSessionPath } from "@/lib/session-reader";
 import { readFileSync, existsSync } from "fs";
+import { authorizeSessionRequest } from "@/lib/auth/session-access";
+import { AuthenticationError, authenticationErrorResponse } from "@/lib/auth/request-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -50,11 +52,12 @@ function formatTimestamp(iso: string): string {
 }
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
   try {
+    await authorizeSessionRequest(req, id);
     const filePath = await resolveSessionPath(id);
     if (!filePath || !existsSync(filePath)) {
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
@@ -130,6 +133,7 @@ export async function GET(
       },
     });
   } catch (error) {
+    if (error instanceof AuthenticationError) return authenticationErrorResponse(error);
     return NextResponse.json({ error: String(error) }, { status: 500 });
   }
 }

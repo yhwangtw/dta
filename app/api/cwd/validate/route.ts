@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { statSync, type Stats } from "fs";
 import { homedir } from "os";
 import { isAbsolute, resolve } from "path";
+import { enforceCodingRequest } from "@/lib/auth/session-access";
 
 function normalizeCwd(cwd: string): string {
   if (cwd === "~") return homedir();
@@ -12,6 +13,8 @@ function normalizeCwd(cwd: string): string {
 // POST /api/cwd/validate  body: { cwd: string }
 // Validates a candidate workspace before the UI selects it.
 export async function POST(req: Request) {
+  const denied = await enforceCodingRequest(req);
+  if (denied) return denied;
   try {
     const body = await req.json() as { cwd?: unknown };
     const cwd = typeof body.cwd === "string" ? body.cwd.trim() : "";

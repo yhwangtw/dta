@@ -1,6 +1,8 @@
 import { resolveSessionPath } from "@/lib/session-reader";
 import { getRpcSession, startRpcSession } from "@/lib/rpc-manager";
 import { SessionManager } from "@earendil-works/pi-coding-agent";
+import { authorizeSessionRequest } from "@/lib/auth/session-access";
+import { AuthenticationError, authenticationErrorResponse } from "@/lib/auth/request-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +12,13 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+
+  try {
+    await authorizeSessionRequest(req, id);
+  } catch (error) {
+    if (error instanceof AuthenticationError) return authenticationErrorResponse(error);
+    return Response.json({ error: String(error) }, { status: 500 });
+  }
 
   // Fast path: already-running session
   let session = getRpcSession(id);

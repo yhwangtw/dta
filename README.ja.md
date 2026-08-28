@@ -23,7 +23,7 @@
 
 tGD Pi Web は、Pi のローカルセッションを視覚的なエンジニアリングコックピットに変えます。エージェントとのリアルタイム対話、ファイルと git 変更の確認、ブランチ移動、スナップショット復元、Map から Release までの進捗確認をブラウザだけで行えます。
 
-![tGD Pi Web チャット画面](./docs/screenshots/02-hero-chat.png)
+![DTA Meeting Agent ホーム](./docs/screenshots/dta-home.png)
 
 ## tGD Pi Web を使う理由
 
@@ -126,31 +126,18 @@ artifacts が別の場所にある場合は `TGD_DIR` を設定してくださ�
 ## インターフェース
 
 <p align="center">
-  <img src="./docs/screenshots/11-mobile-chat.png" alt="レスポンシブなモバイル会話画面" width="390">
+  <img src="./docs/screenshots/dta-home.png" alt="DTA Meeting Agent ホーム" width="1200">
 </p>
 
-モバイルレイアウトでは、端末の Safe Area を尊重しながら、現在のフェーズ、会話、入力欄、モデル操作、主要ナビゲーションを親指の届く範囲に保ちます。
+以下は、機密情報を含まないサンプルデータを使い、現在の DTA アプリケーションをブラウザで実際にキャプチャした画面です。モックアップや生成画像ではありません。
 
-| セッションとファイルのワークスペース | コマンドパレット |
+| 会議素材とファイルのアップロード | 会話、構造化結果、Human Review |
 |---|---|
-| ![コードセッション](./docs/screenshots/03-code-session.png) | ![コマンドパレット](./docs/screenshots/04-command-palette.png) |
+| ![会議素材とファイルのアップロード](./docs/screenshots/dta-meeting-intake.png) | ![Meeting Agent の会話と結果レビュー](./docs/screenshots/dta-meeting-review.png) |
 
-| ダークモード | 空の状態 |
+| PM Agent への要件引き継ぎ | レスポンシブなモバイルホーム |
 |---|---|
-| ![ダークモード](./docs/screenshots/10-dark-mode.png) | ![空の状態](./docs/screenshots/01-empty-state.png) |
-
-<details>
-<summary><strong>5 種類の appearance skin を表示</strong></summary>
-
-| Editorial | Terminal | Aurora |
-|---|---|---|
-| ![Editorial skin](./docs/screenshots/05-skin-editorial.png) | ![Terminal skin](./docs/screenshots/06-skin-terminal.png) | ![Aurora skin](./docs/screenshots/07-skin-aurora.png) |
-
-| Industrial | Glass |
-|---|---|
-| ![Industrial skin](./docs/screenshots/08-skin-industrial.png) | ![Glass skin](./docs/screenshots/09-skin-glass.png) |
-
-</details>
+| ![PM Agent への要件引き継ぎ](./docs/screenshots/dta-pm-agent.png) | <img src="./docs/screenshots/dta-mobile-home.png" alt="レスポンシブな DTA モバイルホーム" width="390"> |
 
 ## 主な機能
 

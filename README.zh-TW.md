@@ -105,31 +105,18 @@ DTA_SETUP_OFFLINE=1 bash setup.sh
 ## 介面導覽
 
 <p align="center">
-  <img src="./docs/screenshots/11-mobile-chat.png" alt="手機版響應式對話介面" width="390">
+  <img src="./docs/screenshots/dta-home.png" alt="DTA Meeting Agent 首頁" width="1200">
 </p>
 
-手機版會在 safe area 內保留目前階段、對話、輸入框、模型控制與主要導覽，常用操作維持在拇指可及範圍。
+以下畫面均由目前 DTA 應用程式實際透過瀏覽器擷取，內容使用非機密示例資料；不是產品 mockup，也不是生成式介面示意圖。
 
-| Session 與檔案工作區 | 指令面板 |
+| 會議素材與檔案上傳 | 對話、結構化成果與人工審核 |
 |---|---|
-| ![程式碼 session](./docs/screenshots/03-code-session.png) | ![指令面板](./docs/screenshots/04-command-palette.png) |
+| ![會議素材與檔案上傳](./docs/screenshots/dta-meeting-intake.png) | ![Meeting Agent 對話與成果審核](./docs/screenshots/dta-meeting-review.png) |
 
-| 深色模式 | 空白狀態 |
+| PM Agent 需求交接 | 手機版首頁 |
 |---|---|
-| ![深色模式](./docs/screenshots/10-dark-mode.png) | ![空白狀態](./docs/screenshots/01-empty-state.png) |
-
-<details>
-<summary><strong>查看全部五種外觀 skin</strong></summary>
-
-| Editorial | Terminal | Aurora |
-|---|---|---|
-| ![Editorial skin](./docs/screenshots/05-skin-editorial.png) | ![Terminal skin](./docs/screenshots/06-skin-terminal.png) | ![Aurora skin](./docs/screenshots/07-skin-aurora.png) |
-
-| Industrial | Glass |
-|---|---|
-| ![Industrial skin](./docs/screenshots/08-skin-industrial.png) | ![Glass skin](./docs/screenshots/09-skin-glass.png) |
-
-</details>
+| ![PM Agent 需求交接](./docs/screenshots/dta-pm-agent.png) | <img src="./docs/screenshots/dta-mobile-home.png" alt="DTA 手機版首頁" width="390"> |
 
 ## 主要功能
 

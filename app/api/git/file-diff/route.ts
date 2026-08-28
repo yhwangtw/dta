@@ -4,6 +4,7 @@ import { promisify } from "util";
 import { readFile } from "fs/promises";
 import { resolve, sep } from "path";
 import { getAllowedRoots } from "@/lib/file-security";
+import { enforceCodingRequest } from "@/lib/auth/session-access";
 
 const execFileAsync = promisify(execFile);
 const MAX_BYTES = 1024 * 1024; // 1 MB per side is plenty for a readable diff
@@ -12,6 +13,8 @@ const MAX_BYTES = 1024 * 1024; // 1 MB per side is plenty for a readable diff
 // file, for the client-side DiffView. Empty oldText = new file; empty
 // newText = deleted file.
 export async function GET(req: Request) {
+  const denied = await enforceCodingRequest(req);
+  if (denied) return denied;
   const url = new URL(req.url);
   const cwd = url.searchParams.get("cwd");
   const relPath = url.searchParams.get("path");

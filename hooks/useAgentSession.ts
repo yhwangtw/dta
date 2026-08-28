@@ -54,7 +54,7 @@ const AUTO_PROVIDER_FALLBACK_KEY = "pi-auto-provider-fallback";
 export function useAgentSession(opts: UseAgentSessionOptions) {
   const {
     session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked,
-    modelsRefreshKey, onBranchDataChange, onSystemPromptChange, onSessionNamed, startupAgentMetadata,
+    modelsRefreshKey, onBranchDataChange, onSystemPromptChange, onSessionNamed, startupAgentMetadata, domainAgentMode = false,
   } = opts;
 
   const isNew = session === null && newSessionCwd !== null;
@@ -642,7 +642,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     // Bash mode: `!cmd` runs the shell directly (streamed, recorded into the
     // session so the agent sees the result); `!!cmd` keeps it out of context.
     const trimmedForBash = message.trim();
-    if (trimmedForBash.startsWith("!") && trimmedForBash.length > 1) {
+    if (!domainAgentMode && trimmedForBash.startsWith("!") && trimmedForBash.length > 1) {
       if (isNew || !session) {
         showToast("Bash mode needs an active session — send a message first", { type: "warning" });
         return false;
@@ -727,7 +727,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       dispatch({ type: "end" });
       return false;
     }
-  }, [isNew, newSessionCwd, session, agentRunning, connectEvents, createNewSession, loadSession, lastEventAtRef, pendingScrollToUserRef, resetRunProgress]);
+  }, [isNew, newSessionCwd, session, agentRunning, connectEvents, createNewSession, loadSession, lastEventAtRef, pendingScrollToUserRef, resetRunProgress, domainAgentMode]);
 
   const handleAbort = useCallback(async () => {
     const sid = sessionIdRef.current;

@@ -3,6 +3,7 @@ import { DefaultPackageManager, getAgentDir } from "@earendil-works/pi-coding-ag
 import { getRpcSession } from "@/lib/rpc-manager";
 import { consumePackageMutation, preparePackageMutation, type PackageMutationAction } from "@/lib/package-confirmation";
 import { describeConfiguredPackages, normalizeNpmPackageSource } from "@/lib/package-center";
+import { enforceCodingRequest } from "@/lib/auth/session-access";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +40,8 @@ function snapshot(manager: DefaultPackageManager) {
 }
 
 export async function GET(req: Request) {
+  const denied = await enforceCodingRequest(req);
+  if (denied) return denied;
   try {
     const sessionId = new URL(req.url).searchParams.get("sessionId") ?? "";
     if (!sessionId) return NextResponse.json({ error: "sessionId is required" }, { status: 400 });
@@ -50,6 +53,8 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const denied = await enforceCodingRequest(req);
+  if (denied) return denied;
   try {
     assertSameOrigin(req);
     const body = await req.json() as {

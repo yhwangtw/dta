@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import { getAllowedRoots } from "@/lib/file-security";
 import { readSnapshotFile } from "@/lib/git-snapshot";
+import { enforceCodingRequest } from "@/lib/auth/session-access";
 
 export async function GET(req: Request) {
+  const denied = await enforceCodingRequest(req);
+  if (denied) return denied;
   const url = new URL(req.url);
   const cwd = url.searchParams.get("cwd");
   const sessionId = url.searchParams.get("sessionId");

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { readdirSync } from "fs";
 import path from "path";
 import { getAllowedRoots, isPathAllowed, IGNORED_NAMES } from "@/lib/file-security";
+import { enforceCodingRequest } from "@/lib/auth/session-access";
 
 const MAX_RESULTS = 200;
 const MAX_DEPTH = 8;
@@ -20,6 +21,8 @@ interface SearchHit {
 // Recursive filename search under an allowed project root. Breadth-first so
 // shallow matches (usually what the user means) fill the cap before deep ones.
 export async function GET(req: Request) {
+  const denied = await enforceCodingRequest(req);
+  if (denied) return denied;
   const url = new URL(req.url);
   const cwd = url.searchParams.get("cwd") ?? "";
   const q = (url.searchParams.get("q") ?? "").trim().toLowerCase();

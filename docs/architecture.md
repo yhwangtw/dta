@@ -111,6 +111,7 @@ The Agent Card advertises Meeting and PM skills and the configured Keycloak Open
 `DTA_AUTH_MODE=keycloak` validates RS256 access tokens using Keycloak issuer discovery/JWKS, audience, time claims, subject, and configured realm/client roles. A reverse proxy may forward a token through `DTA_AUTH_TOKEN_HEADER`.
 
 - `KEYCLOAK_REQUIRED_ROLES`: roles required for all external Agent/A2A calls.
+- `DTA_CODING_REQUIRED_ROLES`: roles allowed to use Coding Agent, Pi extensions, schedules, File, Git, and repository APIs; defaults to `dta-coding-access`.
 - `DTA_REVIEW_REQUIRED_ROLES`: roles allowed to approve or reject Meeting results.
 - `dta-act-as-user`: permits a service principal to submit for another user.
 - `dta-run-read-all`: permits reading runs owned by other users.
@@ -120,7 +121,11 @@ The Agent Card advertises Meeting and PM skills and the configured Keycloak Open
 
 Artifacts carry owner/run scope. Downloads are checked against the authenticated principal, and unknown legacy ownership is hidden unless the caller has an operational cross-user role. Meeting review also checks both reviewer role and run ownership. A configured upload scanner fails closed before a file enters the artifact store. Process-local rate limiting provides a second line of defense; company ingress limits remain recommended.
 
-This is API protection, not a browser login implementation. In company deployment, protect the web UI with the company's Keycloak-aware ingress/auth proxy. Full application SSO and enterprise RBAC remain outside the current scope.
+Pi session ownership is persisted under `DTA_DATA_DIR/metadata/sessions.json`. Every `/api/sessions/**` route, the legacy `/api/agent/**` command/state routes, and the SSE stream resolve that mapping before returning data. Tags, pins, archives, prompts, notification read-state, Web Push subscriptions, and schedules are user-scoped. A Meeting/PM principal cannot enable shell or coding tools through the generic command route.
+
+Legacy Pi sessions and schedules without ownership metadata are deliberately hidden from ordinary Keycloak users. Unowned schedules are not started automatically in Keycloak mode; an administrator must migrate or recreate them with an owner.
+
+This is API protection, not a browser login implementation. In company deployment, protect the web UI with the company's Keycloak-aware ingress/auth proxy. Native browser `EventSource` cannot add an Authorization header, so the proxy must authenticate its browser cookie and overwrite `DTA_AUTH_TOKEN_HEADER` (for example `x-forwarded-access-token`) on both normal API requests and SSE requests. The DTA Service must not be directly reachable from untrusted networks.
 
 ## Configurable adapters
 
@@ -143,14 +148,14 @@ Secrets are read only from environment variables. The application has no direct 
 
 - Artifacts: local filesystem or MinIO through `ArtifactStore`.
 - Conversation memory: local file, Postgres, or Redis `MemoryStore`, namespaced by user/project/conversation, capped and expired by configuration.
-- Run/session ownership and event replay: local process/file state.
+- Run/session ownership metadata: local persistent file state below `DTA_DATA_DIR`; event replay remains process-local.
 - Meeting and PM structured records: local DTA data directory.
 
 Postgres and Redis memory adapters are implemented. They do not yet replace the local run supervisor, Pi session ownership, Meeting/PM record files, or SSE event bus, so the first production topology still remains one replica with a persistent volume.
 
 ## Current production limitations
 
-1. Run supervision, Pi session ownership, SSE replay, and Meeting/PM result records are not distributed; use `replicas: 1`. Selecting Postgres/Redis memory does not remove this limit.
+1. Run supervision, Pi session ownership metadata, SSE replay, and Meeting/PM result records are not distributed across replicas; use `replicas: 1`. Selecting Postgres/Redis memory does not remove this limit.
 2. Active Pi runs are interrupted on pod restart and are not automatically replayed.
 3. Local run/review records require a persistent volume even when artifacts use MinIO.
 4. MinIO signing is covered by mocked contract tests but still needs an integration test against the company's MinIO policy/TLS setup.

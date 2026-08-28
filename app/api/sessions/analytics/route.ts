@@ -3,6 +3,8 @@ import { existsSync } from "fs";
 import { SessionManager } from "@earendil-works/pi-coding-agent";
 import { resolveSessionPath, listAllSessions } from "@/lib/session-reader";
 import { addUsage, emptyUsage, type AssistantUsage } from "@/lib/usage-aggregation";
+import { authenticateRequest, AuthenticationError, authenticationErrorResponse } from "@/lib/auth/request-auth";
+import { accessibleSessionIds } from "@/lib/auth/session-access";
 
 export const dynamic = "force-dynamic";
 
@@ -21,9 +23,11 @@ interface SessionAnalytics {
   compactions: number;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const sessions = await listAllSessions();
+    const principal = await authenticateRequest(request);
+    const allowed = accessibleSessionIds(principal);
+    const sessions = (await listAllSessions()).filter((session) => !allowed || allowed.has(session.id));
     const perSession: SessionAnalytics[] = [];
     const monthly: Record<string, { cost: number; tokens: number; sessions: Set<string>; messages: number }> = {};
     const byModel: Record<string, { cost: number; input: number; output: number; sessions: Set<string> }> = {};
@@ -119,6 +123,7 @@ export async function GET() {
 
     return NextResponse.json({ summary, perSession });
   } catch (error) {
+    if (error instanceof AuthenticationError) return authenticationErrorResponse(error);
     return NextResponse.json({ error: String(error) }, { status: 500 });
   }
 }

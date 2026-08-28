@@ -47,6 +47,7 @@ config:
     KEYCLOAK_ISSUER: https://sso.company.example/realms/company
     KEYCLOAK_AUDIENCE: dta-agent-platform
     KEYCLOAK_REQUIRED_ROLES: dta-user
+    DTA_CODING_REQUIRED_ROLES: dta-coding-access
     DTA_REVIEW_REQUIRED_ROLES: dta-reviewer
 
     LLM_BASE_URL: https://llm-gateway.company.example/v1

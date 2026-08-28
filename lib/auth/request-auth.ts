@@ -208,6 +208,12 @@ export function assertAdminAccess(principal: RequestPrincipal): void {
   throw new AuthenticationError("Token lacks a DTA administrator role", 403, "FORBIDDEN");
 }
 
+export function assertCodingAccess(principal: RequestPrincipal, config = loadDtaConfig()): void {
+  if (principal.authType === "local" || principal.roles.includes("dta-admin")) return;
+  if (config.codingRequiredRoles.some((role) => principal.roles.includes(role))) return;
+  throw new AuthenticationError("Token lacks access to Coding and repository tools", 403, "CODING_ACCESS_REQUIRED");
+}
+
 export function assertRateLimit(principal: RequestPrincipal, category: "agent" | "upload"): void {
   const config = loadDtaConfig();
   if (!config.rateLimitEnabled) return;

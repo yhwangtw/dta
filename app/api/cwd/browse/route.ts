@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { readdirSync, statSync } from "fs";
 import { homedir } from "os";
 import { isAbsolute, resolve, dirname } from "path";
+import { enforceCodingRequest } from "@/lib/auth/session-access";
 
 const JUNK = new Set([
   "node_modules", ".git", ".next", "dist", "build", "__pycache__",
@@ -21,6 +22,8 @@ function normalize(p: string): string {
 // a NEW workspace may point anywhere the server user can read — once chosen,
 // that cwd becomes an allowed root anyway.
 export async function POST(req: Request) {
+  const denied = await enforceCodingRequest(req);
+  if (denied) return denied;
   try {
     const body = await req.json() as { path?: unknown };
     const raw = typeof body.path === "string" ? body.path.trim() : "";

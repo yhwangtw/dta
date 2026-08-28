@@ -330,6 +330,7 @@ function escapeRegex(s: string): string {
 export interface UseCommandPaletteArgs {
   sessions: SessionInfo[];
   tags: SessionTags;
+  allowCodingActions?: boolean;
   /**
    * Currently active tag filter. When set, the command palette exposes a
    * "Clear filter" action so users can reset it.
@@ -341,6 +342,7 @@ export interface UseCommandPaletteArgs {
 export function useCommandPalette({
   sessions,
   tags,
+  allowCodingActions = true,
   activeTag = null,
   onClearTag,
 }: UseCommandPaletteArgs): CommandPaletteApi {
@@ -400,7 +402,18 @@ export function useCommandPalette({
     }
 
     // Built-in actions
-    all.push(...ACTIONS_RESULTS);
+    const codingActions = new Set<PaletteActionId>([
+      "settings:models",
+      "settings:skills",
+      "settings:extensions",
+      "session:new",
+      "session:import",
+      "session:open-parallel",
+    ]);
+    all.push(...ACTIONS_RESULTS.filter((result) => {
+      const action = (result.data as { action: PaletteActionId }).action;
+      return allowCodingActions || !codingActions.has(action);
+    }));
 
     if (!query.trim()) {
       // The unified search panel uses this list for its Commands scope. Keep
@@ -426,7 +439,7 @@ export function useCommandPalette({
       .slice(0, 50)
       .map(({ r }) => r);
     return scored;
-  }, [sessions, tags, query, activeTag]);
+  }, [sessions, tags, query, activeTag, allowCodingActions]);
 
   const runAction = useCallback((r: PaletteResult) => {
     const cbs = cbRef.current;

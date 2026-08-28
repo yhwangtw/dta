@@ -74,6 +74,7 @@ Leave `LLM_BASE_URL` and `LLM_MODEL` empty to use the existing local Pi model co
 DTA_AUTH_MODE=keycloak
 KEYCLOAK_ISSUER=https://keycloak.example.com/realms/company
 KEYCLOAK_AUDIENCE=dta-agent-platform
+DTA_CODING_REQUIRED_ROLES=dta-coding-access
 
 LLM_BASE_URL=https://llm-gateway.example.com/v1
 LLM_MODEL=company-model
@@ -110,13 +111,13 @@ The manifest format is demonstrated by `config/agents.example.json`. Each entry 
 ## Keycloak preparation
 
 1. Create or select a confidential/service client whose access tokens carry audience `dta-agent-platform`.
-2. Add department roles such as `dta-user` and `dta-reviewer`.
+2. Add department roles such as `dta-user` and `dta-reviewer`. Assign `dta-coding-access` only to developers who need Coding/File/Git surfaces.
 3. Give the company Orchestrator `dta-act-as-user` only if it is allowed to submit work for users named in requests.
 4. Give operational readers `dta-run-read-all` only when cross-user run access is intended.
 5. Give `dta-artifact-delete`, `dta-audit-read`, and `dta-admin` only to the corresponding operational groups.
 6. Set the exact realm issuer URL in `KEYCLOAK_ISSUER`; optionally pin `KEYCLOAK_JWKS_URL`.
 7. Put the browser UI behind the company's Keycloak-aware ingress/auth proxy. DTA's Keycloak adapter validates API tokens but does not render a browser login flow.
-8. If the proxy forwards a token in `x-forwarded-access-token`, set `DTA_AUTH_TOKEN_HEADER` to that name, configure the proxy to overwrite—not append—the header, and prevent untrusted clients from reaching the ClusterIP directly. For direct service-to-service calls, keep the standard `Authorization: Bearer ...` mode.
+8. If the proxy forwards a token in `x-forwarded-access-token`, set `DTA_AUTH_TOKEN_HEADER` to that name, configure the proxy to overwrite—not append—the header, and prevent untrusted clients from reaching the ClusterIP directly. Apply the same injection to SSE paths because browser `EventSource` cannot attach a Bearer header. For direct service-to-service calls, keep the standard `Authorization: Bearer ...` mode.
 
 ## Kubernetes
 

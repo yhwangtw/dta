@@ -1,5 +1,4 @@
 import { readAgentRunStore } from "./agent-run-store";
-import { readAllAgentSessionMetadata } from "./agent-metadata-store";
 import { listMeetingRuns } from "./agents/meeting/meeting-result-store";
 import { readScheduleStore } from "./schedule-store";
 import { listAllSessions, readSessionFile } from "./session-reader";
@@ -8,6 +7,8 @@ import type { AgentRun } from "./agent-run-types";
 import type { ScheduleRun } from "./schedule-types";
 import type { SessionInfo } from "./types";
 import type { StoredMeetingResult } from "./agents/meeting/meeting-types";
+import { assertRunAccess, type RequestPrincipal } from "./auth/request-auth";
+import { accessibleSessionIds } from "./auth/session-access";
 
 export type AttentionSource = "meeting" | "agent" | "schedule" | "session";
 export type AttentionSeverity = "warning" | "error";
@@ -27,6 +28,7 @@ export interface AttentionItem {
 export interface AttentionResponse {
   items: AttentionItem[];
   serverTime: string;
+  userScope: string;
 }
 
 const SESSION_ERROR_AGE_MS = 14 * 24 * 60 * 60 * 1_000;
@@ -142,21 +144,21 @@ export function buildAttentionItems(input: {
   return items.sort((left, right) => Date.parse(right.occurredAt) - Date.parse(left.occurredAt));
 }
 
-export async function collectAttentionItems(now = new Date()): Promise<AttentionItem[]> {
+export async function collectAttentionItems(principal: RequestPrincipal, now = new Date()): Promise<AttentionItem[]> {
   const [sessions, agentStore, scheduleStore, meetingRuns] = await Promise.all([
     listAllSessions(),
     Promise.resolve(readAgentRunStore()),
     Promise.resolve(readScheduleStore()),
     Promise.resolve(listMeetingRuns()),
   ]);
-  const metadata = readAllAgentSessionMetadata();
-  const domainSessionIds = new Set(Object.entries(metadata)
-    .filter(([, value]) => value.agentType !== "coding")
-    .map(([sessionId]) => sessionId));
+  const sessionIds = accessibleSessionIds(principal);
+  const owned = (ownerId?: string) => {
+    try { assertRunAccess(principal, ownerId); return true; } catch { return false; }
+  };
   return buildAttentionItems({
-    meetingRuns,
-    agentRuns: agentStore.runs.filter((run) => run.agentMetadata?.agentType !== undefined && run.agentMetadata.agentType !== "coding"),
-    scheduleRuns: scheduleStore.runs.filter((run) => Boolean(run.sessionId && domainSessionIds.has(run.sessionId))),
-    sessions: sessions.filter((session) => domainSessionIds.has(session.id)),
+    meetingRuns: meetingRuns.filter((run) => owned(run.userId)),
+    agentRuns: agentStore.runs.filter((run) => owned(run.agentMetadata?.userId)),
+    scheduleRuns: scheduleStore.runs.filter((run) => owned(run.ownerId)),
+    sessions: sessions.filter((session) => !sessionIds || sessionIds.has(session.id)),
   }, now);
 }

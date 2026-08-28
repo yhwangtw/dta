@@ -1,6 +1,11 @@
 export interface WorkflowExecutionContext {
   executionId?: string;
   idempotencyKey?: string;
+  runId?: string;
+  userId?: string;
+  actorId?: string;
+  projectId?: string;
+  conversationId?: string;
 }
 
 export interface WorkflowExecutor {

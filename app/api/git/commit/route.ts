@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { execFile } from "child_process";
 import { promisify } from "util";
 import { getAllowedRoots } from "@/lib/file-security";
+import { enforceCodingRequest } from "@/lib/auth/session-access";
 
 const execFileAsync = promisify(execFile);
 
@@ -19,6 +20,8 @@ async function git(cwd: string, args: string[]): Promise<string> {
 //   { cwd, action: "discard", path }       revert one file to HEAD (or delete
 //                                           it if untracked)
 export async function POST(req: Request) {
+  const denied = await enforceCodingRequest(req);
+  if (denied) return denied;
   let body: { cwd?: string; message?: string; paths?: string[]; action?: string; path?: string };
   try {
     body = await req.json();

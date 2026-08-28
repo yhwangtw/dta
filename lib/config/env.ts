@@ -33,6 +33,7 @@ export interface DtaConfig {
   keycloakAudience?: string;
   keycloakJwksUrl?: string;
   keycloakRequiredRoles: string[];
+  codingRequiredRoles: string[];
   reviewRequiredRoles: string[];
   meetingReviewRequired: boolean;
   llmProviderId: string;
@@ -163,6 +164,7 @@ export function loadDtaConfig(env: NodeJS.ProcessEnv = process.env): DtaConfig {
     ...(optional(env.KEYCLOAK_AUDIENCE) ? { keycloakAudience: optional(env.KEYCLOAK_AUDIENCE) } : {}),
     ...(optional(env.KEYCLOAK_JWKS_URL) ? { keycloakJwksUrl: optional(env.KEYCLOAK_JWKS_URL) } : {}),
     keycloakRequiredRoles: commaSeparated(env.KEYCLOAK_REQUIRED_ROLES, []),
+    codingRequiredRoles: commaSeparated(env.DTA_CODING_REQUIRED_ROLES, ["dta-coding-access"]),
     reviewRequiredRoles: commaSeparated(env.DTA_REVIEW_REQUIRED_ROLES, []),
     meetingReviewRequired: booleanValue(env.DTA_MEETING_REVIEW_REQUIRED, true),
     llmProviderId: optional(env.LLM_PROVIDER_ID) ?? "dta-company",

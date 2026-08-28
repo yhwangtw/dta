@@ -1,8 +1,11 @@
 import { createPiModelRuntime } from "@/lib/pi-model-runtime";
+import { enforceAdminRequest } from "@/lib/auth/session-access";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: Request) {
+  const denied = await enforceAdminRequest(req);
+  if (denied) return denied;
   const runtime = await createPiModelRuntime();
   const providers = runtime.getProviders().filter((provider) => provider.auth.oauth);
 

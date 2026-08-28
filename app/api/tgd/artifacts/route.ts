@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAllowedRoots } from "@/lib/file-security";
 import { readTgdArtifacts } from "@/lib/tgd-artifacts";
+import { enforceCodingRequest } from "@/lib/auth/session-access";
 
 export const dynamic = "force-dynamic";
 
@@ -8,6 +9,8 @@ export const dynamic = "force-dynamic";
 // Lists the tGD artifacts (PRD/SPEC/DESIGN/TASKS/METRICS, CONTEXT, wiki,
 // prototypes) from the project's sibling `<project>-tGD/` directory.
 export async function GET(req: Request) {
+  const denied = await enforceCodingRequest(req);
+  if (denied) return denied;
   const url = new URL(req.url);
   const cwd = url.searchParams.get("cwd");
   if (!cwd) return NextResponse.json({ error: "cwd required" }, { status: 400 });

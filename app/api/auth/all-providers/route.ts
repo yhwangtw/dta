@@ -1,11 +1,14 @@
 import { createPiModelRegistry } from "@/lib/pi-model-runtime";
+import { enforceAdminRequest } from "@/lib/auth/session-access";
 
 export const dynamic = "force-dynamic";
 
 // Providers that use OAuth — handled separately via /api/auth/providers
 const OAUTH_PROVIDER_IDS = new Set(["anthropic", "github-copilot", "openai-codex"]);
 
-export async function GET() {
+export async function GET(req: Request) {
+  const denied = await enforceAdminRequest(req);
+  if (denied) return denied;
   const { registry } = await createPiModelRegistry();
   const all = registry.getAll();
 

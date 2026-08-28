@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { resolveSessionPath, buildSessionContext, getSessionEntries } from "@/lib/session-reader";
 import { getRpcSession } from "@/lib/rpc-manager";
 import type { SessionEntry } from "@/lib/types";
+import { authorizeSessionRequest } from "@/lib/auth/session-access";
+import { AuthenticationError, authenticationErrorResponse } from "@/lib/auth/request-auth";
 
 export async function GET(
   req: Request,
@@ -12,6 +14,7 @@ export async function GET(
   const leafId = url.searchParams.get("leafId") ?? undefined;
 
   try {
+    await authorizeSessionRequest(req, id);
     const live = getRpcSession(id);
     const filePath = await resolveSessionPath(id);
     let entries: SessionEntry[] | null = null;
@@ -32,6 +35,7 @@ export async function GET(
 
     return NextResponse.json({ context });
   } catch (error) {
+    if (error instanceof AuthenticationError) return authenticationErrorResponse(error);
     return NextResponse.json({ error: String(error) }, { status: 500 });
   }
 }

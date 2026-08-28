@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { getRpcSession, startRpcSession } from "@/lib/rpc-manager";
+import { authorizeSessionRequest } from "@/lib/auth/session-access";
+import { assertCodingAccess, AuthenticationError, authenticationErrorResponse } from "@/lib/auth/request-auth";
 
 // POST /api/agent/[id]/command - Execute an extension command
 export async function POST(
@@ -9,6 +11,8 @@ export async function POST(
   const { id } = await params;
 
   try {
+    const { principal } = await authorizeSessionRequest(req, id);
+    assertCodingAccess(principal);
     const body = await req.json() as { command: string; args?: string };
     const { command, args = "" } = body;
 
@@ -58,6 +62,7 @@ export async function POST(
 
     return NextResponse.json({ success: true, command });
   } catch (error) {
+    if (error instanceof AuthenticationError) return authenticationErrorResponse(error);
     console.error("Command execution error:", error);
     return NextResponse.json({ error: String(error) }, { status: 500 });
   }

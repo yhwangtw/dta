@@ -5,6 +5,9 @@ import { mutateScheduleStore, readScheduleStore, reconcileInterruptedRuns } from
 import { ACTIVE_SCHEDULE_RUN_STATUSES, type AgentSchedule, type ScheduleRun, type ScheduleRunStatus, type SchedulerHealth } from "./schedule-types";
 import type { WebExtensionUIEvent } from "./web-extension-ui";
 import { isWebExtensionUIDialogRequest, isWebExtensionUIEvent } from "./web-extension-ui-types";
+import { writeAgentSessionMetadata } from "./agent-metadata-store";
+import { codingAgentMetadata } from "./agents/agent-types";
+import { loadDtaConfig } from "./config/env";
 
 const MISSED_GRACE_MS = 60_000;
 const KEEP_ALIVE_MS = 4 * 60_000;
@@ -34,6 +37,10 @@ function nextAfterExecution(schedule: AgentSchedule, after: Date): string | null
 
 function addRun(store: ReturnType<typeof readScheduleStore>, run: ScheduleRun): void {
   store.runs.unshift(run);
+}
+
+function scheduleEligibleForAutomaticRun(schedule: AgentSchedule): boolean {
+  return loadDtaConfig().authMode !== "keycloak" || Boolean(schedule.ownerId);
 }
 
 export class ScheduleRunner {
@@ -89,7 +96,7 @@ export class ScheduleRunner {
     this.timer = null;
     this.nextWakeAt = null;
     const next = readScheduleStore().schedules
-      .filter((schedule) => schedule.enabled && schedule.nextRunAt)
+      .filter((schedule) => scheduleEligibleForAutomaticRun(schedule) && schedule.enabled && schedule.nextRunAt)
       .map((schedule) => Date.parse(schedule.nextRunAt as string))
       .filter(Number.isFinite)
       .sort((a, b) => a - b)[0];
@@ -108,7 +115,7 @@ export class ScheduleRunner {
     this.tickCount += 1;
     try {
       const due = readScheduleStore().schedules.filter((schedule) =>
-        schedule.enabled && schedule.nextRunAt !== null
+        scheduleEligibleForAutomaticRun(schedule) && schedule.enabled && schedule.nextRunAt !== null
         && Date.parse(schedule.nextRunAt) <= now.getTime(),
       );
       for (const schedule of due) {
@@ -150,6 +157,7 @@ export class ScheduleRunner {
       schedule.lastRunStatus = "skipped";
       addRun(store, {
         id: randomUUID(),
+        ...(schedule.ownerId ? { ownerId: schedule.ownerId } : {}),
         scheduleId,
         scheduleName: schedule.name,
         trigger: "scheduled",
@@ -180,6 +188,7 @@ export class ScheduleRunner {
 
       const run: ScheduleRun = {
         id: randomUUID(),
+        ...(schedule.ownerId ? { ownerId: schedule.ownerId } : {}),
         scheduleId,
         scheduleName: schedule.name,
         trigger,
@@ -241,6 +250,11 @@ export class ScheduleRunner {
     try {
       const started = await startRpcSession(`__schedule__${runId}`, "", schedule.cwd, schedule.toolNames);
       session = started.session;
+      writeAgentSessionMetadata(started.realSessionId, {
+        ...codingAgentMetadata(),
+        runId,
+        ...(schedule.ownerId ? { userId: schedule.ownerId } : {}),
+      });
       this.updateRun(runId, "running", { sessionId: started.realSessionId });
       globalThis.__piAllowedRootsCache?.roots.add(schedule.cwd);
 
@@ -250,7 +264,7 @@ export class ScheduleRunner {
           if (isWebExtensionUIDialogRequest(event)) {
             pendingDialogs.add(event.id);
             this.updateRun(runId, "waiting_for_input");
-            void import("./web-push").then(({ sendWebPush }) => sendWebPush(`/?session=${encodeURIComponent(started.realSessionId)}`)).catch(() => {});
+            void import("./web-push").then(({ sendWebPush }) => sendWebPush(schedule.ownerId, `/?session=${encodeURIComponent(started.realSessionId)}`)).catch(() => {});
           } else if (event.type === "extension_ui_closed") {
             pendingDialogs.delete(event.id);
             if (pendingDialogs.size === 0) this.updateRun(runId, "running");
@@ -259,7 +273,7 @@ export class ScheduleRunner {
         }
         if (event.type === "agent_end") {
           const error = eventRunError(event);
-          if (error) void import("./web-push").then(({ sendWebPush }) => sendWebPush(`/?session=${encodeURIComponent(started.realSessionId)}`)).catch(() => {});
+          if (error) void import("./web-push").then(({ sendWebPush }) => sendWebPush(schedule.ownerId, `/?session=${encodeURIComponent(started.realSessionId)}`)).catch(() => {});
           finish(error ? "failed" : "completed", error ?? undefined);
         }
       });

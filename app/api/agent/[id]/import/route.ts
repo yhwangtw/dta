@@ -4,6 +4,8 @@ import { getRpcSession, SessionRuntimeConflictError, startRpcSession, type Agent
 import { resolveSessionPath } from "@/lib/session-reader";
 import { inspectSessionImport, SessionImportValidationError } from "@/lib/session-import";
 import { SessionManager } from "@earendil-works/pi-coding-agent";
+import { authorizeSessionRequest } from "@/lib/auth/session-access";
+import { assertCodingAccess, AuthenticationError, authenticationErrorResponse } from "@/lib/auth/request-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +24,8 @@ export async function POST(
 ) {
   const { id } = await params;
   try {
+    const { principal } = await authorizeSessionRequest(req, id);
+    assertCodingAccess(principal);
     const body = await req.json() as { action?: "preview" | "import"; path?: string; cwdOverride?: string };
     if (body.action !== "preview" && body.action !== "import") {
       return NextResponse.json({ error: "action must be preview or import" }, { status: 400 });
@@ -49,6 +53,7 @@ export async function POST(
     );
     return NextResponse.json({ preview, result });
   } catch (error) {
+    if (error instanceof AuthenticationError) return authenticationErrorResponse(error);
     if (error instanceof SessionImportValidationError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { runNpx } from "@/lib/npx";
+import { enforceCodingRequest } from "@/lib/auth/session-access";
 
 export const dynamic = "force-dynamic";
 
@@ -94,6 +95,8 @@ function parseInstallCount(installs: string): number {
 
 // POST /api/skills/search  body: { query: string, limit?: number }
 export async function POST(req: Request) {
+  const denied = await enforceCodingRequest(req);
+  if (denied) return denied;
   try {
     const { query, limit: rawLimit } = await req.json() as { query?: string; limit?: unknown };
     if (!query?.trim()) return NextResponse.json({ error: "query required" }, { status: 400 });

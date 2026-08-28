@@ -5,6 +5,7 @@ import { mkdtemp, rm, writeFile } from "fs/promises";
 import { tmpdir } from "os";
 import { join, resolve, sep } from "path";
 import { getAllowedRoots } from "@/lib/file-security";
+import { enforceCodingRequest } from "@/lib/auth/session-access";
 
 const execFileAsync = promisify(execFile);
 const MAX_BUFFER = 4 * 1024 * 1024;
@@ -36,6 +37,8 @@ function splitPatch(patch: string) {
 }
 
 export async function GET(req: Request) {
+  const denied = await enforceCodingRequest(req);
+  if (denied) return denied;
   const url = new URL(req.url);
   const checked = await validate(url.searchParams.get("cwd"), url.searchParams.get("path"));
   if ("error" in checked) return NextResponse.json({ error: checked.error }, { status: checked.status });
@@ -46,6 +49,8 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const denied = await enforceCodingRequest(req);
+  if (denied) return denied;
   const body = await req.json().catch(() => ({})) as { cwd?: unknown; path?: unknown; index?: unknown };
   const checked = await validate(body.cwd, body.path);
   if ("error" in checked) return NextResponse.json({ error: checked.error }, { status: checked.status });

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAllowedRoots, isPathAllowed } from "@/lib/file-security";
 import { listWorktrees } from "@/lib/worktrees";
+import { enforceCodingRequest } from "@/lib/auth/session-access";
 
 export const dynamic = "force-dynamic";
 
@@ -8,6 +9,8 @@ export const dynamic = "force-dynamic";
 // Lists the git worktrees of the repo at cwd (main checkout first; prunable /
 // missing checkouts filtered). Empty list for non-git dirs.
 export async function GET(req: Request) {
+  const denied = await enforceCodingRequest(req);
+  if (denied) return denied;
   const url = new URL(req.url);
   const cwd = url.searchParams.get("cwd");
   if (!cwd) return NextResponse.json({ error: "cwd required" }, { status: 400 });

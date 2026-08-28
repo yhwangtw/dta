@@ -1,6 +1,7 @@
 import { OAuthWebBridge, submitOAuthWebInput, type OAuthWebEvent } from "@/lib/oauth-web-bridge";
 import { invalidateRpcSessionsForAuthChange } from "@/lib/rpc-manager";
 import { createPiModelRuntime } from "@/lib/pi-model-runtime";
+import { enforceAdminRequest } from "@/lib/auth/session-access";
 
 export const dynamic = "force-dynamic";
 
@@ -9,6 +10,8 @@ export async function POST(
   req: Request,
   { params }: { params: Promise<{ provider: string }> },
 ) {
+  const denied = await enforceAdminRequest(req);
+  if (denied) return denied;
   const { provider } = await params;
   const { token, code } = (await req.json()) as { token?: string; code?: string };
   if (!token || !code) {
@@ -30,6 +33,8 @@ export async function GET(
   req: Request,
   { params }: { params: Promise<{ provider: string }> },
 ) {
+  const denied = await enforceAdminRequest(req);
+  if (denied) return denied;
   const { provider } = await params;
   const encoder = new TextEncoder();
   const abort = new AbortController();

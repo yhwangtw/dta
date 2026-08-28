@@ -2,6 +2,7 @@ import { defineTool } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { createWorkflowExecutor } from "./index";
 import type { WorkflowExecutor } from "./workflow-executor";
+import type { AgentMetadata } from "@/lib/agents/agent-types";
 
 export const EXECUTE_WORKFLOW_TOOL_NAME = "execute_workflow";
 
@@ -26,6 +27,7 @@ const ExecuteWorkflowParams = Type.Object({
 export function createExecuteWorkflowTool(
   agent: WorkflowAgentPolicy,
   executor: WorkflowExecutor = createWorkflowExecutor(),
+  scope?: Pick<AgentMetadata, "runId" | "userId" | "projectId" | "conversationId">,
 ) {
   const policy = workflowPolicy(agent);
   return defineTool({
@@ -45,6 +47,13 @@ export function createExecuteWorkflowTool(
         payload: params.payload,
         reason: params.reason,
         agentId: policy.agentId,
+        scope,
+      }, {
+        ...(scope?.runId ? { runId: scope.runId } : {}),
+        ...(scope?.userId ? { userId: scope.userId } : {}),
+        ...(scope?.projectId ? { projectId: scope.projectId } : {}),
+        ...(scope?.conversationId ? { conversationId: scope.conversationId } : {}),
+        actorId: "agent-runtime",
       });
       return {
         content: [{ type: "text", text: `Workflow ${params.workflow} completed.` }],

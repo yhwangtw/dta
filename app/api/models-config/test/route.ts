@@ -4,6 +4,7 @@ import { tmpdir } from "os";
 import { join } from "path";
 import { completeSimple, type AssistantMessage } from "@earendil-works/pi-ai/compat";
 import { createPiModelRegistry } from "@/lib/pi-model-runtime";
+import { enforceAdminRequest } from "@/lib/auth/session-access";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,8 @@ function getAssistantText(message: AssistantMessage): string {
 }
 
 export async function POST(req: Request) {
+  const denied = await enforceAdminRequest(req);
+  if (denied) return denied;
   let tempDir: string | undefined;
 
   try {

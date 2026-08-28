@@ -48,12 +48,21 @@ export function writeAgentSessionMetadata(sessionId: string, metadata: AgentMeta
   writeStore(store);
 }
 
-export function moveAgentSessionMetadata(previousSessionId: string, nextSessionId: string): void {
+export function copyAgentSessionMetadata(previousSessionId: string, nextSessionId: string): void {
   if (previousSessionId === nextSessionId) return;
   const store = readStore();
   const metadata = store.sessions[previousSessionId];
-  if (!metadata) return;
-  store.sessions[nextSessionId] = metadata;
-  delete store.sessions[previousSessionId];
+  if (!metadata || store.sessions[nextSessionId]) return;
+  // Pi fork/new-session replacement keeps the previous JSONL session on
+  // disk. Retaining both mappings prevents the parent from becoming an
+  // unowned, cross-user-visible legacy session.
+  store.sessions[nextSessionId] = structuredClone(metadata);
+  writeStore(store);
+}
+
+export function deleteAgentSessionMetadata(sessionId: string): void {
+  const store = readStore();
+  if (!store.sessions[sessionId]) return;
+  delete store.sessions[sessionId];
   writeStore(store);
 }

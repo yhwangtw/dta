@@ -5,6 +5,7 @@ import { AgentRegistryError } from "@/lib/agents/agent-registry";
 import { getAgentExecutionService } from "@/lib/agents/agent-execution-service";
 import {
   AuthenticationError,
+  assertCodingAccess,
   assertRateLimit,
   authenticateRequest,
   authenticationErrorResponse,
@@ -36,6 +37,7 @@ export async function POST(req: Request) {
     const authenticatedMetadata = agentMetadata
       ? { ...agentMetadata, userId: resolveActingUserId(principal, agentMetadata.userId) }
       : undefined;
+    if (!authenticatedMetadata || authenticatedMetadata.agentType === "coding") assertCodingAccess(principal);
     const tempKey = `__new__${Date.now()}`;
     const executionService = getAgentExecutionService();
     const sessionInput = {

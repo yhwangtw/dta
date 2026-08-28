@@ -4,6 +4,7 @@ import { getAllowedRoots } from "@/lib/file-security";
 import { getSessionEntries, listAllSessions, resolveSessionPath } from "@/lib/session-reader";
 import { readTgdArtifacts } from "@/lib/tgd-artifacts";
 import { rankSemanticDocuments, type SemanticDocument } from "@/lib/semantic-search";
+import { enforceCodingRequest } from "@/lib/auth/session-access";
 
 export const dynamic = "force-dynamic";
 
@@ -58,6 +59,8 @@ async function codeDocuments(cwd: string): Promise<SemanticDocument[]> {
 }
 
 export async function GET(request: Request): Promise<Response> {
+  const denied = await enforceCodingRequest(request);
+  if (denied) return denied;
   const url = new URL(request.url);
   const query = url.searchParams.get("q")?.trim() ?? "";
   const cwdParam = url.searchParams.get("cwd")?.trim() || null;

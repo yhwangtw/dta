@@ -1,0 +1,21 @@
+apiVersion: v2
+name: dta-agent-platform
+description: Server-side Digital Transformation Agent platform for Meeting and PM Agents
+type: application
+version: 0.1.0
+appVersion: "2026.08.27"
+kubeVersion: ">=1.27.0-0"
+home: https://github.com/yhwangtw/dta
+sources:
+  - https://github.com/yhwangtw/dta
+keywords:
+  - agent
+  - meeting
+  - pm
+  - a2a
+  - digital-transformation
+annotations:
+  artifacthub.io/license: MIT
+  artifacthub.io/changes: |
+    - kind: added
+      description: Initial DTA server-side deployment chart

@@ -1,0 +1,267 @@
+# DTA currently owns Pi runtime sessions in-process. The chart intentionally
+# permits exactly one replica until distributed run ownership is implemented.
+replicaCount: 1
+revisionHistoryLimit: 3
+progressDeadlineSeconds: 600
+terminationGracePeriodSeconds: 60
+
+image:
+  repository: yhwangtn/dta
+  tag: "2026.08.27"
+  # Pin production deployments to the verified multi-architecture release.
+  # Clear this value only when intentionally selecting image.tag instead.
+  digest: sha256:de9aaa1ff11033a150728943d56db620caea337db4c6b1d6740fe6f99f32022b
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  automount: false
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  fsGroupChangePolicy: OnRootMismatch
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+strategy:
+  type: Recreate
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 30141
+  annotations: {}
+
+ingress:
+  enabled: false
+  className: nginx
+  annotations: {}
+  hosts:
+    - host: dta.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: dta-agent-platform-tls
+      hosts:
+        - dta.example.com
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: "2"
+    memory: 4Gi
+
+startupProbe:
+  httpGet:
+    path: /health
+    port: http
+  periodSeconds: 5
+  timeoutSeconds: 5
+  failureThreshold: 24
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 20
+  periodSeconds: 30
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 15
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+persistence:
+  data:
+    enabled: true
+    existingClaim: ""
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+    size: 10Gi
+    annotations: {}
+  workspace:
+    enabled: false
+    existingClaim: ""
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+    size: 20Gi
+    annotations: {}
+
+emptyDir:
+  workspace:
+    sizeLimit: ""
+  tmp:
+    sizeLimit: 2Gi
+  nextCache:
+    sizeLimit: 1Gi
+
+# Non-secret runtime configuration. All values are rendered as strings in the
+# ConfigMap so the same image can be promoted between environments.
+config:
+  env:
+    AGENT_DEFAULT_TYPE: meeting
+    DTA_DEFAULT_AGENT_ID: meeting-agent
+    DTA_ENABLED_AGENTS: meeting-agent,pm-agent
+    DTA_AGENT_MANIFEST_PATH: /etc/dta/agents.json
+    DTA_PUBLIC_BASE_URL: https://dta.example.com
+    DTA_PROVIDER_ORGANIZATION: Digital Transformation Department
+    DTA_PROVIDER_URL: https://dta.example.com
+    DTA_AGENT_WORKSPACE: /workspace
+    DTA_DATA_DIR: /data
+    PI_CODING_AGENT_DIR: /data/pi
+
+    DTA_AUTH_MODE: keycloak
+    DTA_AUTH_TOKEN_HEADER: x-forwarded-access-token
+    KEYCLOAK_ISSUER: https://keycloak.example.com/realms/company
+    KEYCLOAK_AUDIENCE: dta-agent-platform
+    KEYCLOAK_REQUIRED_ROLES: dta-user
+    DTA_REVIEW_REQUIRED_ROLES: dta-reviewer
+    DTA_MEETING_REVIEW_REQUIRED: "true"
+
+    LLM_PROVIDER_ID: dta-company
+    LLM_BASE_URL: https://llm-gateway.example.com/v1
+    LLM_MODEL: company-model
+    LLM_API: openai-responses
+    LLM_AUTH_HEADER: "true"
+    LLM_SUPPORTS_IMAGES: "false"
+    LLM_CONTEXT_WINDOW: "128000"
+    LLM_MAX_TOKENS: "16384"
+
+    DTA_ARTIFACT_STORE: minio
+    MINIO_ENDPOINT: https://minio.example.com
+    MINIO_BUCKET: dta-artifacts
+    MINIO_REGION: us-east-1
+    MINIO_PREFIX: dta
+
+    DTA_MEMORY_STORE: postgres
+    DTA_MEMORY_MAX_ENTRIES: "1000"
+    DTA_MEMORY_TTL_SECONDS: "7776000"
+
+    DTA_AUDIT_LOG_ENABLED: "true"
+    DTA_AUDIT_LOG_PATH: /data/audit/events.jsonl
+    DTA_METRICS_AUTH_REQUIRED: "true"
+    DTA_RATE_LIMIT_ENABLED: "true"
+    DTA_RATE_LIMIT_REQUESTS: "60"
+    DTA_RATE_LIMIT_WINDOW_SECONDS: "60"
+
+    DTA_UPLOAD_SCANNER: http
+    DTA_UPLOAD_SCANNER_URL: https://malware-scanner.example.com/scan
+    DTA_UPLOAD_SCANNER_AUTH_HEADER: Authorization
+    DTA_UPLOAD_SCANNER_AUTH_SCHEME: Bearer
+    DTA_UPLOAD_SCANNER_TIMEOUT_MS: "60000"
+    DTA_UPLOAD_SCANNER_FAIL_OPEN: "false"
+
+    DTA_RETENTION_ENABLED: "false"
+    DTA_ARTIFACT_RETENTION_DAYS: "365"
+    DTA_RETENTION_PROTECT_APPROVED: "true"
+
+    DTA_WORKFLOW_PROVIDER: n8n
+    DTA_ENABLE_WORKFLOW_TOOLS: "false"
+    N8N_BASE_URL: https://n8n.example.com
+    N8N_AUTH_HEADER: Authorization
+    N8N_AUTH_SCHEME: Bearer
+    N8N_TIMEOUT_MS: "30000"
+    N8N_WORKFLOW_MAP_JSON: '{"meeting-create-jira":"/webhook/meeting-create-jira","meeting-notify-teams":"/webhook/meeting-notify-teams","meeting-update-knowledge-base":"/webhook/meeting-update-knowledge-base","pm-create-jira-epic":"/webhook/pm-create-jira-epic","pm-publish-prd":"/webhook/pm-publish-prd","pm-notify-team":"/webhook/pm-notify-team"}'
+
+    DTA_TRANSCRIPTION_PROVIDER: openai-compatible
+    DTA_TRANSCRIPTION_BASE_URL: https://speech.example.com/v1
+    DTA_TRANSCRIPTION_MODEL: company-transcription-model
+    DTA_TRANSCRIPTION_RESPONSE_FORMAT: auto
+    DTA_VISION_PROVIDER: openai-compatible
+    DTA_VISION_BASE_URL: https://vision.example.com/v1
+    DTA_VISION_MODEL: company-vision-model
+    DTA_MEDIA_PROCESSOR: ffmpeg
+
+# Agent manifests are mounted read-only at /etc/dta/agents.json. Replace this
+# example with department-specific Agents without rebuilding the image.
+agentManifest: |
+  {
+    "version": 1,
+    "agents": []
+  }
+
+# The default expects Vault, External Secrets, or an administrator to create
+# this Secret. `create` is deliberately false so placeholders never become
+# cluster credentials by accident.
+secret:
+  create: false
+  existingSecret: dta-agent-platform-secrets
+  annotations: {}
+  values: {}
+  env:
+    - name: LLM_API_KEY
+      key: LLM_API_KEY
+      optional: false
+    - name: MINIO_ACCESS_KEY
+      key: MINIO_ACCESS_KEY
+      optional: false
+    - name: MINIO_SECRET_KEY
+      key: MINIO_SECRET_KEY
+      optional: false
+    - name: N8N_API_KEY
+      key: N8N_API_KEY
+      optional: true
+    - name: DTA_TRANSCRIPTION_API_KEY
+      key: DTA_TRANSCRIPTION_API_KEY
+      optional: true
+    - name: DTA_VISION_API_KEY
+      key: DTA_VISION_API_KEY
+      optional: true
+    - name: PIWEB_SESSION_SECRET
+      key: PIWEB_SESSION_SECRET
+      optional: true
+    - name: POSTGRES_URL
+      key: POSTGRES_URL
+      optional: false
+    - name: REDIS_URL
+      key: REDIS_URL
+      optional: true
+    - name: DTA_UPLOAD_SCANNER_API_KEY
+      key: DTA_UPLOAD_SCANNER_API_KEY
+      optional: true
+
+extraEnv: []
+extraEnvFrom: []
+extraVolumes: []
+extraVolumeMounts: []
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+topologySpreadConstraints: []
+priorityClassName: ""
+runtimeClassName: ""
+
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1

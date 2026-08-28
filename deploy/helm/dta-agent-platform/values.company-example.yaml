@@ -1,0 +1,70 @@
+# Copy this file outside the repository and replace every example endpoint.
+# Do not add secrets here; let Vault or External Secrets create the Secret.
+
+image:
+  # Mirror the verified release into the company registry. Keep the digest when
+  # the registry preserves it; otherwise replace it with the verified mirror digest.
+  repository: registry.company.example/ai/dta
+  digest: sha256:de9aaa1ff11033a150728943d56db620caea337db4c6b1d6740fe6f99f32022b
+
+imagePullSecrets:
+  - name: company-registry-credentials
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    # Replace with the annotations required by the company's Keycloak-aware
+    # auth proxy. It must overwrite x-forwarded-access-token.
+    nginx.ingress.kubernetes.io/proxy-body-size: 2g
+  hosts:
+    - host: dta.company.example
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: dta-company-tls
+      hosts:
+        - dta.company.example
+
+persistence:
+  data:
+    storageClass: company-block-storage
+    size: 50Gi
+
+secret:
+  create: false
+  existingSecret: dta-agent-platform-secrets
+
+config:
+  env:
+    DTA_PUBLIC_BASE_URL: https://dta.company.example
+    DTA_PROVIDER_ORGANIZATION: Digital Transformation Department
+    DTA_PROVIDER_URL: https://dta.company.example
+
+    DTA_AUTH_MODE: keycloak
+    DTA_AUTH_TOKEN_HEADER: x-forwarded-access-token
+    KEYCLOAK_ISSUER: https://sso.company.example/realms/company
+    KEYCLOAK_AUDIENCE: dta-agent-platform
+    KEYCLOAK_REQUIRED_ROLES: dta-user
+    DTA_REVIEW_REQUIRED_ROLES: dta-reviewer
+
+    LLM_BASE_URL: https://llm-gateway.company.example/v1
+    LLM_MODEL: company-model
+
+    MINIO_ENDPOINT: https://minio.company.example
+    MINIO_BUCKET: dta-artifacts
+
+    N8N_BASE_URL: https://n8n.company.example
+    DTA_ENABLE_WORKFLOW_TOOLS: "false"
+
+    DTA_TRANSCRIPTION_BASE_URL: https://speech.company.example/v1
+    DTA_TRANSCRIPTION_MODEL: company-transcription-model
+    DTA_VISION_BASE_URL: https://vision.company.example/v1
+    DTA_VISION_MODEL: company-vision-model
+
+    DTA_UPLOAD_SCANNER_URL: https://scanner.company.example/scan
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

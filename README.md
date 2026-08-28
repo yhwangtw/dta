@@ -109,7 +109,8 @@ DTA_SETUP_OFFLINE=1 bash setup.sh
 ## Architecture and company deployment
 
 - [Agent architecture, external contracts, security boundary, and limitations](./docs/architecture.md)
-- [Build-once Docker, runtime configuration, Keycloak, Vault, and Kubernetes guide](./docs/deployment.md)
+- [Build-once Docker, runtime configuration, Keycloak, Vault, Kubernetes, and Helm guide](./docs/deployment.md)
+- [Production DTA Helm chart](./deploy/helm/dta-agent-platform/README.md)
 - [Complete environment template](./.env.example)
 
 The same image runs locally with local/mock adapters and in the company with Keycloak, the company LLM gateway, MinIO, and n8n. Connection information and secrets are never baked into the image.

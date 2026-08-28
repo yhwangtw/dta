@@ -1,0 +1,51 @@
+{{- if and .Values.persistence.data.enabled (not .Values.persistence.data.existingClaim) }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "dta-agent-platform.fullname" . }}-data
+  labels:
+    {{- include "dta-agent-platform.labels" . | nindent 4 }}
+  {{- with .Values.persistence.data.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  accessModes:
+    {{- toYaml .Values.persistence.data.accessModes | nindent 4 }}
+  {{- if .Values.persistence.data.storageClass }}
+  {{- if eq "-" .Values.persistence.data.storageClass }}
+  storageClassName: ""
+  {{- else }}
+  storageClassName: {{ .Values.persistence.data.storageClass | quote }}
+  {{- end }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.data.size }}
+{{- end }}
+{{- if and .Values.persistence.workspace.enabled (not .Values.persistence.workspace.existingClaim) }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "dta-agent-platform.fullname" . }}-workspace
+  labels:
+    {{- include "dta-agent-platform.labels" . | nindent 4 }}
+  {{- with .Values.persistence.workspace.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  accessModes:
+    {{- toYaml .Values.persistence.workspace.accessModes | nindent 4 }}
+  {{- if .Values.persistence.workspace.storageClass }}
+  {{- if eq "-" .Values.persistence.workspace.storageClass }}
+  storageClassName: ""
+  {{- else }}
+  storageClassName: {{ .Values.persistence.workspace.storageClass | quote }}
+  {{- end }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.workspace.size }}
+{{- end }}

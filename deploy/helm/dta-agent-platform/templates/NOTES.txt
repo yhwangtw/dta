@@ -1,0 +1,23 @@
+1. DTA {{ .Chart.AppVersion }} has been installed as release {{ .Release.Name }}.
+
+2. Confirm that Secret {{ include "dta-agent-platform.secretName" . }} exists and
+   contains every non-optional key selected under secret.env.
+
+3. Watch the single-replica rollout:
+
+   kubectl rollout status deployment/{{ include "dta-agent-platform.fullname" . }} -n {{ .Release.Namespace }}
+
+4. Verify liveness, readiness, and the A2A Agent Card:
+
+   kubectl port-forward service/{{ include "dta-agent-platform.fullname" . }} 30141:{{ .Values.service.port }} -n {{ .Release.Namespace }}
+   curl http://127.0.0.1:30141/health
+   curl http://127.0.0.1:30141/ready
+   curl http://127.0.0.1:30141/.well-known/agent-card.json
+
+{{- if not .Values.ingress.enabled }}
+Ingress is disabled. Configure ingress.hosts, TLS, and the company's
+Keycloak-aware proxy before exposing DTA outside the cluster.
+{{- end }}
+
+DTA runtime sessions remain process-local. Do not increase replicaCount above
+1 until distributed run ownership and session state are implemented.

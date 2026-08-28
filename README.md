@@ -120,31 +120,18 @@ Department workflows are built visually in n8n and registered through configurat
 ## Interface Tour
 
 <p align="center">
-  <img src="./docs/screenshots/11-mobile-chat.png" alt="Responsive mobile conversation view" width="390">
+  <img src="./docs/screenshots/dta-home.png" alt="DTA Meeting Agent home" width="1200">
 </p>
 
-The mobile layout keeps the active phase, transcript, composer, model controls, and primary navigation within thumb reach while respecting device safe areas.
+These are browser captures from the current DTA application using non-confidential sample data. They are not product mockups or generated interface artwork.
 
-| Session and file workspace | Command palette |
+| Meeting capture and file upload | Conversation, structured result, and human review |
 |---|---|
-| ![Code session](./docs/screenshots/03-code-session.png) | ![Command palette](./docs/screenshots/04-command-palette.png) |
+| ![Meeting capture and file upload](./docs/screenshots/dta-meeting-intake.png) | ![Meeting Agent conversation and result review](./docs/screenshots/dta-meeting-review.png) |
 
-| Dark mode | Empty state |
+| PM Agent requirement handoff | Responsive mobile home |
 |---|---|
-| ![Dark mode](./docs/screenshots/10-dark-mode.png) | ![Empty state](./docs/screenshots/01-empty-state.png) |
-
-<details>
-<summary><strong>View all five appearance skins</strong></summary>
-
-| Editorial | Terminal | Aurora |
-|---|---|---|
-| ![Editorial skin](./docs/screenshots/05-skin-editorial.png) | ![Terminal skin](./docs/screenshots/06-skin-terminal.png) | ![Aurora skin](./docs/screenshots/07-skin-aurora.png) |
-
-| Industrial | Glass |
-|---|---|
-| ![Industrial skin](./docs/screenshots/08-skin-industrial.png) | ![Glass skin](./docs/screenshots/09-skin-glass.png) |
-
-</details>
+| ![PM Agent requirement handoff](./docs/screenshots/dta-pm-agent.png) | <img src="./docs/screenshots/dta-mobile-home.png" alt="Responsive DTA mobile home" width="390"> |
 
 ## Key Features
 

@@ -23,7 +23,7 @@
 
 tGD Pi Web verwandelt lokale Pi-Sessions in ein visuelles Engineering-Cockpit: Unterhalte dich in Echtzeit mit dem Agenten, prüfe Dateien und Git-Änderungen, navigiere zwischen Branches, stelle Snapshots wieder her und verfolge den gesamten Weg von Map bis Release im Browser.
 
-![Chat-Oberfläche von tGD Pi Web](./docs/screenshots/02-hero-chat.png)
+![DTA Meeting Agent Startseite](./docs/screenshots/dta-home.png)
 
 ## Warum tGD Pi Web?
 
@@ -126,31 +126,18 @@ Setze `TGD_DIR`, wenn das Artefaktverzeichnis an einem anderen Ort liegt.
 ## Oberfläche
 
 <p align="center">
-  <img src="./docs/screenshots/11-mobile-chat.png" alt="Responsive mobile Gesprächsansicht" width="390">
+  <img src="./docs/screenshots/dta-home.png" alt="DTA Meeting Agent Startseite" width="1200">
 </p>
 
-Das mobile Layout hält aktive Phase, Gespräch, Composer, Modellsteuerung und Hauptnavigation in Daumenreichweite und berücksichtigt die Safe Areas des Geräts.
+Diese Bilder wurden im Browser aus der aktuellen DTA-Anwendung mit nicht vertraulichen Beispieldaten aufgenommen. Sie sind keine Produkt-Mockups und keine generierten UI-Abbildungen.
 
-| Session- und Datei-Arbeitsbereich | Befehlspalette |
+| Meeting-Erfassung und Datei-Upload | Gespräch, strukturiertes Ergebnis und Human Review |
 |---|---|
-| ![Code-Session](./docs/screenshots/03-code-session.png) | ![Befehlspalette](./docs/screenshots/04-command-palette.png) |
+| ![Meeting-Erfassung und Datei-Upload](./docs/screenshots/dta-meeting-intake.png) | ![Meeting-Agent-Gespräch und Ergebnisprüfung](./docs/screenshots/dta-meeting-review.png) |
 
-| Dunkelmodus | Leerer Zustand |
+| Übergabe einer Anforderung an den PM Agent | Responsive mobile Startseite |
 |---|---|
-| ![Dunkelmodus](./docs/screenshots/10-dark-mode.png) | ![Leerer Zustand](./docs/screenshots/01-empty-state.png) |
-
-<details>
-<summary><strong>Alle fünf Appearance-Skins anzeigen</strong></summary>
-
-| Editorial | Terminal | Aurora |
-|---|---|---|
-| ![Editorial skin](./docs/screenshots/05-skin-editorial.png) | ![Terminal skin](./docs/screenshots/06-skin-terminal.png) | ![Aurora skin](./docs/screenshots/07-skin-aurora.png) |
-
-| Industrial | Glass |
-|---|---|
-| ![Industrial skin](./docs/screenshots/08-skin-industrial.png) | ![Glass skin](./docs/screenshots/09-skin-glass.png) |
-
-</details>
+| ![Übergabe einer Anforderung an den PM Agent](./docs/screenshots/dta-pm-agent.png) | <img src="./docs/screenshots/dta-mobile-home.png" alt="Responsive DTA mobile Startseite" width="390"> |
 
 ## Hauptfunktionen
 

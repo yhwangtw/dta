@@ -120,10 +120,39 @@ The manifest format is demonstrated by `config/agents.example.json`. Each entry 
 
 ## Kubernetes
 
-Examples are in `deploy/kubernetes/`.
+The production-oriented Helm chart is in `deploy/helm/dta-agent-platform/`.
+It pins the verified multi-architecture image digest, validates the single-
+replica limit, references an externally managed Secret by default, and exposes
+all company endpoints through values rather than image changes.
+
+1. Copy `values.company-example.yaml` outside the repository and replace every
+   example endpoint, hostname, storage class, and registry.
+2. Have Vault, External Secrets, or the platform secret controller create
+   `dta-agent-platform-secrets`. Do not commit production secret values.
+3. Render, review, and deploy atomically:
+
+```bash
+helm lint deploy/helm/dta-agent-platform
+helm template dta deploy/helm/dta-agent-platform \
+  --namespace dta \
+  -f /secure/path/dta-values.yaml
+helm upgrade --install dta deploy/helm/dta-agent-platform \
+  --namespace dta \
+  --create-namespace \
+  --atomic \
+  --timeout 10m \
+  -f /secure/path/dta-values.yaml
+```
+
+See the [chart README](../deploy/helm/dta-agent-platform/README.md) for values,
+security defaults, verification, upgrade, and rollback instructions.
+
+The original Kustomize example remains in `deploy/kubernetes/` for environments
+that do not permit Helm:
 
 1. Copy and edit `configmap.yaml`, `ingress.yaml`, storage class/PVC, and image name.
-2. Have Vault, External Secrets, or the platform secret controller create `dta-agent-platform-secrets` with the keys shown in `secret.example.yaml`. Do not apply the example values.
+2. Create `dta-agent-platform-secrets` with the keys shown in
+   `secret.example.yaml`. Do not apply the example values.
 3. Apply the non-secret resources:
 
 ```bash
@@ -132,7 +161,12 @@ kubectl rollout status deployment/dta-agent-platform
 kubectl get pods,service,ingress
 ```
 
-The sample enforces one replica, non-root UID/GID, `RuntimeDefault` seccomp, no service-account token, no privilege escalation, a read-only root filesystem, and all Linux capabilities dropped. It mounts writable volumes only at `/data`, `/workspace`, `/tmp`, and the Next cache. Startup, readiness, and liveness probes are separate; service-link injection is disabled and pod termination receives 60 seconds for graceful shutdown.
+Both deployment paths enforce one replica, non-root UID/GID, `RuntimeDefault`
+seccomp, no service-account token, no privilege escalation, a read-only root
+filesystem, and all Linux capabilities dropped. Writable paths are limited to
+`/data`, `/workspace`, `/tmp`, and the Next cache. Startup, readiness, and
+liveness probes are separate; service-link injection is disabled and pod
+termination receives 60 seconds for graceful shutdown.
 
 The sample also mounts `/etc/dta/agents.json` read-only. `POSTGRES_URL`, media/model keys, MinIO credentials, n8n credentials, and the upload-scanner key come from Secret references. For MinIO, configure a bucket lifecycle rule matching `DTA_ARTIFACT_RETENTION_DAYS`; application-side retention intentionally does not list production buckets.
 

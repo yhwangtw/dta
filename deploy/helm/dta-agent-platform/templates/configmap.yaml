@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "dta-agent-platform.fullname" . }}
+  labels:
+    {{- include "dta-agent-platform.labels" . | nindent 4 }}
+data:
+  {{- range $name, $value := .Values.config.env }}
+  {{ $name }}: {{ $value | quote }}
+  {{- end }}
+  agents.json: |
+    {{- .Values.agentManifest | nindent 4 }}

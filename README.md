@@ -2,8 +2,9 @@
 
 <p align="center">
   <a href="https://github.com/yhwangtw/dta/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/yhwangtw/dta/actions/workflows/ci.yml/badge.svg?branch=main"></a>
+  <a href="https://github.com/yhwangtw/dta/releases"><img alt="Release" src="https://img.shields.io/github/v/release/yhwangtw/dta?display_name=tag&style=flat-square"></a>
   <img alt="Next.js 16" src="https://img.shields.io/badge/Next.js-16-000000?style=flat-square&logo=nextdotjs">
-  <img alt="React 19" src="https://img.shields.io/badge/React-19-149ECA?style=flat-square&logo=react">
+  <img alt="Node.js 22" src="https://img.shields.io/badge/Node.js-22-339933?style=flat-square&logo=nodedotjs&logoColor=white">
 </p>
 
 <p align="center">
@@ -13,365 +14,358 @@
   <a href="README.de.md">Deutsch</a>
 </p>
 
-<p align="center">
-  <a href="https://github.com/yhwangtw/dta/releases">Releases</a> ·
-  <a href="https://github.com/yhwangtw/dta/issues">Report a bug</a> ·
-  <a href="https://github.com/yhwangtw/dta/issues">Request a feature</a>
-</p>
+**DTA is a Meeting-first department Agent platform that turns conversations and files into reviewed, traceable work.**
 
-**A department agent platform and human control plane for digital transformation work.**
-
-Digital Transformation Agent (DTA) connects meeting intelligence, PDLC workflows, action tracking, department knowledge, agent runs, and human review in one traceable workspace. It is designed for both people using the DTA interface and company-level orchestrators calling bounded department capabilities.
-
-> DTA reuses the proven Pi session/runtime infrastructure internally, but its public Agent Contract, A2A surface, product identity, and domain results are runtime-neutral.
-
-## Product direction
-
-DTA treats chat as one interaction method rather than the product hierarchy:
-
-- **Meeting Intelligence** — source-backed minutes, decisions, action items, owners, and due dates. Paste material, use browser voice typing, or upload text, DOCX, audio, and video. Configured media providers produce timestamped transcripts, sampled visual evidence, and a synchronized meeting timeline.
-- **PDLC Agent** — move approved decisions through requirements, design, delivery, and verification.
-- **Action Tracking** — keep follow-ups, blockers, and human decisions visible across meetings.
-- **Department Knowledge** — find approved decisions and artifacts without losing their context.
-- **Human control plane** — review evidence, resolve exceptions, and approve publication.
-- **Orchestrator entry point** — expose stable, bounded department-agent contracts to company automation.
-- **Multiple operator entry points** — use the same Agent core through Web, interactive TUI, batch CLI, REST, or A2A; retain native Pi CLI as an explicit developer-only Coding Agent mode.
-
-## Who is this for?
-
-- Department teams turning meetings and decisions into accountable follow-through.
-- Digital transformation teams operating multiple specialist agents.
-- Reviewers who need evidence, approval gates, version history, and execution records.
-- Enterprise environments using a company orchestrator, internal model gateway, or private network.
-
-## Quick Start
-
-### Requirements
-
-- Node.js 22 or newer
-- npm
-- A working Pi setup with `~/.pi/agent/`
-- Git
-
-This project is distributed from GitHub source and is **not published to npm**.
-
-> [!IMPORTANT]
-> DTA can read and edit files, inspect git repositories, and run shell commands in allowed workspaces. Keep it on localhost by default. For remote access, set `PIWEB_ACCESS_PASSWORD` and `PIWEB_SESSION_SECRET`, then place the service behind an authenticated private network or access proxy. The legacy environment variable names remain temporarily for compatibility. See the [deployment guide](./deploy/README.md).
-
-Use a dedicated checkout for the supported one-step installation:
-
-```bash
-git clone https://github.com/yhwangtw/dta.git
-cd dta
-bash setup.sh
-```
-
-The setup script is the supported one-step source installation path. In a Git checkout it first replaces local source changes with `origin/main`, then checks Node.js and npm, installs dependencies, runs TypeScript validation, creates a production build, and can start the server. Known obsolete files from older installations are moved to `~/.dta-backups/` (override with `DTA_SETUP_BACKUP_DIR`). The Web always uses its pinned internal Pi runtime.
-
-> [!WARNING]
-> `origin/main` is the source of truth for end-user Git installations. Running `bash setup.sh` discards local commits, tracked changes, and non-ignored untracked files with `git reset --hard origin/main` and `git clean -fd`. Ignored runtime state such as `.env`, `node_modules`, and `.next` is retained.
-
-Manual setup:
-
-```bash
-npm install
-npm run build
-npm start
-```
-
-Open [http://localhost:30141](http://localhost:30141).
-
-The Web is optional. From a source checkout, the same server-side Agents are
-available through an interactive terminal or batch command:
-
-```bash
-npm run tui -- meeting
-npm run dta -- run meeting --task "Generate minutes" --transcript ./notes.txt
-```
-
-See [DTA Terminal Interfaces](./docs/cli.md) for `serve`, TUI, uploads, sessions,
-review, Keycloak, and native Pi Coding Agent mode.
-
-### Update an existing checkout
-
-```bash
-bash setup.sh
-```
-
-`setup.sh` stops immediately and prints the complete TypeScript error when validation fails. It never continues into a misleading partial build.
-
-For a deliberately offline Git checkout, skip remote synchronization explicitly:
-
-```bash
-DTA_SETUP_OFFLINE=1 bash setup.sh
-```
-
-## Architecture and company deployment
-
-- [Agent architecture, external contracts, security boundary, and limitations](./docs/architecture.md)
-- [Build-once Docker, runtime configuration, Keycloak, Vault, Kubernetes, and Helm guide](./docs/deployment.md)
-- [Production DTA Helm chart](./deploy/helm/dta-agent-platform/README.md)
-- [Company pilot readiness suite for Keycloak, MinIO, LLM, SSE, ownership, and n8n](./docs/company-pilot-readiness.md)
-- [Complete environment template](./.env.example)
-
-The same image runs locally with local/mock adapters and in the company with Keycloak, the company LLM gateway, MinIO, and n8n. Connection information and secrets are never baked into the image.
-
-Department workflows are built visually in n8n and registered through configuration; DTA keeps the Agent runtime, approval gate, normalized payload, audit trail, and external Agent contract. See [the n8n integration guide](./docs/n8n.md).
-
-## Interface Tour
+It provides one server-side Agent core through Web, TUI, CLI, REST, and A2A. Meeting Agent is the primary product flow; PM Agent continues approved requirements into product documents and delivery tasks. A company Orchestrator can call the same bounded Agent contracts without knowing that DTA uses the Pi runtime internally.
 
 <p align="center">
   <img src="./docs/screenshots/dta-home.png" alt="DTA Meeting Agent home" width="1200">
 </p>
 
-These are browser captures from the current DTA application using non-confidential sample data. They are not product mockups or generated interface artwork.
+## Start here
 
-| Meeting capture and file upload | Conversation, structured result, and human review |
+| Goal | Recommended path |
+|---|---|
+| See the interface locally | [Run from source](#run-from-source) and open `http://localhost:30141` |
+| Use Meeting or PM Agent in a terminal | [Use the CLI or TUI](#cli-and-tui) |
+| Run the released container | [Run with Docker](#run-with-docker) |
+| Deploy inside the company | [Deploy with the OCI Helm chart](#company-kubernetes-deployment) |
+| Connect an Orchestrator | [Use REST or A2A](#external-agent-contracts) |
+| Configure Keycloak, MinIO, n8n, or media models | [Choose runtime adapters](#runtime-configuration) |
+
+## What DTA does today
+
+| Capability | Input | Result | Notes |
+|---|---|---|---|
+| **Meeting Agent** | Prompt, transcript, TXT, Markdown, DOCX, audio, or video | Summary, decisions, action items, requirements, transcript/media artifacts, and handoff actions | Human review is required by default |
+| **PM Agent** | Direct requirement or approved Meeting handoff | Requirement analysis, URD, PRD, user stories, acceptance criteria, design context, and task plan | Uses the same runtime and artifact model |
+| **Configured department Agents** | JSON Agent manifest | Additional prompts, public skills, and n8n workflow allowlists | Add Agents without rebuilding the image |
+| **Coding Agent** | Repository prompt and developer tools | Native Pi coding session | Local/developer mode; hidden in company mode unless the user has the configured coding role |
+
+Meeting results are structured records, not only Markdown responses. DTA preserves source artifacts, streams normalized run events, records review decisions, and releases downstream actions only after approval.
+
+### Meeting media requirements
+
+Different inputs require different model capabilities:
+
+| Input | Required capability |
+|---|---|
+| Typed or pasted transcript | Reasoning LLM only |
+| Browser microphone typing | Browser speech recognition; no recording is stored by DTA |
+| Uploaded audio | Speech-to-text provider plus reasoning LLM |
+| Uploaded video | FFmpeg, speech-to-text provider, and reasoning LLM |
+| Visual evidence from video | Optional multimodal/vision provider for sampled keyframes |
+
+FFmpeg is included in the production image. Speech-to-text and vision endpoints are configuration-driven and are not bundled models. See [Meeting media understanding](./docs/meeting-media-pipeline.md).
+
+## One core, multiple entry points
+
+```text
+People                                 Company systems
+  Web UI      TUI      CLI              Orchestrator
+     \         |        /                 /      \
+      \        |       /              REST      A2A 1.0
+       +-------+------+------------------+--------+
+                      |
+             Generic Agent Contract
+                      |
+        +-------------+-------------+
+        |                           |
+  Meeting Agent                  PM Agent
+        |                           |
+        +-------------+-------------+
+                      |
+               Pi Agent Runtime
+                      |
+       +--------------+---------------+
+       |              |               |
+  LLM / media        n8n       artifacts / memory
+   gateways        workflows      local or company
+```
+
+Pi remains the pinned internal reasoning/session runtime. Public Agent requests, results, events, artifacts, reviews, REST, and A2A objects do not expose Pi session-manager or JSONL internals.
+
+## Run from source
+
+### Requirements
+
+- Node.js 22 or newer
+- npm and Git
+- Either a working local Pi model/auth configuration, or `LLM_*` settings for a compatible model gateway
+
+```bash
+git clone https://github.com/yhwangtw/dta.git
+cd dta
+npm ci
+cp .env.example .env.local
+npm run dev
+```
+
+Open [http://localhost:30141](http://localhost:30141).
+
+For a production build from source:
+
+```bash
+npm run build
+npm start
+```
+
+> [!WARNING]
+> Stop `npm run dev` before `npm run build` or `npm run test:e2e`. Both commands write `.next/`, and a concurrent build can break the running development server.
+
+`bash setup.sh` remains the one-step installation/update path for a dedicated end-user checkout. In a Git checkout it treats `origin/main` as authoritative and discards local commits, tracked changes, and non-ignored untracked files. Do not use it in a development checkout containing work you need to keep.
+
+## CLI and TUI
+
+The Web UI is optional. A source checkout exposes the CLI through `npm run dta --`; the production image installs the same command as `dta`.
+
+```bash
+# Interactive Meeting Agent
+npm run tui -- meeting
+
+# One-shot Meeting Agent run
+npm run dta -- run meeting \
+  --task "Generate meeting minutes" \
+  --transcript ./notes.txt
+
+# Upload audio or video
+npm run dta -- run meeting \
+  --task "Analyze this recording" \
+  --file ./meeting.mp4
+
+# PM Agent
+npm run dta -- run pm \
+  --task "Create a PRD" \
+  --input ./requirement.json
+
+# List runs and review a Meeting result
+npm run dta -- sessions --agent meeting
+npm run dta -- review RUN_ID --approve --comment "Reviewed"
+```
+
+Set `DTA_BASE_URL` to use the CLI/TUI against a remote DTA server. Set `DTA_ACCESS_TOKEN` for a Keycloak-protected server; the CLI does not persist the token. See [DTA terminal interfaces](./docs/cli.md).
+
+## Run with Docker
+
+Published multi-architecture images are available at [`yhwangtn/dta`](https://hub.docker.com/r/yhwangtn/dta). Select an approved release tag from [GitHub Releases](https://github.com/yhwangtw/dta/releases); do not deploy `latest` to production.
+
+This minimal local profile starts the platform with local storage and all external workflow/media adapters disabled:
+
+```bash
+export DTA_VERSION=v2026.08.29  # example; select your approved release
+
+docker run --rm -p 30141:30141 \
+  -e DTA_AUTH_MODE=none \
+  -e DTA_ARTIFACT_STORE=local \
+  -e DTA_MEMORY_STORE=local \
+  -e DTA_WORKFLOW_PROVIDER=none \
+  -e DTA_TRANSCRIPTION_PROVIDER=none \
+  -e DTA_VISION_PROVIDER=none \
+  -e DTA_UPLOAD_SCANNER=none \
+  -v dta-data:/data \
+  yhwangtn/dta:$DTA_VERSION
+```
+
+Verify the process:
+
+```bash
+curl http://127.0.0.1:30141/health
+curl http://127.0.0.1:30141/ready
+curl http://127.0.0.1:30141/.well-known/agent-card.json
+```
+
+This profile proves that the application starts; real Meeting/PM reasoning still needs either configured Pi model credentials or a compatible `LLM_BASE_URL`, `LLM_MODEL`, and `LLM_API_KEY`.
+
+The image already contains Node.js 22, Next.js, production dependencies, the Pi runtime dependencies, Git, FFmpeg, and the `dta` executable. The host and Kubernetes nodes do not install them separately.
+
+## Runtime configuration
+
+DTA is built once and configured when the container starts. Real credentials must come from environment variables or mounted Secrets, never from the image.
+
+| Concern | Local default | Company adapter |
+|---|---|---|
+| Authentication | `DTA_AUTH_MODE=none` | `keycloak` with `KEYCLOAK_ISSUER` and audience/role settings |
+| Reasoning model | Existing Pi model config | OpenAI-compatible company gateway through `LLM_*` |
+| Artifacts | Local filesystem | MinIO through `MINIO_*` |
+| Conversation memory | Local | Postgres or Redis |
+| Workflows | `none` or non-production `mock` | n8n through `N8N_*` and an explicit workflow map |
+| Speech-to-text | Disabled | OpenAI-compatible transcription endpoint |
+| Video keyframe analysis | Disabled | OpenAI-compatible multimodal endpoint |
+| Upload scanning | Disabled | Fail-closed company HTTP scanner |
+
+Start with [`.env.example`](./.env.example). Detailed setup is in:
+
+- [Architecture and current limitations](./docs/architecture.md)
+- [Build-once deployment guide](./docs/deployment.md)
+- [n8n workflow boundary and payload contract](./docs/n8n.md)
+- [Meeting media pipeline](./docs/meeting-media-pipeline.md)
+- [Company pilot readiness](./docs/company-pilot-readiness.md)
+
+## Company Kubernetes deployment
+
+The company needs Docker Hub access, Helm 3, `kubectl`, cluster access, approved endpoints, and an externally managed Kubernetes Secret. It does **not** need this source repository, Node.js, npm, or Pi installed on the operator machine.
+
+Published artifacts:
+
+| Artifact | Location |
+|---|---|
+| Container image | `docker.io/yhwangtn/dta` |
+| OCI Helm chart | `oci://registry-1.docker.io/yhwangtn/dta-agent-platform` |
+| Release notes and source | [GitHub Releases](https://github.com/yhwangtw/dta/releases) |
+
+Release tags and chart versions use different valid formats. For example, release `v2026.08.29` maps to Helm chart version `2026.8.29`.
+
+```bash
+export DTA_CHART=oci://registry-1.docker.io/yhwangtn/dta-agent-platform
+export DTA_CHART_VERSION=2026.8.29  # example; select the approved chart
+
+helm pull "$DTA_CHART" --version "$DTA_CHART_VERSION" --untar
+cp dta-agent-platform/values.company-example.yaml /secure/path/dta-values.yaml
+```
+
+Before installation:
+
+1. Replace every example URL, hostname, storage class, and policy value.
+2. Pin `image.digest` to the separately approved `yhwangtn/dta` multi-architecture digest. Do not assume the chart version alone selects the desired image.
+3. Have Vault, External Secrets, or the platform team create `dta-agent-platform-secrets`.
+4. Put the browser UI behind the company's Keycloak-aware ingress/auth proxy.
+5. Keep `replicaCount: 1`.
+
+Render, review, and deploy atomically:
+
+```bash
+helm show chart "$DTA_CHART" --version "$DTA_CHART_VERSION"
+
+helm template dta "$DTA_CHART" \
+  --version "$DTA_CHART_VERSION" \
+  --namespace dta \
+  -f /secure/path/dta-values.yaml
+
+helm upgrade --install dta "$DTA_CHART" \
+  --version "$DTA_CHART_VERSION" \
+  --namespace dta \
+  --create-namespace \
+  --atomic \
+  --timeout 10m \
+  -f /secure/path/dta-values.yaml
+```
+
+The chart defaults to non-root execution, a read-only root filesystem, dropped Linux capabilities, no privilege escalation, no ServiceAccount token, and separate startup/readiness/liveness probes. See the [Helm chart guide](./deploy/helm/dta-agent-platform/README.md) for Secrets, values, upgrade, and rollback procedures.
+
+## External Agent contracts
+
+### Framework-neutral REST
+
+```http
+POST /api/agents/meeting/run
+POST /api/agents/pm/run
+GET  /api/agent-runs/{runId}
+GET  /api/agent-runs/{runId}/events
+```
+
+Example Meeting request:
+
+```bash
+curl -X POST http://127.0.0.1:30141/api/agents/meeting/run \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "requestId": "meeting-demo-001",
+    "conversationId": "demo-conversation",
+    "task": "Generate structured meeting minutes",
+    "input": {
+      "transcript": "Alice approved the pilot. Bob will prepare the rollout plan by Friday."
+    }
+  }'
+```
+
+In Keycloak mode, send `Authorization: Bearer <access-token>`. The response contains a generic `runId` and status; follow the run through the normalized SSE endpoint or poll the run resource.
+
+### A2A 1.0
+
+```http
+GET  /.well-known/agent-card.json
+POST /a2a/v1/message:send
+POST /a2a/v1/message:stream
+GET  /a2a/v1/tasks
+GET  /a2a/v1/tasks/{taskId}
+```
+
+A2A callers must send `A2A-Version: 1.0`. Meeting media is uploaded through `POST /api/meeting-agent/extract`; DTA does not fetch arbitrary remote URLs from A2A file parts. Approved Meeting-to-PM handoffs are returned as generic Agent actions for the company Orchestrator to route.
+
+## Company acceptance check
+
+`/health` proves process liveness. `/ready` proves that selected adapters are configured. Neither proves that the full company path works.
+
+After Keycloak, MinIO, the company LLM, and n8n are configured, run:
+
+```bash
+export DTA_BASE_URL=https://dta.company.example
+export DTA_ACCESS_TOKEN='<short-lived user A token>'
+export DTA_SECONDARY_ACCESS_TOKEN='<short-lived user B token>'
+
+dta pilot-check
+dta pilot-check --live --report dta-pilot-report.json
+```
+
+The live suite validates Keycloak discovery/JWKS, selected adapters, MinIO upload/download, a real Meeting Agent LLM run, normalized SSE, User A/User B isolation, human approval, and an idempotent no-side-effect n8n probe. It writes a redacted report and never stores bearer tokens. See [Company Pilot Readiness](./docs/company-pilot-readiness.md).
+
+## Current production limitations
+
+- Run supervision, active Pi sessions, normalized event replay, and Meeting/PM result records are not distributed. Production must use **one replica** even when Postgres or Redis memory is enabled.
+- DTA validates Keycloak access tokens and ownership, but browser login is delegated to the company's authenticated ingress/proxy.
+- Audio/video understanding is unavailable until transcription and optional vision providers are configured.
+- n8n is a reviewed workflow executor, not the primary Agent runtime. Keep workflow tools disabled until permissions, approval rules, and idempotency are validated.
+- File, Git, shell, provider, skill, and Coding Agent surfaces are hidden in company mode unless the principal has the configured coding role.
+- Publishing an image is not proof of company integration. Treat `dta pilot-check --live` as the pilot acceptance gate.
+
+See [the complete production limitations](./docs/architecture.md#current-production-limitations).
+
+## Interface tour
+
+These are browser captures from the current DTA application using non-confidential sample data. They are not generated mockups.
+
+| Meeting capture and file upload | Conversation, structured result, and review |
 |---|---|
 | ![Meeting capture and file upload](./docs/screenshots/dta-meeting-intake.png) | ![Meeting Agent conversation and result review](./docs/screenshots/dta-meeting-review.png) |
 
-| PM Agent requirement handoff | Responsive mobile home |
+| PM Agent handoff | Responsive mobile home |
 |---|---|
 | ![PM Agent requirement handoff](./docs/screenshots/dta-pm-agent.png) | <img src="./docs/screenshots/dta-mobile-home.png" alt="Responsive DTA mobile home" width="390"> |
 
-## Key Features
-
-### Agent chat
-
-- Live SSE streaming with connect-before-prompt delivery.
-- Prompt, steer, follow-up queue, retry, bash, and context compaction.
-- Direct shell mode with `!command`; use `!!command` to omit the result from model context.
-- Model and thinking-level switching during a session.
-- A built-in `ask_user` tool plus Pi extension dialogs (`select`, `confirm`, `input`, and `editor`), notifications, status indicators, and text widgets; pending decisions survive reconnects.
-- Pi extension session commands (`newSession`, `fork`, and `switchSession`) use the native `AgentSessionRuntime`; the Web UI follows the replacement session and reconnects SSE to it.
-- Replacement failures restore the previous runtime, active-session conflicts are rejected before switching, and every open tab follows the same replacement. Extensions settings expose live runtime diagnostics.
-- Import a Pi `.jsonl` through a preview-first dialog that validates its header, effective cwd, allowed roots, symlinks, size, and destination collision before switching.
-- Per-run error cards, stall warnings, notifications, completion sound, and React-owned tab status.
-- Editable past turns, retry from the previous branch point, independent forks, and in-session branch navigation.
-- Clone the active branch into a separate session, or start an ephemeral session that intentionally leaves no JSONL after a server restart.
-- Provider errors are classified (rate limit, billing, auth, outage, network, or context) with one-click fallback and an opt-in single automatic cross-provider retry.
-- Project trust can be reviewed and changed from the Context inspector. Extension shortcuts can be invoked from the Extensions panel, while TUI-only custom messages receive a safe generic Web rendering.
-
-### Attention and recovery
-
-- A global Attention Center combines failed sessions, background agents, scheduled runs, and agents waiting for a decision; read state stays per device.
-- Optional Web Push works after explicit browser enrollment. Remote enrollment requires the app access gate; localhost works without a password. Push payloads are deliberately generic and never contain prompts, repository paths, or error text.
-
-### Scheduled agents
-
-- The left-rail Schedule Center supports one-time, daily, weekly, and five-field cron schedules with an explicit IANA timezone.
-- Choose the project, prompt, model, thinking level, tool access, missed-run policy, and whether the schedule is active; pause, resume, run now, retry, or inspect run history from one panel.
-- Every run creates a normal local Pi session. If `ask_user` needs a decision, the run changes to **Waiting for input** and opens directly into that session.
-- Scheduling is provided by the local Node server, with a visible heartbeat, next-wake health, missed-run accounting, and an optional independent watchdog (`npm run scheduler:watch`) that wakes the runner through its local endpoint. On restart, each schedule either catches up once or skips the missed run according to its policy, and overlapping runs are never started.
-
-### Sessions and navigation
-
-- Incremental, read-only session index over local Pi `.jsonl` files.
-- Search, tags, pins, archive, auto-naming, HTML/Markdown export, and usage analytics.
-- Conversation find, user-turn navigation, bookmarks, minimap, long-message collapse, and optional always-follow streaming.
-- Project switcher with recent projects, pins, discovery, filesystem completion, and linked git worktrees.
-- Reusable prompt templates for department and coding workflows.
-- Local hybrid semantic search spans session history, DTA artifacts, and project source, alongside exact filename/content search.
-
-### Files and git
-
-- Project tree, recursive filename search, text editing, Markdown/HTML/image preview, and clickable file paths in chat.
-- Git-aware badges, working-tree summary, per-file statistics, and `HEAD` versus worktree diffs.
-- Tool-call presentation for `edit` and `write` operations instead of raw JSON.
-- Allowed-root checks, path guards, `execFile` git calls, and response-size limits on file and git APIs.
-- Snapshot restore applies a precise delta and never rewrites the user's index or `HEAD`.
-- The file inspector includes symbols, definition/reference lookup, TypeScript/ESLint/related-test diagnostics, Git history, blame, and agent snapshots.
-
-### Rendering and appearance
-
-- GitHub Flavored Markdown, tables, task lists, KaTeX, Mermaid, and lazy-loaded syntax highlighting.
-- Editorial, Terminal, Industrial, Aurora, and Glass skins, each in light and dark mode.
-- Bundled Inter, JetBrains Mono, and Noto Sans TC fonts with no CDN dependency.
-- Application UI languages: English and Traditional Chinese. These project documents are also available in Japanese and German.
-
-## Keyboard Shortcuts
-
-| Keys | Action |
-|---|---|
-| `⌘/Ctrl + K` | Open command palette |
-| `⌘/Ctrl + P` | Open project switcher |
-| `⌘/Ctrl + F` | Find in the conversation |
-| `⌥ + ↑` / `⌥ + ↓` | Previous / next user turn |
-| `⇧⌘M` | Open Models |
-| `⌘/Ctrl + /` | Open Skills |
-| `⌘/Ctrl + B` | Toggle contextual panel |
-| `⌘/Ctrl + \` | Toggle right file panel |
-| `↑` in an empty composer | Recall the previous message |
-| `Esc` | Close the active dialog |
-
-## Commands
-
-| Command | Purpose |
-|---|---|
-| `bash setup.sh` | Replace local source with `origin/main`, validate, install, build, and optionally start production |
-| `npm run dev` | Optionally start the development server on port `30141` |
-| `npm run dta -- serve` | Start the production DTA Web/API server |
-| `npm run tui -- meeting` | Open the interactive Meeting Agent terminal |
-| `npm run dta -- run meeting …` | Run a batch Meeting Agent task |
-| `npm run dta -- sessions` | List generic domain Agent runs |
-| `npm run dta -- review RUN_ID …` | Review a Meeting result |
-| `npm run dta -- pilot-check --live` | Produce company pilot integration and isolation evidence |
-| `npm run dta -- pi` | Launch native Pi Coding Agent developer mode |
-| `node_modules/.bin/tsc --noEmit` | Typecheck |
-| `npx eslint .` | Lint |
-| `npm test` | Run Vitest unit tests |
-| `npm run test:e2e` | Build and run Playwright E2E on port `30177` |
-| `npm run build` | Create a production build |
-| `npm run start` | Start the production server |
-
-> [!WARNING]
-> Stop `npm run dev` before `npm run build` or `npm run test:e2e`. A concurrent Next.js build corrupts the running development server's `.next/` directory.
-
-The Playwright test runner is pinned in `package.json`. Install the Chromium test binary once, then run the suite:
+## Development
 
 ```bash
-npx playwright install chromium
-npm run test:e2e
+node_modules/.bin/tsc --noEmit  # typecheck
+npx eslint .                    # lint
+npm test                        # Vitest
+npm run build                   # production build
+npm run test:e2e                # Playwright production-server scenarios
 ```
 
-For a local container with a preinstalled Chromium:
-
-```bash
-PW_CHROMIUM_PATH=/opt/pw-browsers/chromium npm run test:e2e
-```
-
-## Configuration
-
-| Setting | Behavior |
-|---|---|
-| `AGENT_DEFAULT_TYPE` | Defaults the DTA capability to `meeting` while preserving Coding Agent sessions |
-| `DTA_ENABLED_AGENTS` | Enables registered server-side Agents such as `meeting-agent,pm-agent` |
-| `DTA_AGENT_MANIFEST_PATH` | Mounts additional department Agent prompts, skills, and workflow allowlists without rebuilding the image |
-| `DTA_DATA_DIR` | Stores DTA metadata and generic artifacts; defaults to `~/.dta` |
-| `DTA_AUTH_MODE` / `KEYCLOAK_*` | Protects browser APIs, the external Agent Contract, and A2A with Keycloak tokens and owner checks |
-| `DTA_CODING_REQUIRED_ROLES` | Allows designated users to open the Coding Agent and repository tools; defaults to `dta-coding-access` |
-| `LLM_BASE_URL` / `LLM_MODEL` | Registers a company LLM gateway for server-side Agent runs |
-| `DTA_ARTIFACT_STORE` / `MINIO_*` | Selects local or MinIO artifact storage |
-| `DTA_MEMORY_STORE` / `POSTGRES_URL` / `REDIS_URL` | Selects local, Postgres, or Redis conversation memory with configured TTL and cap |
-| `DTA_WORKFLOW_PROVIDER` / `N8N_*` | Selects disabled, mock, or configured n8n workflow tools |
-| `DTA_TRANSCRIPTION_PROVIDER` | `none`, development-only `mock`, or `openai-compatible` |
-| `DTA_MOCK_TRANSCRIPT` | Explicit fixture used only by the mock transcription provider outside production |
-| `DTA_TRANSCRIPTION_BASE_URL` / `DTA_TRANSCRIPTION_MODEL` | Company or compatible speech-to-text endpoint and model |
-| `DTA_TRANSCRIPTION_RESPONSE_FORMAT` | `auto` (recommended), `json`, `verbose_json`, or `diarized_json` |
-| `DTA_VISION_PROVIDER` | `none`, development-only `mock`, or `openai-compatible` keyframe analysis |
-| `DTA_VISION_BASE_URL` / `DTA_VISION_MODEL` | Company or compatible multimodal endpoint and model |
-| `DTA_MEDIA_PROCESSOR` | `ffmpeg` (default) or `none`; extracts video audio and keyframes |
-| `DTA_MEDIA_MAX_DURATION_SECONDS` | Maximum accepted recording duration; defaults to 14,400 seconds |
-| `DTA_VIDEO_MAX_KEYFRAMES` | Maximum sampled keyframes per video; defaults to 12 |
-| `DTA_UPLOAD_SCANNER` | Selects no scanner or a fail-closed company HTTP malware scanner for uploads |
-| `DTA_AUDIT_LOG_*` / `DTA_METRICS_*` | Configures hash-chained audit events and protected Prometheus metrics |
-| `DTA_RATE_LIMIT_*` / `DTA_RETENTION_*` | Configures process-local quotas and opt-in local artifact retention |
-| `PI_CODING_AGENT_DIR` | Overrides the default `~/.pi/agent` directory |
-| `PIWEB_ACCESS_PASSWORD` | Enables the built-in shared-password gate for every route |
-| `PIWEB_SESSION_SECRET` | Signs access cookies independently from the password; use a random 32-byte-or-longer value for remote deployments |
-| `models.json` | Model/provider catalog, including custom `baseUrl` values |
-| `auth.json` | Per-provider API credentials managed by Pi |
-| Project picker | Selects and validates the active working directory |
-
-Session files remain in Pi's native format:
+Important locations:
 
 ```text
-~/.pi/agent/sessions/<encoded-cwd>/<timestamp>_<uuid>.jsonl
+app/api/          REST Agent Contract, runs/events, artifacts, sessions, workflows
+app/a2a/          A2A 1.0 HTTP binding
+components/       Web UI
+scripts/          dta CLI, TUI, server, and pilot readiness command
+lib/agents/       generic runtime, Meeting Agent, PM Agent, Agent registry
+lib/integrations/ storage, memory, n8n, media, and scanner adapters
+deploy/           Docker/Kubernetes/Helm deployment assets
+docs/             architecture, operations, media, n8n, CLI, and screenshots
 ```
 
-### Meeting Agent foundation
-
-Meeting Agent sessions add DTA-owned metadata and artifacts on top of the existing Pi session. Pi remains the internal reasoning/tool runtime; the product-facing identity and structured `MeetingResult` do not expose Pi internals. The Meeting runtime uses a dedicated system prompt and a bounded `publish_meeting_result` tool, then stores JSON and Markdown outputs below `DTA_DATA_DIR`.
-
-The Meeting-first interface does not ask people to choose a repository or filesystem path. New meetings run inside a DTA-managed meeting workspace below `DTA_DATA_DIR`; the underlying cwd exists only for runtime compatibility and remains hidden from the normal product flow. Legacy Coding Agent sessions can still use their original project workspace in local mode. In Keycloak mode they are hidden unless the owner has a configured Coding role; Meeting/PM users cannot reach File, Git, Pi extension, shell, or repository APIs.
-
-Browser speech recognition can type directly into the transcript field without saving an audio recording. Uploaded media is preserved as an artifact. FFmpeg extracts video audio and sampled keyframes; configurable transcription and vision providers produce timestamped evidence; DTA then stores a synchronized timeline for the Meeting Agent. The bundled mock providers are development/test-only and disabled in production. See [Meeting media understanding](./docs/meeting-media-pipeline.md).
-
-Session ownership is persisted as `Pi sessionId → userId/projectId/runId` metadata under `DTA_DATA_DIR`. Run supervision, normalized event replay, and Meeting/PM records remain process-local/file-backed, so this phase stays single-replica even when conversation memory uses Postgres or Redis. Company Orchestrator routes, PM Agent, configurable department Agents, A2A, Keycloak, n8n, MinIO, audit, and metrics are available now. See [the exact production limitations](./docs/architecture.md#current-production-limitations).
-
-## Architecture
-
-See [DTA Agent Platform Architecture](./docs/architecture.md) for the generic runtime, Meeting/PM boundaries, external Agent Contract, A2A, Keycloak, review gate, adapters, and production limitations. See [DTA Terminal Interfaces](./docs/cli.md) for the shared Web/TUI/CLI model.
-
-## Project Structure
-
-```text
-app/api/        Agent Contract, runs/events, sessions, schedules, files, git, config
-components/     layout, chat, sidebar, modals, and shared UI
-hooks/          agent orchestration, streaming, scrolling, sessions, theme
-lib/            RPC lifecycle, scheduling, session parsing, security, i18n, snapshots
-e2e/            Playwright production-server scenarios
-docs/           screenshots and project documentation
-public/fonts/   bundled local fonts
-```
-
-See [`AGENTS.md`](./AGENTS.md) for the detailed architecture, invariants, and development traps.
-
-## Offline and Air-Gapped Use
-
-Fonts and UI assets are bundled. At runtime DTA contacts only the adapters enabled by configuration: the LLM/media gateways, Keycloak, MinIO, Postgres/Redis, n8n, and optional upload scanner.
-
-- **Internal npm registry:** clone this repository or extract a GitHub Release source archive into a clean directory, configure npm for the internal registry, then run `bash setup.sh`. Use `npm ci && npm run build` only when an immutable CI-style install is required.
-- **Portable directory:** on a networked machine with the same OS and architecture, run `npm ci && npm run build`, copy the complete directory, then run `npm run start`.
-- **Internal or local model:** set a custom provider `baseUrl` in `models.json`.
-
-`npm ci` is retained for reproducible CI and offline builds; interactive development uses `npm install`.
-
-## FAQ
-
-### Is this published as an npm package?
-
-No. Install and update it from the GitHub repository or a GitHub Release source archive.
-
-### Does it replace Pi?
-
-No. Pi remains the pinned internal reasoning/session runtime and the native
-Coding Agent terminal. DTA adds runtime-neutral Meeting/PM policy, contracts,
-artifacts, review, Web, TUI, CLI, REST, and A2A around that foundation.
-
-### Does the app upload my sessions?
-
-The application does not include a hosted session backend. It reads local Pi files and contacts only the model/provider endpoints you configure.
-
-### Do schedules run while DTA is stopped?
-
-The agent execution runtime still needs the local Node server. Keep `npm start` running; for a separate wake/health process, run `npm run scheduler:watch` under launchd/systemd. After a restart, each schedule applies its configured **run once** or **skip** missed-run policy.
-
-### Why is the Playwright browser installed separately?
-
-The test runner is lockfile-pinned for reproducible installs, while browser binaries remain a separate environment concern. CI installs Chromium explicitly; offline/company environments can preinstall it and provide `PW_CHROMIUM_PATH`.
-
-### Why can a compacted session still be long?
-
-Compaction adds a summary and keeps a recent tail; it does not delete the original history from the `.jsonl` file. The UI follows Pi's active branch and compaction entry.
-
-## Contributing
-
-Issues and pull requests are welcome.
-
-1. Fork the repository and create a focused branch.
-2. Use `npm install` for development.
-3. Run typecheck, lint, and tests.
-4. Add or update tests for behavior changes.
-5. Keep all four README files aligned when changing user-facing setup or features.
-
-Improve application translations in `lib/i18n.tsx`. New skins must use semantic design tokens rather than hardcoded component colors.
+See [`AGENTS.md`](./AGENTS.md) for repository invariants and development traps.
 
 ## Release
 
-After a PR passes CI and is merged, use the fast release path:
+After a PR passes CI and is merged:
 
 ```bash
 gh workflow run release.yml -f tag=vYYYY.MM.DD
 ```
 
-Use the current UTC date. For another release on the same day, append a sequence suffix such as `vYYYY.MM.DD-1`; future-dated tags are rejected. One workflow updates `package.json` and `package-lock.json`, creates the release commit and annotated tag, builds and smoke-tests the self-contained `amd64`/`arm64` image, blocks High/Critical CVEs, publishes the same digest to GHCR and Docker Hub, verifies both manifests, generates SBOM/provenance attestations, publishes the Helm chart to `oci://registry-1.docker.io/yhwangtn/dta-agent-platform`, verifies a remote render, and only then creates the GitHub Release. Configure repository secrets `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` before dispatching a release. Its authenticated push does not start another CI cycle. Pushing an already-versioned `v*` tag remains supported. The workflow does **not** publish to npm.
-
-Release tags keep their zero-padded calendar form, while Helm receives a valid SemVer form: `v2026.08.28` maps to chart version `2026.8.28`, and `v2026.08.28-1` maps to `2026.8.28-1`. To backfill only the immutable OCI chart for an existing release without rebuilding its container image:
-
-```bash
-gh workflow run release.yml -f tag=vYYYY.MM.DD -f chart_only=true
-```
+The workflow creates the version commit and tag, smoke-tests the exact image, blocks High/Critical CVEs, publishes `linux/amd64` and `linux/arm64` images to Docker Hub and GHCR, verifies manifests, generates SBOM/provenance attestations, publishes and verifies the OCI Helm chart, and then creates the GitHub Release. DTA is not published to npm.
 
 ## License
 

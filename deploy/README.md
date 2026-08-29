@@ -1,7 +1,18 @@
 # DTA deployment
-The primary company deployment is the self-contained Docker image plus the hardened Kubernetes examples in [`deploy/kubernetes`](./kubernetes/).
+The primary company deployment is the self-contained Docker image plus the
+versioned Helm OCI chart. Both are available from Docker Hub, so the company
+operator does not need this source repository:
 
-Release images are published for `linux/amd64` and `linux/arm64` at `ghcr.io/yhwangtw/dta`. The company can mirror a verified digest into its internal registry, then replace only the image reference, ConfigMap, Secret references, mounted Agent manifest, and storage bindings.
+- image: `yhwangtn/dta@sha256:<verified-digest>`
+- chart: `oci://registry-1.docker.io/yhwangtn/dta-agent-platform`
+
+See the [Helm chart guide](./helm/dta-agent-platform/README.md) for the direct
+OCI install flow. Hardened Kustomize examples remain in
+[`deploy/kubernetes`](./kubernetes/) for environments that do not permit Helm.
+Release images are also published at `ghcr.io/yhwangtw/dta`. The company can
+mirror a verified digest into its internal registry, then replace only the
+image reference, ConfigMap, Secret references, mounted Agent manifest, and
+storage bindings.
 
 - Architecture and production limitations: [`docs/architecture.md`](../docs/architecture.md)
 - Build-once/runtime-configuration guide: [`docs/deployment.md`](../docs/deployment.md)

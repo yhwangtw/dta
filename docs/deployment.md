@@ -2,7 +2,7 @@
 
 The DTA image contains Node.js 22, Next.js, npm dependencies, the Pi runtime dependencies, Git, and FFmpeg. Company Kubernetes does not install these separately. The same image is promoted across environments; only ConfigMaps, Secrets, mounted storage, and network endpoints change.
 
-The release workflow publishes the same `linux/amd64` and `linux/arm64` image digest to `ghcr.io/yhwangtw/dta` and `docker.io/yhwangtn/dta`, verifies both registries, generates a CycloneDX SBOM, blocks High/Critical CVEs, and creates Sigstore-backed GitHub attestations before the GitHub Release is created. Repository secrets `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` are required for release; connection settings are still injected only when the container starts.
+The release workflow publishes the same `linux/amd64` and `linux/arm64` image digest to `ghcr.io/yhwangtw/dta` and `docker.io/yhwangtn/dta`, plus the deployment chart to `oci://registry-1.docker.io/yhwangtn/dta-agent-platform`. It verifies both image registries, pulls and renders the published chart, generates a CycloneDX SBOM, blocks High/Critical CVEs, and creates Sigstore-backed GitHub attestations before the GitHub Release is created. Repository secrets `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` are required for release; connection settings are still injected only when the container starts.
 
 ## Build and verify the image
 
@@ -121,29 +121,54 @@ The manifest format is demonstrated by `config/agents.example.json`. Each entry 
 
 ## Kubernetes
 
-The production-oriented Helm chart is in `deploy/helm/dta-agent-platform/`.
-It pins the verified multi-architecture image digest, validates the single-
-replica limit, references an externally managed Secret by default, and exposes
-all company endpoints through values rather than image changes.
+The company deployment needs Docker Hub access, Helm 3, `kubectl`, and cluster
+credentials; it does not need a Git clone, Node.js, npm, or Pi installed on the
+operator machine. The production chart is published as a Docker Hub OCI
+artifact. It pins the verified multi-architecture image digest, validates the
+single-replica limit, references an externally managed Secret by default, and
+exposes all company endpoints through values rather than image changes.
 
-1. Copy `values.company-example.yaml` outside the repository and replace every
-   example endpoint, hostname, storage class, and registry.
-2. Have Vault, External Secrets, or the platform secret controller create
-   `dta-agent-platform-secrets`. Do not commit production secret values.
-3. Render, review, and deploy atomically:
+1. Select the matching immutable chart version. Release `v2026.08.28` uses
+   chart version `2026.8.28`; a release suffix is retained, for example
+   `v2026.08.28-1` becomes `2026.8.28-1`.
+2. Pull the chart once to obtain its company values template, then copy that
+   template to a secure working directory:
 
 ```bash
-helm lint deploy/helm/dta-agent-platform
-helm template dta deploy/helm/dta-agent-platform \
+export DTA_CHART=oci://registry-1.docker.io/yhwangtn/dta-agent-platform
+export DTA_CHART_VERSION=2026.8.28
+
+helm pull "$DTA_CHART" --version "$DTA_CHART_VERSION" --untar
+cp dta-agent-platform/values.company-example.yaml /secure/path/dta-values.yaml
+```
+
+3. Replace every example endpoint, hostname, storage class, and registry in
+   `/secure/path/dta-values.yaml`. Keep the checked-in image digest unless the
+   company mirrors the image and has verified the mirror digest.
+4. Have Vault, External Secrets, or the platform secret controller create
+   `dta-agent-platform-secrets`. Do not place production secret values in the
+   values file.
+5. Render the same remote chart, review the output, and deploy atomically:
+
+```bash
+helm show chart "$DTA_CHART" --version "$DTA_CHART_VERSION"
+helm template dta "$DTA_CHART" \
+  --version "$DTA_CHART_VERSION" \
   --namespace dta \
   -f /secure/path/dta-values.yaml
-helm upgrade --install dta deploy/helm/dta-agent-platform \
+helm upgrade --install dta "$DTA_CHART" \
+  --version "$DTA_CHART_VERSION" \
   --namespace dta \
   --create-namespace \
   --atomic \
   --timeout 10m \
   -f /secure/path/dta-values.yaml
 ```
+
+For local chart development, the source path
+`deploy/helm/dta-agent-platform/` remains usable. Production deployment should
+pin an OCI chart version and the image digest instead of deploying a moving
+branch or image tag.
 
 See the [chart README](../deploy/helm/dta-agent-platform/README.md) for values,
 security defaults, verification, upgrade, and rollback instructions.
@@ -200,11 +225,14 @@ Do not suppress CVEs. Rebuild against the current maintained base image and upda
 
 The final runtime stage uses a digest-pinned Wolfi base and exact package versions for Node.js, Bash, Git, and FFmpeg. npm, npx, Yarn, and Corepack are not installed in the runtime stage. Company deployment changes therefore happen through the published image plus runtime configuration, not by installing packages inside a running container. The builder and runtime both use glibc-compatible distributions so traced native Node modules are not copied across incompatible C libraries.
 
-To pull the company-approved Docker Hub release by immutable digest:
+To pull the company-approved Docker Hub image by immutable digest and inspect
+the matching Helm chart:
 
 ```bash
 docker pull yhwangtn/dta@sha256:<verified-digest>
 docker buildx imagetools inspect yhwangtn/dta:<version>
+helm show chart oci://registry-1.docker.io/yhwangtn/dta-agent-platform \
+  --version <chart-version>
 ```
 
 GHCR remains the GitHub-attested source copy:

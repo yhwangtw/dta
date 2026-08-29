@@ -363,7 +363,13 @@ After a PR passes CI and is merged, use the fast release path:
 gh workflow run release.yml -f tag=vYYYY.MM.DD
 ```
 
-Use the current UTC date. For another release on the same day, append a sequence suffix such as `vYYYY.MM.DD-1`; future-dated tags are rejected. One workflow updates `package.json` and `package-lock.json`, creates the release commit and annotated tag, builds and smoke-tests the self-contained `amd64`/`arm64` image, blocks High/Critical CVEs, publishes the same digest to GHCR and Docker Hub, verifies both manifests, generates SBOM/provenance attestations, and only then creates the GitHub Release. Configure repository secrets `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` before dispatching a release. Its authenticated push does not start another CI cycle. Pushing an already-versioned `v*` tag remains supported. The workflow does **not** publish to npm.
+Use the current UTC date. For another release on the same day, append a sequence suffix such as `vYYYY.MM.DD-1`; future-dated tags are rejected. One workflow updates `package.json` and `package-lock.json`, creates the release commit and annotated tag, builds and smoke-tests the self-contained `amd64`/`arm64` image, blocks High/Critical CVEs, publishes the same digest to GHCR and Docker Hub, verifies both manifests, generates SBOM/provenance attestations, publishes the Helm chart to `oci://registry-1.docker.io/yhwangtn/dta-agent-platform`, verifies a remote render, and only then creates the GitHub Release. Configure repository secrets `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` before dispatching a release. Its authenticated push does not start another CI cycle. Pushing an already-versioned `v*` tag remains supported. The workflow does **not** publish to npm.
+
+Release tags keep their zero-padded calendar form, while Helm receives a valid SemVer form: `v2026.08.28` maps to chart version `2026.8.28`, and `v2026.08.28-1` maps to `2026.8.28-1`. To backfill only the immutable OCI chart for an existing release without rebuilding its container image:
+
+```bash
+gh workflow run release.yml -f tag=vYYYY.MM.DD -f chart_only=true
+```
 
 ## License
 

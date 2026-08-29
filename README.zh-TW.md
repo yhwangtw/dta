@@ -328,7 +328,13 @@ PR 通過 CI 並合併後，使用快速發版流程：
 gh workflow run release.yml -f tag=vYYYY.MM.DD
 ```
 
-請使用目前的 UTC 日期；同一天再次發布時，加入 `vYYYY.MM.DD-1` 這類流水號，未來日期會被拒絕。單一 workflow 會更新 `package.json` 與 `package-lock.json`、建立 release commit 與 annotated tag，接著建置並 smoke-test 自包含的 `amd64`／`arm64` image、阻擋 High／Critical CVE、連同 SBOM／provenance attestation 發布到 GHCR，最後才建立 GitHub Release。它的驗證推送不會再啟動一輪 CI；既有的 `v*` tag 推送方式仍可使用。這個流程**不會發布至 npm**。
+請使用目前的 UTC 日期；同一天再次發布時，加入 `vYYYY.MM.DD-1` 這類流水號，未來日期會被拒絕。單一 workflow 會更新 `package.json` 與 `package-lock.json`、建立 release commit 與 annotated tag，接著建置並 smoke-test 自包含的 `amd64`／`arm64` image、阻擋 High／Critical CVE、將相同 digest 發布至 GHCR 與 Docker Hub、產生 SBOM／provenance attestation，並把 Helm chart 發布至 `oci://registry-1.docker.io/yhwangtn/dta-agent-platform`。遠端 chart 完成驗證後才會建立 GitHub Release。發版前必須設定 repository secrets `DOCKERHUB_USERNAME` 與 `DOCKERHUB_TOKEN`。它的驗證推送不會再啟動一輪 CI；既有的 `v*` tag 推送方式仍可使用。這個流程**不會發布至 npm**。
+
+Release tag 保留補零的日曆格式，Helm 則使用合法 SemVer：`v2026.08.28` 對應 chart version `2026.8.28`，`v2026.08.28-1` 對應 `2026.8.28-1`。若要替既有 release 補發 immutable OCI chart，且不重新建置 container image：
+
+```bash
+gh workflow run release.yml -f tag=vYYYY.MM.DD -f chart_only=true
+```
 
 ## 授權
 

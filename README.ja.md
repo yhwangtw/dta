@@ -330,7 +330,13 @@ PR の CI が通過してマージされたら、次の高速リリースフロ�
 gh workflow run release.yml -f tag=vYYYY.MM.DD
 ```
 
-1 つの workflow が `package.json` と `package-lock.json` を更新し、release commit と annotated tag を作成してから GitHub Release を公開します。認証済みの push で新たな CI は起動しません。バージョン更新済みの `v*` tag を push する従来の方法も利用できます。この workflow は **npm へ公開しません**。
+現在の UTC 日付を使用してください。同じ日に再度リリースする場合は `vYYYY.MM.DD-1` のような連番を付けます。未来の日付は拒否されます。1 つの workflow が `package.json` と `package-lock.json` を更新し、release commit と annotated tag を作成し、自己完結した `amd64`/`arm64` image を smoke test し、High/Critical CVE をブロックします。その後、同じ digest を GHCR と Docker Hub に公開し、SBOM/provenance attestation を生成し、Helm chart を `oci://registry-1.docker.io/yhwangtn/dta-agent-platform` に公開して remote render を検証してから GitHub Release を作成します。事前に repository secrets `DOCKERHUB_USERNAME` と `DOCKERHUB_TOKEN` を設定してください。認証済みの push で新たな CI は起動しません。バージョン更新済みの `v*` tag を push する従来の方法も利用できます。この workflow は **npm へ公開しません**。
+
+Release tag はゼロ埋めしたカレンダー形式のままですが、Helm では有効な SemVer を使います。`v2026.08.28` は chart version `2026.8.28`、`v2026.08.28-1` は `2026.8.28-1` になります。既存 release の immutable OCI chart だけを container image の再 build なしで補完するには、次を実行します。
+
+```bash
+gh workflow run release.yml -f tag=vYYYY.MM.DD -f chart_only=true
+```
 
 ## ライセンス
 

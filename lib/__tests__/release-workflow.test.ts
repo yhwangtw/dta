@@ -17,6 +17,16 @@ describe("release registry contract", () => {
     expect(workflow).toContain("Verify GHCR and Docker Hub manifests");
   });
 
+  it("publishes and verifies the matching Helm chart as a Docker Hub OCI artifact", () => {
+    expect(workflow).toContain("chart_only:");
+    expect(workflow).toContain("chart_version: ${{ steps.version.outputs.chart_version }}");
+    expect(workflow).toContain("uses: azure/setup-helm@v4");
+    expect(workflow).toContain("HELM_CHART_REF: oci://registry-1.docker.io/yhwangtn/dta-agent-platform");
+    expect(workflow).toContain('helm push "$archive" "oci://${HELM_REGISTRY}/${HELM_NAMESPACE}"');
+    expect(workflow).toContain('helm template dta "$HELM_CHART_REF"');
+    expect(workflow).toContain("needs: [prepare, container, helm-chart]");
+  });
+
   it("pins the company Helm example to the verified Docker Hub digest", () => {
     const values = read("deploy/helm/dta-agent-platform/values.company-example.yaml");
     expect(values).toContain("repository: yhwangtn/dta");

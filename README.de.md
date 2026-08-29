@@ -330,7 +330,13 @@ Nachdem ein PR die CI bestanden hat und gemergt wurde, wird der schnelle Release
 gh workflow run release.yml -f tag=vYYYY.MM.DD
 ```
 
-Ein einzelner Workflow aktualisiert `package.json` und `package-lock.json`, erstellt den Release-Commit und ein annotiertes Tag und veröffentlicht anschließend das GitHub Release. Sein authentifizierter Push startet keinen weiteren CI-Lauf. Das Pushen eines bereits versionierten `v*`-Tags wird weiterhin unterstützt. Der Workflow veröffentlicht **nicht auf npm**.
+Verwende das aktuelle UTC-Datum. Für ein weiteres Release am selben Tag wird ein Suffix wie `vYYYY.MM.DD-1` angehängt; zukünftige Daten werden abgelehnt. Ein einzelner Workflow aktualisiert `package.json` und `package-lock.json`, erstellt Release-Commit und annotiertes Tag, prüft das eigenständige `amd64`/`arm64`-Image, blockiert High/Critical-CVEs, veröffentlicht denselben Digest auf GHCR und Docker Hub, erzeugt SBOM/Provenance-Attestierungen und veröffentlicht das Helm-Chart unter `oci://registry-1.docker.io/yhwangtn/dta-agent-platform`. Erst nach der Remote-Prüfung wird das GitHub Release erstellt. Dafür müssen `DOCKERHUB_USERNAME` und `DOCKERHUB_TOKEN` als Repository-Secrets konfiguriert sein. Sein authentifizierter Push startet keinen weiteren CI-Lauf. Das Pushen eines bereits versionierten `v*`-Tags wird weiterhin unterstützt. Der Workflow veröffentlicht **nicht auf npm**.
+
+Release-Tags behalten die nullaufgefüllte Kalenderform; Helm verwendet gültiges SemVer: `v2026.08.28` wird zu Chart-Version `2026.8.28`, `v2026.08.28-1` zu `2026.8.28-1`. Um nur das unveränderliche OCI-Chart für ein vorhandenes Release nachträglich zu veröffentlichen, ohne das Container-Image neu zu bauen:
+
+```bash
+gh workflow run release.yml -f tag=vYYYY.MM.DD -f chart_only=true
+```
 
 ## Lizenz
 

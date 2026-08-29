@@ -11,6 +11,11 @@ on:
       tag:
         description: 'UTC date tag to create (e.g. v2026.08.23 or v2026.08.23-1)'
         required: true
+      chart_only:
+        description: 'Only publish the Helm OCI chart for an existing release tag'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -28,6 +33,7 @@ jobs:
     outputs:
       tag: ${{ steps.version.outputs.tag }}
       version: ${{ steps.version.outputs.version }}
+      chart_version: ${{ steps.version.outputs.chart_version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -49,21 +55,27 @@ jobs:
             echo "Expected a UTC date tag such as v2026.08.23 or v2026.08.23-1, got: $TAG" >&2
             exit 1
           fi
-          VERSION="${TAG#v}" node <<'NODE'
+          CHART_VERSION="$(VERSION="${TAG#v}" node <<'NODE'
           const version = process.env.VERSION;
           const match = version.match(/^(\d{4})\.(\d{2})\.(\d{2})(?:-([1-9]\d*))?$/);
           if (!match) throw new Error(`Invalid calendar version: ${version}`);
-          const [, yearText, monthText, dayText] = match;
+          const [, yearText, monthText, dayText, sequence] = match;
           const [year, month, day] = [yearText, monthText, dayText].map(Number);
           const date = new Date(Date.UTC(year, month - 1, day));
           if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) {
             throw new Error(`Invalid calendar version: ${version}`);
           }
+          process.stdout.write(`${year}.${month}.${day}${sequence ? `-${sequence}` : ''}`);
           NODE
+          )"
           BASE_TAG="${TAG%%-*}"
           TODAY="$(date -u +v%Y.%m.%d)"
           TAG_EXISTS=false
           if git rev-parse --verify --quiet "refs/tags/$TAG" >/dev/null; then TAG_EXISTS=true; fi
+          if [ "${{ inputs.chart_only }}" = "true" ] && [ "$TAG_EXISTS" != true ]; then
+            echo "Chart-only publication requires an existing release tag, got: $TAG" >&2
+            exit 1
+          fi
           if [[ "$BASE_TAG" > "$TODAY" ]]; then
             echo "Future release dates are not allowed (today: $TODAY), got: $TAG" >&2
             exit 1
@@ -74,6 +86,7 @@ jobs:
           fi
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+          echo "chart_version=$CHART_VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Prepare release commit and tag
         if: github.event_name == 'workflow_dispatch'
@@ -113,6 +126,7 @@ jobs:
 
   container:
     needs: prepare
+    if: github.event_name != 'workflow_dispatch' || inputs.chart_only != true
     runs-on: ubuntu-latest
     timeout-minutes: 60
     permissions:
@@ -284,8 +298,98 @@ jobs:
           sbom-path: dta-${{ needs.prepare.outputs.version }}.cdx.json
           push-to-registry: true
 
+  helm-chart:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    env:
+      HELM_REGISTRY: registry-1.docker.io
+      HELM_NAMESPACE: yhwangtn
+      HELM_CHART_NAME: dta-agent-platform
+      HELM_CHART_PATH: deploy/helm/dta-agent-platform
+      HELM_CHART_REF: oci://registry-1.docker.io/yhwangtn/dta-agent-platform
+      HELM_CHART_VERSION: ${{ needs.prepare.outputs.chart_version }}
+      APP_VERSION: ${{ needs.prepare.outputs.version }}
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.19.0
+
+      - name: Require Docker Hub release credentials
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          if [ -z "$DOCKERHUB_USERNAME" ] || [ -z "$DOCKERHUB_TOKEN" ]; then
+            echo "DOCKERHUB_USERNAME and DOCKERHUB_TOKEN repository secrets are required" >&2
+            exit 1
+          fi
+
+      - name: Log in to Docker Hub with Helm
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: echo "$DOCKERHUB_TOKEN" | helm registry login "$HELM_REGISTRY" --username "$DOCKERHUB_USERNAME" --password-stdin
+
+      - name: Lint and package Helm chart
+        run: |
+          set -euo pipefail
+          helm lint "$HELM_CHART_PATH"
+          mkdir -p .release/helm
+          helm package "$HELM_CHART_PATH" \
+            --destination .release/helm \
+            --version "$HELM_CHART_VERSION" \
+            --app-version "$APP_VERSION"
+
+      - name: Publish and verify Helm OCI chart
+        run: |
+          set -euo pipefail
+          archive=".release/helm/${HELM_CHART_NAME}-${HELM_CHART_VERSION}.tgz"
+          local_unpack="$(mktemp -d)"
+          remote_download="$(mktemp -d)"
+          remote_unpack="$(mktemp -d)"
+          tar -xzf "$archive" -C "$local_unpack"
+
+          if helm pull "$HELM_CHART_REF" --version "$HELM_CHART_VERSION" --destination "$remote_download"; then
+            echo "Helm chart version already exists; verifying immutable contents."
+          else
+            helm push "$archive" "oci://${HELM_REGISTRY}/${HELM_NAMESPACE}"
+            helm pull "$HELM_CHART_REF" --version "$HELM_CHART_VERSION" --destination "$remote_download"
+          fi
+
+          remote_archive="${remote_download}/${HELM_CHART_NAME}-${HELM_CHART_VERSION}.tgz"
+          tar -xzf "$remote_archive" -C "$remote_unpack"
+          diff -ruN \
+            "${local_unpack}/${HELM_CHART_NAME}" \
+            "${remote_unpack}/${HELM_CHART_NAME}"
+
+          helm show chart "$HELM_CHART_REF" --version "$HELM_CHART_VERSION" > /tmp/dta-chart.yaml
+          grep -Eq "^version: ['\"]?${HELM_CHART_VERSION}['\"]?$" /tmp/dta-chart.yaml
+          grep -Eq "^appVersion: ['\"]?${APP_VERSION}['\"]?$" /tmp/dta-chart.yaml
+          helm template dta "$HELM_CHART_REF" \
+            --version "$HELM_CHART_VERSION" \
+            --namespace dta \
+            -f "$HELM_CHART_PATH/values.company-example.yaml" > /tmp/dta-rendered.yaml
+          grep -Fq 'kind: Deployment' /tmp/dta-rendered.yaml
+
+      - name: Upload packaged Helm chart
+        uses: actions/upload-artifact@v7
+        with:
+          name: dta-agent-platform-${{ needs.prepare.outputs.chart_version }}
+          path: .release/helm/*.tgz
+          retention-days: 90
+
   github-release:
-    needs: [prepare, container]
+    needs: [prepare, container, helm-chart]
+    if: always() && needs.prepare.result == 'success' && needs.helm-chart.result == 'success' && (needs.container.result == 'success' || needs.container.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

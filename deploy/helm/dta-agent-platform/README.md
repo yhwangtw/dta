@@ -17,12 +17,19 @@ n8n workflows through one server-side runtime.
 The chart enforces `replicaCount: 1`. Pi runtime sessions and active run
 supervision are process-local, so multiple replicas are not safe yet.
 
-## Install
+## Install from Docker Hub OCI
 
-Start from the company example without putting credentials in a values file:
+Company deployment does not require this source repository. Select an immutable
+OCI chart version, pull its packaged company example, and keep the customized
+copy outside the extracted chart directory. Release `v2026.08.28` maps to chart
+version `2026.8.28`; suffixes such as `-1` are retained.
 
 ```bash
-cp deploy/helm/dta-agent-platform/values.company-example.yaml /secure/path/dta-values.yaml
+export DTA_CHART=oci://registry-1.docker.io/yhwangtn/dta-agent-platform
+export DTA_CHART_VERSION=2026.8.28
+
+helm pull "$DTA_CHART" --version "$DTA_CHART_VERSION" --untar
+cp dta-agent-platform/values.company-example.yaml /secure/path/dta-values.yaml
 ```
 
 Have the secret controller create `dta-agent-platform-secrets` with the keys
@@ -37,11 +44,12 @@ Optional adapters use `N8N_API_KEY`, `DTA_TRANSCRIPTION_API_KEY`,
 `DTA_VISION_API_KEY`, `REDIS_URL`, `DTA_UPLOAD_SCANNER_API_KEY`, and
 `PIWEB_SESSION_SECRET`.
 
-Render and review before installing:
+Render the exact remote chart and review it before installing:
 
 ```bash
-helm lint deploy/helm/dta-agent-platform
-helm template dta deploy/helm/dta-agent-platform \
+helm show chart "$DTA_CHART" --version "$DTA_CHART_VERSION"
+helm template dta "$DTA_CHART" \
+  --version "$DTA_CHART_VERSION" \
   --namespace dta \
   -f /secure/path/dta-values.yaml
 ```
@@ -49,7 +57,8 @@ helm template dta deploy/helm/dta-agent-platform \
 Install or upgrade:
 
 ```bash
-helm upgrade --install dta deploy/helm/dta-agent-platform \
+helm upgrade --install dta "$DTA_CHART" \
+  --version "$DTA_CHART_VERSION" \
   --namespace dta \
   --create-namespace \
   --atomic \
@@ -59,6 +68,15 @@ helm upgrade --install dta deploy/helm/dta-agent-platform \
 
 Do not pass production secrets through `--set`; shell history and CI logs may
 retain them. Keep `secret.create: false` and inject an existing Secret instead.
+
+For chart development in a source checkout, lint and render the local path:
+
+```bash
+helm lint deploy/helm/dta-agent-platform
+helm template dta deploy/helm/dta-agent-platform \
+  --namespace dta \
+  -f deploy/helm/dta-agent-platform/values.company-example.yaml
+```
 
 ## Verify
 
@@ -110,7 +128,8 @@ maintenance window or enable it deliberately when that tradeoff is desired.
 ## Upgrade and rollback
 
 ```bash
-helm upgrade dta deploy/helm/dta-agent-platform \
+helm upgrade dta "$DTA_CHART" \
+  --version "$DTA_CHART_VERSION" \
   --namespace dta \
   --atomic \
   --timeout 10m \

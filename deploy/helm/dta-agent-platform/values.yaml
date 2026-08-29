@@ -192,7 +192,7 @@ config:
     N8N_AUTH_HEADER: Authorization
     N8N_AUTH_SCHEME: Bearer
     N8N_TIMEOUT_MS: "30000"
-    N8N_WORKFLOW_MAP_JSON: '{"meeting-create-jira":"/webhook/meeting-create-jira","meeting-notify-teams":"/webhook/meeting-notify-teams","meeting-update-knowledge-base":"/webhook/meeting-update-knowledge-base","pm-create-jira-epic":"/webhook/pm-create-jira-epic","pm-publish-prd":"/webhook/pm-publish-prd","pm-notify-team":"/webhook/pm-notify-team"}'
+    N8N_WORKFLOW_MAP_JSON: '{"meeting-pilot-readiness":"/webhook/dta-pilot-readiness","meeting-create-jira":"/webhook/meeting-create-jira","meeting-notify-teams":"/webhook/meeting-notify-teams","meeting-update-knowledge-base":"/webhook/meeting-update-knowledge-base","pm-create-jira-epic":"/webhook/pm-create-jira-epic","pm-publish-prd":"/webhook/pm-publish-prd","pm-notify-team":"/webhook/pm-notify-team"}'
 
     DTA_TRANSCRIPTION_PROVIDER: openai-compatible
     DTA_TRANSCRIPTION_BASE_URL: https://speech.example.com/v1

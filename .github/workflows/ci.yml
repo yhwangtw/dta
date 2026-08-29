@@ -143,6 +143,7 @@ jobs:
 
       - name: Smoke-test health and readiness
         run: |
+          docker run --rm --entrypoint dta dta-ci:${{ github.sha }} help pilot-check >/dev/null
           docker run -d --name dta-ci -p 30141:30141 \
             -e DTA_AUTH_MODE=none \
             -e DTA_ARTIFACT_STORE=local \

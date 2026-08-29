@@ -14,6 +14,10 @@ export interface WorkflowCatalogEntry {
 }
 
 const BUILTIN_WORKFLOW_COPY: Record<string, Pick<WorkflowCatalogEntry, "displayName" | "description">> = {
+  "meeting-pilot-readiness": {
+    displayName: "Verify company integration",
+    description: "Run the no-side-effect n8n probe used by the DTA company pilot readiness suite.",
+  },
   "meeting-create-jira": {
     displayName: "Create Jira follow-up tasks",
     description: "Send approved meeting action items to an n8n workflow that creates Jira work.",

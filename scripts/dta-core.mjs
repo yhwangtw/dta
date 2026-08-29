@@ -1,10 +1,16 @@
 import { randomUUID } from "node:crypto";
-import { access, readFile } from "node:fs/promises";
+import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import { constants as fsConstants } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
 import { createInterface } from "node:readline/promises";
+import {
+  formatPilotReadinessMarkdown,
+  formatPilotReadinessReport,
+  PILOT_WORKFLOW_ID,
+  runCompanyPilotReadiness,
+} from "./dta-pilot-readiness.mjs";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = resolve(SCRIPT_DIR, "..");
@@ -14,6 +20,7 @@ const BOOLEAN_OPTIONS = new Set([
   "dev",
   "help",
   "json",
+  "live",
   "no-stream",
   "no-wait",
   "quiet",
@@ -174,6 +181,24 @@ Starts the same DTA server used by Web, CLI, TUI, REST, and A2A.`,
 
 Launches the native Pi Coding Agent terminal. This developer entry point is
 separate from DTA Meeting/PM Agents and intentionally exposes Pi behavior.`,
+    "pilot-check": `Usage:
+  dta pilot-check [--base-url URL] [--token TOKEN]
+  dta pilot-check --live --secondary-token TOKEN --report pilot-report.json
+
+Preflight verifies DTA health/readiness, Keycloak discovery and token handling,
+and the selected company adapters without creating data or calling the model.
+
+--live additionally performs a MinIO artifact round trip, a real Meeting Agent
+LLM run over normalized SSE, User A/User B isolation, Meeting approval, and the
+review-gated ${PILOT_WORKFLOW_ID} n8n probe with an idempotent replay.
+
+Options:
+  --live               Run the full company pilot verification
+  --secondary-token    A second Keycloak user's token (or DTA_SECONDARY_ACCESS_TOKEN)
+  --workflow ID        Dedicated no-side-effect n8n probe workflow
+  --timeout MS         Live run timeout, 10000–900000 (default: 180000)
+  --report FILE        Write a redacted JSON report, or Markdown for a .md path
+  --quiet              Do not print per-check progress${common}`,
   };
   if (topic && sections[topic]) return `${heading}\n\n${sections[topic]}`;
   return `${heading}
@@ -186,6 +211,7 @@ Usage:
   dta review RUN_ID [options]       Human review for Meeting results
   dta agents                        List enabled public Agents
   dta health                        Check liveness and readiness
+  dta pilot-check [--live]          Produce company pilot readiness evidence
   dta pi [args]                     Native Pi Coding Agent CLI
 
 Compatibility:
@@ -768,6 +794,50 @@ async function healthCommand(parsed, io) {
   else io.stdout.write(`DTA ${health.status || "unknown"} · readiness ${ready.status || "unknown"} · ${client.baseUrl}\n`);
 }
 
+function pilotTimeout(value) {
+  const timeout = Number.parseInt(value || "180000", 10);
+  if (!Number.isInteger(timeout) || timeout < 10_000 || timeout > 900_000) {
+    throw new CliUsageError("--timeout must be between 10000 and 900000");
+  }
+  return timeout;
+}
+
+async function pilotCheckCommand(parsed, io) {
+  ensureKnownOptions(parsed.options, commonAllowed("live", "quiet", "report", "secondaryToken", "timeout", "workflow"));
+  if (parsed.positionals.length) throw new CliUsageError("pilot-check does not accept positional arguments");
+  const config = configForOptions(parsed.options);
+  const secondaryToken = parsed.options.secondaryToken || process.env.DTA_SECONDARY_ACCESS_TOKEN;
+  const workflowId = parsed.options.workflow || process.env.DTA_PILOT_WORKFLOW || PILOT_WORKFLOW_ID;
+  const report = await runCompanyPilotReadiness({
+    baseUrl: config.baseUrl,
+    primaryToken: config.token,
+    secondaryToken,
+    live: parsed.options.live,
+    workflowId,
+    timeoutMs: pilotTimeout(parsed.options.timeout),
+    onProgress: parsed.options.quiet ? undefined : (check) => {
+      const status = check.status === "passed" ? "PASS" : check.status === "failed" ? "FAIL" : "SKIP";
+      io.stderr.write(`${status} ${check.name} · ${check.message}\n`);
+    },
+  });
+
+  if (parsed.options.report) {
+    const reportPath = resolve(process.cwd(), parsed.options.report);
+    await mkdir(dirname(reportPath), { recursive: true });
+    const content = reportPath.toLowerCase().endsWith(".md")
+      ? formatPilotReadinessMarkdown(report)
+      : `${JSON.stringify(report, null, 2)}\n`;
+    await writeFile(reportPath, content, { encoding: "utf8", mode: 0o600 });
+    if (!parsed.options.json) io.stderr.write(`Report written to ${reportPath}\n`);
+  }
+
+  io.stdout.write(parsed.options.json
+    ? `${JSON.stringify(report, null, 2)}\n`
+    : `${formatPilotReadinessReport(report)}\n`);
+  if (report.status === "failed") io.setExitCode(1);
+  else if (report.status === "incomplete") io.setExitCode(2);
+}
+
 async function fileExists(path) {
   try { await access(path, fsConstants.R_OK); return true; }
   catch { return false; }
@@ -846,6 +916,7 @@ export async function runCli(argv, io = defaultIo()) {
   if (parsed.command === "serve") return serveCommand(parsed, io);
   if (parsed.command === "agents") return agentsCommand(parsed, io);
   if (parsed.command === "health") return healthCommand(parsed, io);
+  if (parsed.command === "pilot-check" || parsed.command === "pilot") return pilotCheckCommand(parsed, io);
   if (parsed.command === "pi") return piCommand(parsed, io);
   throw new CliUsageError(`Unknown command: ${parsed.command}`);
 }

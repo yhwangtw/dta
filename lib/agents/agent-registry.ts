@@ -41,7 +41,7 @@ const BUILTIN_AGENT_DEFINITIONS: AgentDefinition[] = [
     description: "Turns meeting evidence into review-ready minutes, decisions, actions, and requirements.",
     internal: false,
     enabledByDefault: true,
-    workflowAllowlist: ["meeting-create-jira", "meeting-notify-teams", "meeting-update-knowledge-base"],
+    workflowAllowlist: ["meeting-pilot-readiness", "meeting-create-jira", "meeting-notify-teams", "meeting-update-knowledge-base"],
     skills: [{
       id: "meeting-minutes",
       name: "Meeting Intelligence",

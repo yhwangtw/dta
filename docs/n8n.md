@@ -95,3 +95,28 @@ DTA_ENABLE_WORKFLOW_TOOLS=true
 ```
 
 Mock execution is disabled in production.
+
+## Company pilot probe
+
+Before enabling Jira, Teams, or Wiki side effects, import
+[`deploy/n8n/dta-pilot-readiness.json`](../deploy/n8n/dta-pilot-readiness.json).
+This dedicated workflow validates the DTA workflow, execution, idempotency, run,
+user, and actor headers, returns `{ "ok": true, "dtaProbe": true }`, and causes
+no business-system change. Protect its Webhook with the same approved DTA
+credential or company auth proxy used by production workflows.
+
+Configure its logical route and run the full deployed-image verification:
+
+```env
+N8N_WORKFLOW_MAP_JSON={"meeting-pilot-readiness":"/webhook/dta-pilot-readiness"}
+```
+
+```bash
+dta pilot-check --live --report dta-pilot-report.json
+```
+
+The suite first creates and approves a source-backed Meeting result, dispatches
+the n8n probe through the normal review gate, and then repeats the same request
+to prove DTA returns the completed idempotent execution. See
+[Company Pilot Readiness](./company-pilot-readiness.md) for Keycloak roles,
+second-user isolation, MinIO, LLM, SSE, report handling, and exit codes.

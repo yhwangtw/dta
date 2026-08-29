@@ -1,0 +1,84 @@
+{
+  "name": "DTA Pilot Readiness",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "dta-pilot-readiness",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "0ce17e6b-e0ef-41c0-b7cf-05f70a9f2450",
+      "name": "DTA Pilot Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -320,
+        0
+      ],
+      "webhookId": "dta-pilot-readiness"
+    },
+    {
+      "parameters": {
+        "jsCode": "const request = $input.first().json;\nconst headers = request.headers ?? {};\nconst body = request.body ?? {};\nconst requiredHeaders = ['x-dta-workflow-id', 'x-dta-execution-id', 'idempotency-key', 'x-dta-run-id', 'x-dta-user-id', 'x-dta-actor-id'];\nconst missing = requiredHeaders.filter((name) => typeof headers[name] !== 'string' || !headers[name].trim());\nif (missing.length) throw new Error(`Missing DTA scope headers: ${missing.join(', ')}`);\nif (headers['x-dta-workflow-id'] !== 'meeting-pilot-readiness') throw new Error('Unexpected DTA workflow id');\nif (body.schemaVersion !== '1.0') throw new Error('Unsupported DTA envelope version');\nif (body.source?.runId !== headers['x-dta-run-id']) throw new Error('Run scope mismatch');\nif (body.source?.userId !== headers['x-dta-user-id']) throw new Error('User scope mismatch');\nif (body.execution?.id !== headers['x-dta-execution-id']) throw new Error('Execution scope mismatch');\nif (body.execution?.idempotencyKey !== headers['idempotency-key']) throw new Error('Idempotency scope mismatch');\nreturn [{ json: { ok: true, dtaProbe: true, workflowId: headers['x-dta-workflow-id'], runId: headers['x-dta-run-id'], executionId: headers['x-dta-execution-id'], idempotencyKey: headers['idempotency-key'] } }];"
+      },
+      "id": "0a88f67c-34bb-4a46-aa57-e11292f46ac7",
+      "name": "Validate DTA Scope",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -80,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "b94a0107-bab1-4e0e-bf91-1d0dfd6126de",
+      "name": "Return Probe Evidence",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        160,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "DTA Pilot Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate DTA Scope",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate DTA Scope": {
+      "main": [
+        [
+          {
+            "node": "Return Probe Evidence",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1b251148-490a-4925-9632-5d6a95c65098",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

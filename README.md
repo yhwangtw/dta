@@ -111,6 +111,7 @@ DTA_SETUP_OFFLINE=1 bash setup.sh
 - [Agent architecture, external contracts, security boundary, and limitations](./docs/architecture.md)
 - [Build-once Docker, runtime configuration, Keycloak, Vault, Kubernetes, and Helm guide](./docs/deployment.md)
 - [Production DTA Helm chart](./deploy/helm/dta-agent-platform/README.md)
+- [Company pilot readiness suite for Keycloak, MinIO, LLM, SSE, ownership, and n8n](./docs/company-pilot-readiness.md)
 - [Complete environment template](./.env.example)
 
 The same image runs locally with local/mock adapters and in the company with Keycloak, the company LLM gateway, MinIO, and n8n. Connection information and secrets are never baked into the image.
@@ -214,6 +215,7 @@ These are browser captures from the current DTA application using non-confidenti
 | `npm run dta -- run meeting …` | Run a batch Meeting Agent task |
 | `npm run dta -- sessions` | List generic domain Agent runs |
 | `npm run dta -- review RUN_ID …` | Review a Meeting result |
+| `npm run dta -- pilot-check --live` | Produce company pilot integration and isolation evidence |
 | `npm run dta -- pi` | Launch native Pi Coding Agent developer mode |
 | `node_modules/.bin/tsc --noEmit` | Typecheck |
 | `npx eslint .` | Lint |

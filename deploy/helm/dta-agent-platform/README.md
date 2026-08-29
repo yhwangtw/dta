@@ -77,7 +77,7 @@ Do not bypass a readiness failure in production.
 
 | Value | Purpose |
 | --- | --- |
-| `image.repository` / `image.digest` | Company registry mirror and immutable release |
+| `image.repository` / `image.digest` | Docker Hub repository and immutable release digest |
 | `config.env` | Non-secret DTA adapter and policy configuration |
 | `secret.existingSecret` | Vault/External Secrets-managed credentials |
 | `agentManifest` | Read-only department Agent definitions mounted at `/etc/dta/agents.json` |
@@ -86,9 +86,10 @@ Do not bypass a readiness failure in production.
 | `ingress` | Company TLS and Keycloak-aware ingress/auth proxy |
 | `extraEnv*` / `extraVolume*` | Platform-specific extensions without editing templates |
 
-When mirroring the public release, retain the verified digest if the company
-registry supports an exact OCI copy. Otherwise scan and record the mirror's new
-digest, then update `image.digest`.
+The checked-in company example uses the public `yhwangtn/dta` Docker Hub image
+and pins its verified multi-architecture digest. If a later company mirror is
+introduced, retain that digest when the registry performs an exact OCI copy;
+otherwise scan and record the mirror's new digest before deployment.
 
 ## Security defaults
 

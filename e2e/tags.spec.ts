@@ -1,14 +1,19 @@
 import { test, expect, type Page } from "@playwright/test";
 
-const MAIN = "/?session=aaaa1111-2222-3333-4444-555566667777";
+const MAIN_SESSION_ID = "aaaa1111-2222-3333-4444-555566667777";
+const MAIN = `/?session=${MAIN_SESSION_ID}`;
+
+function mainSessionRow(page: Page) {
+  return page.locator(`[data-session-row="${MAIN_SESSION_ID}"]`);
+}
 
 async function openMain(page: Page) {
   await page.goto(MAIN);
-  await expect(page.getByText("專案架構分析").first()).toBeVisible({ timeout: 20_000 });
+  await expect(mainSessionRow(page)).toBeVisible({ timeout: 20_000 });
 }
 
 async function addTag(page: Page, tag: string) {
-  await page.getByText("專案架構分析").first().click({ button: "right" });
+  await mainSessionRow(page).click({ button: "right" });
   // Menu entries are role=menuitem, not button
   await page.getByRole("menuitem", { name: "Add tag" }).click();
   const input = page.locator("input[placeholder*='tag']");
@@ -38,7 +43,7 @@ test.describe("session tags", () => {
     await addTag(page, "menutest");
     await expect(page.locator("[class*=tagChip]", { hasText: "#menutest" }).first()).toBeVisible();
 
-    await page.getByText("專案架構分析").first().click({ button: "right" });
+    await mainSessionRow(page).click({ button: "right" });
     const menu = page.getByRole("menu");
     const menuRemove = menu.getByRole("button", { name: "Remove #menutest" });
     await expect(menuRemove).toBeVisible();
@@ -54,7 +59,7 @@ test.describe("session tags", () => {
     const filterChip = page.locator("button", { hasText: "filtertest" }).first();
     await expect(filterChip).toBeVisible();
     await filterChip.click();
-    await expect(page.getByText("專案架構分析").first()).toBeVisible();
+    await expect(mainSessionRow(page)).toBeVisible();
     await expect(page.getByText("失敗的執行")).toHaveCount(0);
     // Clear the filter, clean up via the item chip
     await filterChip.click();

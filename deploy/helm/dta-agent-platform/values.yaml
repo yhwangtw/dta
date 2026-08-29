@@ -7,10 +7,10 @@ terminationGracePeriodSeconds: 60
 
 image:
   repository: yhwangtn/dta
-  tag: "2026.08.27"
+  tag: "v2026.08.28"
   # Pin production deployments to the verified multi-architecture release.
   # Clear this value only when intentionally selecting image.tag instead.
-  digest: sha256:de9aaa1ff11033a150728943d56db620caea337db4c6b1d6740fe6f99f32022b
+  digest: sha256:a119a2a2b98c406c7e9b40fe625f558c54f262c1d94023c040215776d98cdd19
   pullPolicy: IfNotPresent
 
 imagePullSecrets: []

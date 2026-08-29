@@ -2,13 +2,12 @@
 # Do not add secrets here; let Vault or External Secrets create the Secret.
 
 image:
-  # Mirror the verified release into the company registry. Keep the digest when
-  # the registry preserves it; otherwise replace it with the verified mirror digest.
-  repository: registry.company.example/ai/dta
-  digest: sha256:de9aaa1ff11033a150728943d56db620caea337db4c6b1d6740fe6f99f32022b
+  # The company environment pulls the verified public release from Docker Hub.
+  repository: yhwangtn/dta
+  tag: "v2026.08.28"
+  digest: sha256:a119a2a2b98c406c7e9b40fe625f558c54f262c1d94023c040215776d98cdd19
 
-imagePullSecrets:
-  - name: company-registry-credentials
+imagePullSecrets: []
 
 ingress:
   enabled: true

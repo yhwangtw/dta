@@ -2,7 +2,7 @@
 
 The DTA image contains Node.js 22, Next.js, npm dependencies, the Pi runtime dependencies, Git, and FFmpeg. Company Kubernetes does not install these separately. The same image is promoted across environments; only ConfigMaps, Secrets, mounted storage, and network endpoints change.
 
-The release workflow publishes `linux/amd64` and `linux/arm64` images to `ghcr.io/yhwangtw/dta`, generates a CycloneDX SBOM, blocks High/Critical CVEs, and creates Sigstore-backed GitHub attestations before the GitHub Release is created. A company registry may mirror that verified digest; connection settings are still injected only when the container starts.
+The release workflow publishes the same `linux/amd64` and `linux/arm64` image digest to `ghcr.io/yhwangtw/dta` and `docker.io/yhwangtn/dta`, verifies both registries, generates a CycloneDX SBOM, blocks High/Critical CVEs, and creates Sigstore-backed GitHub attestations before the GitHub Release is created. Repository secrets `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` are required for release; connection settings are still injected only when the container starts.
 
 ## Build and verify the image
 
@@ -200,11 +200,16 @@ Do not suppress CVEs. Rebuild against the current maintained base image and upda
 
 The final runtime stage uses a digest-pinned Wolfi base and exact package versions for Node.js, Bash, Git, and FFmpeg. npm, npx, Yarn, and Corepack are not installed in the runtime stage. Company deployment changes therefore happen through the published image plus runtime configuration, not by installing packages inside a running container. The builder and runtime both use glibc-compatible distributions so traced native Node modules are not copied across incompatible C libraries.
 
-To pull a released image before mirroring it:
+To pull the company-approved Docker Hub release by immutable digest:
 
 ```bash
-docker pull ghcr.io/yhwangtw/dta:<version>
-docker buildx imagetools inspect ghcr.io/yhwangtw/dta:<version>
+docker pull yhwangtn/dta@sha256:<verified-digest>
+docker buildx imagetools inspect yhwangtn/dta:<version>
+```
+
+GHCR remains the GitHub-attested source copy:
+
+```bash
 gh attestation verify oci://ghcr.io/yhwangtw/dta:<version> --repo yhwangtw/dta
 ```
 

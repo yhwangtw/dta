@@ -122,8 +122,9 @@ jobs:
       attestations: write
       artifact-metadata: write
     env:
-      REGISTRY: ghcr.io
-      IMAGE_NAME: ${{ github.repository }}
+      GHCR_REGISTRY: ghcr.io
+      GHCR_IMAGE_NAME: ${{ github.repository }}
+      DOCKERHUB_IMAGE_NAME: yhwangtn/dta
     steps:
       - name: Checkout release tag
         uses: actions/checkout@v7
@@ -139,15 +140,34 @@ jobs:
       - name: Log in to GHCR
         uses: docker/login-action@v4
         with:
-          registry: ${{ env.REGISTRY }}
+          registry: ${{ env.GHCR_REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Require Docker Hub release credentials
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          if [ -z "$DOCKERHUB_USERNAME" ] || [ -z "$DOCKERHUB_TOKEN" ]; then
+            echo "DOCKERHUB_USERNAME and DOCKERHUB_TOKEN repository secrets are required" >&2
+            exit 1
+          fi
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          registry: docker.io
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Resolve image metadata
         id: meta
         uses: docker/metadata-action@v6
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: |
+            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}
+            docker.io/${{ env.DOCKERHUB_IMAGE_NAME }}
           tags: |
             type=raw,value=${{ needs.prepare.outputs.tag }}
             type=raw,value=${{ needs.prepare.outputs.version }}
@@ -217,10 +237,24 @@ jobs:
             BUILD_REVISION=${{ steps.build.outputs.revision }}
             BUILD_CREATED=${{ steps.build.outputs.created }}
 
+      - name: Verify GHCR and Docker Hub manifests
+        env:
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: |
+          set -euo pipefail
+          for ref in \
+            "${GHCR_REGISTRY}/${GHCR_IMAGE_NAME}" \
+            "docker.io/${DOCKERHUB_IMAGE_NAME}"; do
+            output="$(docker buildx imagetools inspect "${ref}@${DIGEST}")"
+            grep -q 'Platform:[[:space:]]*linux/amd64' <<<"$output"
+            grep -q 'Platform:[[:space:]]*linux/arm64' <<<"$output"
+            echo "Verified ${ref}@${DIGEST}"
+          done
+
       - name: Generate release SBOM
         uses: aquasecurity/trivy-action@v0.36.0
         with:
-          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.push.outputs.digest }}
+          image-ref: ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}@${{ steps.push.outputs.digest }}
           format: cyclonedx
           output: dta-${{ needs.prepare.outputs.version }}.cdx.json
           scanners: vuln
@@ -238,14 +272,14 @@ jobs:
       - name: Attest image provenance
         uses: actions/attest@v4
         with:
-          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          subject-name: ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}
           subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: true
 
       - name: Attest image SBOM
         uses: actions/attest@v4
         with:
-          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          subject-name: ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}
           subject-digest: ${{ steps.push.outputs.digest }}
           sbom-path: dta-${{ needs.prepare.outputs.version }}.cdx.json
           push-to-registry: true

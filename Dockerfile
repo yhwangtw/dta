@@ -50,7 +50,7 @@ COPY --from=builder --chown=node:node /app/package.json /app/package-lock.json .
 COPY --from=builder --chown=node:node /app/.next/standalone ./
 COPY --from=builder --chown=node:node /app/.next/static ./.next/static
 COPY --from=builder --chown=node:node /app/public ./public
-COPY --from=builder --chown=node:node /app/scripts/dta.mjs /app/scripts/dta-core.mjs /app/scripts/dta-agent.mjs ./scripts/
+COPY --from=builder --chown=node:node /app/scripts/dta.mjs /app/scripts/dta-core.mjs /app/scripts/dta-agent.mjs /app/scripts/dta-pilot-readiness.mjs ./scripts/
 # Next.js standalone tracing does not include Pi's non-JavaScript runtime assets.
 # Copy only the assets and built-in documentation Pi resolves at runtime; avoid
 # copying Pi's nested development dependency tree into the production image.

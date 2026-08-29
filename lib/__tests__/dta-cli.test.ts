@@ -22,6 +22,8 @@ describe("DTA multi-entry CLI", () => {
     expect(cli.parseCommandLine(["chat", "pm"])).toMatchObject({ command: "tui", positionals: ["pm"] });
     expect(cli.parseCommandLine(["coding", "--help"])).toMatchObject({ command: "pi", passthrough: ["--help"] });
     expect(cli.parseCommandLine(["help", "review"])).toMatchObject({ command: "help", topic: "review" });
+    expect(cli.parseCommandLine(["pilot-check", "--live", "--workflow", "meeting-pilot-readiness"]))
+      .toMatchObject({ command: "pilot-check", options: { live: true, workflow: "meeting-pilot-readiness" } });
   });
 
   it("parses fragmented normalized SSE events", () => {

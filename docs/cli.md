@@ -32,6 +32,7 @@ checkout, use `npm run dta --` before the same arguments.
 | `dta review RUN_ID` | `npm run dta -- review RUN_ID` | Human Meeting review |
 | `dta agents` | `npm run dta -- agents` | List enabled public Agents |
 | `dta health` | `npm run dta -- health` | Check liveness and readiness |
+| `dta pilot-check --live` | `npm run dta -- pilot-check --live` | Verify company adapters and user isolation |
 | `dta pi` | `npm run dta -- pi` | Native Pi Coding Agent terminal |
 
 `npm run agent -- meeting|pm …` remains compatible with the older one-shot
@@ -131,6 +132,13 @@ dta tui meeting
 The server still enforces the token audience, run ownership, reviewer role,
 rate limits, and artifact access policy. The CLI cannot elevate the caller by
 supplying `--user`.
+
+For deployment acceptance, `dta pilot-check` validates Keycloak discovery,
+authentication, readiness, and the selected adapters without creating data.
+`dta pilot-check --live` additionally proves MinIO read/write/delete, a company
+LLM Meeting run over normalized SSE, two-user ownership isolation, the review
+gate, and the dedicated no-side-effect n8n probe. See
+[Company Pilot Readiness](./company-pilot-readiness.md).
 
 ## Native Pi boundary
 

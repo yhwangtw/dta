@@ -98,6 +98,7 @@ DTA_SETUP_OFFLINE=1 bash setup.sh
 
 - [Agent 架構、外部契約、安全邊界與目前限制](./docs/architecture.md)
 - [同一顆 image、runtime config、Keycloak、Vault 與 Kubernetes 指南](./docs/deployment.md)
+- [公司試點驗收：Keycloak、MinIO、LLM、SSE、使用者隔離與 n8n](./docs/company-pilot-readiness.md)
 - [完整環境變數範本](./.env.example)
 
 同一顆 image 可在外部環境使用 local／mock adapter，也可進公司後換成 Keycloak、公司 LLM Gateway、MinIO 與 n8n；連線資料與秘密都不會寫進 image。

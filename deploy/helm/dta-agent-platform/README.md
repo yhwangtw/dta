@@ -91,6 +91,13 @@ curl http://127.0.0.1:30141/.well-known/agent-card.json
 `/health` is liveness. `/ready` reports missing or invalid selected adapters.
 Do not bypass a readiness failure in production.
 
+Liveness alone is not company-pilot evidence. After Keycloak, MinIO, the LLM
+gateway, and n8n are configured, run the image's `dta pilot-check --live`
+command with short-lived tokens from two different users. It produces a
+redacted JSON or Markdown report and tests cross-user run/artifact/SSE
+isolation. The complete procedure and no-side-effect n8n probe are documented
+in `docs/company-pilot-readiness.md` in the source/release documentation.
+
 ## Important values
 
 | Value | Purpose |

@@ -42,12 +42,20 @@ DTA_BASE_URL=http://127.0.0.1:30141 \
 
 dta tui meeting
 dta sessions --agent meeting
+dta pilot-check
 ```
 
 For Keycloak-protected environments, pass the access token through `DTA_ACCESS_TOKEN`; the CLI does not persist it.
 The CLI/TUI can upload Meeting text, DOCX, audio, and video through the same
 bounded extraction endpoint as the Web UI. `dta pi` remains a separate native
 Coding Agent developer entry point. See [`docs/cli.md`](./cli.md).
+
+After the company adapters are configured, use `dta pilot-check` for a
+non-mutating preflight and `dta pilot-check --live` to prove the real Keycloak,
+MinIO, company LLM, normalized SSE, cross-user ownership, review gate, and n8n
+idempotency path. The live suite requires tokens from two different Keycloak
+users and a dedicated no-side-effect n8n probe. See
+[Company Pilot Readiness](./company-pilot-readiness.md).
 
 `/health` is a liveness endpoint. `/ready` returns HTTP 503 when a selected adapter is missing required configuration; optional disabled media capabilities are warnings and do not make local mode unready.
 

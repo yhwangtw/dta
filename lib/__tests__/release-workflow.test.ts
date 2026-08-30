@@ -28,6 +28,7 @@ describe("release registry contract", () => {
     expect(workflow).toContain('helm template dta "$HELM_CHART_REF"');
     expect(workflow).toContain("image_digest: ${{ steps.push.outputs.digest }}");
     expect(workflow).toContain("scripts/stamp-helm-release-image.mjs");
+    expect(workflow).toContain('"docker.io/${DOCKERHUB_IMAGE_NAME}" \\');
     expect(workflow).toContain('grep -Fq "image: \\"docker.io/${DOCKERHUB_IMAGE_NAME}@${IMAGE_DIGEST}\\""');
     expect(workflow).toContain("needs: [prepare, container, helm-chart]");
   });

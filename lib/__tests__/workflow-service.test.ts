@@ -25,10 +25,11 @@ function meetingRun(reviewStatus: StoredMeetingResult["reviewStatus"]): StoredMe
     revision: 1,
     reviewHistory: [],
     result: {
+      schemaVersion: "2.0",
       title: "Weekly sync",
       summary: "Pilot approved.",
       decisions: [],
-      actionItems: [{ title: "Create Jira task", owner: "Alex" }],
+      actionItems: [{ title: "Create Jira task", owner: "Alex", id: "action_create-jira", evidence: [], confidence: 0.25, needsConfirmation: true }],
       requirements: [],
     },
     artifacts: [],

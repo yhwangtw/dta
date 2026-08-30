@@ -13,7 +13,9 @@ export type ArtifactType =
   | "user_story"
   | "acceptance_criteria"
   | "design"
-  | "task_plan";
+  | "task_plan"
+  | "department_result"
+  | "department_document";
 
 export interface ArtifactReference {
   id: string;

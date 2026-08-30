@@ -41,7 +41,11 @@ export interface ExtractedMeetingSource {
   visionStatus?: "ready" | "unavailable" | "failed" | "not_applicable";
   warnings?: string[];
   error?: string;
+  jobId?: string;
+  processingStatus?: MeetingMediaJobStatus;
 }
+
+export type MeetingMediaJobStatus = "queued" | "processing" | "completed" | "failed" | "cancelled";
 
 export interface MeetingSourceExtractionResult {
   name: string;
@@ -63,6 +67,8 @@ export interface MeetingSourceExtractionResult {
   visionStatus?: "ready" | "unavailable" | "failed" | "not_applicable";
   warnings?: string[];
   error?: string;
+  jobId?: string;
+  processingStatus?: MeetingMediaJobStatus;
 }
 
 export function meetingSourceExtension(name: string): string {

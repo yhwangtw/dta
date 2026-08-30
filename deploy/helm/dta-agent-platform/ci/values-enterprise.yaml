@@ -1,0 +1,38 @@
+# Render-only enterprise profile used by CI. Values are deliberately fake and
+# contain no credentials; the goal is to exercise every optional platform
+# resource before a release chart is published.
+networkPolicy:
+  enabled: true
+  ingressFrom:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: ingress-nginx
+  egress:
+    extraRules:
+      - to:
+          - ipBlock:
+              cidr: 10.0.0.0/8
+        ports:
+          - protocol: TCP
+            port: 443
+
+serviceMonitor:
+  enabled: true
+  labels:
+    release: kube-prometheus-stack
+  authorization:
+    enabled: true
+    secretName: dta-metrics-token
+    secretKey: token
+
+retentionCronJob:
+  enabled: true
+  tokenSecretName: dta-retention-token
+
+backupCronJob:
+  enabled: true
+  image: registry.company.example/platform/backup@sha256:0000000000000000000000000000000000000000000000000000000000000000
+  command:
+    - /bin/backup
+  args:
+    - /data

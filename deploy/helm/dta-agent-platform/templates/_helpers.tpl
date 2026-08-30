@@ -69,6 +69,21 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- if ne (int .Values.replicaCount) 1 -}}
 {{- fail "replicaCount must remain 1 until DTA has distributed session/run ownership" -}}
 {{- end -}}
+{{- if and .Values.image.digest (not (regexMatch "^sha256:[a-f0-9]{64}$" .Values.image.digest)) -}}
+{{- fail "image.digest must be a sha256 digest" -}}
+{{- end -}}
+{{- if and .Values.networkPolicy.enabled (empty .Values.networkPolicy.ingressFrom) -}}
+{{- fail "networkPolicy.ingressFrom is required when NetworkPolicy is enabled" -}}
+{{- end -}}
+{{- if and .Values.networkPolicy.enabled (empty .Values.networkPolicy.egress.extraRules) -}}
+{{- fail "networkPolicy.egress.extraRules must allow company LLM, Keycloak, MinIO, n8n, Postgres/Redis, scanner, speech, and vision endpoints" -}}
+{{- end -}}
+{{- if and .Values.backupCronJob.enabled (not .Values.persistence.data.enabled) -}}
+{{- fail "backupCronJob requires persistence.data.enabled=true" -}}
+{{- end -}}
+{{- if and .Values.backupCronJob.enabled (not (regexMatch "@sha256:[a-f0-9]{64}$" .Values.backupCronJob.image)) -}}
+{{- fail "backupCronJob.image must be pinned by sha256 digest" -}}
+{{- end -}}
 {{- if .Values.secret.create -}}
 {{- range .Values.secret.env -}}
 {{- if and (not .optional) (not (hasKey $.Values.secret.values .key)) -}}

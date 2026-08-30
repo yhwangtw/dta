@@ -3,6 +3,8 @@ import type { AgentAction } from "./agent-types";
 import type { ArtifactReference } from "@/lib/integrations/storage/artifact-store";
 import { readMeetingRun } from "./meeting/meeting-result-store";
 import type { MeetingReviewStatus } from "./meeting/meeting-types";
+import { readDepartmentRun } from "./department/department-result-store";
+import { readPMRun } from "./pm/pm-result-store";
 
 export interface AgentRequest {
   requestId: string;
@@ -29,9 +31,20 @@ export interface AgentResponse {
 }
 
 export function reviewForAgentRun(run: AgentRun): AgentResponse["review"] {
-  if (run.agentMetadata?.agentType !== "meeting" || !run.agentMetadata.runId) return undefined;
-  const meeting = readMeetingRun(run.agentMetadata.runId);
-  return meeting ? { status: meeting.reviewStatus, revision: meeting.revision } : undefined;
+  if (!run.agentMetadata?.runId) return undefined;
+  if (run.agentMetadata.agentType === "meeting") {
+    const meeting = readMeetingRun(run.agentMetadata.runId);
+    return meeting ? { status: meeting.reviewStatus, revision: meeting.revision } : undefined;
+  }
+  if (run.agentMetadata.agentType === "department") {
+    const department = readDepartmentRun(run.agentMetadata.runId);
+    return department ? { status: department.reviewStatus, revision: department.revision } : undefined;
+  }
+  if (run.agentMetadata.agentType === "pm") {
+    const pm = readPMRun(run.agentMetadata.runId);
+    return pm ? { status: pm.reviewStatus, revision: pm.revision } : undefined;
+  }
+  return undefined;
 }
 
 export function releasedActionsForAgentRun(run: AgentRun): AgentAction[] | undefined {

@@ -155,3 +155,16 @@ export function failWorkflowExecution(id: string, error: string): WorkflowExecut
   writeStore(store);
   return structuredClone(record);
 }
+
+export function pruneWorkflowExecutionsBefore(cutoffMs: number, protectedRunIds: Set<string>, dryRun: boolean): number {
+  const store = readStore();
+  const removable = store.executions.filter((record) => record.status !== "running"
+    && !protectedRunIds.has(record.sourceRunId)
+    && Date.parse(record.completedAt ?? record.requestedAt) < cutoffMs);
+  if (!dryRun && removable.length > 0) {
+    const ids = new Set(removable.map((record) => record.id));
+    store.executions = store.executions.filter((record) => !ids.has(record.id));
+    writeStore(store);
+  }
+  return removable.length;
+}

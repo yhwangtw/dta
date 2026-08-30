@@ -1,0 +1,153 @@
+{
+  "name": "DTA Meeting — Update Knowledge Base",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "meeting-update-knowledge-base",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "8a4cfaf5-126f-487f-8a57-38d99c4bb23f",
+      "name": "DTA Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -520,
+        0
+      ],
+      "webhookId": "meeting-update-knowledge-base"
+    },
+    {
+      "parameters": {
+        "jsCode": "const request = $input.first().json;\nconst headers = request.headers ?? {};\nconst envelope = request.body ?? {};\nconst required = ['x-dta-workflow-id','x-dta-execution-id','idempotency-key','x-dta-run-id','x-dta-user-id','x-dta-actor-id'];\nconst missing = required.filter((name) => typeof headers[name] !== 'string' || !headers[name].trim());\nif (missing.length) throw new Error(`Missing DTA scope headers: ${missing.join(', ')}`);\nif (headers['x-dta-workflow-id'] !== 'meeting-update-knowledge-base') throw new Error('Unexpected DTA workflow id');\nif (envelope.schemaVersion !== '1.0') throw new Error('Unsupported DTA envelope version');\nif (envelope.source?.runId !== headers['x-dta-run-id']) throw new Error('Run scope mismatch');\nif (envelope.source?.userId !== headers['x-dta-user-id']) throw new Error('User scope mismatch');\nif (envelope.execution?.id !== headers['x-dta-execution-id']) throw new Error('Execution scope mismatch');\nif (envelope.execution?.idempotencyKey !== headers['idempotency-key']) throw new Error('Idempotency scope mismatch');\nif (envelope.source?.reviewStatus !== 'approved') throw new Error('DTA result is not approved');\nreturn [{ json: { envelope, scope: { workflowId: headers['x-dta-workflow-id'], runId: headers['x-dta-run-id'], userId: headers['x-dta-user-id'], actorId: headers['x-dta-actor-id'], executionId: headers['x-dta-execution-id'], idempotencyKey: headers['idempotency-key'] } } }];"
+      },
+      "id": "ef4148c6-9409-4e69-8ba6-3cdcb2f0a7eb",
+      "name": "Validate DTA Scope",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -300,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const e = $json.envelope; return [{ json: { ...$json, payload: { source: 'dta', kind: 'meeting', runId: e.source.runId, revision: e.source.revision, title: e.result?.title || 'Meeting minutes', result: e.result, artifacts: e.artifacts } } }];"
+      },
+      "id": "921e1143-f6cf-4f29-8088-b38bc292e411",
+      "name": "Build Integration Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -80,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.KNOWLEDGE_BASE_WEBHOOK_URL }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Idempotency-Key",
+              "value": "={{ $json.scope.idempotencyKey }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.KNOWLEDGE_BASE_API_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContent": "={{ JSON.stringify($json.payload) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "791623a7-b96b-4f71-83ff-8281da173e6f",
+      "name": "Dispatch Approved Action",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        140,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: true, workflowId: 'meeting-update-knowledge-base', executionId: $('Build Integration Payload').item.json.scope.executionId, targetStatus: $json.statusCode || 200 } }}",
+        "options": {}
+      },
+      "id": "2aa8f443-cade-43c8-8fe6-a72649219911",
+      "name": "Return Execution Evidence",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        360,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "DTA Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate DTA Scope",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate DTA Scope": {
+      "main": [
+        [
+          {
+            "node": "Build Integration Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Integration Payload": {
+      "main": [
+        [
+          {
+            "node": "Dispatch Approved Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dispatch Approved Action": {
+      "main": [
+        [
+          {
+            "node": "Return Execution Evidence",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "c29204b3-3420-486d-898d-487d464933b3",
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "dtaWorkflowSchemaVersion": "1.0"
+  },
+  "tags": []
+}

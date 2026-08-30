@@ -6,11 +6,11 @@ progressDeadlineSeconds: 600
 terminationGracePeriodSeconds: 60
 
 image:
-  repository: yhwangtn/dta
-  tag: "v2026.08.28"
-  # Pin production deployments to the verified multi-architecture release.
-  # Clear this value only when intentionally selecting image.tag instead.
-  digest: sha256:a119a2a2b98c406c7e9b40fe625f558c54f262c1d94023c040215776d98cdd19
+  repository: docker.io/yhwangtn/dta
+  # Source checkouts fall back to Chart.appVersion. The release workflow stamps
+  # both tag and digest into the packaged OCI chart before it is published.
+  tag: ""
+  digest: ""
   pullPolicy: IfNotPresent
 
 imagePullSecrets: []
@@ -148,6 +148,7 @@ config:
     DTA_CODING_REQUIRED_ROLES: dta-coding-access
     DTA_REVIEW_REQUIRED_ROLES: dta-reviewer
     DTA_MEETING_REVIEW_REQUIRED: "true"
+    DTA_PM_REVIEW_REQUIRED: "true"
 
     LLM_PROVIDER_ID: dta-company
     LLM_BASE_URL: https://llm-gateway.example.com/v1
@@ -170,6 +171,10 @@ config:
 
     DTA_AUDIT_LOG_ENABLED: "true"
     DTA_AUDIT_LOG_PATH: /data/audit/events.jsonl
+    DTA_AUDIT_SINK_URL: ""
+    DTA_AUDIT_SINK_AUTH_HEADER: Authorization
+    DTA_AUDIT_SINK_AUTH_SCHEME: Bearer
+    DTA_STRUCTURED_LOGS: "true"
     DTA_METRICS_AUTH_REQUIRED: "true"
     DTA_RATE_LIMIT_ENABLED: "true"
     DTA_RATE_LIMIT_REQUESTS: "60"
@@ -183,8 +188,13 @@ config:
     DTA_UPLOAD_SCANNER_FAIL_OPEN: "false"
 
     DTA_RETENTION_ENABLED: "false"
+    DTA_RETENTION_DRY_RUN: "true"
     DTA_ARTIFACT_RETENTION_DAYS: "365"
+    DTA_RUN_RETENTION_DAYS: "365"
+    DTA_MEDIA_JOB_RETENTION_DAYS: "30"
+    DTA_WORKFLOW_RETENTION_DAYS: "365"
     DTA_RETENTION_PROTECT_APPROVED: "true"
+    DTA_LEGAL_HOLD_RUN_IDS: ""
 
     DTA_WORKFLOW_PROVIDER: n8n
     DTA_ENABLE_WORKFLOW_TOOLS: "false"
@@ -202,12 +212,14 @@ config:
     DTA_VISION_BASE_URL: https://vision.example.com/v1
     DTA_VISION_MODEL: company-vision-model
     DTA_MEDIA_PROCESSOR: ffmpeg
+    DTA_MEDIA_JOB_CONCURRENCY: "2"
+    DTA_MEDIA_JOB_MAX_ATTEMPTS: "3"
 
 # Agent manifests are mounted read-only at /etc/dta/agents.json. Replace this
 # example with department-specific Agents without rebuilding the image.
 agentManifest: |
   {
-    "version": 1,
+    "version": 2,
     "agents": []
   }
 
@@ -250,6 +262,9 @@ secret:
     - name: DTA_UPLOAD_SCANNER_API_KEY
       key: DTA_UPLOAD_SCANNER_API_KEY
       optional: true
+    - name: DTA_AUDIT_SINK_API_KEY
+      key: DTA_AUDIT_SINK_API_KEY
+      optional: true
 
 extraEnv: []
 extraEnvFrom: []
@@ -266,3 +281,50 @@ runtimeClassName: ""
 podDisruptionBudget:
   enabled: false
   minAvailable: 1
+
+# Kubernetes NetworkPolicy cannot allow DNS names. When enabled, list the
+# company ingress-controller selectors and destination CIDRs explicitly.
+networkPolicy:
+  enabled: false
+  ingressFrom: []
+  egress:
+    allowDns: true
+    extraRules: []
+
+serviceMonitor:
+  enabled: false
+  interval: 30s
+  scrapeTimeout: 10s
+  labels: {}
+  authorization:
+    enabled: false
+    secretName: ""
+    secretKey: token
+
+# Calls the authenticated retention endpoint. Supply a rotated company service
+# token through an existing Secret; deletion remains governed by
+# DTA_RETENTION_DRY_RUN.
+retentionCronJob:
+  enabled: false
+  schedule: "17 2 * * *"
+  timeZone: "UTC"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 3
+  tokenSecretName: ""
+  tokenSecretKey: token
+  tokenHeader: x-forwarded-access-token
+
+# Optional PVC backup hook. The company must provide an approved/mirrored image
+# with its backup client and a command that writes to company-managed storage.
+backupCronJob:
+  enabled: false
+  schedule: "43 2 * * *"
+  timeZone: "UTC"
+  image: ""
+  imagePullPolicy: IfNotPresent
+  command: []
+  args: []
+  env: []
+  envFrom: []
+  resources: {}

@@ -14,6 +14,20 @@ import {
 } from "@/lib/meeting-source-files";
 import s from "./MeetingAgentDialog.module.css";
 
+interface MediaJobView {
+  id: string;
+  name: string;
+  size: number;
+  status: "queued" | "processing" | "completed" | "failed" | "cancelled";
+  progress: { percent: number; message: string };
+  error?: string;
+}
+
+interface MediaJobResponse {
+  job?: MediaJobView & { result?: MeetingSourceExtractionResult };
+  error?: string;
+}
+
 interface Props {
   onClose: () => void;
   onLaunch: (input: { prompt: string; runId: string; cwd: string }) => void;
@@ -82,9 +96,15 @@ function formatDuration(seconds: number | undefined): string | null {
   return `${minutes}:${String(remainder).padStart(2, "0")}`;
 }
 
+function createDraftRunId(): string {
+  return globalThis.crypto?.randomUUID?.()
+    ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+}
+
 export function MeetingAgentDialog({ onClose, onLaunch, managedWorkspaceCwd }: Props) {
   const { locale, t } = useI18n();
   const [title, setTitle] = useState("");
+  const [runId] = useState(createDraftRunId);
   const [date, setDate] = useState("");
   const [participants, setParticipants] = useState("");
   const [objective, setObjective] = useState("");
@@ -92,6 +112,7 @@ export function MeetingAgentDialog({ onClose, onLaunch, managedWorkspaceCwd }: P
   const [outputLanguage, setOutputLanguage] = useState<MeetingOutputLanguage>(locale === "zh" ? "zh-TW" : "en");
   const [attachments, setAttachments] = useState<ExtractedMeetingSource[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [mediaJobs, setMediaJobs] = useState<MediaJobView[]>([]);
   const [uploadError, setUploadError] = useState("");
   const [dragging, setDragging] = useState(false);
   const [dictationSupported, setDictationSupported] = useState<boolean | null>(null);
@@ -104,6 +125,7 @@ export function MeetingAgentDialog({ onClose, onLaunch, managedWorkspaceCwd }: P
   const [workspaceError, setWorkspaceError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
+  const mountedRef = useRef(true);
   const extractedChars = attachments.reduce((sum, attachment) => sum + attachment.chars, 0);
   const totalSourceChars = source.trim().length + extractedChars;
   const sourceLimitExceeded = totalSourceChars > MEETING_SOURCE_MAX_CHARS;
@@ -121,6 +143,8 @@ export function MeetingAgentDialog({ onClose, onLaunch, managedWorkspaceCwd }: P
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
+
+  useEffect(() => () => { mountedRef.current = false; }, []);
 
   useEffect(() => {
     setDictationSupported(Boolean(getSpeechRecognitionConstructor() && window.isSecureContext));
@@ -215,9 +239,6 @@ export function MeetingAgentDialog({ onClose, onLaunch, managedWorkspaceCwd }: P
   const submit = (event: FormEvent) => {
     event.preventDefault();
     if (!workspace || (!source.trim() && attachments.length === 0) || uploading) return;
-    const runId = typeof crypto.randomUUID === "function"
-      ? crypto.randomUUID()
-      : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
     onLaunch({ prompt: buildMeetingMinutesPrompt({
       title,
       date,
@@ -227,6 +248,73 @@ export function MeetingAgentDialog({ onClose, onLaunch, managedWorkspaceCwd }: P
       attachments: attachments.map(({ name, content, artifactId, transcriptArtifactId, visualAnalysisArtifactId, timelineArtifactId }) => ({ name, content, artifactId, transcriptArtifactId, visualAnalysisArtifactId, timelineArtifactId })),
       outputLanguage,
     }), runId, cwd: workspace.cwd });
+  };
+
+  const updateMediaJob = (job: MediaJobView) => {
+    if (!mountedRef.current) return;
+    setMediaJobs((current) => [job, ...current.filter((candidate) => candidate.id !== job.id)]);
+  };
+
+  const waitForMediaJob = async (jobId: string): Promise<MeetingSourceExtractionResult> => {
+    const deadline = Date.now() + 30 * 60_000;
+    while (mountedRef.current && Date.now() < deadline) {
+      const response = await fetch(`/api/meeting-agent/media-jobs/${encodeURIComponent(jobId)}`, { cache: "no-store" });
+      const payload = await response.json() as MediaJobResponse;
+      if (!response.ok || !payload.job) throw new Error(payload.error || `HTTP ${response.status}`);
+      updateMediaJob(payload.job);
+      if (payload.job.status === "completed" && payload.job.result) {
+        setMediaJobs((current) => current.filter((candidate) => candidate.id !== jobId));
+        return payload.job.result;
+      }
+      if (payload.job.status === "failed" || payload.job.status === "cancelled") {
+        throw new Error(payload.job.error || payload.job.result?.error || t("meetingAgent.readFailed"));
+      }
+      await new Promise((resolve) => window.setTimeout(resolve, 1_000));
+    }
+    throw new Error(mountedRef.current ? "Media processing timed out" : "Media processing continues on the server");
+  };
+
+  const cancelMediaJob = async (jobId: string) => {
+    const response = await fetch(`/api/meeting-agent/media-jobs/${encodeURIComponent(jobId)}`, { method: "DELETE" });
+    const payload = await response.json() as MediaJobResponse;
+    if (!response.ok || !payload.job) {
+      setUploadError(payload.error || `HTTP ${response.status}`);
+      return;
+    }
+    updateMediaJob(payload.job);
+  };
+
+  const retryMediaJob = async (jobId: string) => {
+    setUploadError("");
+    setUploading(true);
+    try {
+      const response = await fetch(`/api/meeting-agent/media-jobs/${encodeURIComponent(jobId)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      });
+      const payload = await response.json() as MediaJobResponse;
+      if (!response.ok || !payload.job) throw new Error(payload.error || `HTTP ${response.status}`);
+      updateMediaJob(payload.job);
+      const result = await waitForMediaJob(jobId);
+      if (!result.ok || !result.kind || typeof result.chars !== "number") throw new Error(result.error || t("meetingAgent.readFailed"));
+      const kind = result.kind;
+      const chars = result.chars;
+      setAttachments((current) => [...current, {
+        name: result.name, size: result.size, kind, chars,
+        content: result.content, artifactId: result.artifactId, transcriptArtifactId: result.transcriptArtifactId,
+        audioArtifactId: result.audioArtifactId, visualAnalysisArtifactId: result.visualAnalysisArtifactId,
+        timelineArtifactId: result.timelineArtifactId, keyframeArtifactIds: result.keyframeArtifactIds,
+        durationSeconds: result.durationSeconds, transcriptSegmentCount: result.transcriptSegmentCount,
+        keyframeCount: result.keyframeCount, transcriptionStatus: result.transcriptionStatus,
+        visionStatus: result.visionStatus, warnings: result.warnings, jobId: result.jobId,
+        processingStatus: result.processingStatus,
+      }]);
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : t("meetingAgent.readFailed"));
+    } finally {
+      setUploading(false);
+    }
   };
 
   const processFiles = async (input: File[]) => {
@@ -245,15 +333,35 @@ export function MeetingAgentDialog({ onClose, onLaunch, managedWorkspaceCwd }: P
     setUploadError("");
     try {
       const form = new FormData();
+      form.append("runId", runId);
       for (const file of unique) form.append("files", file);
       const response = await fetch("/api/meeting-agent/extract", { method: "POST", body: form });
       const payload = await response.json() as { results?: MeetingSourceExtractionResult[]; error?: string };
       if (!response.ok || !payload.results) throw new Error(payload.error || `HTTP ${response.status}`);
 
+      const resolvedResults: MeetingSourceExtractionResult[] = [];
+      for (const result of payload.results) {
+        if (!result.jobId) {
+          resolvedResults.push(result);
+          continue;
+        }
+        updateMediaJob({
+          id: result.jobId,
+          name: result.name,
+          size: result.size,
+          status: result.processingStatus ?? "queued",
+          progress: { percent: 0, message: t("meetingAgent.analyzingMedia") },
+        });
+        try { resolvedResults.push(await waitForMediaJob(result.jobId)); }
+        catch (error) {
+          resolvedResults.push({ ...result, ok: false, error: error instanceof Error ? error.message : String(error) });
+        }
+      }
+
       const accepted: ExtractedMeetingSource[] = [];
       const errors: string[] = [];
       let nextChars = totalSourceChars;
-      for (const result of payload.results) {
+      for (const result of resolvedResults) {
         if (!result.ok || !result.kind || typeof result.chars !== "number") {
           errors.push(`${result.name}: ${result.error ?? t("meetingAgent.readFailed")}`);
           continue;
@@ -281,6 +389,8 @@ export function MeetingAgentDialog({ onClose, onLaunch, managedWorkspaceCwd }: P
           visionStatus: result.visionStatus,
           warnings: result.warnings,
           error: result.error,
+          jobId: result.jobId,
+          processingStatus: result.processingStatus,
         });
         nextChars += result.chars;
       }
@@ -435,6 +545,25 @@ export function MeetingAgentDialog({ onClose, onLaunch, managedWorkspaceCwd }: P
                       onClick={() => setAttachments((current) => current.filter((candidate) => candidate !== attachment))}
                       aria-label={`${t("meetingAgent.removeFile")}: ${attachment.name}`}
                     >×</button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {mediaJobs.length > 0 && (
+              <ul className={s.fileList} aria-label={t("meetingAgent.analyzingMedia")}>
+                {mediaJobs.map((job) => (
+                  <li key={job.id}>
+                    <span className={s.fileType}>MEDIA</span>
+                    <span className={s.fileMeta}>
+                      <strong>{job.name}</strong>
+                      <small>{formatMeetingSourceBytes(job.size)} · {job.progress.percent}% · {job.progress.message}</small>
+                      {job.error && <small className={s.fileWarning}>{job.error}</small>}
+                    </span>
+                    {(job.status === "failed" || job.status === "cancelled") ? (
+                      <button type="button" onClick={() => void retryMediaJob(job.id)} aria-label={`${t("meetingAgent.retryMedia")}: ${job.name}`}>↻</button>
+                    ) : (
+                      <button type="button" onClick={() => void cancelMediaJob(job.id)} aria-label={`${t("meetingAgent.cancelMedia")}: ${job.name}`}>×</button>
+                    )}
                   </li>
                 ))}
               </ul>

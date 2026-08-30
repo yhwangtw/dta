@@ -37,12 +37,12 @@ It provides one server-side Agent core through Web, TUI, CLI, REST, and A2A. Mee
 
 | Capability | Input | Result | Notes |
 |---|---|---|---|
-| **Meeting Agent** | Prompt, transcript, TXT, Markdown, DOCX, audio, or video | Summary, decisions, action items, requirements, transcript/media artifacts, and handoff actions | Human review is required by default |
-| **PM Agent** | Direct requirement or approved Meeting handoff | Requirement analysis, URD, PRD, user stories, acceptance criteria, design context, and task plan | Uses the same runtime and artifact model |
-| **Configured department Agents** | JSON Agent manifest | Additional prompts, public skills, and n8n workflow allowlists | Add Agents without rebuilding the image |
+| **Meeting Agent** | Prompt, transcript, TXT, Markdown, DOCX, audio, or video | Summary, decisions, action items, requirements, transcript/media artifacts, and handoff actions | Durable asynchronous media jobs; human review by default |
+| **PM Agent** | Direct requirement or approved Meeting handoff | Requirement analysis, URD, PRD, user stories, acceptance criteria, design context, and task plan | Structured revisions with human review |
+| **Configured department Agents** | Manifest v2 JSON | Schema-validated results, documents, actions, and n8n workflows | Contract input/output, runtime model allowlists, timeout, artifact, role, and review policies |
 | **Coding Agent** | Repository prompt and developer tools | Native Pi coding session | Local/developer mode; hidden in company mode unless the user has the configured coding role |
 
-Meeting results are structured records, not only Markdown responses. DTA preserves source artifacts, streams normalized run events, records review decisions, and releases downstream actions only after approval.
+Meeting results are versioned structured records, not only Markdown responses. Every decision, action item, and requirement carries a stable ID, evidence references, source-grounding confidence, and `needsConfirmation`. DTA records Meeting, PM, and Department Agent reviews and releases downstream actions and workflows only after approval.
 
 ### Meeting media requirements
 
@@ -152,7 +152,7 @@ Published multi-architecture images are available at [`yhwangtn/dta`](https://hu
 This minimal local profile starts the platform with local storage and all external workflow/media adapters disabled:
 
 ```bash
-export DTA_VERSION=v2026.08.29  # example; select your approved release
+export DTA_VERSION=vYYYY.MM.DD  # replace with an approved release
 
 docker run --rm -p 30141:30141 \
   -e DTA_AUTH_MODE=none \
@@ -200,6 +200,7 @@ Start with [`.env.example`](./.env.example). Detailed setup is in:
 - [n8n workflow boundary and payload contract](./docs/n8n.md)
 - [Meeting media pipeline](./docs/meeting-media-pipeline.md)
 - [Company pilot readiness](./docs/company-pilot-readiness.md)
+- [Operations, metrics, retention, backup, and recovery](./docs/operations-runbook.md)
 
 ## Company Kubernetes deployment
 
@@ -213,11 +214,11 @@ Published artifacts:
 | OCI Helm chart | `oci://registry-1.docker.io/yhwangtn/dta-agent-platform` |
 | Release notes and source | [GitHub Releases](https://github.com/yhwangtw/dta/releases) |
 
-Release tags and chart versions use different valid formats. For example, release `v2026.08.29` maps to Helm chart version `2026.8.29`.
+Release tags and chart versions use different valid formats. For example, release `v2026.08.30` maps to Helm chart version `2026.8.30`.
 
 ```bash
 export DTA_CHART=oci://registry-1.docker.io/yhwangtn/dta-agent-platform
-export DTA_CHART_VERSION=2026.8.29  # example; select the approved chart
+export DTA_CHART_VERSION=YYYY.M.D  # replace with an approved chart
 
 helm pull "$DTA_CHART" --version "$DTA_CHART_VERSION" --untar
 cp dta-agent-platform/values.company-example.yaml /secure/path/dta-values.yaml
@@ -226,7 +227,7 @@ cp dta-agent-platform/values.company-example.yaml /secure/path/dta-values.yaml
 Before installation:
 
 1. Replace every example URL, hostname, storage class, and policy value.
-2. Pin `image.digest` to the separately approved `yhwangtn/dta` multi-architecture digest. Do not assume the chart version alone selects the desired image.
+2. Confirm that the published chart's `image.digest` exactly matches the approved `yhwangtn/dta` multi-architecture digest. The release workflow stamps and reads it back; override it only when a company mirror changes the digest.
 3. Have Vault, External Secrets, or the platform team create `dta-agent-platform-secrets`.
 4. Put the browser UI behind the company's Keycloak-aware ingress/auth proxy.
 5. Keep `replicaCount: 1`.
@@ -250,7 +251,7 @@ helm upgrade --install dta "$DTA_CHART" \
   -f /secure/path/dta-values.yaml
 ```
 
-The chart defaults to non-root execution, a read-only root filesystem, dropped Linux capabilities, no privilege escalation, no ServiceAccount token, and separate startup/readiness/liveness probes. See the [Helm chart guide](./deploy/helm/dta-agent-platform/README.md) for Secrets, values, upgrade, and rollback procedures.
+The chart defaults to non-root execution, a read-only root filesystem, dropped Linux capabilities, no privilege escalation, no ServiceAccount token, and separate startup/readiness/liveness probes. It also includes opt-in NetworkPolicy, authenticated ServiceMonitor, dry-run-first retention CronJob, and a company-supplied PVC backup hook. See the [Helm chart guide](./deploy/helm/dta-agent-platform/README.md).
 
 ## External Agent contracts
 
@@ -307,16 +308,17 @@ dta pilot-check
 dta pilot-check --live --report dta-pilot-report.json
 ```
 
-The live suite validates Keycloak discovery/JWKS, selected adapters, MinIO upload/download, a real Meeting Agent LLM run, normalized SSE, User A/User B isolation, human approval, and an idempotent no-side-effect n8n probe. It writes a redacted report and never stores bearer tokens. See [Company Pilot Readiness](./docs/company-pilot-readiness.md).
+The live suite validates Keycloak discovery/JWKS, selected adapters, MinIO upload/download, a real Meeting Agent LLM run, MeetingResult 2.0 traceability, normalized SSE, User A/User B isolation across sessions, metadata, runs, SSE, workflows, and personal state, human approval, and an idempotent no-side-effect n8n probe. It writes a redacted report and never stores bearer tokens. See [Company Pilot Readiness](./docs/company-pilot-readiness.md).
 
 ## Current production limitations
 
-- Run supervision, active Pi sessions, normalized event replay, and Meeting/PM result records are not distributed. Production must use **one replica** even when Postgres or Redis memory is enabled.
+- Run supervision, active Pi sessions, normalized event replay, and Meeting/PM/Department result records are not distributed. Production must use **one replica** even when Postgres or Redis memory is enabled.
 - DTA validates Keycloak access tokens and ownership, but browser login is delegated to the company's authenticated ingress/proxy.
-- Audio/video understanding is unavailable until transcription and optional vision providers are configured.
+- Media jobs are durable, observable, cancellable, and retry-bounded, but upload parsing and each provider call still buffer one file; chunked upload/transcription is not implemented yet.
 - n8n is a reviewed workflow executor, not the primary Agent runtime. Keep workflow tools disabled until permissions, approval rules, and idempotency are validated.
 - File, Git, shell, provider, skill, and Coding Agent surfaces are hidden in company mode unless the principal has the configured coding role.
 - Publishing an image is not proof of company integration. Treat `dta pilot-check --live` as the pilot acceptance gate.
+- Application retention covers local artifacts, runs, media jobs, workflow records, and local memory. MinIO lifecycle, external Postgres/Redis memory, and Pi JSONL session cleanup remain coordinated platform responsibilities.
 
 See [the complete production limitations](./docs/architecture.md#current-production-limitations).
 
@@ -349,7 +351,7 @@ app/api/          REST Agent Contract, runs/events, artifacts, sessions, workflo
 app/a2a/          A2A 1.0 HTTP binding
 components/       Web UI
 scripts/          dta CLI, TUI, server, and pilot readiness command
-lib/agents/       generic runtime, Meeting Agent, PM Agent, Agent registry
+lib/agents/       generic runtime, Meeting Agent, PM Agent, Department Agents, Agent registry
 lib/integrations/ storage, memory, n8n, media, and scanner adapters
 deploy/           Docker/Kubernetes/Helm deployment assets
 docs/             architecture, operations, media, n8n, CLI, and screenshots
@@ -365,7 +367,7 @@ After a PR passes CI and is merged:
 gh workflow run release.yml -f tag=vYYYY.MM.DD
 ```
 
-The workflow creates the version commit and tag, smoke-tests the exact image, blocks High/Critical CVEs, publishes `linux/amd64` and `linux/arm64` images to Docker Hub and GHCR, verifies manifests, generates SBOM/provenance attestations, publishes and verifies the OCI Helm chart, and then creates the GitHub Release. DTA is not published to npm.
+The workflow creates the version commit and tag, smoke-tests the exact image, blocks High/Critical CVEs, publishes `linux/amd64` and `linux/arm64` images to Docker Hub and GHCR, verifies manifests, generates SBOM/provenance attestations, stamps the same image digest into the Helm package, validates default and enterprise profiles, publishes and reads back the OCI chart, and only then creates the GitHub Release. DTA is not published to npm.
 
 ## License
 

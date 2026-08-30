@@ -8,6 +8,9 @@ import { getMemoryStore } from "@/lib/integrations/memory";
 import type { MemoryStore } from "@/lib/integrations/memory/memory-store";
 import { conversationMemoryKey } from "@/lib/integrations/memory/memory-key";
 import { recordAuditEvent } from "@/lib/observability/audit-log";
+import { Check } from "typebox/value";
+import type { AgentDefinition } from "./agent-registry";
+import { attachMeetingMediaJobToRun, readMeetingMediaJob } from "./meeting/meeting-media-job-store";
 
 interface AgentRunSubmitter {
   enqueue(input: AgentRunInput): AgentRun;
@@ -22,11 +25,22 @@ const BUILTIN_AGENT_ALIASES: Record<string, string> = {
 
 export class AgentContractNotFoundError extends Error {}
 export class AgentContractConfigurationError extends Error {}
+export class AgentContractInputError extends Error {}
 
 function safeTitle(request: AgentRequest, displayName: string): string {
   const inputTitle = request.input?.title;
   const source = typeof inputTitle === "string" && inputTitle.trim() ? inputTitle.trim() : request.task;
   return `${displayName}: ${source.replace(/[\r\n\t]+/g, " ").slice(0, 80)}`;
+}
+
+function meetingMediaJobIds(request: AgentRequest): string[] {
+  const attachments = request.input?.attachments;
+  if (!Array.isArray(attachments)) return [];
+  return [...new Set(attachments.flatMap((attachment) => {
+    if (!attachment || typeof attachment !== "object" || Array.isArray(attachment)) return [];
+    const jobId = (attachment as Record<string, unknown>).jobId;
+    return typeof jobId === "string" && /^[0-9a-f-]{36}$/i.test(jobId) ? [jobId] : [];
+  }))].slice(0, 8);
 }
 
 function buildContractPrompt(request: AgentRequest): string {
@@ -51,18 +65,38 @@ export class AgentContractService {
     private readonly memoryStore: MemoryStore = getMemoryStore(),
   ) {}
 
-  async submit(agentAlias: string, request: AgentRequest): Promise<AgentResponse> {
+  definition(agentAlias: string): AgentDefinition {
     const direct = BUILTIN_AGENT_ALIASES[agentAlias] ?? agentAlias;
     const suffixed = direct.endsWith("-agent") ? direct : `${direct}-agent`;
     const agentId = this.registry.get(direct)?.id ?? this.registry.get(suffixed)?.id;
     if (!agentId) throw new AgentContractNotFoundError(`Unknown public agent: ${agentAlias}`);
-    const definition = this.registry.require(agentId);
+    return this.registry.require(agentId);
+  }
+
+  async submit(agentAlias: string, request: AgentRequest): Promise<AgentResponse> {
+    const definition = this.definition(agentAlias);
+    const agentId = definition.id;
+    if (definition.inputSchema) {
+      let validInput: boolean;
+      try { validInput = Check(definition.inputSchema as never, request.input ?? {}); }
+      catch (error) {
+        throw new AgentContractConfigurationError(`Configured inputSchema for ${definition.id} is invalid: ${error instanceof Error ? error.message : String(error)}`);
+      }
+      if (!validInput) throw new AgentContractInputError(`Request input does not satisfy ${definition.id}'s configured inputSchema`);
+    }
     const metadata = this.registry.createMetadata({
       agentId,
       ...(request.userId ? { userId: request.userId } : {}),
       ...(request.projectId ? { projectId: request.projectId } : {}),
       ...(request.conversationId ? { conversationId: request.conversationId } : {}),
     });
+    const mediaJobIds = definition.agentType === "meeting" ? meetingMediaJobIds(request) : [];
+    for (const jobId of mediaJobIds) {
+      const job = readMeetingMediaJob(jobId);
+      if (!job || job.userId !== metadata.userId) throw new AgentContractInputError("Meeting media job is not owned by this request");
+      if (job.status !== "completed" || !job.result?.ok) throw new AgentContractInputError("Meeting media job has not completed successfully");
+      if (job.runId) throw new AgentContractInputError("Meeting media job is already attached to another Agent run");
+    }
     const memoryKey = conversationMemoryKey(metadata);
     let conversationMemory: unknown;
     if (memoryKey) {
@@ -78,6 +112,15 @@ export class AgentContractService {
     if (companyLlmRequested && !companyLlmReady) {
       throw new AgentContractConfigurationError("Company LLM gateway configuration is incomplete");
     }
+    if (companyLlmReady && definition.modelPolicy?.allowedProviders?.length && !definition.modelPolicy.allowedProviders.includes(config.llmProviderId)) {
+      throw new AgentContractConfigurationError(`Configured LLM provider is not allowed for ${definition.id}`);
+    }
+    if (companyLlmReady && definition.modelPolicy?.allowedModels?.length && !definition.modelPolicy.allowedModels.includes(config.llmModel!)) {
+      throw new AgentContractConfigurationError(`Configured LLM model is not allowed for ${definition.id}`);
+    }
+    if (companyLlmReady && definition.modelPolicy?.maxOutputTokens && config.llmMaxTokens > definition.modelPolicy.maxOutputTokens) {
+      throw new AgentContractConfigurationError(`LLM_MAX_TOKENS exceeds ${definition.id}'s manifest policy`);
+    }
     const run = this.submitter.enqueue({
       requestId: request.requestId,
       name: safeTitle(request, definition.displayName),
@@ -87,6 +130,9 @@ export class AgentContractService {
       agentMetadata: metadata,
       ...(companyLlmReady ? { provider: config.llmProviderId, modelId: config.llmModel } : {}),
     });
+    for (const jobId of mediaJobIds) {
+      attachMeetingMediaJobToRun(jobId, { runId: run.id, userId: metadata.userId! });
+    }
     recordAuditEvent({
       action: "agent.run.submit",
       actorId: metadata.userId ?? "system",

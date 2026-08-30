@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { AgentManifestValidationError, parseAgentManifest } from "../agents/agent-manifest";
 import { AgentRegistry } from "../agents/agent-registry";
@@ -79,5 +81,50 @@ describe("department Agent manifest", () => {
     expect(() => parseAgentManifest({ ...manifest(), version: 2 })).toThrow(AgentManifestValidationError);
     expect(() => parseAgentManifest({ version: 1, agents: [{ ...manifest().agents[0], id: "Knowledge" }] })).toThrow(/ending in -agent/);
     expect(() => parseAgentManifest({ version: 1, agents: [{ ...manifest().agents[0], systemPrompt: "" }] })).toThrow(/systemPrompt/);
+  });
+
+  it("rejects malformed JSON Schemas while loading the manifest", () => {
+    const base = { ...manifest().agents[0] };
+    expect(() => parseAgentManifest({ version: 2, agents: [{ ...base, outputSchema: { type: "banana" } }] })).toThrow(/unsupported JSON Schema type/);
+    expect(() => parseAgentManifest({ version: 2, agents: [{ ...base, outputSchema: { type: "object", properties: [] } }] })).toThrow(/properties must be an object/);
+    expect(() => parseAgentManifest({ version: 2, agents: [{ ...base, outputSchema: { type: "string", pattern: "[" } }] })).toThrow(/valid regular expression/);
+    expect(() => parseAgentManifest({ version: 2, agents: [{ ...base, outputSchema: { oneOf: [] } }] })).toThrow(/non-empty array/);
+  });
+
+  it("loads the governed version 2 contract and model policy", () => {
+    const v2 = {
+      ...manifest(),
+      version: 2,
+      agents: [{
+        ...manifest().agents[0],
+        inputSchema: { type: "object", required: ["topic"], properties: { topic: { type: "string" } } },
+        outputSchema: { type: "object", required: ["brief"], properties: { brief: { type: "string" } }, additionalProperties: false },
+        artifactTypes: ["KNOWLEDGE_BRIEF"],
+        reviewPolicy: "required",
+        allowedRoles: ["dta-knowledge"],
+        modelPolicy: { allowedProviders: ["company"], allowedModels: ["approved-model"], maxOutputTokens: 4096, timeoutSeconds: 300 },
+        evaluationFixtures: [{ name: "baseline", input: { topic: "pilot" }, expectedPaths: ["brief"] }],
+      }],
+    };
+    expect(parseAgentManifest(v2)).toEqual([expect.objectContaining({
+      id: "knowledge-agent",
+      inputSchema: expect.objectContaining({ type: "object" }),
+      outputSchema: expect.objectContaining({ required: ["brief"] }),
+      artifactTypes: ["KNOWLEDGE_BRIEF"],
+      reviewPolicy: "required",
+      allowedRoles: ["dta-knowledge"],
+      modelPolicy: expect.objectContaining({ maxOutputTokens: 4096, timeoutSeconds: 300 }),
+      evaluationFixtures: [{ name: "baseline", input: { topic: "pilot" }, expectedPaths: ["brief"] }],
+    })]);
+  });
+
+  it("keeps the checked-in mounted-Agent example valid", () => {
+    const example = JSON.parse(readFileSync(resolve(process.cwd(), "config/agents.example.json"), "utf8"));
+    expect(parseAgentManifest(example)).toEqual([expect.objectContaining({
+      id: "knowledge-agent",
+      reviewPolicy: "required",
+      allowedRoles: ["dta-knowledge"],
+      artifactTypes: ["KNOWLEDGE_BRIEF"],
+    })]);
   });
 });

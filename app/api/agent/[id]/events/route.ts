@@ -3,6 +3,7 @@ import { getRpcSession, startRpcSession } from "@/lib/rpc-manager";
 import { SessionManager } from "@earendil-works/pi-coding-agent";
 import { authorizeSessionRequest } from "@/lib/auth/session-access";
 import { AuthenticationError, authenticationErrorResponse } from "@/lib/auth/request-auth";
+import { beginSseConnection } from "@/lib/observability/runtime-metrics";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +38,7 @@ export async function GET(
 
   const stream = new ReadableStream({
     start(controller) {
+      const endMetric = beginSseConnection("pi_session", Boolean(req.headers.get("last-event-id")));
       let closed = false;
       const encode = (data: unknown) => {
         if (closed) return;
@@ -68,6 +70,7 @@ export async function GET(
         closed = true;
         clearInterval(heartbeat);
         unsubscribe();
+        endMetric();
         try { controller.close(); } catch { /* already closed */ }
       };
 

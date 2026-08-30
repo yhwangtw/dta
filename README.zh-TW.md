@@ -37,12 +37,12 @@
 
 | 能力 | 輸入 | 結果 | 備註 |
 |---|---|---|---|
-| **Meeting Agent** | Prompt、逐字稿、TXT、Markdown、DOCX、音訊或影片 | 摘要、決策、待辦、需求、逐字稿／媒體 artifacts 與 handoff actions | 預設需要人工審核 |
-| **PM Agent** | 直接輸入需求，或核准後的 Meeting handoff | 需求分析、URD、PRD、User Stories、Acceptance Criteria、設計脈絡與 Task Plan | 與 Meeting Agent 共用 runtime 與 artifact 模型 |
-| **可設定的部門 Agents** | JSON Agent manifest | 額外的 prompts、公開 skills 與 n8n workflow allowlist | 不需重建 image |
+| **Meeting Agent** | Prompt、逐字稿、TXT、Markdown、DOCX、音訊或影片 | 摘要、決策、待辦、需求、逐字稿／媒體 artifacts 與 handoff actions | 非同步影音工作；預設需要人工審核 |
+| **PM Agent** | 直接輸入需求，或核准後的 Meeting handoff | 需求分析、URD、PRD、User Stories、Acceptance Criteria、設計脈絡與 Task Plan | 結構化成果、revision 與人工審核 |
+| **可設定的部門 Agents** | Manifest v2 JSON | Schema 驗證後的結構化結果、文件、actions 與 n8n workflows | Contract 輸入／輸出、runtime model allowlist、timeout、artifact、role 與 review policy |
 | **Coding Agent** | Repository prompt 與開發工具 | Pi 原生 coding session | 本機／開發者模式；公司模式預設隱藏，除非使用者具有指定 coding role |
 
-Meeting 結果是結構化紀錄，不只是一段 Markdown。DTA 會保存來源 artifacts、串流標準化事件、記錄人工審核，並只在核准後釋出下游 actions。
+Meeting 結果是版本化的結構化紀錄，不只是一段 Markdown。每個決策、待辦與需求都有穩定 ID、證據引用、source-grounding confidence 與 `needsConfirmation`。DTA 會保存來源 artifacts、串流標準化事件、記錄 Meeting／PM／部門 Agent 的人工審核，並只在核准後釋出下游 actions 與 workflows。
 
 ### 會議影音需要哪些模型
 
@@ -151,7 +151,7 @@ Multi-architecture image 發布於 [`yhwangtn/dta`](https://hub.docker.com/r/yhw
 以下最小本機 profile 使用 local storage，並關閉所有外部 workflow／影音 adapters：
 
 ```bash
-export DTA_VERSION=v2026.08.29  # 範例；請選擇核准版本
+export DTA_VERSION=vYYYY.MM.DD  # 請換成公司核准版本
 
 docker run --rm -p 30141:30141 \
   -e DTA_AUTH_MODE=none \
@@ -199,6 +199,7 @@ DTA 只 build 一次，container 啟動時再注入環境設定。真實憑證�
 - [n8n 邊界與 payload contract](./docs/n8n.md)
 - [Meeting media pipeline](./docs/meeting-media-pipeline.md)
 - [公司 Pilot 驗收](./docs/company-pilot-readiness.md)
+- [維運、監控、留存、備份與復原](./docs/operations-runbook.md)
 
 ## 公司 Kubernetes 部署
 
@@ -212,11 +213,11 @@ DTA 只 build 一次，container 啟動時再注入環境設定。真實憑證�
 | OCI Helm chart | `oci://registry-1.docker.io/yhwangtn/dta-agent-platform` |
 | Release notes 與原始碼 | [GitHub Releases](https://github.com/yhwangtw/dta/releases) |
 
-Release tag 與 Helm chart version 使用不同合法格式。例如 `v2026.08.29` 對應 chart version `2026.8.29`。
+Release tag 與 Helm chart version 使用不同合法格式。例如 `v2026.08.30` 對應 chart version `2026.8.30`。
 
 ```bash
 export DTA_CHART=oci://registry-1.docker.io/yhwangtn/dta-agent-platform
-export DTA_CHART_VERSION=2026.8.29  # 範例；請選擇核准版本
+export DTA_CHART_VERSION=YYYY.M.D  # 請換成公司核准版本
 
 helm pull "$DTA_CHART" --version "$DTA_CHART_VERSION" --untar
 cp dta-agent-platform/values.company-example.yaml /secure/path/dta-values.yaml
@@ -225,7 +226,7 @@ cp dta-agent-platform/values.company-example.yaml /secure/path/dta-values.yaml
 安裝前：
 
 1. 取代所有範例 URL、hostname、storage class 與 policy values。
-2. 將 `image.digest` 固定為另外核准的 `yhwangtn/dta` multi-architecture digest。不要只看 chart version 就假設它選到目標 image。
+2. 確認已發布 chart 內的 `image.digest` 與核准的 `yhwangtn/dta` multi-architecture digest 完全一致。Release workflow 會自動蓋入並回讀驗證；只有公司 mirror 改變 digest 時才覆寫。
 3. 由 Vault、External Secrets 或平台團隊建立 `dta-agent-platform-secrets`。
 4. 把瀏覽器 UI 放在公司 Keycloak-aware ingress／auth proxy 後方。
 5. 保持 `replicaCount: 1`。
@@ -249,7 +250,7 @@ helm upgrade --install dta "$DTA_CHART" \
   -f /secure/path/dta-values.yaml
 ```
 
-Chart 預設使用 non-root、read-only root filesystem、移除 Linux capabilities、禁止 privilege escalation、不掛載 ServiceAccount token，並分開 startup／readiness／liveness probes。Secrets、values、upgrade 與 rollback 詳見 [Helm chart guide](./deploy/helm/dta-agent-platform/README.md)。
+Chart 預設使用 non-root、read-only root filesystem、移除 Linux capabilities、禁止 privilege escalation、不掛載 ServiceAccount token，並分開 startup／readiness／liveness probes。另提供 opt-in NetworkPolicy、authenticated ServiceMonitor、dry-run-first retention CronJob 與公司自備 backup image 的 PVC backup hook。Secrets、values、upgrade 與 rollback 詳見 [Helm chart guide](./deploy/helm/dta-agent-platform/README.md)。
 
 ## 對外 Agent 契約
 
@@ -306,16 +307,17 @@ dta pilot-check
 dta pilot-check --live --report dta-pilot-report.json
 ```
 
-Live suite 會驗證 Keycloak discovery／JWKS、選定 adapters、MinIO 上傳下載、真實 Meeting Agent LLM run、normalized SSE、User A／User B 隔離、人工核准，以及具 idempotency 且沒有業務副作用的 n8n probe。報告會移除敏感資訊，也不會保存 bearer token。詳見 [Company Pilot Readiness](./docs/company-pilot-readiness.md)。
+Live suite 會驗證 Keycloak discovery／JWKS、選定 adapters、MinIO 上傳下載、真實 Meeting Agent LLM run、MeetingResult 2.0 traceability、normalized SSE、User A／User B 對 sessions、metadata、run、SSE、workflow 與個人狀態的隔離、人工核准，以及具 idempotency 且沒有業務副作用的 n8n probe。報告會移除敏感資訊，也不會保存 bearer token。詳見 [Company Pilot Readiness](./docs/company-pilot-readiness.md)。
 
 ## 目前 production 限制
 
-- Run supervision、active Pi sessions、normalized event replay 與 Meeting／PM result records 尚未分散式化；即使使用 Postgres／Redis memory，production 仍必須是 **單一 replica**。
+- Run supervision、active Pi sessions、normalized event replay 與 Meeting／PM／部門 Agent result records 尚未分散式化；即使使用 Postgres／Redis memory，production 仍必須是 **單一 replica**。
 - DTA 會驗證 Keycloak token 與 ownership，但瀏覽器 login 交由公司 authenticated ingress／proxy。
-- 未設定 transcription 與選用 Vision provider 前，音訊／影片理解不可用。
+- 影音工作會持久化、顯示進度並支援取消／有限次重試；但上傳解析與單次 provider 呼叫仍會把單一檔案載入記憶體，尚未做 chunked upload／transcription。
 - n8n 是經審核的 workflow executor，不是主要 Agent runtime。完成權限、人工關卡與 idempotency 驗證前，保持 workflow tools 關閉。
 - 公司模式預設隱藏 File、Git、shell、provider、skill 與 Coding Agent；只有具有指定 coding role 的 principal 可以使用。
 - Image 發布成功不代表公司整合成功；Pilot acceptance gate 是 `dta pilot-check --live`。
+- 應用程式留存可清理 local artifacts／runs／media jobs／workflow records／local memory；MinIO lifecycle、外部 Postgres／Redis 記憶與 Pi JSONL session 清理仍由平台政策協調。
 
 完整內容請看 [production limitations](./docs/architecture.md#current-production-limitations)。
 
@@ -348,7 +350,7 @@ app/api/          REST Agent Contract、runs/events、artifacts、sessions、wor
 app/a2a/          A2A 1.0 HTTP binding
 components/       Web UI
 scripts/          dta CLI、TUI、server 與 pilot readiness command
-lib/agents/       generic runtime、Meeting Agent、PM Agent、Agent registry
+lib/agents/       generic runtime、Meeting Agent、PM Agent、部門 Agent、Agent registry
 lib/integrations/ storage、memory、n8n、media 與 scanner adapters
 deploy/           Docker／Kubernetes／Helm deployment assets
 docs/             架構、維運、media、n8n、CLI 與 screenshots
@@ -364,7 +366,7 @@ PR 通過 CI 並合併後：
 gh workflow run release.yml -f tag=vYYYY.MM.DD
 ```
 
-Workflow 會建立 version commit 與 tag、smoke-test exact image、阻擋 High／Critical CVE、將 `linux/amd64` 與 `linux/arm64` image 發布至 Docker Hub／GHCR、驗證 manifests、產生 SBOM／provenance attestations、發布並驗證 OCI Helm chart，最後才建立 GitHub Release。DTA 不發布至 npm。
+Workflow 會建立 version commit 與 tag、smoke-test exact image、阻擋 High／Critical CVE、將 `linux/amd64` 與 `linux/arm64` image 發布至 Docker Hub／GHCR、驗證 manifests、產生 SBOM／provenance attestations，把同一個 image digest 蓋入 Helm package、驗證預設與 enterprise profile、發布並回讀 OCI chart，最後才建立 GitHub Release。DTA 不發布至 npm。
 
 ## 授權
 

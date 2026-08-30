@@ -81,8 +81,10 @@ Interactive commands:
 ```
 
 `/attach` accepts the same text, DOCX, audio, and video formats as the Web UI.
-It uploads the source through `/api/meeting-agent/extract`; configured media
-providers create timestamped evidence before the next turn is submitted.
+It uploads the source through `/api/meeting-agent/extract`. Text and DOCX are
+extracted immediately; configured audio/video providers create a durable media
+job. The TUI polls that job to a terminal state before the next turn is
+submitted, while the same job remains visible and retryable from the Web UI.
 
 ## Batch runs
 
@@ -101,6 +103,12 @@ npm run dta -- run meeting \
   --file ./meeting.mp4 \
   --file ./agenda.docx
 ```
+
+For audio/video input the CLI waits for the durable server-side media job and
+submits the resulting transcript artifact and timestamped evidence to the Agent
+run. A server restart marks an interrupted job failed and retryable instead of
+silently losing it; operators can inspect or retry it through
+`/api/meeting-agent/media-jobs/{jobId}`.
 
 Use `--no-wait` for asynchronous submission and `--no-stream` when a polling-only
 client is preferred. Progress goes to stderr and the final Agent response goes

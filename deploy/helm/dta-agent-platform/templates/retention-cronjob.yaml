@@ -1,0 +1,52 @@
+{{- if .Values.retentionCronJob.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "dta-agent-platform.fullname" . }}-retention
+  labels:
+    {{- include "dta-agent-platform.labels" . | nindent 4 }}
+spec:
+  schedule: {{ .Values.retentionCronJob.schedule | quote }}
+  timeZone: {{ .Values.retentionCronJob.timeZone | quote }}
+  concurrencyPolicy: {{ .Values.retentionCronJob.concurrencyPolicy }}
+  successfulJobsHistoryLimit: {{ .Values.retentionCronJob.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ .Values.retentionCronJob.failedJobsHistoryLimit }}
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: {{ printf "%s-retention" (include "dta-agent-platform.name" .) | trunc 63 | trimSuffix "-" }}
+            app.kubernetes.io/instance: {{ .Release.Name }}
+            app.kubernetes.io/component: retention
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          securityContext:
+            {{- toYaml .Values.podSecurityContext | nindent 12 }}
+          containers:
+            - name: retention
+              image: {{ include "dta-agent-platform.image" . | quote }}
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              securityContext:
+                {{- toYaml .Values.securityContext | nindent 16 }}
+              env:
+                - name: DTA_RETENTION_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ required "retentionCronJob.tokenSecretName is required" .Values.retentionCronJob.tokenSecretName }}
+                      key: {{ .Values.retentionCronJob.tokenSecretKey }}
+                - name: DTA_RETENTION_TOKEN_HEADER
+                  value: {{ .Values.retentionCronJob.tokenHeader | quote }}
+              command: ["node", "-e"]
+              args:
+                - >-
+                  fetch('http://{{ include "dta-agent-platform.fullname" . }}:{{ .Values.service.port }}/api/admin/retention',
+                  {method:'POST',headers:{[process.env.DTA_RETENTION_TOKEN_HEADER]:'Bearer '+process.env.DTA_RETENTION_TOKEN}})
+                  .then(async r=>{const body=await r.text();console.log(body);if(!r.ok)process.exit(1)})
+                  .catch(error=>{console.error(error);process.exit(1)})
+              resources:
+                requests: { cpu: 25m, memory: 64Mi }
+                limits: { cpu: 250m, memory: 256Mi }
+{{- end }}

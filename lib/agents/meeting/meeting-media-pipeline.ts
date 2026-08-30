@@ -30,6 +30,26 @@ interface Dependencies {
   visionProvider?: VisionProvider;
 }
 
+export interface MeetingMediaPipelineProgress {
+  stage: "queued" | "probing" | "transcribing" | "vision" | "publishing" | "completed" | "failed" | "cancelled";
+  percent: number;
+  message: string;
+}
+
+interface PipelineControl {
+  signal?: AbortSignal;
+  onProgress?: (progress: MeetingMediaPipelineProgress) => void | Promise<void>;
+}
+
+function assertNotAborted(control: PipelineControl): void {
+  if (control.signal?.aborted) throw new Error("Meeting media processing was cancelled");
+}
+
+async function report(control: PipelineControl, progress: MeetingMediaPipelineProgress): Promise<void> {
+  assertNotAborted(control);
+  await control.onProgress?.(progress);
+}
+
 async function storeTranscript(
   store: ArtifactStore,
   name: string,
@@ -51,12 +71,13 @@ export async function understandMeetingMedia(input: {
   artifactId: string;
   name: string;
   kind: "audio" | "video";
-}, dependencies: Dependencies = {}): Promise<MeetingMediaUnderstanding> {
+}, dependencies: Dependencies = {}, control: PipelineControl = {}): Promise<MeetingMediaUnderstanding> {
   const store = dependencies.store ?? getArtifactStore();
   const processor = dependencies.mediaProcessor ?? getMediaProcessor();
   const transcriptionProvider = dependencies.transcriptionProvider ?? getTranscriptionProvider();
   const visionProvider = dependencies.visionProvider ?? getVisionProvider();
   const artifact = await store.get(input.artifactId);
+  await report(control, { stage: "probing", percent: 10, message: "Inspecting audio and video streams" });
   const ownership = artifactOwnershipMetadata(artifact.metadata);
   const warnings: string[] = [];
   let probe: MediaProbe | undefined;
@@ -72,13 +93,18 @@ export async function understandMeetingMedia(input: {
 
   if (processor.available) {
     try { probe = await processor.probe(artifact); }
-    catch (error) { warnings.push(error instanceof Error ? error.message : String(error)); }
+    catch (error) {
+      assertNotAborted(control);
+      warnings.push(error instanceof Error ? error.message : String(error));
+    }
   } else if (input.kind === "video") {
     warnings.push("FFmpeg media processing is not configured");
   }
+  await report(control, { stage: "probing", percent: 20, message: "Media inspection complete" });
 
   if (transcriptionProvider.available) {
     try {
+      await report(control, { stage: "transcribing", percent: 25, message: "Preparing meeting audio" });
       let transcriptionArtifact = artifact;
       if (input.kind === "video") {
         if (!processor.available || (probe && !probe.hasAudio)) throw new Error(probe && !probe.hasAudio ? "Video contains no audio stream" : "FFmpeg is required to extract video audio");
@@ -94,12 +120,15 @@ export async function understandMeetingMedia(input: {
         transcriptionArtifact = await store.get(audioReference.id);
       }
       transcript = await transcriptionProvider.transcribe(transcriptionArtifact);
+      assertNotAborted(control);
       transcript.text = transcript.text.trim();
       if (!transcript.text) throw new Error("Transcription returned no text");
       const transcriptReference = await storeTranscript(store, input.name, artifact.id, transcriptionProvider, transcript, ownership);
       transcriptArtifactId = transcriptReference.id;
       transcriptionStatus = "ready";
+      await report(control, { stage: "transcribing", percent: 55, message: "Transcript evidence created" });
     } catch (error) {
+      assertNotAborted(control);
       warnings.push(error instanceof Error ? error.message : String(error));
       transcriptionStatus = "failed";
     }
@@ -109,6 +138,7 @@ export async function understandMeetingMedia(input: {
 
   if (input.kind === "video" && visionProvider.available) {
     try {
+      await report(control, { stage: "vision", percent: 60, message: "Sampling video evidence" });
       if (!processor.available) throw new Error("FFmpeg is required to sample video keyframes");
       if (probe && !probe.hasVideo) throw new Error("Media contains no video stream");
       probe ??= await processor.probe(artifact);
@@ -125,6 +155,7 @@ export async function understandMeetingMedia(input: {
         keyframeArtifactIds.push(reference.id);
       }
       visual = await visionProvider.analyze({ sourceName: input.name, frames });
+      assertNotAborted(control);
       const visualReference = await store.put({
         type: "visual_analysis",
         title: `${input.name} — visual analysis`,
@@ -134,7 +165,9 @@ export async function understandMeetingMedia(input: {
       });
       visualAnalysisArtifactId = visualReference.id;
       visionStatus = "ready";
+      await report(control, { stage: "vision", percent: 85, message: "Visual evidence created" });
     } catch (error) {
+      assertNotAborted(control);
       warnings.push(error instanceof Error ? error.message : String(error));
       visionStatus = "failed";
     }
@@ -143,6 +176,7 @@ export async function understandMeetingMedia(input: {
   }
 
   const hasEvidence = Boolean(transcript?.text || visual?.observations.length);
+  await report(control, { stage: "publishing", percent: 90, message: "Publishing synchronized meeting evidence" });
   const content = hasEvidence ? buildMeetingMediaTimeline({ sourceName: input.name, transcript, visual }) : undefined;
   if (content) {
     const timelineReference = await store.put({
@@ -161,6 +195,7 @@ export async function understandMeetingMedia(input: {
     });
     timelineArtifactId = timelineReference.id;
   }
+  await report(control, { stage: "publishing", percent: 98, message: "Meeting evidence is ready" });
 
   return {
     ...(content ? { content } : {}),

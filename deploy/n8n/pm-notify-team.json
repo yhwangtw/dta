@@ -1,0 +1,149 @@
+{
+  "name": "DTA PM — Notify Team",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "pm-notify-team",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "a484b509-c295-4959-860c-a035c2b5eb22",
+      "name": "DTA Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -520,
+        0
+      ],
+      "webhookId": "pm-notify-team"
+    },
+    {
+      "parameters": {
+        "jsCode": "const request = $input.first().json;\nconst headers = request.headers ?? {};\nconst envelope = request.body ?? {};\nconst required = ['x-dta-workflow-id','x-dta-execution-id','idempotency-key','x-dta-run-id','x-dta-user-id','x-dta-actor-id'];\nconst missing = required.filter((name) => typeof headers[name] !== 'string' || !headers[name].trim());\nif (missing.length) throw new Error(`Missing DTA scope headers: ${missing.join(', ')}`);\nif (headers['x-dta-workflow-id'] !== 'pm-notify-team') throw new Error('Unexpected DTA workflow id');\nif (envelope.schemaVersion !== '1.0') throw new Error('Unsupported DTA envelope version');\nif (envelope.source?.runId !== headers['x-dta-run-id']) throw new Error('Run scope mismatch');\nif (envelope.source?.userId !== headers['x-dta-user-id']) throw new Error('User scope mismatch');\nif (envelope.execution?.id !== headers['x-dta-execution-id']) throw new Error('Execution scope mismatch');\nif (envelope.execution?.idempotencyKey !== headers['idempotency-key']) throw new Error('Idempotency scope mismatch');\nif (envelope.source?.reviewStatus !== 'approved') throw new Error('DTA result is not approved');\nreturn [{ json: { envelope, scope: { workflowId: headers['x-dta-workflow-id'], runId: headers['x-dta-run-id'], userId: headers['x-dta-user-id'], actorId: headers['x-dta-actor-id'], executionId: headers['x-dta-execution-id'], idempotencyKey: headers['idempotency-key'] } } }];"
+      },
+      "id": "5ada2bfa-12ad-4270-85b7-3e088a4a3826",
+      "name": "Validate DTA Scope",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -300,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const e = $json.envelope; return [{ json: { ...$json, payload: { text: `**PM package approved**\\n\\n${e.result?.requirementSummary || ''}\\n\\nArtifacts: ${(e.artifacts || []).map((a) => a.title).join(', ')}` } } }];"
+      },
+      "id": "d94250cf-1afe-4ad8-86f9-3058573ec481",
+      "name": "Build Integration Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -80,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.TEAMS_WEBHOOK_URL }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Idempotency-Key",
+              "value": "={{ $json.scope.idempotencyKey }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContent": "={{ JSON.stringify($json.payload) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "eeb046de-2711-404c-8d95-24b0795fcb2a",
+      "name": "Dispatch Approved Action",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        140,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: true, workflowId: 'pm-notify-team', executionId: $('Build Integration Payload').item.json.scope.executionId, targetStatus: $json.statusCode || 200 } }}",
+        "options": {}
+      },
+      "id": "4fcfc83e-dd44-4fca-8e3a-9e13138fe2ff",
+      "name": "Return Execution Evidence",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        360,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "DTA Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate DTA Scope",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate DTA Scope": {
+      "main": [
+        [
+          {
+            "node": "Build Integration Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Integration Payload": {
+      "main": [
+        [
+          {
+            "node": "Dispatch Approved Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dispatch Approved Action": {
+      "main": [
+        [
+          {
+            "node": "Return Execution Evidence",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "703c4a5f-23f2-4abc-853f-a70b020d6599",
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "dtaWorkflowSchemaVersion": "1.0"
+  },
+  "tags": []
+}

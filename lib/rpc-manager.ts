@@ -140,6 +140,7 @@ export class AgentSessionWrapper {
     private readonly webExtensionUI?: WebExtensionUIBridge,
     modelRegistry?: ModelRegistry,
     private readonly onActiveToolsChanged?: (toolNames: string[]) => void,
+    private readonly modelPolicy?: AgentRuntimeProfile["modelPolicy"],
   ) {
     this.currentInner = inner;
     this.currentCwd = cwd;
@@ -538,12 +539,25 @@ export class AgentSessionWrapper {
     return "deferred";
   }
 
+  private assertModelAllowed(provider: string | undefined, modelId: string | undefined): void {
+    if (!this.modelPolicy) return;
+    if (!this.modelPolicy.allowedProviders?.length && !this.modelPolicy.allowedModels?.length) return;
+    if (!provider || !modelId) throw new Error("This Department Agent requires an explicitly allowed model");
+    if (this.modelPolicy.allowedProviders?.length && !this.modelPolicy.allowedProviders.includes(provider)) {
+      throw new Error(`Model provider ${provider} is not allowed for this Department Agent`);
+    }
+    if (this.modelPolicy.allowedModels?.length && !this.modelPolicy.allowedModels.includes(modelId)) {
+      throw new Error(`Model ${modelId} is not allowed for this Department Agent`);
+    }
+  }
+
   async send(command: Record<string, unknown>): Promise<unknown> {
     this.resetIdleTimer();
     const type = command.type as string;
 
     switch (type) {
       case "prompt": {
+        this.assertModelAllowed(this.inner.model?.provider, this.inner.model?.id);
         // Snapshot the working tree before the run so its file changes can be
         // rolled back later (best-effort; no-op outside a git repo). Awaited so
         // the capture lands before the agent starts editing.
@@ -587,6 +601,7 @@ export class AgentSessionWrapper {
 
       case "set_model": {
         const { provider, modelId } = command as { provider: string; modelId: string };
+        this.assertModelAllowed(provider, modelId);
         await this.refreshModels();
         const registry = this.modelRegistry;
         if (!registry) throw new Error("Model registry is unavailable");
@@ -977,6 +992,7 @@ export async function startRpcSession(
       webExtensionUI,
       initialMetadata.modelRegistry,
       (nextToolNames) => { selectedToolNames = [...nextToolNames]; },
+      effectiveProfile?.modelPolicy,
     );
     const runtimeMetadata = (session: AgentSessionLike) => metadataBySession.get(session as unknown as object);
     const onSessionReplaced: SessionReplacementListener = (activeWrapper, previousSessionId, nextSessionId) => {

@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { createPublishPMResultTool } from "../agents/pm/pm-publish-tool";
-import { readPMRun } from "../agents/pm/pm-result-store";
+import { PMReviewValidationError, readPMRun, reviewPMRun } from "../agents/pm/pm-result-store";
 
 describe("publish_pm_result", () => {
   it("persists PM documents, structured references, and generic actions", async () => {
@@ -23,6 +23,8 @@ describe("publish_pm_result", () => {
     const stored = readPMRun(runId);
     expect(stored).toMatchObject({
       status: "completed",
+      reviewStatus: "needs_review",
+      revision: 1,
       result: { requirementSummary: "Create an auditable pilot workflow." },
       actions: [{ type: "workflow", target: "pm-create-jira-epic" }],
     });
@@ -30,5 +32,10 @@ describe("publish_pm_result", () => {
       "URD", "PRD", "USER_STORY", "ACCEPTANCE_CRITERIA", "DESIGN", "TASK_PLAN",
     ]);
     expect(stored?.artifacts).toHaveLength(6);
+    expect(() => reviewPMRun({ runId, decision: "rejected", actorId: "reviewer" })).toThrow(PMReviewValidationError);
+    expect(reviewPMRun({ runId, decision: "approved", actorId: "reviewer" })).toMatchObject({
+      reviewStatus: "approved",
+      reviewHistory: [expect.objectContaining({ actorId: "reviewer", status: "approved", revision: 1 })],
+    });
   });
 });

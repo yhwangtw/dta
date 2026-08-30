@@ -1,0 +1,153 @@
+{
+  "name": "DTA PM — Create Jira Epic",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "pm-create-jira-epic",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "6f37bee8-d537-4430-8c8d-67a7cdacc6f9",
+      "name": "DTA Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -520,
+        0
+      ],
+      "webhookId": "pm-create-jira-epic"
+    },
+    {
+      "parameters": {
+        "jsCode": "const request = $input.first().json;\nconst headers = request.headers ?? {};\nconst envelope = request.body ?? {};\nconst required = ['x-dta-workflow-id','x-dta-execution-id','idempotency-key','x-dta-run-id','x-dta-user-id','x-dta-actor-id'];\nconst missing = required.filter((name) => typeof headers[name] !== 'string' || !headers[name].trim());\nif (missing.length) throw new Error(`Missing DTA scope headers: ${missing.join(', ')}`);\nif (headers['x-dta-workflow-id'] !== 'pm-create-jira-epic') throw new Error('Unexpected DTA workflow id');\nif (envelope.schemaVersion !== '1.0') throw new Error('Unsupported DTA envelope version');\nif (envelope.source?.runId !== headers['x-dta-run-id']) throw new Error('Run scope mismatch');\nif (envelope.source?.userId !== headers['x-dta-user-id']) throw new Error('User scope mismatch');\nif (envelope.execution?.id !== headers['x-dta-execution-id']) throw new Error('Execution scope mismatch');\nif (envelope.execution?.idempotencyKey !== headers['idempotency-key']) throw new Error('Idempotency scope mismatch');\nif (envelope.source?.reviewStatus !== 'approved') throw new Error('DTA result is not approved');\nreturn [{ json: { envelope, scope: { workflowId: headers['x-dta-workflow-id'], runId: headers['x-dta-run-id'], userId: headers['x-dta-user-id'], actorId: headers['x-dta-actor-id'], executionId: headers['x-dta-execution-id'], idempotencyKey: headers['idempotency-key'] } } }];"
+      },
+      "id": "fe9cfdfb-b879-415d-89cf-56915beed292",
+      "name": "Validate DTA Scope",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -300,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const e = $json.envelope; return [{ json: { ...$json, payload: { fields: { project: { key: $env.JIRA_PROJECT_KEY }, issuetype: { name: 'Epic' }, summary: e.result?.requirementSummary?.slice(0, 240) || 'DTA product requirement', description: `DTA source run: ${e.source.runId}` } } } }];"
+      },
+      "id": "a7dc7e85-b598-408a-8e3c-3f9cd4a349ea",
+      "name": "Build Integration Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -80,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.JIRA_BASE_URL + '/rest/api/3/issue' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Idempotency-Key",
+              "value": "={{ $json.scope.idempotencyKey }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.JIRA_API_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContent": "={{ JSON.stringify($json.payload) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "9f6f9baf-b528-4844-8bb1-30400471c654",
+      "name": "Dispatch Approved Action",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        140,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: true, workflowId: 'pm-create-jira-epic', executionId: $('Build Integration Payload').item.json.scope.executionId, targetStatus: $json.statusCode || 200 } }}",
+        "options": {}
+      },
+      "id": "c91cc971-b209-4849-8dbe-2b8d1c979585",
+      "name": "Return Execution Evidence",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        360,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "DTA Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate DTA Scope",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate DTA Scope": {
+      "main": [
+        [
+          {
+            "node": "Build Integration Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Integration Payload": {
+      "main": [
+        [
+          {
+            "node": "Dispatch Approved Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dispatch Approved Action": {
+      "main": [
+        [
+          {
+            "node": "Return Execution Evidence",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "4f47cf07-f5f5-4da9-87ae-f08c0b0880dc",
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "dtaWorkflowSchemaVersion": "1.0"
+  },
+  "tags": []
+}

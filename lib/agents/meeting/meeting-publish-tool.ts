@@ -5,28 +5,45 @@ import { artifactOwnershipMetadata } from "@/lib/integrations/storage/artifact-a
 import type { AgentMetadata } from "@/lib/agents/agent-types";
 import { loadDtaConfig } from "@/lib/config/env";
 import { ensureMeetingRun, writeMeetingRun } from "./meeting-result-store";
-import type { MeetingResult } from "./meeting-types";
+import { normalizeMeetingResult } from "./meeting-types";
 
 export const PUBLISH_MEETING_RESULT_TOOL_NAME = "publish_meeting_result";
 
 const Owner = Type.Optional(Type.String({ maxLength: 500 }));
+const Evidence = Type.Array(Type.Object({
+  artifactId: Type.Optional(Type.String({ maxLength: 200 })),
+  source: Type.Optional(Type.String({ maxLength: 500 })),
+  timestamp: Type.Optional(Type.String({ maxLength: 100 })),
+  excerpt: Type.Optional(Type.String({ maxLength: 2_000 })),
+  speaker: Type.Optional(Type.String({ maxLength: 500 })),
+}), { maxItems: 50 });
+const Traceability = {
+  id: Type.Optional(Type.String({ maxLength: 200 })),
+  evidence: Type.Optional(Evidence),
+  confidence: Type.Optional(Type.Number({ minimum: 0, maximum: 1 })),
+  needsConfirmation: Type.Optional(Type.Boolean()),
+};
 const MeetingResultSchema = Type.Object({
+  schemaVersion: Type.Optional(Type.Literal("2.0")),
   title: Type.Optional(Type.String({ maxLength: 500 })),
   summary: Type.String({ minLength: 1, maxLength: 50_000 }),
   transcriptArtifactId: Type.Optional(Type.String({ maxLength: 200 })),
   decisions: Type.Array(Type.Object({
     text: Type.String({ minLength: 1, maxLength: 10_000 }),
     owner: Owner,
+    ...Traceability,
   }), { maxItems: 500 }),
   actionItems: Type.Array(Type.Object({
     title: Type.String({ minLength: 1, maxLength: 2_000 }),
     description: Type.Optional(Type.String({ maxLength: 10_000 })),
     owner: Owner,
     dueDate: Type.Optional(Type.String({ maxLength: 100 })),
+    ...Traceability,
   }), { maxItems: 500 }),
   requirements: Type.Array(Type.Object({
     title: Type.String({ minLength: 1, maxLength: 2_000 }),
     description: Type.String({ minLength: 1, maxLength: 20_000 }),
+    ...Traceability,
   }), { maxItems: 500 }),
 });
 
@@ -50,7 +67,8 @@ export function createPublishMeetingResultTool(
     async execute(_toolCallId, params) {
       const store = getArtifactStore();
       const ownership = artifactOwnershipMetadata({ ...scope, runId });
-      const result = params.result as MeetingResult;
+      const result = normalizeMeetingResult(params.result, runId);
+      if (!result) throw new Error("MeetingResult is invalid");
       const transcriptArtifact = result.transcriptArtifactId
         ? await store.get(result.transcriptArtifactId)
         : null;
@@ -59,6 +77,18 @@ export function createPublishMeetingResultTool(
       }
       if (transcriptArtifact && scope.userId && artifactOwnershipMetadata(transcriptArtifact.metadata).userId !== scope.userId) {
         throw new Error("transcriptArtifactId is not owned by this Meeting Agent run");
+      }
+      const evidenceArtifactIds = new Set([
+        ...result.decisions.flatMap((entry) => entry.evidence.map((evidence) => evidence.artifactId)),
+        ...result.actionItems.flatMap((entry) => entry.evidence.map((evidence) => evidence.artifactId)),
+        ...result.requirements.flatMap((entry) => entry.evidence.map((evidence) => evidence.artifactId)),
+      ].filter((id): id is string => Boolean(id)));
+      for (const artifactId of evidenceArtifactIds) {
+        const artifact = await store.get(artifactId);
+        const artifactOwner = artifactOwnershipMetadata(artifact.metadata).userId;
+        if (scope.userId && artifactOwner !== scope.userId) {
+          throw new Error(`Evidence artifact ${artifactId} is not owned by this Meeting Agent user`);
+        }
       }
       const [jsonArtifact, markdownArtifact] = await Promise.all([
         store.put({

@@ -79,7 +79,7 @@ describe("attention center", () => {
       reviewStatus: "needs_review",
       revision: 1,
       reviewHistory: [],
-      result: { summary: "Pilot decision", decisions: [], actionItems: [], requirements: [] },
+      result: { schemaVersion: "2.0", summary: "Pilot decision", decisions: [], actionItems: [], requirements: [] },
       updatedAt: "2026-08-10T09:45:00.000Z",
     }];
     const result = buildAttentionItems({ agentRuns: [], scheduleRuns: [], sessions: [], meetingRuns }, new Date("2026-08-10T10:00:00.000Z"));

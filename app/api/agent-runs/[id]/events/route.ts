@@ -2,6 +2,7 @@ import { AgentContractNotFoundError, getAgentContractService } from "@/lib/agent
 import { getAgentEventBus, type AgentEventEnvelope } from "@/lib/agents/agent-event-bus";
 import type { GenericAgentEvent } from "@/lib/agents/agent-types";
 import { AuthenticationError, assertRunAccess, authenticateRequest, authenticationErrorResponse } from "@/lib/auth/request-auth";
+import { beginSseConnection } from "@/lib/observability/runtime-metrics";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -38,6 +39,7 @@ export async function GET(
 
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
+      const endMetric = beginSseConnection("agent_run", afterSequence > 0);
       let closed = false;
       let unsubscribe = () => {};
       let heartbeat: ReturnType<typeof setInterval> | null = null;
@@ -50,6 +52,7 @@ export async function GET(
         closed = true;
         unsubscribe();
         if (heartbeat) clearInterval(heartbeat);
+        endMetric();
         try { controller.close(); } catch { /* stream already closed */ }
       };
       const send = (envelope: AgentEventEnvelope) => {

@@ -1,3 +1,6 @@
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 type CliModule = typeof import("../../scripts/dta-core.mjs");
@@ -56,6 +59,30 @@ describe("DTA multi-entry CLI", () => {
       method: "POST",
       headers: expect.objectContaining({ Authorization: "Bearer keycloak-token", "Content-Type": "application/json" }),
     }));
+  });
+
+  it("waits for an asynchronous Meeting media job before returning CLI attachments", async () => {
+    const root = mkdtempSync(join(tmpdir(), "dta-cli-media-"));
+    const source = join(root, "meeting.mp3");
+    writeFileSync(source, Buffer.from([1, 2, 3]));
+    const fetchImpl = vi.fn(async (input: string | URL | Request, _init?: RequestInit) => {
+      const url = new URL(String(input));
+      if (url.pathname === "/api/meeting-agent/extract") {
+        return new Response(JSON.stringify({ results: [{ name: "meeting.mp3", size: 3, ok: true, kind: "audio", chars: 0, jobId: "job-1" }] }), { status: 202, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.pathname === "/api/meeting-agent/media-jobs/job-1") {
+        return new Response(JSON.stringify({ job: { id: "job-1", status: "completed", result: { name: "meeting.mp3", size: 3, ok: true, kind: "audio", chars: 32, content: "[00:01] Pilot approved", jobId: "job-1" } } }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response("not found", { status: 404 });
+    });
+    try {
+      const client = new cli.DtaClient({ baseUrl: "https://dta.example.test", token: undefined, fetchImpl });
+      const uploaded = await client.uploadMeetingFiles([source]);
+      expect(uploaded.results).toEqual([expect.objectContaining({ ok: true, jobId: "job-1", chars: 32 })]);
+      expect(fetchImpl).toHaveBeenCalledTimes(2);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 
   it("keeps batch stdout machine-readable and returns immediately with --no-wait", async () => {

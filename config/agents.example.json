@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "agents": [
     {
       "id": "knowledge-agent",
@@ -9,6 +9,76 @@
       "enabledByDefault": false,
       "workflowAllowlist": [
         "knowledge-publish"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "topic"
+        ],
+        "properties": {
+          "topic": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sourceArtifactIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": true
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "brief",
+          "sources"
+        ],
+        "properties": {
+          "brief": {
+            "type": "string"
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "artifactTypes": [
+        "KNOWLEDGE_BRIEF"
+      ],
+      "reviewPolicy": "required",
+      "allowedRoles": [
+        "dta-knowledge"
+      ],
+      "modelPolicy": {
+        "allowedProviders": [
+          "dta-company"
+        ],
+        "allowedModels": [
+          "company-model"
+        ],
+        "maxOutputTokens": 4096,
+        "timeoutSeconds": 300
+      },
+      "evaluationFixtures": [
+        {
+          "name": "baseline source-backed brief",
+          "input": {
+            "topic": "pilot readiness",
+            "sourceArtifactIds": [
+              "example-artifact-id"
+            ]
+          },
+          "expectedPaths": [
+            "brief",
+            "sources"
+          ]
+        }
       ],
       "skills": [
         {

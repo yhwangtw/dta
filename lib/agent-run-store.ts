@@ -146,3 +146,17 @@ export function reconcileInterruptedAgentRuns(
   if (changed > 0) writeAgentRunStore(store, path);
   return changed;
 }
+
+export function pruneAgentRunsBefore(cutoffMs: number, protectedRunIds: Set<string>, dryRun: boolean, path = agentRunStorePath()): number {
+  const store = readAgentRunStore(path);
+  const removable = store.runs.filter((run) => !ACTIVE_AGENT_RUN_STATUSES.has(run.status)
+    && !protectedRunIds.has(run.id)
+    && !protectedRunIds.has(run.agentMetadata?.runId ?? "")
+    && Date.parse(run.finishedAt ?? run.createdAt) < cutoffMs);
+  if (!dryRun && removable.length > 0) {
+    const ids = new Set(removable.map((run) => run.id));
+    store.runs = store.runs.filter((run) => !ids.has(run.id));
+    writeAgentRunStore(store, path);
+  }
+  return removable.length;
+}

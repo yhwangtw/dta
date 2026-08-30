@@ -681,7 +681,7 @@ export function AppShell() {
   const activeDomainAgent = isDomainAgentType(activeAgentMetadata?.agentType);
   const legacyShell = codingWorkspaceAccess
     && !showDtaHome
-    && Boolean(state.selectedSession)
+    && Boolean(state.selectedSession || (state.newSessionCwd && !pendingStartupAgentMetadata))
     && !activeDomainAgent;
 
   const handleLaunchMeetingAgent = useCallback(({ prompt, runId, cwd }: { prompt: string; runId: string; cwd: string }) => {

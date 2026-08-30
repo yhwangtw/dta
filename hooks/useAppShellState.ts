@@ -149,7 +149,11 @@ export function useAppShellState(): {
       // handleSelectSession just wrote.
       if (selectedSessionRef.current?.cwd === cwd) return;
       setSelectedSession((prev) => (prev && prev.cwd !== cwd ? null : prev));
-      setNewSessionCwd((prev) => (prev && prev !== cwd ? null : prev));
+      // An explicit project/worktree pick starts a fresh coding conversation
+      // in that workspace. Keeping the cwd as the new-session target also
+      // prevents the stale ?session= restore from remounting the previous
+      // project while router.replace("/") is still settling.
+      setNewSessionCwd(cwd);
       setSessionKey((k) => k + 1);
       setBranchTree([]);
       setBranchActiveLeafId(null);

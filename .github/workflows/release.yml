@@ -382,7 +382,7 @@ jobs:
           RELEASE_CHART_PATH=".release/chart/${HELM_CHART_NAME}"
           node scripts/stamp-helm-release-image.mjs \
             "$RELEASE_CHART_PATH" \
-            "$DOCKERHUB_IMAGE_NAME" \
+            "docker.io/${DOCKERHUB_IMAGE_NAME}" \
             "$RELEASE_TAG" \
             "$IMAGE_DIGEST"
           helm lint "$RELEASE_CHART_PATH"

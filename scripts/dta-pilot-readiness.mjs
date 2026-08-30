@@ -4,6 +4,132 @@ export const PILOT_WORKFLOW_ID = "meeting-pilot-readiness";
 
 const TERMINAL_STATUSES = new Set(["completed", "failed", "waiting_for_input"]);
 
+// Health, readiness, the legacy shared-password gate, and protocol discovery
+// documents are intentionally public. Every company/user data surface below
+// must reject a request before parsing resource identifiers or request bodies.
+export const PROTECTED_ROUTE_PROBES = [
+  ["GET", "/api/admin/pilot-readiness"],
+  ["POST", "/api/admin/retention"],
+  ["GET", "/api/agent-runs"],
+  ["POST", "/api/agent-runs"],
+  ["PATCH", "/api/agent-runs"],
+  ["GET", "/api/agent-runs/missing"],
+  ["GET", "/api/agent-runs/missing/events"],
+  ["POST", "/api/agent-runs/missing/retry"],
+  ["POST", "/api/agent-runs/missing/cancel"],
+  ["GET", "/api/agent-sessions/missing/metadata"],
+  ["GET", "/api/agent/missing"],
+  ["POST", "/api/agent/missing"],
+  ["POST", "/api/agent/missing/command"],
+  ["GET", "/api/agent/missing/context-report"],
+  ["GET", "/api/agent/missing/events"],
+  ["GET", "/api/agent/missing/extensions"],
+  ["POST", "/api/agent/missing/extensions"],
+  ["POST", "/api/agent/missing/import"],
+  ["POST", "/api/agent/missing/summarize"],
+  ["POST", "/api/agent/new"],
+  ["GET", "/api/agents"],
+  ["POST", "/api/agents/meeting/run"],
+  ["POST", "/api/agents/meeting/workspace"],
+  ["GET", "/api/artifacts/missing"],
+  ["DELETE", "/api/artifacts/missing"],
+  ["GET", "/api/attention"],
+  ["GET", "/api/audit-events"],
+  ["GET", "/api/auth/all-providers"],
+  ["GET", "/api/auth/api-key/openai"],
+  ["POST", "/api/auth/api-key/openai"],
+  ["DELETE", "/api/auth/api-key/openai"],
+  ["GET", "/api/auth/me"],
+  ["GET", "/api/auth/providers"],
+  ["POST", "/api/auth/login/openai"],
+  ["GET", "/api/auth/login/openai"],
+  ["POST", "/api/auth/logout/openai"],
+  ["DELETE", "/api/conversations/missing/memory"],
+  ["GET", "/api/department-agent/runs"],
+  ["POST", "/api/department-agent/runs/missing/review"],
+  ["POST", "/api/cwd/browse"],
+  ["POST", "/api/cwd/validate"],
+  ["POST", "/api/default-cwd"],
+  ["GET", "/api/files/missing"],
+  ["PUT", "/api/files/missing"],
+  ["POST", "/api/files/missing"],
+  ["DELETE", "/api/files/missing"],
+  ["GET", "/api/files/grep"],
+  ["GET", "/api/files/insights"],
+  ["GET", "/api/files/search"],
+  ["GET", "/api/git/changes"],
+  ["POST", "/api/git/commit"],
+  ["GET", "/api/git/file-diff"],
+  ["GET", "/api/git/file-hunks"],
+  ["POST", "/api/git/file-hunks"],
+  ["GET", "/api/git/snapshots"],
+  ["POST", "/api/git/snapshots"],
+  ["GET", "/api/git/snapshots/file"],
+  ["POST", "/api/git/snapshots/restore"],
+  ["GET", "/api/home"],
+  ["POST", "/api/meeting-agent/extract", "form"],
+  ["GET", "/api/meeting-agent/media-jobs"],
+  ["GET", "/api/meeting-agent/media-jobs/missing"],
+  ["POST", "/api/meeting-agent/media-jobs/missing"],
+  ["DELETE", "/api/meeting-agent/media-jobs/missing"],
+  ["GET", "/api/meeting-agent/runs"],
+  ["POST", "/api/meeting-agent/runs/missing/review"],
+  ["POST", "/api/meeting-agent/workspace"],
+  ["GET", "/api/models-config"],
+  ["PUT", "/api/models-config"],
+  ["POST", "/api/models-config/test"],
+  ["GET", "/api/models"],
+  ["POST", "/api/models"],
+  ["GET", "/api/packages"],
+  ["POST", "/api/packages"],
+  ["POST", "/api/pm-agent/workspace"],
+  ["GET", "/api/pm-agent/runs"],
+  ["POST", "/api/pm-agent/runs/missing/review"],
+  ["GET", "/api/projects/discover"],
+  ["GET", "/api/prompts"],
+  ["POST", "/api/prompts"],
+  ["DELETE", "/api/prompts"],
+  ["GET", "/api/provider-health"],
+  ["GET", "/api/push"],
+  ["POST", "/api/push"],
+  ["DELETE", "/api/push"],
+  ["GET", "/api/schedules"],
+  ["POST", "/api/schedules"],
+  ["PATCH", "/api/schedules/missing"],
+  ["DELETE", "/api/schedules/missing"],
+  ["POST", "/api/schedules/missing/run"],
+  ["GET", "/api/schedules/wake"],
+  ["POST", "/api/schedules/wake"],
+  ["GET", "/api/search/semantic"],
+  ["GET", "/api/sessions"],
+  ["GET", "/api/sessions/missing"],
+  ["PATCH", "/api/sessions/missing"],
+  ["DELETE", "/api/sessions/missing"],
+  ["POST", "/api/sessions/missing/clone"],
+  ["GET", "/api/sessions/missing/context"],
+  ["GET", "/api/sessions/missing/export"],
+  ["GET", "/api/sessions/missing/export-md"],
+  ["GET", "/api/sessions/analytics"],
+  ["GET", "/api/sessions/archive"],
+  ["POST", "/api/sessions/archive"],
+  ["DELETE", "/api/sessions/archive"],
+  ["GET", "/api/sessions/pins"],
+  ["POST", "/api/sessions/pins"],
+  ["DELETE", "/api/sessions/pins"],
+  ["GET", "/api/sessions/search"],
+  ["GET", "/api/sessions/tags"],
+  ["POST", "/api/sessions/tags"],
+  ["DELETE", "/api/sessions/tags"],
+  ["GET", "/api/skills"],
+  ["PATCH", "/api/skills"],
+  ["POST", "/api/skills/install"],
+  ["POST", "/api/skills/search"],
+  ["GET", "/api/tgd/artifacts"],
+  ["GET", "/api/workflows?agentId=meeting-agent"],
+  ["POST", "/api/workflows/missing/execute"],
+  ["GET", "/api/worktrees"],
+];
+
 function cleanBaseUrl(value) {
   return String(value || "http://127.0.0.1:30141").replace(/\/+$/, "");
 }
@@ -33,6 +159,20 @@ function claimAudience(claim) {
   return typeof claim === "string" ? [claim] : Array.isArray(claim) ? claim.filter((item) => typeof item === "string") : [];
 }
 
+function claimRoles(claims) {
+  const roles = new Set();
+  const realmRoles = claims?.realm_access?.roles;
+  if (Array.isArray(realmRoles)) for (const role of realmRoles) if (typeof role === "string") roles.add(role);
+  const resources = claims?.resource_access;
+  if (resources && typeof resources === "object") {
+    for (const resource of Object.values(resources)) {
+      if (!resource || typeof resource !== "object" || !Array.isArray(resource.roles)) continue;
+      for (const role of resource.roles) if (typeof role === "string") roles.add(role);
+    }
+  }
+  return [...roles].sort();
+}
+
 function tokenEvidence(token) {
   const { header, claims } = decodeJwt(token);
   if (header.alg !== "RS256") throw new Error(`Token algorithm must be RS256, received ${String(header.alg || "missing")}`);
@@ -44,6 +184,7 @@ function tokenEvidence(token) {
   return {
     issuer: claims.iss.replace(/\/+$/, ""),
     audience: claimAudience(claims.aud),
+    roles: claimRoles(claims),
     expiresAt: expiresAt.toISOString(),
     subjectHash: sha256(claims.sub).slice(0, 16),
     keyId: typeof header.kid === "string" ? header.kid : undefined,
@@ -97,6 +238,25 @@ async function rawRequest(fetchImpl, url, { token, method = "GET", body, headers
   return response;
 }
 
+async function verifyUnauthenticatedRouteMatrix(fetchImpl, baseUrl) {
+  const failures = [];
+  for (const [method, path, bodyType] of PROTECTED_ROUTE_PROBES) {
+    const headers = { Accept: "application/json" };
+    let body;
+    if (method !== "GET") {
+      if (bodyType === "form") body = new FormData();
+      else {
+        headers["Content-Type"] = "application/json";
+        body = "{}";
+      }
+    }
+    const response = await fetchImpl(`${baseUrl}${path}`, { method, headers, ...(body !== undefined ? { body } : {}), redirect: "manual" });
+    if (response.status !== 401) failures.push(`${method} ${path} -> ${response.status}`);
+  }
+  if (failures.length) throw new Error(`Protected route authentication failed: ${failures.join("; ")}`);
+  return { protectedHandlers: PROTECTED_ROUTE_PROBES.length, expectedStatus: 401 };
+}
+
 function requiredAdapterProblems(configuration, workflowId) {
   const adapters = configuration?.adapters ?? {};
   const problems = [];
@@ -110,13 +270,19 @@ function requiredAdapterProblems(configuration, workflowId) {
 
 function structuredMeetingResult(response) {
   const result = response?.result;
+  const traceable = (item) => item && typeof item === "object"
+    && typeof item.id === "string" && item.id.length > 0
+    && Array.isArray(item.evidence)
+    && typeof item.confidence === "number" && item.confidence >= 0 && item.confidence <= 1
+    && typeof item.needsConfirmation === "boolean";
   return Boolean(
     response?.status === "completed"
     && result && typeof result === "object"
+    && result.schemaVersion === "2.0"
     && typeof result.summary === "string" && result.summary.trim()
-    && Array.isArray(result.decisions)
-    && Array.isArray(result.actionItems)
-    && Array.isArray(result.requirements),
+    && Array.isArray(result.decisions) && result.decisions.every(traceable)
+    && Array.isArray(result.actionItems) && result.actionItems.every(traceable)
+    && Array.isArray(result.requirements) && result.requirements.every(traceable),
   );
 }
 
@@ -272,11 +438,9 @@ export async function runCompanyPilotReadiness(options = {}) {
       return { enabledAgentIds: ids };
     });
 
-    await runCheck({ id: "dta.auth_rejection", category: "keycloak", name: "Unauthenticated API rejection", required: true, successMessage: "Unauthenticated API access is rejected" }, async () => {
-      const response = await fetchImpl(`${baseUrl}/api/agents`, { headers: { Accept: "application/json" }, redirect: "manual" });
-      if (response.status !== 401) throw new Error(`Expected HTTP 401 without a token, received HTTP ${response.status}`);
-      return { status: response.status, challenge: response.headers.get("www-authenticate") || undefined };
-    });
+    await runCheck({ id: "dta.auth_rejection", category: "keycloak", name: "Protected route authentication matrix", required: true, successMessage: "Every protected HTTP handler rejects unauthenticated access" }, async () => (
+      verifyUnauthenticatedRouteMatrix(fetchImpl, baseUrl)
+    ));
 
     await runCheck({ id: "dta.admin_configuration", category: "configuration", name: "Company adapter selection", required: true, successMessage: "Keycloak, company LLM, MinIO, and n8n are selected" }, async () => {
       const { body } = await jsonRequest(fetchImpl, `${baseUrl}/api/admin/pilot-readiness`, { token: primaryToken });
@@ -412,13 +576,99 @@ export async function runCompanyPilotReadiness(options = {}) {
         }
         return { runStatus: runResponse.status, sseStatus: eventsResponse.status };
       });
+
+      await runCheck({ id: "ownership.surface_matrix", category: "ownership", name: "Cross-user API surface matrix", required: true, successMessage: "User B cannot observe or mutate User A's session-scoped state" }, async () => {
+        const { body: runList } = await jsonRequest(fetchImpl, `${baseUrl}/api/agent-runs?limit=200`, { token: primaryToken });
+        const rawRun = Array.isArray(runList?.runs) ? runList.runs.find((run) => run?.id === state.runId) : null;
+        const sessionId = rawRun?.sessionId;
+        if (typeof sessionId !== "string" || !sessionId) throw new Error("Pilot run does not expose its owned Pi session id");
+
+        const denied = [
+          ["GET", `/api/sessions/${encodeURIComponent(sessionId)}`],
+          ["GET", `/api/agent-sessions/${encodeURIComponent(sessionId)}/metadata`],
+          ["GET", `/api/agent/${encodeURIComponent(sessionId)}`],
+          ["GET", `/api/agent/${encodeURIComponent(sessionId)}/events`],
+          ["GET", `/api/workflows?agentId=meeting-agent&sourceRunId=${encodeURIComponent(state.runId)}`],
+        ];
+        for (const [method, path] of denied) {
+          const response = await fetchImpl(`${baseUrl}${path}`, { method, headers: authHeaders(secondaryToken), redirect: "manual" });
+          if (response.status !== 404) throw new Error(`Expected User B ${method} ${path} to return 404, received ${response.status}`);
+        }
+        for (const [path, body] of [
+          ["/api/sessions/tags", { id: sessionId, tag: "pilot-private" }],
+          ["/api/sessions/pins", { id: sessionId }],
+          ["/api/sessions/archive", { id: sessionId }],
+          [`/api/meeting-agent/runs/${encodeURIComponent(state.runId)}/review`, { decision: "approved" }],
+        ]) {
+          const response = await fetchImpl(`${baseUrl}${path}`, {
+            method: "POST",
+            headers: authHeaders(secondaryToken, true),
+            body: JSON.stringify(body),
+          });
+          if (response.status !== 404) throw new Error(`Expected User B POST ${path} to return 404, received ${response.status}`);
+        }
+
+        const [{ body: sessions }, { body: meetings }, { body: attention }] = await Promise.all([
+          jsonRequest(fetchImpl, `${baseUrl}/api/sessions`, { token: secondaryToken }),
+          jsonRequest(fetchImpl, `${baseUrl}/api/meeting-agent/runs`, { token: secondaryToken }),
+          jsonRequest(fetchImpl, `${baseUrl}/api/attention`, { token: secondaryToken }),
+        ]);
+        if (sessions?.sessions?.some((session) => session?.id === sessionId)) throw new Error("User B session listing contains User A's session");
+        if (meetings?.runs?.some((run) => run?.runId === state.runId)) throw new Error("User B Meeting listing contains User A's run");
+        if (attention?.items?.some((item) => item?.sessionId === sessionId || String(item?.id || "").includes(state.runId))) {
+          throw new Error("User B attention center contains User A's work");
+        }
+
+        const promptId = `pilot-${randomUUID()}`;
+        try {
+          await jsonRequest(fetchImpl, `${baseUrl}/api/prompts`, {
+            token: primaryToken,
+            method: "POST",
+            body: { id: promptId, name: "pilot-private", body: "Private pilot prompt" },
+          });
+          const [{ body: ownerPrompts }, { body: otherPrompts }] = await Promise.all([
+            jsonRequest(fetchImpl, `${baseUrl}/api/prompts`, { token: primaryToken }),
+            jsonRequest(fetchImpl, `${baseUrl}/api/prompts`, { token: secondaryToken }),
+          ]);
+          if (!ownerPrompts?.prompts?.some((prompt) => prompt?.id === promptId)) throw new Error("User A cannot read the prompt it created");
+          if (otherPrompts?.prompts?.some((prompt) => prompt?.id === promptId)) throw new Error("User B can read User A's prompt");
+        } finally {
+          await jsonRequest(fetchImpl, `${baseUrl}/api/prompts`, {
+            token: primaryToken,
+            method: "DELETE",
+            body: { id: promptId },
+          }).catch(() => {});
+        }
+        return { runId: state.runId, sessionId, deniedOwnerRoutes: denied.length + 4, isolatedListings: 4 };
+      });
+
+      await runCheck({ id: "ownership.standard_user_boundaries", category: "ownership", name: "Standard-user Coding boundary", required: true, successMessage: "A standard company user cannot access Coding, File, Git, or Schedule surfaces" }, async () => {
+        const { body: identity } = await jsonRequest(fetchImpl, `${baseUrl}/api/auth/me`, { token: secondaryToken });
+        if (identity?.capabilities?.codingWorkspace !== false) {
+          throw new Error("Secondary pilot identity must be a standard user without Coding access");
+        }
+        const probes = [
+          "/api/files/search?q=pilot",
+          "/api/git/changes",
+          "/api/schedules",
+        ];
+        for (const path of probes) {
+          const response = await fetchImpl(`${baseUrl}${path}`, { headers: authHeaders(secondaryToken), redirect: "manual" });
+          if (response.status !== 403) throw new Error(`Expected User B GET ${path} to return 403, received ${response.status}`);
+        }
+        return { codingWorkspace: false, deniedSurfaces: probes.length };
+      });
     } else {
       addSkipped({ id: "ownership.run_sse_isolation", category: "ownership", name: "Cross-user run and SSE isolation", required: true }, "Secondary token is unavailable or invalid");
+      addSkipped({ id: "ownership.surface_matrix", category: "ownership", name: "Cross-user API surface matrix", required: true }, "Secondary token is unavailable or invalid");
+      addSkipped({ id: "ownership.standard_user_boundaries", category: "ownership", name: "Standard-user Coding boundary", required: true }, "Secondary token is unavailable or invalid");
     }
   } else {
     addSkipped({ id: "sse.normalized_events", category: "sse", name: "Normalized SSE events", required: true }, "Meeting run was not created");
     addSkipped({ id: "llm.structured_result", category: "llm", name: "Meeting structured result", required: true }, "Meeting run was not created");
     addSkipped({ id: "ownership.run_sse_isolation", category: "ownership", name: "Cross-user run and SSE isolation", required: true }, "Meeting run was not created");
+    addSkipped({ id: "ownership.surface_matrix", category: "ownership", name: "Cross-user API surface matrix", required: true }, "Meeting run was not created");
+    addSkipped({ id: "ownership.standard_user_boundaries", category: "ownership", name: "Standard-user Coding boundary", required: true }, "Meeting run was not created");
   }
 
   if (state.run?.status === "completed") {
@@ -490,6 +740,8 @@ function liveDefinitions() {
     { id: "sse.normalized_events", category: "sse", name: "Normalized SSE events", required: true },
     { id: "llm.structured_result", category: "llm", name: "Meeting structured result", required: true },
     { id: "ownership.run_sse_isolation", category: "ownership", name: "Cross-user run and SSE isolation", required: true },
+    { id: "ownership.surface_matrix", category: "ownership", name: "Cross-user API surface matrix", required: true },
+    { id: "ownership.standard_user_boundaries", category: "ownership", name: "Standard-user Coding boundary", required: true },
     { id: "meeting.review_gate", category: "governance", name: "Meeting review gate", required: true },
     { id: "n8n.workflow_and_idempotency", category: "n8n", name: "n8n scope and idempotency", required: true },
     { id: "minio.pilot_cleanup", category: "minio", name: "Pilot artifact cleanup", required: true },

@@ -1,9 +1,9 @@
 import type { AgentRun, AgentRunStatus } from "@/lib/agent-run-types";
-import { getAgentContractService } from "@/lib/agents/agent-contract-service";
+import { AgentContractInputError, getAgentContractService } from "@/lib/agents/agent-contract-service";
 import { AgentRequestValidationError, parseAgentRequest, type AgentRequest } from "@/lib/agents/agent-contract";
 import { releasedActionsForAgentRun, reviewForAgentRun } from "@/lib/agents/agent-contract";
 import type { GenericAgentEvent } from "@/lib/agents/agent-types";
-import { resolveActingUserId, type RequestPrincipal } from "@/lib/auth/request-auth";
+import { assertAgentAccess, resolveActingUserId, type RequestPrincipal } from "@/lib/auth/request-auth";
 import { loadDtaConfig } from "@/lib/config/env";
 import { artifactToA2A, type A2AMessage, type A2ASendMessageRequest, type A2ATask, type A2ATaskState } from "./a2a-types";
 import { getAgentRegistry } from "@/lib/agents/agent-registry";
@@ -25,7 +25,7 @@ function defaultAgentAlias(): string {
   return loadDtaConfig().defaultAgentId;
 }
 
-function selectedAgent(message: A2AMessage): string {
+function selectedAgent(message: A2AMessage, principal: RequestPrincipal): string {
   const metadataAgent = message.metadata?.agentId ?? message.metadata?.skillId;
   const dataAgent = message.parts
     .map((part) => part.data)
@@ -40,6 +40,7 @@ function selectedAgent(message: A2AMessage): string {
   const suffixed = requested.endsWith("-agent") ? null : registry.get(`${requested}-agent`);
   const definition = direct ?? suffixed;
   if (!definition || definition.internal) throw new A2AValidationError(`Unsupported DTA agent: ${requested}`);
+  assertAgentAccess(principal, definition.allowedRoles);
   return requested;
 }
 
@@ -59,13 +60,17 @@ export function parseA2ASendMessage(value: unknown, principal: RequestPrincipal)
   const metadataUserId = typeof message.metadata?.userId === "string" ? message.metadata.userId : undefined;
   try {
     return {
-      agentAlias: selectedAgent(message),
+      agentAlias: selectedAgent(message, principal),
       request: parseAgentRequest({
       requestId: message.messageId.trim(),
       userId: resolveActingUserId(principal, metadataUserId),
       ...(message.contextId ? { conversationId: message.contextId } : {}),
       task: texts.join("\n\n") || "Process the supplied structured A2A message",
-      ...(data.length ? { input: { parts: data } } : {}),
+      ...(data.length ? {
+        input: data.length === 1 && data[0] && typeof data[0] === "object" && !Array.isArray(data[0])
+          ? data[0] as Record<string, unknown>
+          : { parts: data },
+      } : {}),
       context: {
         protocol: "A2A",
         protocolVersion: "1.0",
@@ -146,6 +151,11 @@ export function eventToA2AStream(run: AgentRun, event: GenericAgentEvent): Recor
 
 export async function submitA2AMessage(value: unknown, principal: RequestPrincipal): Promise<AgentRun> {
   const parsed = parseA2ASendMessage(value, principal);
-  const response = await getAgentContractService().submit(parsed.agentAlias, parsed.request);
-  return getAgentContractService().getRun(response.runId);
+  try {
+    const response = await getAgentContractService().submit(parsed.agentAlias, parsed.request);
+    return getAgentContractService().getRun(response.runId);
+  } catch (error) {
+    if (error instanceof AgentContractInputError) throw new A2AValidationError(error.message);
+    throw error;
+  }
 }

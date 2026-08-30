@@ -6,12 +6,29 @@ DTA processes meeting recordings as two evidence streams and joins them by times
 video/audio upload
   -> optional fail-closed malware scan
   -> configured ArtifactStore (original source)
+  -> persistent media job (queued/processing/progress)
   -> FFprobe (duration and streams)
   -> FFmpeg audio extraction -> transcription provider -> timestamped transcript artifact
   -> FFmpeg keyframes -> vision provider -> visual analysis artifact
   -> synchronized meeting timeline artifact
   -> Meeting Agent -> summary, decisions, actions, requirements
 ```
+
+The upload endpoint returns HTTP `202` for media and a `jobId`. The Web UI and
+`dta` CLI poll the owner-protected job resource before adding evidence to a
+Meeting request. Jobs survive the upload request, support cancellation, and can
+be retried up to `DTA_MEDIA_JOB_MAX_ATTEMPTS`. `DTA_MEDIA_JOB_CONCURRENCY`
+bounds provider/FFmpeg work in the single DTA process.
+
+```text
+GET    /api/meeting-agent/media-jobs
+GET    /api/meeting-agent/media-jobs/{jobId}
+POST   /api/meeting-agent/media-jobs/{jobId}   # retry failed/cancelled
+DELETE /api/meeting-agent/media-jobs/{jobId}   # cancel
+```
+
+A server restart marks an interrupted job failed and retryable. DTA does not
+silently replay an interrupted transcription or vision call.
 
 ## Providers
 
@@ -34,7 +51,12 @@ Local development defaults to `none`. The `mock` providers require explicit fixt
 - `visual_analysis`: visible slide, whiteboard, screen-share, and demo evidence
 - `meeting_timeline`: transcript and visual evidence synchronized by timestamp
 
-The Meeting Agent receives the timeline content plus artifact identifiers. It must still separate confirmed decisions from proposals and mark missing owners, dates, or ambiguous evidence for human confirmation.
+The Meeting Agent receives the timeline content plus artifact identifiers. Its
+MeetingResult 2.0 output gives every decision, action item, and requirement a
+stable ID, evidence references, source-grounding confidence, and a
+`needsConfirmation` flag. It must still separate confirmed decisions from
+proposals and mark missing owners, dates, or ambiguous evidence for human
+confirmation.
 
 ## Limits and security
 
@@ -51,4 +73,10 @@ The Meeting Agent receives the timeline content plus artifact identifiers. It mu
 
 ## Production limitations
 
-Media extraction currently runs synchronously inside the Next.js process. A production deployment should keep `replicas: 1` until run state and jobs are moved to Postgres/Redis and a durable worker queue. Very long recordings should eventually use asynchronous chunked transcription. Speaker labels are retained when the configured transcription service returns them; DTA does not fabricate diarization.
+The job record is durable, but its worker still runs inside the single Next.js
+process rather than a distributed queue. Production must keep `replicas: 1`.
+`request.formData()`, scanner submission, artifact writes, and each provider
+request currently buffer one bounded file; chunked upload and chunked
+transcription are not implemented. Speaker labels are retained when the
+configured transcription service returns them; DTA does not fabricate
+diarization.

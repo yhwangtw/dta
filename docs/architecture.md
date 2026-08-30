@@ -57,14 +57,15 @@ Every generic run can carry `runId`, `agentId`, `userId`, `projectId`, and `conv
 
 ### Mounted department Agent registry
 
-`DTA_AGENT_MANIFEST_PATH` points to a versioned JSON manifest mounted at runtime. It can add department Agent identity, system prompt, Agent Card skills, and an explicit n8n workflow allowlist without changing or rebuilding the image. `DTA_ENABLED_AGENTS` remains the deployment allowlist. The public catalog never returns private system prompts or workflow policy.
+`DTA_AGENT_MANIFEST_PATH` points to a versioned JSON manifest mounted at runtime. Manifest v2 adds input/output JSON Schemas, allowed artifact types, review policy, required Keycloak roles, provider/model/token/timeout policy, evaluation fixtures, Agent Card skills, and an explicit n8n workflow allowlist without rebuilding the image. REST and A2A contract input is checked before enqueue; `publish_department_result` checks output and artifact types. Provider/model allowlists are also enforced by the underlying Pi session before a prompt or model change, while the generic run supervisor enforces the timeout and the company-gateway contract enforces the token cap. DTA persists revisions and withholds actions/workflows until approval. `DTA_ENABLED_AGENTS` remains the deployment allowlist. REST, A2A, workspace creation, and workflow routes enforce `allowedRoles`; unauthenticated Agent Card discovery omits role-scoped Agents, while the authenticated catalog never returns private system prompts or workflow policy. See `config/agents.example.json`.
 
 ## Meeting Agent
 
 Meeting Agent accepts chat, documents, audio, or video. Media processing is staged and auditable:
 
 ```text
-upload -> source artifact -> audio extraction/transcription
+upload -> source artifact -> persistent bounded media job
+                           -> audio extraction/transcription
                            -> video keyframes/vision
                            -> aligned meeting context
                            -> Meeting Agent reasoning/tool loop
@@ -72,13 +73,22 @@ upload -> source artifact -> audio extraction/transcription
                            -> human review
 ```
 
-The structured result contains summary, decisions, action items, and requirements. `publish_meeting_result` is the only publication path. A published revision defaults to `needs_review`; only `approved` revisions enter Meeting Knowledge.
+The MeetingResult 2.0 record contains summary, decisions, action items, and requirements. Every extracted item carries a stable ID, evidence references, bounded source-grounding confidence, and `needsConfirmation`. `publish_meeting_result` validates evidence artifact ownership and is the only publication path. A published revision defaults to `needs_review`; only `approved` revisions enter Meeting Knowledge or release downstream actions.
 
 When requirements are detected, Meeting Agent creates a generic `handoff` recommendation for PM Agent. DTA does not execute the PM implementation inside Meeting Agent. The recommendation is withheld from external Agent Contract/A2A responses until the meeting revision is approved.
 
 ## PM Agent
 
-PM Agent uses the same runtime with a dedicated system prompt and publication tool. It produces artifact references for URD, PRD, user stories, acceptance criteria, design context, and task plans. It may return workflow or notification recommendations, but integrations remain adapter-driven.
+PM Agent uses the same runtime with a dedicated system prompt and publication tool. It produces artifact references for URD, PRD, user stories, acceptance criteria, design context, and task plans. PM results have revision/review history like Meeting results; actions and workflows remain blocked until the current revision is approved.
+
+## Configured Department Agents
+
+Manifest-mounted Agents share the same run supervisor and Pi runtime but use a
+governed `publish_department_result` tool. The tool validates the configured
+output schema, restricts document types, persists structured JSON and document
+artifacts, records review history, and applies the Agent workflow allowlist.
+This keeps the platform extensible without turning prompts into an ungoverned
+agent marketplace.
 
 ## External HTTP contract
 
@@ -121,7 +131,7 @@ The Agent Card advertises Meeting and PM skills and the configured Keycloak Open
 
 Artifacts carry owner/run scope. Downloads are checked against the authenticated principal, and unknown legacy ownership is hidden unless the caller has an operational cross-user role. Meeting review also checks both reviewer role and run ownership. A configured upload scanner fails closed before a file enters the artifact store. Process-local rate limiting provides a second line of defense; company ingress limits remain recommended.
 
-Pi session ownership is persisted under `DTA_DATA_DIR/metadata/sessions.json`. Every `/api/sessions/**` route, the legacy `/api/agent/**` command/state routes, and the SSE stream resolve that mapping before returning data. Tags, pins, archives, prompts, notification read-state, Web Push subscriptions, and schedules are user-scoped. A Meeting/PM principal cannot enable shell or coding tools through the generic command route.
+Pi session ownership is persisted under `DTA_DATA_DIR/metadata/sessions.json`. Every `/api/sessions/**` route, the legacy `/api/agent/**` command/state routes, and the SSE stream resolve that mapping before returning data. Tags, pins, archives, prompts, notification read-state, Web Push subscriptions, and schedules are user-scoped. A Meeting/PM principal cannot enable shell or coding tools through the generic command route. The deployed-image pilot statically covers every HTTP handler and performs a two-user live matrix over sessions, metadata, run/SSE, workflows, review, and personal state.
 
 Legacy Pi sessions and schedules without ownership metadata are deliberately hidden from ordinary Keycloak users. Unowned schedules are not started automatically in Keycloak mode; an administrator must migrate or recreate them with an owner.
 
@@ -149,14 +159,15 @@ Secrets are read only from environment variables. The application has no direct 
 - Artifacts: local filesystem or MinIO through `ArtifactStore`.
 - Conversation memory: local file, Postgres, or Redis `MemoryStore`, namespaced by user/project/conversation, capped and expired by configuration.
 - Run/session ownership metadata: local persistent file state below `DTA_DATA_DIR`; event replay remains process-local.
-- Meeting and PM structured records: local DTA data directory.
+- Meeting, PM, and configured Department Agent structured records: local DTA data directory.
+- media jobs, workflow executions, and the local audit chain: local DTA data directory.
 
-Postgres and Redis memory adapters are implemented. They do not yet replace the local run supervisor, Pi session ownership, Meeting/PM record files, or SSE event bus, so the first production topology still remains one replica with a persistent volume.
+Postgres and Redis memory adapters are implemented. They do not yet replace the local run supervisor, Pi session ownership, Meeting/PM/Department record files, or SSE event bus, so the first production topology still remains one replica with a persistent volume.
 
 ## Current production limitations
 
-1. Run supervision, Pi session ownership metadata, SSE replay, and Meeting/PM result records are not distributed across replicas; use `replicas: 1`. Selecting Postgres/Redis memory does not remove this limit.
-2. Active Pi runs are interrupted on pod restart and are not automatically replayed.
+1. Run supervision, Pi session ownership metadata, SSE replay, and Meeting/PM/Department result records are not distributed across replicas; use `replicas: 1`. Selecting Postgres/Redis memory does not remove this limit.
+2. Active Pi runs are interrupted on pod restart and are not automatically replayed. Media job records survive, but an in-progress job is marked failed for an explicit bounded retry.
 3. Local run/review records require a persistent volume even when artifacts use MinIO.
 4. MinIO signing is covered by mocked contract tests but still needs an integration test against the company's MinIO policy/TLS setup.
 5. A2A remote URL/raw media parts are not fetched; use DTA upload/reference flows.
@@ -164,4 +175,5 @@ Postgres and Redis memory adapters are implemented. They do not yet replace the 
 7. n8n workflow tools are disabled by default; enable them only after side-effect and credential policies are approved.
 8. The bundled CLI and interactive TUI are HTTP/SSE clients, not second runtimes. They need a running DTA server. Meeting file uploads use the same bounded extraction endpoint as the Web UI; native `dta pi` is deliberately a separate developer-only Coding Agent mode.
 9. Application rate limits and active-run concurrency are process-local. Enforce distributed quotas at the company gateway if DTA is later scaled beyond one replica.
-10. Automatic retention can enumerate only the local artifact store. Production MinIO deployments must apply the equivalent bucket lifecycle policy; approved Meeting artifacts are protected by default in local retention.
+10. Automatic retention can enumerate only the local artifact store. Production MinIO deployments must apply the equivalent bucket lifecycle/legal-hold policy. External memory and Pi JSONL session cleanup are delegated; local approved results and referenced Meeting evidence are protected by default.
+11. Media uploads and provider calls are bounded but still buffer one file; chunked upload/transcription and distributed media workers are not implemented.

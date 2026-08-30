@@ -119,6 +119,35 @@ describe("AgentSessionWrapper model catalog refresh", () => {
       wrapper.destroy();
     }
   });
+
+  it("enforces a Department Agent provider and model allowlist", async () => {
+    const inner = {
+      sessionId: "session-governed",
+      sessionFile: "/tmp/session-governed.jsonl",
+      model: { provider: "unapproved", id: "other-model" },
+      prompt: vi.fn().mockResolvedValue(undefined),
+      setModel: vi.fn().mockResolvedValue(undefined),
+      dispose: vi.fn(),
+    } as unknown as AgentSessionLike;
+    const wrapper = new AgentSessionWrapper(
+      inner,
+      "",
+      undefined,
+      [],
+      vi.fn().mockResolvedValue(undefined),
+      undefined,
+      { find: vi.fn() } as never,
+      undefined,
+      { allowedProviders: ["company"], allowedModels: ["approved-model"] },
+    );
+    try {
+      await expect(wrapper.send({ type: "set_model", provider: "company", modelId: "other-model" })).rejects.toThrow(/not allowed/);
+      await expect(wrapper.send({ type: "prompt", message: "governed task", awaitCompletion: true })).rejects.toThrow(/not allowed/);
+      expect(inner.prompt).not.toHaveBeenCalled();
+    } finally {
+      wrapper.destroy();
+    }
+  });
 });
 
 describe("AgentSessionWrapper authentication refresh", () => {

@@ -3,6 +3,7 @@ import { getAgentRegistry } from "@/lib/agents/agent-registry";
 import { readMeetingRun } from "@/lib/agents/meeting/meeting-result-store";
 import { readPMRun } from "@/lib/agents/pm/pm-result-store";
 import { readAgentRunStore } from "@/lib/agent-run-store";
+import { readDepartmentRun } from "@/lib/agents/department/department-result-store";
 import type { DtaConfig } from "@/lib/config/env";
 import { loadDtaConfig } from "@/lib/config/env";
 import { recordAuditEvent } from "@/lib/observability/audit-log";
@@ -18,6 +19,7 @@ import {
   type WorkflowExecutionRecord,
 } from "./workflow-execution-store";
 import type { WorkflowExecutor } from "./workflow-executor";
+import { recordWorkflowFinished } from "@/lib/observability/runtime-metrics";
 
 export class WorkflowServiceError extends Error {
   constructor(message: string, readonly status = 400, readonly code = "WORKFLOW_ERROR") {
@@ -50,6 +52,11 @@ function sourceFor(agent: AgentDefinition, sourceRunId: string): WorkflowSource 
     if (!run) throw new WorkflowServiceError("PM run not found", 404, "SOURCE_RUN_NOT_FOUND");
     return run;
   }
+  if (agent.agentType === "department") {
+    const run = readDepartmentRun(sourceRunId);
+    if (!run || run.agentId !== agent.id) throw new WorkflowServiceError("Agent run not found", 404, "SOURCE_RUN_NOT_FOUND");
+    return run;
+  }
   const run = readAgentRunStore().runs.find((candidate) => candidate.id === sourceRunId);
   if (!run || run.agentMetadata?.agentId !== agent.id) {
     throw new WorkflowServiceError("Agent run not found", 404, "SOURCE_RUN_NOT_FOUND");
@@ -70,8 +77,8 @@ function sourceFor(agent: AgentDefinition, sourceRunId: string): WorkflowSource 
 function blockReason(agent: AgentDefinition, source: WorkflowSource, enabled: boolean): string | null {
   if (!enabled) return "Workflow execution is disabled or the workflow is not configured.";
   if (source.status !== "completed" || source.result === undefined) return "The Agent result is not ready.";
-  if (agent.agentType === "meeting" && source.reviewStatus !== "approved") {
-    return "Approve this meeting revision before executing downstream workflows.";
+  if ((agent.agentType === "meeting" || agent.agentType === "pm" || agent.agentType === "department") && source.reviewStatus !== "approved") {
+    return `Approve this ${agent.displayName} revision before executing downstream workflows.`;
   }
   return null;
 }
@@ -131,7 +138,10 @@ export class WorkflowService {
       sourceRunId: source.runId,
       idempotencyKey,
     });
-    if (existing?.status === "completed") return { execution: existing, replayed: true };
+    if (existing?.status === "completed") {
+      recordWorkflowFinished({ workflowId: workflow.id, status: "completed", replayed: true, durationMs: 0 });
+      return { execution: existing, replayed: true };
+    }
     if (existing?.status === "running") {
       throw new WorkflowServiceError("This workflow execution is already running", 409, "WORKFLOW_ALREADY_RUNNING");
     }
@@ -169,6 +179,7 @@ export class WorkflowService {
       artifacts: source.artifacts,
       actions: source.actions,
     };
+    const startedAt = Date.now();
     try {
       const result = await this.executor.execute(workflow.id, envelope, {
         executionId: execution.id,
@@ -188,6 +199,7 @@ export class WorkflowService {
         outcome: "success",
         metadata: { executionId: execution.id, sourceRunId: source.runId, agentId: agent.id, ...(source.userId ? { actingUserId: source.userId } : {}) },
       });
+      recordWorkflowFinished({ workflowId: workflow.id, status: "completed", durationMs: Date.now() - startedAt });
       return { execution: completed, replayed: false };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -200,6 +212,7 @@ export class WorkflowService {
         outcome: "failure",
         metadata: { executionId: execution.id, sourceRunId: source.runId, agentId: agent.id, ...(source.userId ? { actingUserId: source.userId } : {}) },
       });
+      recordWorkflowFinished({ workflowId: workflow.id, status: "failed", durationMs: Date.now() - startedAt });
       throw new WorkflowServiceError(message, 502, "WORKFLOW_EXECUTION_FAILED");
     }
   }

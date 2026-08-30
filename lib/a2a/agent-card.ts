@@ -32,7 +32,12 @@ export function buildA2AAgentCard(): Record<string, unknown> {
     ...keycloakSecurity,
     defaultInputModes: ["text/plain", "application/json"],
     defaultOutputModes: ["application/json", "text/markdown"],
-    skills: getAgentRegistry().list().flatMap((agent) => agent.skills.map((skill) => ({
+    // The unauthenticated card advertises only unrestricted capabilities.
+    // Role-scoped Department Agents are discoverable from authenticated
+    // /api/agents instead of leaking internal capability names publicly.
+    skills: getAgentRegistry().list()
+      .filter((agent) => !agent.allowedRoles?.length)
+      .flatMap((agent) => agent.skills.map((skill) => ({
       id: skill.id,
       name: skill.name,
       description: skill.description,
@@ -48,6 +53,6 @@ export function buildA2AAgentCard(): Record<string, unknown> {
         agentId: agent.id,
         ...(skill.id === "meeting-minutes" ? { mediaUploadEndpoint: `${config.publicBaseUrl}/api/meeting-agent/extract` } : {}),
       },
-    }))),
+      }))),
   };
 }

@@ -36,6 +36,7 @@ export interface DtaConfig {
   codingRequiredRoles: string[];
   reviewRequiredRoles: string[];
   meetingReviewRequired: boolean;
+  pmReviewRequired: boolean;
   llmProviderId: string;
   llmBaseUrl?: string;
   llmApiKey?: string;
@@ -68,6 +69,11 @@ export interface DtaConfig {
   memoryTtlSeconds: number;
   auditLogEnabled: boolean;
   auditLogPath: string;
+  auditSinkUrl?: string;
+  auditSinkApiKey?: string;
+  auditSinkAuthHeader: string;
+  auditSinkAuthScheme: string;
+  structuredLogs: boolean;
   metricsAuthRequired: boolean;
   uploadScannerProvider: UploadScannerProviderName;
   uploadScannerUrl?: string;
@@ -77,8 +83,13 @@ export interface DtaConfig {
   uploadScannerTimeoutMs: number;
   uploadScannerFailOpen: boolean;
   retentionEnabled: boolean;
+  retentionDryRun: boolean;
   artifactRetentionDays: number;
+  runRetentionDays: number;
+  mediaJobRetentionDays: number;
+  workflowRetentionDays: number;
   retentionProtectApproved: boolean;
+  legalHoldRunIds: string[];
   rateLimitEnabled: boolean;
   rateLimitRequests: number;
   rateLimitWindowSeconds: number;
@@ -107,6 +118,8 @@ export interface DtaConfig {
   videoMaxKeyframes: number;
   videoFrameWidth: number;
   mediaProcessTimeoutMs: number;
+  mediaJobConcurrency: number;
+  mediaJobMaxAttempts: number;
 }
 
 function enumValue<T extends string>(value: string | undefined, allowed: readonly T[], fallback: T): T {
@@ -167,6 +180,7 @@ export function loadDtaConfig(env: NodeJS.ProcessEnv = process.env): DtaConfig {
     codingRequiredRoles: commaSeparated(env.DTA_CODING_REQUIRED_ROLES, ["dta-coding-access"]),
     reviewRequiredRoles: commaSeparated(env.DTA_REVIEW_REQUIRED_ROLES, []),
     meetingReviewRequired: booleanValue(env.DTA_MEETING_REVIEW_REQUIRED, true),
+    pmReviewRequired: booleanValue(env.DTA_PM_REVIEW_REQUIRED, true),
     llmProviderId: optional(env.LLM_PROVIDER_ID) ?? "dta-company",
     ...(optional(env.LLM_BASE_URL) ? { llmBaseUrl: optional(env.LLM_BASE_URL)?.replace(/\/+$/, "") } : {}),
     ...(optional(env.LLM_API_KEY) ? { llmApiKey: optional(env.LLM_API_KEY) } : {}),
@@ -199,6 +213,11 @@ export function loadDtaConfig(env: NodeJS.ProcessEnv = process.env): DtaConfig {
     memoryTtlSeconds: boundedInteger(env.DTA_MEMORY_TTL_SECONDS, 90 * 24 * 60 * 60, 60, 10 * 365 * 24 * 60 * 60),
     auditLogEnabled: booleanValue(env.DTA_AUDIT_LOG_ENABLED, true),
     auditLogPath: resolve(optional(env.DTA_AUDIT_LOG_PATH) ?? join(configuredDir || defaultDataDir, "audit", "events.jsonl")),
+    ...(optional(env.DTA_AUDIT_SINK_URL) ? { auditSinkUrl: optional(env.DTA_AUDIT_SINK_URL)?.replace(/\/+$/, "") } : {}),
+    ...(optional(env.DTA_AUDIT_SINK_API_KEY) ? { auditSinkApiKey: optional(env.DTA_AUDIT_SINK_API_KEY) } : {}),
+    auditSinkAuthHeader: optional(env.DTA_AUDIT_SINK_AUTH_HEADER) ?? "Authorization",
+    auditSinkAuthScheme: optional(env.DTA_AUDIT_SINK_AUTH_SCHEME) ?? "Bearer",
+    structuredLogs: booleanValue(env.DTA_STRUCTURED_LOGS, env.NODE_ENV === "production"),
     metricsAuthRequired: booleanValue(env.DTA_METRICS_AUTH_REQUIRED, true),
     uploadScannerProvider: enumValue(env.DTA_UPLOAD_SCANNER, ["none", "http"] as const, "none"),
     ...(optional(env.DTA_UPLOAD_SCANNER_URL) ? { uploadScannerUrl: optional(env.DTA_UPLOAD_SCANNER_URL)?.replace(/\/+$/, "") } : {}),
@@ -208,8 +227,13 @@ export function loadDtaConfig(env: NodeJS.ProcessEnv = process.env): DtaConfig {
     uploadScannerTimeoutMs: boundedInteger(env.DTA_UPLOAD_SCANNER_TIMEOUT_MS, 60_000, 1_000, 10 * 60_000),
     uploadScannerFailOpen: booleanValue(env.DTA_UPLOAD_SCANNER_FAIL_OPEN, false),
     retentionEnabled: booleanValue(env.DTA_RETENTION_ENABLED, false),
+    retentionDryRun: booleanValue(env.DTA_RETENTION_DRY_RUN, true),
     artifactRetentionDays: boundedInteger(env.DTA_ARTIFACT_RETENTION_DAYS, 365, 1, 3_650),
+    runRetentionDays: boundedInteger(env.DTA_RUN_RETENTION_DAYS, 365, 1, 3_650),
+    mediaJobRetentionDays: boundedInteger(env.DTA_MEDIA_JOB_RETENTION_DAYS, 30, 1, 3_650),
+    workflowRetentionDays: boundedInteger(env.DTA_WORKFLOW_RETENTION_DAYS, 365, 1, 3_650),
     retentionProtectApproved: booleanValue(env.DTA_RETENTION_PROTECT_APPROVED, true),
+    legalHoldRunIds: commaSeparated(env.DTA_LEGAL_HOLD_RUN_IDS, []),
     rateLimitEnabled: booleanValue(env.DTA_RATE_LIMIT_ENABLED, env.NODE_ENV === "production"),
     rateLimitRequests: boundedInteger(env.DTA_RATE_LIMIT_REQUESTS, 60, 1, 100_000),
     rateLimitWindowSeconds: boundedInteger(env.DTA_RATE_LIMIT_WINDOW_SECONDS, 60, 1, 3_600),
@@ -239,6 +263,8 @@ export function loadDtaConfig(env: NodeJS.ProcessEnv = process.env): DtaConfig {
     videoMaxKeyframes: boundedInteger(env.DTA_VIDEO_MAX_KEYFRAMES, 12, 1, 48),
     videoFrameWidth: boundedInteger(env.DTA_VIDEO_FRAME_WIDTH, 1280, 320, 1920),
     mediaProcessTimeoutMs: boundedInteger(env.DTA_MEDIA_PROCESS_TIMEOUT_MS, 5 * 60_000, 10_000, 30 * 60_000),
+    mediaJobConcurrency: boundedInteger(env.DTA_MEDIA_JOB_CONCURRENCY, 2, 1, 8),
+    mediaJobMaxAttempts: boundedInteger(env.DTA_MEDIA_JOB_MAX_ATTEMPTS, 3, 1, 10),
   };
 }
 
@@ -280,6 +306,12 @@ export function dtaConfigurationIssues(config = loadDtaConfig()): DtaConfigurati
   }
   if (config.retentionEnabled && config.artifactStoreProvider === "minio") {
     warning("MINIO_RETENTION_EXTERNAL", "DTA local retention cannot enumerate MinIO; configure the equivalent bucket lifecycle policy in MinIO");
+  }
+  if (config.auditSinkUrl && process.env.NODE_ENV === "production" && !config.auditSinkUrl.startsWith("https://")) {
+    error("AUDIT_SINK_INSECURE", "DTA_AUDIT_SINK_URL must use HTTPS in production");
+  }
+  if (config.retentionEnabled && !config.retentionDryRun && !config.retentionProtectApproved) {
+    warning("RETENTION_APPROVED_UNPROTECTED", "Retention deletion is active and approved Agent revisions are not protected");
   }
   if (config.transcriptionProvider === "none") {
     warning("TRANSCRIPTION_DISABLED", "Meeting audio/video transcription is unavailable until DTA_TRANSCRIPTION_PROVIDER is configured");

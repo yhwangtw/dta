@@ -1,12 +1,14 @@
 import { getAgentRegistry } from "@/lib/agents/agent-registry";
-import { AuthenticationError, authenticateRequest, authenticationErrorResponse } from "@/lib/auth/request-auth";
+import { AuthenticationError, authenticateRequest, authenticationErrorResponse, canAccessAgent } from "@/lib/auth/request-auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request): Promise<Response> {
   try {
-    await authenticateRequest(request);
-    const agents = getAgentRegistry().list().map((agent) => ({
+    const principal = await authenticateRequest(request);
+    const agents = getAgentRegistry().list()
+      .filter((agent) => canAccessAgent(principal, agent.allowedRoles))
+      .map((agent) => ({
       id: agent.id,
       agentType: agent.agentType,
       displayName: agent.displayName,
@@ -14,6 +16,8 @@ export async function GET(request: Request): Promise<Response> {
       internal: agent.internal,
       enabledByDefault: agent.enabledByDefault,
       skills: agent.skills,
+      reviewPolicy: agent.reviewPolicy,
+      artifactTypes: agent.artifactTypes,
     }));
     return Response.json({ agents }, {
       headers: { "Cache-Control": "no-store" },

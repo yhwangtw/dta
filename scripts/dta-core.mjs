@@ -352,7 +352,32 @@ export class DtaClient {
       headers: this.headers(),
       body: form,
     });
-    return responseJson(response);
+    const payload = await responseJson(response);
+    if (!Array.isArray(payload.results)) return payload;
+    const results = [];
+    for (const item of payload.results) {
+      if (!item?.jobId) {
+        results.push(item);
+        continue;
+      }
+      results.push(await this.waitForMeetingMediaJob(item.jobId));
+    }
+    return { ...payload, results };
+  }
+
+  async waitForMeetingMediaJob(jobId, timeoutMs = 30 * 60_000) {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      const payload = await this.get(`/api/meeting-agent/media-jobs/${encodeURIComponent(jobId)}`);
+      const job = payload.job;
+      if (!job) throw new Error(`Meeting media job ${jobId} was not returned`);
+      if (job.status === "completed" && job.result) return job.result;
+      if (job.status === "failed" || job.status === "cancelled") {
+        return job.result ?? { name: job.name || jobId, size: job.size || 0, ok: false, jobId, error: job.error || "Meeting media processing failed" };
+      }
+      await sleep(1000);
+    }
+    throw new Error(`Meeting media job ${jobId} timed out`);
   }
 
   async *streamRun(runId) {
@@ -465,6 +490,7 @@ function attachmentInput(results) {
     ...(item.audioArtifactId ? { audioArtifactId: item.audioArtifactId } : {}),
     ...(item.visualAnalysisArtifactId ? { visualAnalysisArtifactId: item.visualAnalysisArtifactId } : {}),
     ...(item.timelineArtifactId ? { timelineArtifactId: item.timelineArtifactId } : {}),
+    ...(item.jobId ? { jobId: item.jobId } : {}),
     ...(item.warnings?.length ? { warnings: item.warnings } : {}),
   }));
 }

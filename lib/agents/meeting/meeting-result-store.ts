@@ -1,10 +1,11 @@
 import { randomUUID } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { getDtaDataDir } from "@/lib/config/env";
 import type { AgentMetadata } from "@/lib/agents/agent-types";
 import {
   isMeetingResult,
+  normalizeMeetingResult,
   type MeetingReviewDecision,
   type MeetingReviewEvent,
   type MeetingReviewStatus,
@@ -40,7 +41,8 @@ export function readMeetingRun(runId: string): StoredMeetingResult | null {
     const raw = JSON.parse(readFileSync(path, "utf8")) as Partial<StoredMeetingResult>;
     if (!raw || raw.runId !== runId || !Array.isArray(raw.artifacts)) return null;
     if (raw.status !== "running" && raw.status !== "completed" && raw.status !== "failed") return null;
-    if (raw.result && !isMeetingResult(raw.result)) return null;
+    const result = raw.result ? normalizeMeetingResult(raw.result, runId) : undefined;
+    if (raw.result && (!result || !isMeetingResult(result))) return null;
     const reviewStatus = raw.status === "completed" && REVIEW_STATUSES.has(raw.reviewStatus as MeetingReviewStatus)
       ? raw.reviewStatus as MeetingReviewStatus
       : raw.status === "completed" ? "needs_review" : "draft";
@@ -57,7 +59,7 @@ export function readMeetingRun(runId: string): StoredMeetingResult | null {
       ...(typeof raw.projectId === "string" ? { projectId: raw.projectId } : {}),
       ...(typeof raw.conversationId === "string" ? { conversationId: raw.conversationId } : {}),
       status: raw.status,
-      ...(raw.result ? { result: raw.result } : {}),
+      ...(result ? { result } : {}),
       artifacts: raw.artifacts,
       actions: Array.isArray(raw.actions) ? raw.actions : [],
       reviewStatus,
@@ -206,5 +208,12 @@ export function listMeetingRuns(limit = 200): StoredMeetingResult[] {
   }
   return runs
     .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))
-    .slice(0, Math.max(1, Math.min(limit, 500)));
+    .slice(0, Math.max(1, Math.min(limit, 10_000)));
+}
+
+export function deleteMeetingRun(runId: string): boolean {
+  const path = resultPath(runId);
+  if (!existsSync(path)) return false;
+  unlinkSync(path);
+  return true;
 }

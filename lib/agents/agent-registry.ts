@@ -21,6 +21,22 @@ export interface AgentDefinition {
   skills: AgentSkillDefinition[];
   systemPrompt?: string;
   workflowAllowlist?: string[];
+  inputSchema?: Record<string, unknown>;
+  outputSchema?: Record<string, unknown>;
+  artifactTypes?: string[];
+  reviewPolicy?: "none" | "required";
+  allowedRoles?: string[];
+  modelPolicy?: {
+    allowedProviders?: string[];
+    allowedModels?: string[];
+    maxOutputTokens?: number;
+    timeoutSeconds?: number;
+  };
+  evaluationFixtures?: Array<{
+    name: string;
+    input: Record<string, unknown>;
+    expectedPaths: string[];
+  }>;
 }
 
 export interface AgentMetadataInput {

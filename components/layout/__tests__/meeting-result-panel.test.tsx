@@ -29,11 +29,12 @@ describe("MeetingResultPanel", () => {
         actions: [{ type: "handoff", target: "pm-agent", reason: "Product requirement found" }],
         updatedAt: "2026-08-19T00:00:00.000Z",
         result: {
+          schemaVersion: "2.0",
           title: "Weekly sync",
           summary: "Pilot approved.",
-          decisions: [{ text: "Approve pilot", owner: "Elon" }],
-          actionItems: [{ title: "Launch pilot", owner: "Alex" }],
-          requirements: [{ title: "Audit log", description: "Keep evidence." }],
+          decisions: [{ id: "decision_pilot", text: "Approve pilot", owner: "Elon", evidence: [{ timestamp: "00:12:30", excerpt: "Pilot approved." }], confidence: 0.94, needsConfirmation: false }],
+          actionItems: [{ id: "action_launch", title: "Launch pilot", owner: "Alex", evidence: [], confidence: 0.4, needsConfirmation: true }],
+          requirements: [{ id: "requirement_audit", title: "Audit log", description: "Keep evidence.", evidence: [], confidence: 0.4, needsConfirmation: true }],
         },
         artifacts: [{ id: "a1", type: "meeting_minutes", title: "Minutes", mimeType: "text/markdown", size: 10, createdAt: "2026-08-19T00:00:00.000Z" }],
       },
@@ -49,6 +50,9 @@ describe("MeetingResultPanel", () => {
     expect(container.textContent).toContain("Approve pilot");
     expect(container.textContent).toContain("Launch pilot");
     expect(container.textContent).toContain("Audit log");
+    expect(container.textContent).toContain("Source confidence 94%");
+    expect(container.textContent).toContain("Evidence · 1");
+    expect(container.textContent).toContain("Needs confirmation");
     expect(container.querySelector('a[href="/api/artifacts/a1"]')).not.toBeNull();
     expect(container.textContent).toContain("Waiting for approval");
     expect(container.textContent).toContain("PM Agent");

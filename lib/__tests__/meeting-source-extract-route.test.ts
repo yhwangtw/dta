@@ -1,10 +1,21 @@
 import { describe, expect, it } from "vitest";
 import { POST } from "../../app/api/meeting-agent/extract/route";
+import { readMeetingMediaJob } from "../agents/meeting/meeting-media-job-store";
 
-function requestWith(files: File[]): Request {
+function requestWith(files: File[], scope: { runId?: string } = {}): Request {
   const form = new FormData();
+  if (scope.runId) form.append("runId", scope.runId);
   for (const file of files) form.append("files", file);
   return new Request("http://localhost/api/meeting-agent/extract", { method: "POST", body: form });
+}
+
+async function waitForJob(id: string) {
+  for (let attempt = 0; attempt < 200; attempt++) {
+    const job = readMeetingMediaJob(id);
+    if (job && ["completed", "failed", "cancelled"].includes(job.status)) return job;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  throw new Error(`Media job ${id} did not finish`);
 }
 
 describe("POST /api/meeting-agent/extract", () => {
@@ -52,13 +63,17 @@ describe("POST /api/meeting-agent/extract", () => {
         new File([new Uint8Array([1, 2, 3])], "sync.mp3", { type: "audio/mpeg" }),
       ]));
       const body = await response.json() as { results: Array<Record<string, unknown>> };
+      expect(response.status).toBe(202);
       expect(body.results[0]).toMatchObject({
         ok: true,
         kind: "audio",
-        transcriptionStatus: "unavailable",
+        processingStatus: "queued",
       });
-      expect(String(body.results[0].error)).toContain("Transcription service is not configured");
       expect(body.results[0].artifactId).toEqual(expect.any(String));
+      const job = await waitForJob(String(body.results[0].jobId));
+      expect(job.status).toBe("failed");
+      expect(job.result).toMatchObject({ transcriptionStatus: "unavailable" });
+      expect(String(job.error)).toContain("Transcription service is not configured");
     } finally {
       if (previous === undefined) delete process.env.DTA_TRANSCRIPTION_PROVIDER;
       else process.env.DTA_TRANSCRIPTION_PROVIDER = previous;
@@ -73,18 +88,22 @@ describe("POST /api/meeting-agent/extract", () => {
     try {
       const response = await POST(requestWith([
         new File([new Uint8Array([1, 2, 3])], "sync.mp3", { type: "audio/mpeg" }),
-      ]));
+      ], { runId: "meeting-draft-123" }));
       const body = await response.json() as { results: Array<Record<string, unknown>> };
-      expect(body.results[0]).toMatchObject({
+      expect(response.status).toBe(202);
+      const job = await waitForJob(String(body.results[0].jobId));
+      expect(job.status).toBe("completed");
+      expect(job.runId).toBe("meeting-draft-123");
+      expect(job.result).toMatchObject({
         ok: true,
         kind: "audio",
         transcriptionStatus: "ready",
         visionStatus: "not_applicable",
         transcriptSegmentCount: 1,
       });
-      expect(String(body.results[0].content)).toContain("Alex: The pilot is approved");
-      expect(body.results[0].transcriptArtifactId).toEqual(expect.any(String));
-      expect(body.results[0].timelineArtifactId).toEqual(expect.any(String));
+      expect(String(job.result?.content)).toContain("Alex: The pilot is approved");
+      expect(job.result?.transcriptArtifactId).toEqual(expect.any(String));
+      expect(job.result?.timelineArtifactId).toEqual(expect.any(String));
     } finally {
       if (previousProvider === undefined) delete process.env.DTA_TRANSCRIPTION_PROVIDER;
       else process.env.DTA_TRANSCRIPTION_PROVIDER = previousProvider;

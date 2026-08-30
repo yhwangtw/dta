@@ -58,9 +58,18 @@ function decodeJson(segment: string): Record<string, unknown> {
 }
 
 function tokenFromRequest(request: Request, config: DtaConfig): string {
-  const raw = request.headers.get(config.authTokenHeader)?.trim();
+  let header = config.authTokenHeader;
+  let raw = request.headers.get(header)?.trim();
+  // Browser EventSource commonly relies on an authenticated proxy injecting a
+  // dedicated header. Internal service clients such as Prometheus still use
+  // the standard Authorization header, so accept it only as a verified JWT
+  // fallback when the configured proxy header is absent.
+  if (!raw && header !== "authorization") {
+    header = "authorization";
+    raw = request.headers.get(header)?.trim();
+  }
   if (!raw) throw new AuthenticationError("Bearer token is required");
-  if (config.authTokenHeader === "authorization") {
+  if (header === "authorization") {
     const match = /^Bearer\s+(.+)$/i.exec(raw);
     if (!match) throw new AuthenticationError("Authorization must use the Bearer scheme");
     return match[1].trim();
@@ -195,7 +204,19 @@ export function assertRunAccess(principal: RequestPrincipal, runUserId?: string)
 export function assertReviewAccess(principal: RequestPrincipal, config = loadDtaConfig()): void {
   if (principal.authType === "local" || config.reviewRequiredRoles.length === 0) return;
   if (config.reviewRequiredRoles.some((role) => principal.roles.includes(role))) return;
-  throw new AuthenticationError("Token lacks a Meeting review role", 403, "FORBIDDEN");
+  throw new AuthenticationError("Token lacks a DTA review role", 403, "FORBIDDEN");
+}
+
+export function canAccessAgent(principal: RequestPrincipal, allowedRoles?: string[]): boolean {
+  return principal.authType === "local"
+    || principal.roles.includes("dta-admin")
+    || !allowedRoles?.length
+    || allowedRoles.some((role) => principal.roles.includes(role));
+}
+
+export function assertAgentAccess(principal: RequestPrincipal, allowedRoles?: string[]): void {
+  if (canAccessAgent(principal, allowedRoles)) return;
+  throw new AuthenticationError("Token lacks access to this Department Agent", 403, "AGENT_ACCESS_REQUIRED");
 }
 
 export function assertAuditAccess(principal: RequestPrincipal): void {

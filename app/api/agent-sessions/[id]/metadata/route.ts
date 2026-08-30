@@ -2,6 +2,7 @@ import { codingAgentMetadata } from "@/lib/agents/agent-types";
 import { readAgentSessionMetadata } from "@/lib/agent-metadata-store";
 import { readMeetingRun } from "@/lib/agents/meeting/meeting-result-store";
 import { readPMRun } from "@/lib/agents/pm/pm-result-store";
+import { readDepartmentRun } from "@/lib/agents/department/department-result-store";
 import { AuthenticationError, assertRunAccess, authenticateRequest, authenticationErrorResponse } from "@/lib/auth/request-auth";
 
 export const dynamic = "force-dynamic";
@@ -21,7 +22,10 @@ export async function GET(
     const pmRun = metadata.agentType === "pm" && metadata.runId
       ? readPMRun(metadata.runId)
       : null;
-    return Response.json({ metadata, meetingRun, pmRun }, {
+    const departmentRun = metadata.agentType === "department" && metadata.runId
+      ? readDepartmentRun(metadata.runId)
+      : null;
+    return Response.json({ metadata, meetingRun, pmRun, departmentRun }, {
       headers: { "Cache-Control": "no-store" },
     });
   } catch (error) {

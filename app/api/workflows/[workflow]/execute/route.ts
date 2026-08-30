@@ -1,10 +1,12 @@
 import {
   AuthenticationError,
+  assertAgentAccess,
   assertReviewAccess,
   assertRunAccess,
   authenticateRequest,
   authenticationErrorResponse,
 } from "@/lib/auth/request-auth";
+import { getAgentRegistry } from "@/lib/agents/agent-registry";
 import { WorkflowService, WorkflowServiceError } from "@/lib/integrations/n8n/workflow-service";
 
 export const dynamic = "force-dynamic";
@@ -29,6 +31,7 @@ export async function POST(
     if (typeof body.sourceRunId !== "string" || !body.sourceRunId.trim()) {
       return Response.json({ error: "sourceRunId is required" }, { status: 400 });
     }
+    assertAgentAccess(principal, getAgentRegistry().require(body.agentId.trim()).allowedRoles);
     if (body.reason !== undefined && typeof body.reason !== "string") {
       return Response.json({ error: "reason must be a string" }, { status: 400 });
     }

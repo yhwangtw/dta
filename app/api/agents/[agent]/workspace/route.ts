@@ -1,14 +1,15 @@
 import { getAgentRegistry, AgentRegistryError } from "@/lib/agents/agent-registry";
 import { ensureManagedDepartmentWorkspace } from "@/lib/agents/department-workspace";
-import { AuthenticationError, authenticateRequest, authenticationErrorResponse } from "@/lib/auth/request-auth";
+import { AuthenticationError, assertAgentAccess, authenticateRequest, authenticationErrorResponse } from "@/lib/auth/request-auth";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request, context: { params: Promise<{ agent: string }> }): Promise<Response> {
   try {
-    await authenticateRequest(request);
+    const principal = await authenticateRequest(request);
     const { agent } = await context.params;
     const definition = getAgentRegistry().require(agent);
+    assertAgentAccess(principal, definition.allowedRoles);
     if (definition.agentType !== "department") {
       return Response.json({ error: "This workspace endpoint is only for manifest-mounted department Agents" }, { status: 409 });
     }

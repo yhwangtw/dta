@@ -64,7 +64,7 @@ OCI Helm chart: oci://registry-1.docker.io/yhwangtn/dta-agent-platform
 ```
 
 ```bash
-docker pull yhwangtn/dta:v2026.08.29
+docker pull yhwangtn/dta:vYYYY.MM.DD
 docker run --rm -p 30141:30141 \
   -e DTA_AUTH_MODE=none \
   -e DTA_ARTIFACT_STORE=local \
@@ -73,7 +73,7 @@ docker run --rm -p 30141:30141 \
   -e DTA_TRANSCRIPTION_PROVIDER=none \
   -e DTA_VISION_PROVIDER=none \
   -v dta-data:/data \
-  yhwangtn/dta:v2026.08.29
+  yhwangtn/dta:vYYYY.MM.DD
 ```
 
 Im Unternehmensbetrieb müssen Chart-Version und Image-Digest separat fixiert werden. Die Chart-Version wählt nicht automatisch ein gleichnamiges Image. Details: [Deployment guide](./docs/deployment.md) und [Helm documentation](./deploy/helm/dta-agent-platform/README.md).

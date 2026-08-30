@@ -107,14 +107,14 @@ API keys and storage credentials come from Secrets, never the ConfigMap or image
 
 ## Add department Agents through configuration
 
-Mount a version 1 manifest and point DTA at it:
+Mount a version 2 manifest and point DTA at it:
 
 ```env
 DTA_AGENT_MANIFEST_PATH=/etc/dta/agents.json
 DTA_ENABLED_AGENTS=meeting-agent,pm-agent,knowledge-agent
 ```
 
-The manifest format is demonstrated by `config/agents.example.json`. Each entry supplies an ID ending in `-agent`, display name, description, private system prompt, public A2A skills, and optional workflow allowlist. DTA validates the file during readiness; an invalid or missing configured manifest returns HTTP 503. The Kubernetes example mounts `agents.json` from its ConfigMap, so changing department Agents does not modify the image.
+The manifest format is demonstrated by `config/agents.example.json`. Each entry supplies an ID ending in `-agent`, private system prompt, public A2A skills, input/output JSON Schemas, allowed artifact types, review policy, allowed Keycloak roles, model/token/timeout policy, evaluation fixtures, and an optional workflow allowlist. DTA validates the file during readiness; an invalid or missing configured manifest returns HTTP 503. Input and published output are schema-checked, and actions remain review-gated. The Kubernetes example mounts `agents.json` from its ConfigMap, so changing department Agents does not modify the image.
 
 ## Keycloak preparation
 
@@ -125,7 +125,7 @@ The manifest format is demonstrated by `config/agents.example.json`. Each entry 
 5. Give `dta-artifact-delete`, `dta-audit-read`, and `dta-admin` only to the corresponding operational groups.
 6. Set the exact realm issuer URL in `KEYCLOAK_ISSUER`; optionally pin `KEYCLOAK_JWKS_URL`.
 7. Put the browser UI behind the company's Keycloak-aware ingress/auth proxy. DTA's Keycloak adapter validates API tokens but does not render a browser login flow.
-8. If the proxy forwards a token in `x-forwarded-access-token`, set `DTA_AUTH_TOKEN_HEADER` to that name, configure the proxy to overwrite—not append—the header, and prevent untrusted clients from reaching the ClusterIP directly. Apply the same injection to SSE paths because browser `EventSource` cannot attach a Bearer header. For direct service-to-service calls, keep the standard `Authorization: Bearer ...` mode.
+8. If the proxy forwards a token in `x-forwarded-access-token`, set `DTA_AUTH_TOKEN_HEADER` to that name, configure the proxy to overwrite—not append—the header, and prevent untrusted clients from reaching the ClusterIP directly. Apply the same injection to SSE paths because browser `EventSource` cannot attach a Bearer header. When the configured proxy header is absent, DTA also accepts and cryptographically verifies standard `Authorization: Bearer ...` for direct service-to-service clients such as Prometheus.
 
 ## Kubernetes
 
@@ -136,23 +136,24 @@ artifact. It pins the verified multi-architecture image digest, validates the
 single-replica limit, references an externally managed Secret by default, and
 exposes all company endpoints through values rather than image changes.
 
-1. Select the matching immutable chart version. Release `v2026.08.28` uses
-   chart version `2026.8.28`; a release suffix is retained, for example
-   `v2026.08.28-1` becomes `2026.8.28-1`.
+1. Select the matching immutable chart version. Release `v2026.08.30` uses
+   chart version `2026.8.30`; a release suffix is retained, for example
+   `v2026.08.30-1` becomes `2026.8.30-1`.
 2. Pull the chart once to obtain its company values template, then copy that
    template to a secure working directory:
 
 ```bash
 export DTA_CHART=oci://registry-1.docker.io/yhwangtn/dta-agent-platform
-export DTA_CHART_VERSION=2026.8.28
+export DTA_CHART_VERSION=2026.8.30
 
 helm pull "$DTA_CHART" --version "$DTA_CHART_VERSION" --untar
 cp dta-agent-platform/values.company-example.yaml /secure/path/dta-values.yaml
 ```
 
 3. Replace every example endpoint, hostname, storage class, and registry in
-   `/secure/path/dta-values.yaml`. Keep the checked-in image digest unless the
-   company mirrors the image and has verified the mirror digest.
+   `/secure/path/dta-values.yaml`. The published chart is stamped with the
+   matching Docker Hub digest. Verify it; change it only when a company mirror
+   has produced and scanned a different digest.
 4. Have Vault, External Secrets, or the platform secret controller create
    `dta-agent-platform-secrets`. Do not place production secret values in the
    values file.
@@ -202,7 +203,7 @@ filesystem, and all Linux capabilities dropped. Writable paths are limited to
 liveness probes are separate; service-link injection is disabled and pod
 termination receives 60 seconds for graceful shutdown.
 
-The sample also mounts `/etc/dta/agents.json` read-only. `POSTGRES_URL`, media/model keys, MinIO credentials, n8n credentials, and the upload-scanner key come from Secret references. For MinIO, configure a bucket lifecycle rule matching `DTA_ARTIFACT_RETENTION_DAYS`; application-side retention intentionally does not list production buckets.
+The sample also mounts `/etc/dta/agents.json` read-only. `POSTGRES_URL`, media/model keys, MinIO credentials, n8n credentials, SIEM credentials, and the upload-scanner key come from Secret references. For MinIO, configure bucket lifecycle and legal-hold rules matching DTA policy; application-side retention intentionally does not enumerate production buckets.
 
 ## Vault and secret injection
 
@@ -258,3 +259,16 @@ gh attestation verify oci://ghcr.io/yhwangtw/dta:<version> --repo yhwangtw/dta
 - Scrape `/metrics` with a Keycloak token holding `dta-audit-read` or `dta-admin` when `DTA_METRICS_AUTH_REQUIRED=true`.
 - Ship the append-only hash-chained audit JSONL to the company SIEM. The local chain detects modification but is not a substitute for off-host immutable retention.
 - Use outbound network policy/egress controls for the LLM gateway, Keycloak, MinIO, Postgres/Redis, upload scanner, and n8n endpoints.
+- Enable the optional ServiceMonitor, dry-run-first retention CronJob, and the
+  company-supplied backup hook only after their token, storage, and restore
+  procedures are reviewed.
+
+The Helm chart cannot express FQDN egress in a portable Kubernetes
+NetworkPolicy. Use approved destination CIDRs in `networkPolicy.egress.extraRules`
+or the company's CNI-native FQDN policy. When cluster DNS labels differ from
+the default kube-dns selector, disable the built-in DNS rule and include the
+correct DNS rule in `extraRules`.
+
+See [DTA Operations Runbook](./operations-runbook.md) for alert inputs, audit
+shipping, media retries, retention/legal hold, backup/restore drills, incidents,
+and rollback.

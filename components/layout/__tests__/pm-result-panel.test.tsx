@@ -25,6 +25,9 @@ describe("PMResultPanel", () => {
       pmRun: {
         runId: "pm-run-1",
         status: "completed",
+        reviewStatus: "needs_review",
+        revision: 1,
+        reviewHistory: [],
         result: {
           requirementSummary: "Automate approved meeting follow-up.",
           artifacts: [
@@ -48,6 +51,8 @@ describe("PMResultPanel", () => {
     expect(container.textContent).toContain("Automate approved meeting follow-up.");
     expect(container.textContent).toContain("Meeting follow-up URD");
     expect(container.textContent).toContain("pm-create-jira-epic");
+    expect(container.textContent).toContain("Waiting for approval");
+    expect(container.textContent).toContain("Approve result");
     expect(container.querySelector('a[href="/api/artifacts/artifact-urd"]')).not.toBeNull();
   });
 });

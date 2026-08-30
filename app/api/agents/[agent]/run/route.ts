@@ -1,7 +1,7 @@
 import { AgentRequestValidationError, parseAgentRequest } from "@/lib/agents/agent-contract";
-import { AgentContractConfigurationError, AgentContractNotFoundError, getAgentContractService } from "@/lib/agents/agent-contract-service";
+import { AgentContractConfigurationError, AgentContractInputError, AgentContractNotFoundError, getAgentContractService } from "@/lib/agents/agent-contract-service";
 import { AgentRegistryError } from "@/lib/agents/agent-registry";
-import { AuthenticationError, assertRateLimit, authenticateRequest, authenticationErrorResponse, resolveActingUserId } from "@/lib/auth/request-auth";
+import { AuthenticationError, assertAgentAccess, assertRateLimit, authenticateRequest, authenticationErrorResponse, resolveActingUserId } from "@/lib/auth/request-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -18,11 +18,14 @@ export async function POST(
     const parsed = parseAgentRequest(await request.json());
     const input = { ...parsed, userId: resolveActingUserId(principal, parsed.userId) };
     const { agent } = await params;
-    const response = await getAgentContractService().submit(agent, input);
+    const service = getAgentContractService();
+    const definition = service.definition(agent);
+    assertAgentAccess(principal, definition.allowedRoles);
+    const response = await service.submit(agent, input);
     return Response.json(response, { status: response.status === "completed" ? 200 : 202 });
   } catch (error) {
     if (error instanceof AuthenticationError) return authenticationErrorResponse(error);
-    const status = error instanceof AgentRequestValidationError || error instanceof SyntaxError ? 400
+    const status = error instanceof AgentRequestValidationError || error instanceof AgentContractInputError || error instanceof SyntaxError ? 400
       : error instanceof AgentContractNotFoundError ? 404
         : error instanceof AgentRegistryError ? 409
           : error instanceof AgentContractConfigurationError ? 503 : 500;

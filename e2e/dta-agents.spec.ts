@@ -130,7 +130,9 @@ test.describe("DTA domain agents", () => {
     expect(cardResponse.ok()).toBe(true);
     const card = await cardResponse.json() as { name: string; skills: Array<{ id: string }> };
     expect(card.name).toContain("Digital Transformation");
-    expect(card.skills.map((skill) => skill.id)).toEqual(["meeting-minutes", "pm-analysis", "knowledge-brief"]);
+    // The well-known card is public discovery. Role-scoped mounted Agents are
+    // intentionally omitted until the caller uses authenticated discovery.
+    expect(card.skills.map((skill) => skill.id)).toEqual(["meeting-minutes", "pm-analysis"]);
 
     const missingVersion = await request.get("/a2a/v1/tasks");
     expect(missingVersion.status()).toBe(400);

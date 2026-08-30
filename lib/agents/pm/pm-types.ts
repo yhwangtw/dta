@@ -1,5 +1,6 @@
 import type { AgentAction } from "@/lib/agents/agent-types";
 import type { ArtifactReference } from "@/lib/integrations/storage/artifact-store";
+import type { MeetingReviewEvent, MeetingReviewStatus } from "@/lib/agents/meeting/meeting-types";
 
 export type PMArtifactType =
   | "URD"
@@ -29,6 +30,9 @@ export interface StoredPMResult {
   result?: PMResult;
   artifacts: ArtifactReference[];
   actions: AgentAction[];
+  reviewStatus: MeetingReviewStatus;
+  revision: number;
+  reviewHistory: MeetingReviewEvent[];
   error?: string;
   updatedAt: string;
 }

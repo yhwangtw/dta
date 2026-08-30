@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { AgentMetadata } from "@/lib/agents/agent-types";
-import type { MeetingReviewDecision, StoredMeetingResult } from "@/lib/agents/meeting/meeting-types";
+import type { MeetingReviewDecision, MeetingTraceability, StoredMeetingResult } from "@/lib/agents/meeting/meeting-types";
 import { useI18n } from "@/lib/i18n";
 import { WorkflowActionsPanel } from "./WorkflowActionsPanel";
 import s from "./MeetingResultPanel.module.css";
@@ -31,6 +31,23 @@ const REVIEW_HINT_KEY = {
   changes_requested: "meetingReview.hint.changes_requested",
   rejected: "meetingReview.hint.rejected",
 } as const;
+
+function Traceability({ item, t }: { item: MeetingTraceability; t: ReturnType<typeof useI18n>["t"] }) {
+  return <div className={s.traceability} data-needs-confirmation={item.needsConfirmation}>
+    <div className={s.traceMeta}>
+      <code>{item.id}</code>
+      <span>{t("meetingResult.confidence").replace("{confidence}", `${Math.round(item.confidence * 100)}%`)}</span>
+      {item.needsConfirmation && <strong>{t("meetingResult.needsConfirmation")}</strong>}
+    </div>
+    {item.evidence.length > 0 ? <details>
+      <summary>{t("meetingResult.evidence").replace("{count}", String(item.evidence.length))}</summary>
+      <ul>{item.evidence.map((evidence, index) => <li key={`${item.id}-evidence-${index}`}>
+        <small>{[evidence.timestamp, evidence.speaker, evidence.source, evidence.artifactId].filter(Boolean).join(" · ")}</small>
+        {evidence.excerpt && <q>{evidence.excerpt}</q>}
+      </li>)}</ul>
+    </details> : <small>{t("meetingResult.noEvidence")}</small>}
+  </div>;
+}
 
 export function MeetingResultPanel({ sessionId }: Props) {
   const { locale, t } = useI18n();
@@ -185,21 +202,21 @@ export function MeetingResultPanel({ sessionId }: Props) {
       <section>
         <h3>{t("meetingResult.decisions")} <span>{result.decisions.length}</span></h3>
         {result.decisions.length === 0 ? <p className={s.empty}>{t("meetingResult.none")}</p> : (
-          <ol>{result.decisions.map((decision, index) => <li key={`${decision.text}-${index}`}><strong>{decision.text}</strong>{decision.owner && <small>{t("meetingResult.owner")}: {decision.owner}</small>}</li>)}</ol>
+          <ol>{result.decisions.map((decision) => <li key={decision.id}><strong>{decision.text}</strong>{decision.owner && <small>{t("meetingResult.owner")}: {decision.owner}</small>}<Traceability item={decision} t={t} /></li>)}</ol>
         )}
       </section>
 
       <section>
         <h3>{t("meetingResult.actions")} <span>{result.actionItems.length}</span></h3>
         {result.actionItems.length === 0 ? <p className={s.empty}>{t("meetingResult.none")}</p> : (
-          <ul>{result.actionItems.map((item, index) => <li key={`${item.title}-${index}`}><strong>{item.title}</strong>{item.description && <p>{item.description}</p>}<small>{[item.owner && `${t("meetingResult.owner")}: ${item.owner}`, item.dueDate && `${t("meetingResult.due")}: ${item.dueDate}`].filter(Boolean).join(" · ") || t("meetingResult.unassigned")}</small></li>)}</ul>
+          <ul>{result.actionItems.map((item) => <li key={item.id}><strong>{item.title}</strong>{item.description && <p>{item.description}</p>}<small>{[item.owner && `${t("meetingResult.owner")}: ${item.owner}`, item.dueDate && `${t("meetingResult.due")}: ${item.dueDate}`].filter(Boolean).join(" · ") || t("meetingResult.unassigned")}</small><Traceability item={item} t={t} /></li>)}</ul>
         )}
       </section>
 
       <section>
         <h3>{t("meetingResult.requirements")} <span>{result.requirements.length}</span></h3>
         {result.requirements.length === 0 ? <p className={s.empty}>{t("meetingResult.none")}</p> : (
-          <ul>{result.requirements.map((requirement, index) => <li key={`${requirement.title}-${index}`}><strong>{requirement.title}</strong><p>{requirement.description}</p></li>)}</ul>
+          <ul>{result.requirements.map((requirement) => <li key={requirement.id}><strong>{requirement.title}</strong><p>{requirement.description}</p><Traceability item={requirement} t={t} /></li>)}</ul>
         )}
       </section>
 

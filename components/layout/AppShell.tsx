@@ -8,6 +8,7 @@ import { ContextInspector } from "../chat/ContextInspector";
 import { FileViewer } from "./FileViewer";
 import { MeetingResultPanel } from "./MeetingResultPanel";
 import { PMResultPanel } from "./PMResultPanel";
+import { DepartmentResultPanel } from "./DepartmentResultPanel";
 import { MeetingLibraryPanel } from "./MeetingLibraryPanel";
 import { MeetingProcessingPanel } from "./MeetingProcessingPanel";
 import { MeetingKnowledgePanel } from "./MeetingKnowledgePanel";
@@ -105,7 +106,7 @@ export function AppShell() {
   const [pendingStartupPrompt, setPendingStartupPrompt] = useState<string | null>(null);
   const [pendingStartupAgentMetadata, setPendingStartupAgentMetadata] = useState<AgentMetadata | null>(null);
   const [activeAgentMetadata, setActiveAgentMetadata] = useState<AgentMetadata | null>(null);
-  const [rightPanelMode, setRightPanelMode] = useState<"files" | "meeting" | "pm">("files");
+  const [rightPanelMode, setRightPanelMode] = useState<"files" | "meeting" | "pm" | "department">("files");
   const sidebarOpenRef = useRef(sidebarOpen);
   const autoCollapsedSidebarRef = useRef(false);
   const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
@@ -280,7 +281,7 @@ export function AppShell() {
         if (controller.signal.aborted) return;
         const metadata = payload?.metadata ?? null;
         setActiveAgentMetadata(metadata);
-        if (metadata?.agentType === "meeting" || metadata?.agentType === "pm") {
+        if (metadata?.agentType === "meeting" || metadata?.agentType === "pm" || metadata?.agentType === "department") {
           setRightPanelMode(metadata.agentType);
           setRightPanelOpen(true);
         } else if (isDomainAgentType(metadata?.agentType)) {
@@ -680,7 +681,7 @@ export function AppShell() {
   const activeDomainAgent = isDomainAgentType(activeAgentMetadata?.agentType);
   const legacyShell = codingWorkspaceAccess
     && !showDtaHome
-    && Boolean(state.selectedSession)
+    && Boolean(state.selectedSession || (state.newSessionCwd && !pendingStartupAgentMetadata))
     && !activeDomainAgent;
 
   const handleLaunchMeetingAgent = useCallback(({ prompt, runId, cwd }: { prompt: string; runId: string; cwd: string }) => {
@@ -1413,6 +1414,11 @@ export function AppShell() {
                 <button type="button" role="tab" aria-selected={rightPanelMode === "pm"} onClick={() => setRightPanelMode("pm")}>{t("pmResult.title")}</button>
               </div>
             )}
+            {activeAgentMetadata?.agentType === "department" && state.selectedSession && (
+              <div className={s.agentResultTabs} role="tablist" aria-label="Department Agent workspace">
+                <button type="button" role="tab" aria-selected={rightPanelMode === "department"} onClick={() => setRightPanelMode("department")}>{t("departmentResult.title")}</button>
+              </div>
+            )}
             {rightPanelMode === "files" && <TabBar
               tabs={fileTabs}
               activeTabId={activeFileTabId ?? ""}
@@ -1451,6 +1457,8 @@ export function AppShell() {
             <MeetingResultPanel sessionId={state.selectedSession.id} />
           ) : rightPanelMode === "pm" && activeAgentMetadata?.agentType === "pm" && state.selectedSession ? (
             <PMResultPanel sessionId={state.selectedSession.id} />
+          ) : rightPanelMode === "department" && activeAgentMetadata?.agentType === "department" && state.selectedSession ? (
+            <DepartmentResultPanel sessionId={state.selectedSession.id} />
           ) : diffFile && panelCwd ? (
             <DiffPanel cwd={panelCwd} path={diffFile} onClose={() => setDiffFile(null)} onAnnotate={handleDiffAnnotation} />
           ) : activeFileTab?.filePath ? (

@@ -9,6 +9,7 @@ import { AgentRequestValidationError, parseAgentRequest, toAgentResponse } from 
 import { AgentRegistry } from "../agents/agent-registry";
 import { parseAgentManifest } from "../agents/agent-manifest";
 import { writeMeetingRun } from "../agents/meeting/meeting-result-store";
+import { createMeetingMediaJob, readMeetingMediaJob, updateMeetingMediaJob } from "../agents/meeting/meeting-media-job-store";
 
 const originalEnabled = process.env.DTA_ENABLED_AGENTS;
 const originalWorkspace = process.env.DTA_AGENT_WORKSPACE;
@@ -57,6 +58,60 @@ describe("external Agent contract", () => {
       agentMetadata: expect.objectContaining({ agentType: "meeting", userId: "user-1" }),
     }));
     expect(enqueue.mock.calls[0][0].prompt).toContain("BEGIN CALLER INPUT");
+  });
+
+  it("attaches an owned completed media job to the accepted Meeting run", async () => {
+    const root = mkdtempSync(join(tmpdir(), "dta-contract-media-"));
+    process.env.DTA_DATA_DIR = root;
+    process.env.DTA_ENABLED_AGENTS = "meeting-agent";
+    const job = createMeetingMediaJob({
+      userId: "user-1",
+      sourceArtifactId: "source-artifact-1",
+      name: "meeting.mp3",
+      size: 100,
+      kind: "audio",
+      maxAttempts: 2,
+    });
+    updateMeetingMediaJob(job.id, (current) => ({
+      ...current,
+      status: "completed",
+      progress: { stage: "completed", percent: 100, message: "done" },
+      result: {
+        name: current.name,
+        size: current.size,
+        ok: true,
+        kind: current.kind,
+        chars: 12,
+        artifactId: current.sourceArtifactId,
+        jobId: current.id,
+        content: "pilot audio",
+        processingStatus: "completed",
+      },
+      finishedAt: new Date().toISOString(),
+    }));
+    const enqueue = vi.fn((input: AgentRunInput): AgentRun => ({
+      ...input,
+      id: "accepted-run-123",
+      trigger: "manual",
+      status: "queued",
+      createdAt: "2026-08-23T00:00:00.000Z",
+    }));
+    try {
+      const service = new AgentContractService(
+        { enqueue },
+        new AgentRegistry(),
+        { getConversationMemory: async () => null, appendConversationMemory: async () => undefined, deleteConversationMemory: async () => undefined },
+      );
+      await service.submit("meeting", {
+        requestId: "request-with-media",
+        userId: "user-1",
+        task: "Analyze recording",
+        input: { attachments: [{ jobId: job.id, artifactId: job.sourceArtifactId }] },
+      });
+      expect(readMeetingMediaJob(job.id)?.runId).toBe("accepted-run-123");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 
   it("routes a manifest-mounted department Agent without a central alias entry", async () => {
@@ -127,7 +182,7 @@ describe("external Agent contract", () => {
       reviewStatus: "needs_review" as const,
       revision: 1,
       reviewHistory: [],
-      result: { summary: "Summary", decisions: [], actionItems: [], requirements: [] },
+      result: { schemaVersion: "2.0" as const, summary: "Summary", decisions: [], actionItems: [], requirements: [] },
       artifacts: [],
       actions: [{ type: "handoff" as const, target: "pm-agent" }],
       updatedAt: "2026-08-23T00:00:00.000Z",

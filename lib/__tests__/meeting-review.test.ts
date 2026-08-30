@@ -13,6 +13,7 @@ import {
 import type { MeetingResult, StoredMeetingResult } from "../agents/meeting/meeting-types";
 
 const result: MeetingResult = {
+  schemaVersion: "2.0",
   title: "Weekly sync",
   summary: "Pilot evidence is ready.",
   decisions: [],

@@ -3,6 +3,7 @@ import { getAgentContractService } from "@/lib/agents/agent-contract-service";
 import { getAgentEventBus, type AgentEventEnvelope } from "@/lib/agents/agent-event-bus";
 import { AuthenticationError, RateLimitError } from "@/lib/auth/request-auth";
 import { eventToA2AStream, runToA2ATask } from "./a2a-adapter";
+import { beginSseConnection } from "@/lib/observability/runtime-metrics";
 
 export function a2aJson(body: unknown, init: ResponseInit = {}): Response {
   const headers = new Headers(init.headers);
@@ -93,6 +94,7 @@ export function createA2ATaskStream(request: Request, initialRun: AgentRun): Res
   const bus = getAgentEventBus();
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
+      const endMetric = beginSseConnection("a2a", false);
       let closed = false;
       let unsubscribe = () => {};
       let heartbeat: ReturnType<typeof setInterval> | null = null;
@@ -105,6 +107,7 @@ export function createA2ATaskStream(request: Request, initialRun: AgentRun): Res
         closed = true;
         unsubscribe();
         if (heartbeat) clearInterval(heartbeat);
+        endMetric();
         try { controller.close(); } catch { /* already closed */ }
       };
       const emit = (envelope: AgentEventEnvelope) => {

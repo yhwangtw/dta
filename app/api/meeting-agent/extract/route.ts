@@ -10,7 +10,7 @@ import {
   type MeetingSourceExtractionResult,
 } from "@/lib/meeting-source-files";
 import { getArtifactStore } from "@/lib/integrations/storage/artifact-store-factory";
-import { understandMeetingMedia } from "@/lib/agents/meeting/meeting-media-pipeline";
+import { ensureMeetingMediaJobRunner } from "@/lib/agents/meeting/meeting-media-job-runner";
 import { AuthenticationError, assertRateLimit, authenticateRequest, authenticationErrorResponse } from "@/lib/auth/request-auth";
 import { artifactOwnershipMetadata, type ArtifactOwnership } from "@/lib/integrations/storage/artifact-access";
 import { scanUpload, UploadRejectedError, UploadScanError } from "@/lib/integrations/security/upload-scanner";
@@ -45,28 +45,22 @@ async function extractFile(file: File, ownership: ArtifactOwnership): Promise<Me
         metadata: { ...ownership, originalName: name, extension, uploadScanStatus: scan.status, uploadScanner: scan.scanner },
       });
       const kind = ["mp4", "m4v", "webm", "mov", "ogv"].includes(extension) ? "video" as const : "audio" as const;
-      const understanding = await understandMeetingMedia({ artifactId: artifact.id, name, kind });
-      const hasEvidence = Boolean(understanding.content?.trim());
+      const job = ensureMeetingMediaJobRunner().enqueue({
+        sourceArtifactId: artifact.id,
+        name,
+        size: file.size,
+        kind,
+        ownership,
+      });
       return {
         name,
         size: file.size,
         ok: true,
         kind,
-        ...(understanding.content ? { content: understanding.content } : {}),
-        chars: understanding.chars,
+        chars: 0,
         artifactId: artifact.id,
-        ...(understanding.transcriptArtifactId ? { transcriptArtifactId: understanding.transcriptArtifactId } : {}),
-        ...(understanding.audioArtifactId ? { audioArtifactId: understanding.audioArtifactId } : {}),
-        ...(understanding.visualAnalysisArtifactId ? { visualAnalysisArtifactId: understanding.visualAnalysisArtifactId } : {}),
-        ...(understanding.timelineArtifactId ? { timelineArtifactId: understanding.timelineArtifactId } : {}),
-        keyframeArtifactIds: understanding.keyframeArtifactIds,
-        ...(understanding.durationSeconds ? { durationSeconds: understanding.durationSeconds } : {}),
-        transcriptSegmentCount: understanding.transcriptSegmentCount,
-        keyframeCount: understanding.keyframeCount,
-        transcriptionStatus: understanding.transcriptionStatus,
-        visionStatus: understanding.visionStatus,
-        warnings: understanding.warnings,
-        ...(!hasEvidence ? { error: understanding.warnings.join(" · ") || "No usable audio or visual evidence was produced" } : {}),
+        jobId: job.id,
+        processingStatus: job.status,
       };
     }
     let content: string;
@@ -121,8 +115,13 @@ export async function POST(request: Request): Promise<Response> {
     const form = await request.formData();
     const projectId = typeof form.get("projectId") === "string" ? String(form.get("projectId")).trim().slice(0, 500) : undefined;
     const conversationId = typeof form.get("conversationId") === "string" ? String(form.get("conversationId")).trim().slice(0, 500) : undefined;
+    const rawRunId = typeof form.get("runId") === "string" ? String(form.get("runId")).trim() : "";
+    if (rawRunId && !/^[A-Za-z0-9_-]{8,200}$/.test(rawRunId)) {
+      return Response.json({ error: "runId is invalid" }, { status: 400 });
+    }
     const ownership = artifactOwnershipMetadata({
       userId: principal.id,
+      ...(rawRunId ? { runId: rawRunId } : {}),
       ...(projectId ? { projectId } : {}),
       ...(conversationId ? { conversationId } : {}),
     });
@@ -136,12 +135,16 @@ export async function POST(request: Request): Promise<Response> {
       return Response.json({ error: `Combined upload exceeds the ${Math.floor(MEETING_SOURCE_MAX_TOTAL_BYTES / 1024 / 1024)} MB limit` }, { status: 413 });
     }
 
-    const results = await Promise.all(files.map((file) => extractFile(file, ownership)));
+    // Process upload bodies sequentially so the route never multiplies its
+    // peak memory by the number of selected files. Media reasoning itself is
+    // delegated to the durable background job runner below.
+    const results: MeetingSourceExtractionResult[] = [];
+    for (const file of files) results.push(await extractFile(file, ownership));
     const totalChars = results.reduce((sum, result) => sum + (result.ok ? result.chars ?? 0 : 0), 0);
     if (totalChars > MEETING_SOURCE_MAX_CHARS) {
       return Response.json({ error: "Combined extracted text exceeds 200,000 characters" }, { status: 413 });
     }
-    return Response.json({ results });
+    return Response.json({ results }, { status: results.some((result) => result.jobId) ? 202 : 200 });
   } catch (error) {
     if (error instanceof AuthenticationError) return authenticationErrorResponse(error);
     return Response.json({ error: error instanceof Error ? error.message : String(error) }, { status: 400 });

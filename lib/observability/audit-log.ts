@@ -38,6 +38,43 @@ function eventHash(event: Omit<AuditEvent, "hash">): string {
   return createHash("sha256").update(JSON.stringify(event)).digest("hex");
 }
 
+function dispatchAuditEvent(event: AuditEvent): void {
+  const config = loadDtaConfig();
+  if (config.structuredLogs) {
+    const actorHash = createHash("sha256").update(event.actorId).digest("hex").slice(0, 16);
+    console.log(JSON.stringify({
+      level: event.outcome === "failure" ? "error" : "info",
+      message: "dta_audit_event",
+      eventId: event.id,
+      occurredAt: event.occurredAt,
+      action: event.action,
+      actorHash,
+      resourceType: event.resourceType,
+      resourceId: event.resourceId,
+      outcome: event.outcome,
+      metadata: event.metadata,
+      auditHash: event.hash,
+    }));
+  }
+  if (!config.auditSinkUrl) return;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10_000);
+  timeout.unref?.();
+  void fetch(config.auditSinkUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(config.auditSinkApiKey ? { [config.auditSinkAuthHeader]: `${config.auditSinkAuthScheme} ${config.auditSinkApiKey}`.trim() } : {}),
+    },
+    body: JSON.stringify(event),
+    signal: controller.signal,
+  }).then((response) => {
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  }).catch((error) => {
+    console.error(JSON.stringify({ level: "error", message: "dta_audit_sink_failed", eventId: event.id, error: error instanceof Error ? error.message : String(error) }));
+  }).finally(() => clearTimeout(timeout));
+}
+
 export function recordAuditEvent(input: AuditEventInput): AuditEvent | null {
   const config = loadDtaConfig();
   if (!config.auditLogEnabled) return null;
@@ -52,6 +89,7 @@ export function recordAuditEvent(input: AuditEventInput): AuditEvent | null {
   mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
   appendFileSync(path, `${JSON.stringify(event)}\n`, { encoding: "utf8", mode: 0o600 });
   lastHashByPath.set(path, event.hash);
+  dispatchAuditEvent(event);
   return event;
 }
 

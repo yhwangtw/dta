@@ -2,10 +2,11 @@
 # Do not add secrets here; let Vault or External Secrets create the Secret.
 
 image:
-  # The company environment pulls the verified public release from Docker Hub.
-  repository: yhwangtn/dta
-  tag: "v2026.08.28"
-  digest: sha256:a119a2a2b98c406c7e9b40fe625f558c54f262c1d94023c040215776d98cdd19
+  # The published OCI chart is stamped with the matching verified Docker Hub
+  # digest. Replace these placeholders only when deploying from a source checkout.
+  repository: docker.io/yhwangtn/dta
+  tag: "REPLACE_WITH_RELEASE_TAG"
+  digest: ""
 
 imagePullSecrets: []
 
@@ -30,6 +31,48 @@ persistence:
   data:
     storageClass: company-block-storage
     size: 50Gi
+
+# Enable only after replacing the example selectors and CIDRs. Standard
+# Kubernetes NetworkPolicy cannot match external DNS names.
+networkPolicy:
+  enabled: false
+  ingressFrom:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: ingress-nginx
+  egress:
+    allowDns: true
+    extraRules:
+      - to:
+          - ipBlock:
+              cidr: 10.0.0.0/8
+        ports:
+          - protocol: TCP
+            port: 443
+
+serviceMonitor:
+  enabled: false
+  labels:
+    release: kube-prometheus-stack
+  authorization:
+    enabled: true
+    secretName: dta-metrics-token
+    secretKey: token
+
+retentionCronJob:
+  enabled: false
+  tokenSecretName: dta-retention-token
+  tokenSecretKey: token
+  tokenHeader: x-forwarded-access-token
+
+# Supply a company-approved digest-pinned backup image and Secret-backed
+# destination settings before enabling this hook.
+backupCronJob:
+  enabled: false
+  image: registry.company.example/platform/backup@sha256:REPLACE_WITH_DIGEST
+  command: []
+  args: []
+  envFrom: []
 
 secret:
   create: false
@@ -64,6 +107,19 @@ config:
     DTA_VISION_MODEL: company-vision-model
 
     DTA_UPLOAD_SCANNER_URL: https://scanner.company.example/scan
+    DTA_AUDIT_SINK_URL: https://siem.company.example/ingest/dta
+    DTA_STRUCTURED_LOGS: "true"
+
+    # Start in report-only mode. Enable deletion only after Legal/Records
+    # approves the periods and the first retention report is reviewed.
+    DTA_RETENTION_ENABLED: "true"
+    DTA_RETENTION_DRY_RUN: "true"
+    DTA_ARTIFACT_RETENTION_DAYS: "365"
+    DTA_RUN_RETENTION_DAYS: "365"
+    DTA_MEDIA_JOB_RETENTION_DAYS: "30"
+    DTA_WORKFLOW_RETENTION_DAYS: "365"
+    DTA_RETENTION_PROTECT_APPROVED: "true"
+    DTA_LEGAL_HOLD_RUN_IDS: ""
 
 nodeSelector: {}
 tolerations: []

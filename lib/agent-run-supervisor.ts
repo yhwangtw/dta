@@ -19,6 +19,7 @@ import { buildAgentRunReport } from "./agent-run-report";
 import type { AgentMessage } from "./types";
 import { failMeetingRun, readMeetingRun } from "./agents/meeting/meeting-result-store";
 import { failPMRun, readPMRun } from "./agents/pm/pm-result-store";
+import { failDepartmentRun, readDepartmentRun } from "./agents/department/department-result-store";
 import {
   AgentExecutionService,
   getAgentExecutionService,
@@ -27,6 +28,9 @@ import {
 import { getAgentEventBus } from "./agents/agent-event-bus";
 import { getMemoryStore } from "./integrations/memory";
 import { conversationMemoryKey } from "./integrations/memory/memory-key";
+import { getAgentRegistry } from "./agents/agent-registry";
+import { recordAgentRunFinished } from "./observability/runtime-metrics";
+import { recordAuditEvent } from "./observability/audit-log";
 
 const KEEP_ALIVE_MS = 4 * 60_000;
 const MAX_RUN_MS = 24 * 60 * 60_000;
@@ -164,6 +168,19 @@ export class AgentRunSupervisor {
       await active.session.abort().catch(() => {});
     }
     if (active) this.cleanup(runId);
+    recordAgentRunFinished({
+      agentId: result.agentMetadata?.agentId ?? "coding-agent",
+      status: "cancelled",
+      durationMs: result.startedAt ? Math.max(0, Date.parse(result.finishedAt ?? new Date().toISOString()) - Date.parse(result.startedAt)) : undefined,
+    });
+    recordAuditEvent({
+      action: "agent.run.cancelled",
+      actorId: result.agentMetadata?.userId ?? "system",
+      resourceType: "agent_run",
+      resourceId: result.id,
+      outcome: "success",
+      metadata: { agentId: result.agentMetadata?.agentId ?? "coding-agent" },
+    });
     getAgentEventBus().publish(runId, { type: "failed", error: result.error || "Run cancelled" });
     this.drain();
     return result;
@@ -216,26 +233,35 @@ export class AgentRunSupervisor {
     let pm = existing?.agentMetadata?.agentType === "pm" && existing.agentMetadata.runId
       ? readPMRun(existing.agentMetadata.runId)
       : null;
-    const domainResult = meeting ?? pm;
+    let department = existing?.agentMetadata?.agentType === "department" && existing.agentMetadata.runId
+      ? readDepartmentRun(existing.agentMetadata.runId)
+      : null;
+    const domainResult = meeting ?? pm ?? department;
     const domainType = existing?.agentMetadata?.agentType;
-    const requiresStructuredResult = domainType === "meeting" || domainType === "pm";
+    const requiresStructuredResult = domainType === "meeting" || domainType === "pm" || domainType === "department";
     const effectiveStatus = status === "completed" && requiresStructuredResult && domainResult?.status !== "completed"
       ? "failed"
       : status;
     const effectiveError = effectiveStatus === "failed" && !error && requiresStructuredResult
-      ? `The ${domainType === "meeting" ? "Meeting" : "PM"} Agent finished without publishing a structured result`
+      ? `The ${domainType === "meeting" ? "Meeting" : domainType === "pm" ? "PM" : "Department"} Agent finished without publishing a structured result`
       : error;
     if (effectiveStatus === "failed" && existing?.agentMetadata?.runId && domainResult?.status !== "completed") {
       if (domainType === "meeting") meeting = failMeetingRun(existing.agentMetadata.runId, effectiveError || "Meeting Agent run failed");
       if (domainType === "pm") pm = failPMRun(existing.agentMetadata.runId, effectiveError || "PM Agent run failed");
+      if (domainType === "department") department = failDepartmentRun({
+        runId: existing.agentMetadata.runId,
+        agentId: existing.agentMetadata.agentId,
+        ...(existing.agentMetadata.userId ? { userId: existing.agentMetadata.userId } : {}),
+      }, effectiveError || "Department Agent run failed");
     }
-    const result = meeting?.result ?? pm?.result ?? existing?.result;
-    const artifacts = meeting?.artifacts ?? pm?.artifacts ?? existing?.artifacts;
-    const actions = meeting?.actions ?? pm?.actions ?? existing?.actions;
+    const result = meeting?.result ?? pm?.result ?? department?.result ?? existing?.result;
+    const artifacts = meeting?.artifacts ?? pm?.artifacts ?? department?.artifacts ?? existing?.artifacts;
+    const actions = meeting?.actions ?? pm?.actions ?? department?.actions ?? existing?.actions;
+    const report = messages ? buildAgentRunReport(messages, existing?.startedAt, finishedAt) : undefined;
     this.updateRun(runId, effectiveStatus, {
       finishedAt,
       ...(effectiveError ? { error: effectiveError } : {}),
-      ...(messages ? { report: buildAgentRunReport(messages, existing?.startedAt, finishedAt) } : {}),
+      ...(report ? { report } : {}),
       ...(result !== undefined ? { result } : {}),
       ...(artifacts?.length ? { artifacts } : {}),
       ...(actions?.length ? { actions } : {}),
@@ -249,6 +275,26 @@ export class AgentRunSupervisor {
     } else {
       eventBus.publish(runId, { type: "failed", error: effectiveError || "Agent run failed" });
     }
+    recordAgentRunFinished({
+      agentId: existing?.agentMetadata?.agentId ?? "coding-agent",
+      status: effectiveStatus,
+      durationMs: report?.durationMs ?? (existing?.startedAt ? Math.max(0, Date.parse(finishedAt) - Date.parse(existing.startedAt)) : undefined),
+      inputTokens: report?.usage.inputTokens,
+      outputTokens: report?.usage.outputTokens,
+      cost: report?.usage.cost,
+    });
+    recordAuditEvent({
+      action: `agent.run.${effectiveStatus}`,
+      actorId: existing?.agentMetadata?.userId ?? "system",
+      resourceType: "agent_run",
+      resourceId: runId,
+      outcome: effectiveStatus === "completed" ? "success" : "failure",
+      metadata: {
+        agentId: existing?.agentMetadata?.agentId ?? "coding-agent",
+        ...(report?.durationMs !== null && report?.durationMs !== undefined ? { durationMs: report.durationMs } : {}),
+        ...(report ? { inputTokens: report.usage.inputTokens, outputTokens: report.usage.outputTokens } : {}),
+      },
+    });
     const memoryKey = existing?.agentMetadata ? conversationMemoryKey(existing.agentMetadata) : null;
     if (memoryKey) {
       void getMemoryStore().appendConversationMemory(memoryKey, {
@@ -351,10 +397,14 @@ export class AgentRunSupervisor {
       }, KEEP_ALIVE_MS);
       active.keepAlive.unref?.();
 
+      const definition = run.agentMetadata ? getAgentRegistry().get(run.agentMetadata.agentId) : null;
+      const timeoutMs = definition?.modelPolicy?.timeoutSeconds
+        ? definition.modelPolicy.timeoutSeconds * 1_000
+        : MAX_RUN_MS;
       active.timeout = setTimeout(() => {
         void started.abort().catch(() => {});
-        this.finish(run.id, "failed", "Agent run exceeded the 24-hour limit");
-      }, MAX_RUN_MS);
+        this.finish(run.id, "failed", `Agent run exceeded the ${Math.round(timeoutMs / 1_000)}-second limit`);
+      }, timeoutMs);
       active.timeout.unref?.();
 
       await started.send({

@@ -1,11 +1,18 @@
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { buildA2AAgentCard } from "../a2a/agent-card";
 import { A2AValidationError, parseA2ASendMessage, runToA2ATask } from "../a2a/a2a-adapter";
 import { A2AListTasksValidationError, listA2ATasks } from "../a2a/a2a-list-tasks";
 import type { AgentRun } from "../agent-run-types";
+import { resetAgentRegistryForTests } from "../agents/agent-registry";
 
 const originalEnv = { ...process.env };
-afterEach(() => { process.env = { ...originalEnv }; });
+afterEach(() => {
+  process.env = { ...originalEnv };
+  resetAgentRegistryForTests();
+});
 
 const principal = { id: "user-1", roles: ["dta-user"], authType: "keycloak" as const };
 
@@ -37,7 +44,7 @@ describe("A2A v1 adapter", () => {
     }, principal);
     expect(parsed).toMatchObject({
       agentAlias: "meeting-agent",
-      request: { requestId: "message-1", userId: "user-1", conversationId: "conversation-1" },
+      request: { requestId: "message-1", userId: "user-1", conversationId: "conversation-1", input: { transcript: "Pilot approved" } },
     });
   });
 
@@ -45,6 +52,36 @@ describe("A2A v1 adapter", () => {
     expect(() => parseA2ASendMessage({
       message: { messageId: "message-file", role: "ROLE_USER", parts: [{ url: "http://169.254.169.254/latest/meta-data" }] },
     }, principal)).toThrow(A2AValidationError);
+  });
+
+  it("applies a mounted Department Agent role policy to A2A submissions", () => {
+    const root = mkdtempSync(join(tmpdir(), "dta-a2a-manifest-"));
+    const path = join(root, "agents.json");
+    writeFileSync(path, JSON.stringify({
+      version: 2,
+      agents: [{
+        id: "knowledge-agent",
+        displayName: "Knowledge Agent",
+        description: "Creates governed briefs.",
+        systemPrompt: "Preserve source evidence.",
+        outputSchema: { type: "object", required: ["brief"], properties: { brief: { type: "string" } } },
+        allowedRoles: ["dta-knowledge"],
+        skills: [{ id: "knowledge-brief", name: "Knowledge brief", description: "Create a brief", tags: ["knowledge"], inputModes: ["application/json"], outputModes: ["application/json"] }],
+      }],
+    }));
+    process.env.DTA_AGENT_MANIFEST_PATH = path;
+    process.env.DTA_ENABLED_AGENTS = "knowledge-agent";
+    resetAgentRegistryForTests();
+    const message = {
+      message: { messageId: "knowledge-1", role: "ROLE_USER", metadata: { agentId: "knowledge-agent" }, parts: [{ text: "Create a brief" }] },
+    };
+    try {
+      expect(() => parseA2ASendMessage(message, principal)).toThrow(/lacks access/);
+      expect(parseA2ASendMessage(message, { ...principal, roles: ["dta-user", "dta-knowledge"] }).agentAlias).toBe("knowledge-agent");
+      expect((buildA2AAgentCard().skills as Array<{ id: string }>).map((skill) => skill.id)).not.toContain("knowledge-brief");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 
   it("maps internal run state and artifacts to the A2A task model", () => {

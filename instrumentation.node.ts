@@ -2,6 +2,7 @@ import { ensureAgentRunSupervisor } from "./lib/agent-run-supervisor";
 import { ensureScheduleRunner } from "./lib/schedule-runner";
 import { dtaConfigurationIssues, loadDtaConfig } from "./lib/config/env";
 import { runRetentionSweep } from "./lib/governance/retention";
+import { ensureMeetingMediaJobRunner } from "./lib/agents/meeting/meeting-media-job-runner";
 
 declare global {
   var __dtaConfigurationReported: boolean | undefined;
@@ -24,6 +25,9 @@ export function registerScheduleRunner(): void {
   // Node server starts. Active work from a previous process is never replayed:
   // the supervisor marks it interrupted to avoid duplicate tool side effects.
   ensureAgentRunSupervisor();
+  // Media jobs persist independently from the upload request. An interrupted
+  // job remains visible and retryable instead of disappearing with the pod.
+  ensureMeetingMediaJobRunner();
   void runRetentionSweep().catch((error) => {
     console.error(`[DTA] retention sweep failed: ${error instanceof Error ? error.message : String(error)}`);
   });

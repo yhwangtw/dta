@@ -22,10 +22,14 @@ Live mode adds:
 
 - a small upload/download/delete round trip through the configured artifact
   store and upload scanner
-- User B receives `404` for User A's artifact, Agent run, and SSE stream
+- User B cannot read or mutate User A's artifact, sessions, Agent/Pi metadata,
+  run, SSE stream, workflow source, tags, pins, archive state, prompts,
+  attention state, or review endpoint
 - a real Meeting Agent run through the configured company LLM
 - normalized authenticated SSE reaches a terminal event
-- the result contains a summary, decisions, action items, and requirements
+- the result is MeetingResult schema `2.0`; every decision, action item, and
+  requirement includes a stable ID, evidence array, bounded confidence, and
+  `needsConfirmation`
 - the Meeting review gate is explicitly approved
 - the no-side-effect `meeting-pilot-readiness` n8n workflow validates DTA scope
   headers and returns `{ "ok": true, "dtaProbe": true }`
@@ -129,7 +133,7 @@ Exit codes:
 | MinIO artifact round trip | bucket policy, TLS trust, SigV4 region, scanner, or credentials |
 | Meeting Agent run | company LLM endpoint/model/auth or Pi runtime provider registration |
 | Normalized SSE | ingress buffering/timeout, token forwarding, or run ownership |
-| Cross-user isolation | Keycloak subjects, ownership metadata, or operational overprivilege |
+| Cross-user isolation | Keycloak subjects, persisted ownership metadata, forwarded-token trust, or an unexpectedly broad operational role |
 | n8n scope/idempotency | workflow activation, webhook credential, DTA header validation, or response contract |
 
 Do not accept a report containing `SKIP` for a required live check as production

@@ -7,6 +7,7 @@ import { artifactOwnershipMetadata } from "@/lib/integrations/storage/artifact-a
 import type { AgentMetadata } from "@/lib/agents/agent-types";
 import { ensurePMRun, writePMRun } from "./pm-result-store";
 import type { PMArtifactType, PMResult } from "./pm-types";
+import { loadDtaConfig } from "@/lib/config/env";
 
 export const PUBLISH_PM_RESULT_TOOL_NAME = "publish_pm_result";
 
@@ -81,13 +82,25 @@ export function createPublishPMResultTool(
         ...(actions.length ? { recommendedActions: actions } : {}),
       };
       const current = ensurePMRun(runId, undefined, scope);
+      const revision = current.revision + 1;
+      const reviewRequired = loadDtaConfig().pmReviewRequired;
+      const publishedAt = new Date().toISOString();
       writePMRun({
         ...current,
         status: "completed",
         result,
         artifacts: [...current.artifacts, ...artifacts.map(({ reference }) => reference)],
         actions,
-        updatedAt: new Date().toISOString(),
+        reviewStatus: reviewRequired ? "needs_review" : "approved",
+        revision,
+        reviewHistory: reviewRequired ? current.reviewHistory : [...current.reviewHistory, {
+          status: "approved",
+          actorId: "dta-policy",
+          comment: "Automatically approved by DTA_PM_REVIEW_REQUIRED=false",
+          reviewedAt: publishedAt,
+          revision,
+        }],
+        updatedAt: publishedAt,
       });
       return {
         content: [{ type: "text", text: "PM result published successfully." }],

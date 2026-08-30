@@ -20,6 +20,22 @@ N8N_WORKFLOW_MAP_JSON={"meeting-create-jira":"/webhook/meeting-create-jira","mee
 
 Keep Jira, Teams, Confluence, and other business-system credentials inside n8n's credential store. DTA only receives the credential needed to invoke approved webhooks.
 
+## Importable workflow packs
+
+`deploy/n8n/` contains inactive, credential-free starter workflows for:
+
+- `meeting-create-jira`
+- `meeting-notify-teams`
+- `meeting-update-knowledge-base`
+- `pm-create-jira-epic`
+- `pm-publish-prd`
+- `pm-notify-team`
+
+Import the JSON into n8n, replace its placeholder business nodes with approved
+Jira/Teams/Wiki credentials, protect the Webhook, verify the DTA scope headers
+and idempotency key, then activate it. The packs are templates, not live company
+connections; see [`deploy/n8n/README.md`](../deploy/n8n/README.md).
+
 ## Build a workflow in n8n
 
 1. Start with a Webhook trigger using `POST`.
@@ -76,7 +92,10 @@ n8n must authenticate the DTA webhook credential and treat these scope headers a
 }
 ```
 
-Meeting workflows are blocked until the current result revision is approved. The result panels expose the configured catalog, execute workflows explicitly, show their status, and reuse completed idempotent executions instead of silently creating duplicate work.
+Meeting, PM, and manifest-mounted Department Agent workflows are blocked until
+the current result revision is approved. The result panels expose the
+configured catalog, execute workflows explicitly, show status, and reuse
+completed idempotent executions instead of silently creating duplicate work.
 
 ## DTA endpoints
 

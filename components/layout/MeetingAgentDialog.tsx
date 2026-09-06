@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type DragEvent, type FormEvent } from "react";
+import { Mic, Upload } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { buildMeetingMinutesPrompt, type MeetingOutputLanguage } from "@/lib/meeting-agent";
 import { appendMeetingDictation } from "@/lib/meeting-dictation";
@@ -415,7 +416,7 @@ export function MeetingAgentDialog({ onClose, onLaunch, managedWorkspaceCwd }: P
       <section className={s.dialog} role="dialog" aria-modal="true" aria-labelledby="meeting-agent-title" data-testid="meeting-agent-dialog">
         <header className={s.header}>
           <div className={s.headingGroup}>
-            <span className={s.badge}>DTA · MEETING INTELLIGENCE</span>
+            <span className={s.badge}>{t("dta.brand.meetingIntelligence")}</span>
             <h2 id="meeting-agent-title">{t("meetingAgent.title")}</h2>
             <p>{t("meetingAgent.description")}</p>
           </div>
@@ -464,10 +465,7 @@ export function MeetingAgentDialog({ onClose, onLaunch, managedWorkspaceCwd }: P
                 aria-label={listening ? t("meetingAgent.stopDictation") : t("meetingAgent.startDictation")}
                 title={dictationSupported === false ? t("meetingAgent.micUnsupported") : undefined}
               >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <rect x="9" y="2" width="6" height="12" rx="3" />
-                  <path d="M5 10a7 7 0 0 0 14 0M12 17v5M8 22h8" />
-                </svg>
+                <Mic size={15} strokeWidth={2} aria-hidden />
                 <span>{listening ? t("meetingAgent.stopDictation") : t("meetingAgent.startDictation")}</span>
                 {listening && <i aria-hidden />}
               </button>
@@ -517,9 +515,7 @@ export function MeetingAgentDialog({ onClose, onLaunch, managedWorkspaceCwd }: P
               onDrop={handleDrop}
               disabled={uploading || attachments.length >= MEETING_SOURCE_MAX_FILES}
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="M12 16V4M7 9l5-5 5 5" /><path d="M5 14v5h14v-5" />
-              </svg>
+              <Upload size={20} strokeWidth={1.8} aria-hidden />
               <span>{uploading ? t("meetingAgent.analyzingMedia") : t("meetingAgent.addFiles")}</span>
             </button>
 

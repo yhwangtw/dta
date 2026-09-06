@@ -5,6 +5,7 @@ import os from "os";
 // One deterministic fixture root shared by global-setup, the web server, and
 // the specs (via env). Regenerated on every run.
 const E2E_ROOT = process.env.E2E_ROOT ?? path.join(os.tmpdir(), "pi-web-e2e");
+const E2E_PORT = Number(process.env.E2E_PORT ?? 30177);
 process.env.E2E_ROOT = E2E_ROOT;
 process.env.E2E_PROJECT_CWD = path.join(E2E_ROOT, "demo-project");
 
@@ -23,7 +24,7 @@ export default defineConfig({
     // Keep the test client on the same IPv4 address Playwright probes for the
     // webServer. macOS may resolve localhost to ::1 while Next listens on
     // 0.0.0.0, producing intermittent connection-refused failures.
-    baseURL: "http://127.0.0.1:30177",
+    baseURL: `http://127.0.0.1:${E2E_PORT}`,
     // Local containers with preinstalled browsers can point this at the
     // binary (e.g. /opt/pw-browsers/chromium); CI uses the managed download.
     launchOptions: {
@@ -31,8 +32,8 @@ export default defineConfig({
     },
   },
   webServer: {
-    command: "npm run build && npx next start -p 30177",
-    port: 30177,
+    command: `npm run build && npx next start -p ${E2E_PORT}`,
+    port: E2E_PORT,
     timeout: 300_000,
     reuseExistingServer: false,
     env: {

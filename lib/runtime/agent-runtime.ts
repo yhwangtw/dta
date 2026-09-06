@@ -1,4 +1,5 @@
 import type { AgentMetadata, GenericAgentEvent } from "@/lib/agents/agent-types";
+import type { ToolSelectionMode } from "@/lib/tool-selection";
 
 export interface CreateAgentSessionInput {
   cwd: string;
@@ -6,6 +7,7 @@ export interface CreateAgentSessionInput {
   sessionFile?: string;
   metadata: AgentMetadata;
   toolNames?: string[];
+  toolMode?: ToolSelectionMode;
   ephemeral?: boolean;
 }
 

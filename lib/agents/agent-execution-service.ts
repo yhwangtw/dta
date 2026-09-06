@@ -3,6 +3,7 @@ import { ensurePMRun } from "@/lib/agents/pm/pm-result-store";
 import type { AgentMetadata, GenericAgentEvent } from "@/lib/agents/agent-types";
 import type { AgentRuntime, AgentState } from "@/lib/runtime/agent-runtime";
 import { PiAgentRuntime } from "@/lib/runtime/pi-agent-runtime";
+import type { ToolSelectionMode } from "@/lib/tool-selection";
 import { getAgentRegistry, type AgentRegistry } from "./agent-registry";
 
 export interface CreateAgentExecutionInput {
@@ -16,6 +17,7 @@ export interface CreateAgentExecutionInput {
   sessionId?: string;
   sessionFile?: string;
   toolNames?: string[];
+  toolMode?: ToolSelectionMode;
   ephemeral?: boolean;
 }
 
@@ -62,6 +64,7 @@ export class AgentExecutionService {
       sessionId: input.sessionId,
       sessionFile: input.sessionFile,
       toolNames: input.toolNames,
+      toolMode: input.toolMode,
       ephemeral: input.ephemeral,
     });
     if (metadata.agentType === "meeting" && metadata.runId) {

@@ -13,7 +13,7 @@ export class PiAgentRuntime implements AgentRuntime {
       input.sessionFile ?? "",
       input.cwd,
       input.toolNames,
-      { ephemeral: input.ephemeral, profile },
+      { ephemeral: input.ephemeral, profile, toolMode: input.toolMode },
     );
     writeAgentSessionMetadata(started.realSessionId, input.metadata);
     return {

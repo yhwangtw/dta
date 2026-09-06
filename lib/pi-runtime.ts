@@ -16,6 +16,11 @@ import type { ExtensionProviderInfo } from "./extensions-info";
 import { appendPiWebOutputGuidance } from "./output-design";
 import { createPiModelRuntime } from "./pi-model-runtime";
 import { loadDtaConfig } from "./config/env";
+import { createMcpExtension } from "./mcp";
+import { createSubagentExtension } from "./subagent-extension";
+import { createSafetyGuardExtension } from "./safety-guard";
+import { createPlanModeExtension } from "./plan-mode";
+import { createStructuredOutputExtension } from "./structured-output-extension";
 
 interface ProviderModelLike {
   id: string;
@@ -241,6 +246,13 @@ export async function createTrackedAgentServices(cwd: string): Promise<{
     agentDir,
     modelRuntime,
     resourceLoaderOptions: {
+      extensionFactories: [
+        createPlanModeExtension(),
+        createSafetyGuardExtension(),
+        createStructuredOutputExtension(),
+        createMcpExtension(cwd),
+        createSubagentExtension(),
+      ],
       // DTA keeps Markdown as the default output and exposes one readable
       // blockquote syntax for the few outcomes worth progressive enhancement.
       appendSystemPromptOverride: appendPiWebOutputGuidance,

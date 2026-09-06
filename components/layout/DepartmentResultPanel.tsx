@@ -70,7 +70,7 @@ export function DepartmentResultPanel({ sessionId }: { sessionId: string }) {
   if (run.status === "failed" || run.result === undefined) return <div className={s.state}><div className={`${s.stateCard} ${s.failed}`}><strong>{t("departmentResult.failed")}</strong><p>{run.error || t("departmentResult.failedHint")}</p></div></div>;
 
   return <div className={s.panel} data-testid="department-result-panel">
-    <header className={s.hero}><span>DTA · DEPARTMENT RESULT</span><h2>{payload?.metadata.displayName ?? run.agentId}</h2><p>{t("departmentResult.subtitle")}</p></header>
+    <header className={s.hero}><span>{t("dta.brand.departmentResult")}</span><h2>{payload?.metadata.displayName ?? run.agentId}</h2><p>{t("departmentResult.subtitle")}</p></header>
     <section className={s.review} data-review-status={run.reviewStatus}>
       <div className={s.reviewHeading}><div><span>{t("meetingReview.controlPlane")}</span><h3>{t(`meetingReview.status.${run.reviewStatus}`)}</h3></div><strong>{t("meetingReview.revision").replace("{revision}", String(run.revision))}</strong></div>
       <p>{t(`departmentReview.hint.${run.reviewStatus}`)}</p>

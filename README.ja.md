@@ -31,7 +31,7 @@ Meeting の結果は単なる Markdown ではなく、構造化された run、a
 
 ## ソースから起動
 
-必要環境: Node.js 22+、npm 10+、Git。
+必要環境: Node.js 22+、npm、Git。グローバル Pi CLI は不要です。
 
 ```bash
 git clone https://github.com/yhwangtw/dta.git
@@ -52,7 +52,13 @@ npm run dta -- run pm --task "この要件から PRD と task plan を作成し�
 npm run tui -- meeting
 ```
 
-`setup.sh` は `origin/main` に作業ツリーを同期する production installer です。未コミットの開発変更がある checkout では実行しないでください。
+`setup.sh` は end-user 向け production installer です。同期前にローカル変更の private backup を作成し、対話的な確認を要求します。開発 checkout では使用せず、オフライン時は `DTA_SETUP_OFFLINE=1 bash setup.sh` を使用してください。
+
+## 選択可能な Coding Workspace
+
+DTA は Pi Web shell の既存機能を保持しています。ローカル／開発者モードでは、Pi session、SSE streaming、files、git diff、snapshot、schedules、tGD artifacts、MCP、Plan Mode、structured output、Safety Guard、embedded subagents を利用できます。会社モードでは、指定された coding role を持つユーザーにのみ表示されます。
+
+Safety Guard は高影響操作を確認しますが、OS sandbox ではありません。Coding Agent を有効にする場合は、専用 OS user、container または VM と、最小限の workspace mount を使用してください。
 
 ## Docker と Helm
 
@@ -70,13 +76,11 @@ docker run --rm -p 30141:30141 \
   -e DTA_ARTIFACT_STORE=local \
   -e DTA_MEMORY_STORE=local \
   -e DTA_WORKFLOW_PROVIDER=none \
-  -e DTA_TRANSCRIPTION_PROVIDER=none \
-  -e DTA_VISION_PROVIDER=none \
   -v dta-data:/data \
   yhwangtn/dta:vYYYY.MM.DD
 ```
 
-会社環境では、chart version と image digest を別々に固定してください。chart version が同名の image を自動選択するとは限りません。詳細は [Deployment guide](./docs/deployment.md) と [Helm documentation](./deploy/helm/dta-agent-platform/README.md) を参照してください。
+会社環境では、chart version と image digest を別々に固定し、`replicaCount: 1` を維持してください。詳細は [Deployment guide](./docs/deployment.md) と [Helm documentation](./deploy/helm/dta-agent-platform/README.md) を参照してください。
 
 ## External contracts
 
@@ -95,9 +99,10 @@ Pi 固有の session や event は外部 API に公開しません。
 
 ## Production での重要な制約
 
-- Pi session runtime は process-local のため、現時点では `replicas: 1` が必須です。
-- Browser login は Keycloak 対応 ingress/proxy で行い、DTA は検証済み identity headers を受け取ります。
+- Pi session runtime と active run supervision は process-local のため、現時点では `replicas: 1` が必須です。
+- Browser login は Keycloak 対応 ingress/proxy で行い、DTA は token と ownership を検証します。
 - audio/video 処理には外部 speech-to-text provider が必要です。画面理解には任意の vision provider が必要です。
+- n8n workflow は human review、scope、idempotency を確認してから有効化してください。
 - 本番投入前に `dta pilot-check --live` で identity、storage、workflow、media 経路を検証してください。
 
 ## 詳細ドキュメント
@@ -107,3 +112,7 @@ Pi 固有の session や event は外部 API に公開しません。
 - [Company pilot readiness](./docs/company-pilot-readiness.md)
 - [Meeting media pipeline](./docs/meeting-media-pipeline.md)
 - [n8n integration](./docs/n8n.md)
+
+## License
+
+MIT — see [LICENSE](./LICENSE).

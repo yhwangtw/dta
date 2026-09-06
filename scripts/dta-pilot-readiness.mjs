@@ -47,6 +47,7 @@ export const PROTECTED_ROUTE_PROBES = [
   ["DELETE", "/api/conversations/missing/memory"],
   ["GET", "/api/department-agent/runs"],
   ["POST", "/api/department-agent/runs/missing/review"],
+  ["POST", "/api/diagnostics"],
   ["POST", "/api/cwd/browse"],
   ["POST", "/api/cwd/validate"],
   ["POST", "/api/default-cwd"],
@@ -80,6 +81,8 @@ export const PROTECTED_ROUTE_PROBES = [
   ["POST", "/api/models-config/test"],
   ["GET", "/api/models"],
   ["POST", "/api/models"],
+  ["GET", "/api/mcp"],
+  ["POST", "/api/mcp"],
   ["GET", "/api/packages"],
   ["POST", "/api/packages"],
   ["POST", "/api/pm-agent/workspace"],
@@ -101,6 +104,11 @@ export const PROTECTED_ROUTE_PROBES = [
   ["GET", "/api/schedules/wake"],
   ["POST", "/api/schedules/wake"],
   ["GET", "/api/search/semantic"],
+  ["GET", "/api/runtime/status"],
+  ["GET", "/api/runtime/update"],
+  ["POST", "/api/runtime/update"],
+  ["GET", "/api/security/activity"],
+  ["DELETE", "/api/security/activity"],
   ["GET", "/api/sessions"],
   ["GET", "/api/sessions/missing"],
   ["PATCH", "/api/sessions/missing"],
@@ -128,6 +136,7 @@ export const PROTECTED_ROUTE_PROBES = [
   ["GET", "/api/workflows?agentId=meeting-agent"],
   ["POST", "/api/workflows/missing/execute"],
   ["GET", "/api/worktrees"],
+  ["POST", "/api/worktrees"],
 ];
 
 function cleanBaseUrl(value) {

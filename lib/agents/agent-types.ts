@@ -24,6 +24,7 @@ export type GenericAgentEvent =
   | { type: "tool_completed"; tool: string; result?: unknown }
   | { type: "artifact_created"; artifactId: string; artifactType: string }
   | { type: "waiting_for_input"; prompt: string }
+  | { type: "turn_completed"; costUsd: number }
   | { type: "completed"; result: unknown }
   | { type: "failed"; error: string };
 

@@ -11,6 +11,7 @@ import {
   MIN_AGENT_RUN_CONCURRENCY,
   TERMINAL_AGENT_RUN_STATUSES,
   type AgentRun,
+  type AgentRunCompletion,
   type AgentRunInput,
   type AgentRunStatus,
 } from "./agent-run-types";
@@ -41,6 +42,14 @@ interface ActiveRun {
   keepAlive: ReturnType<typeof setInterval> | null;
   timeout: ReturnType<typeof setTimeout> | null;
   waitingForInput: boolean;
+  turns: number;
+  costUsd: number;
+}
+
+interface RunWaiter {
+  resolve: (completion: AgentRunCompletion) => void;
+  onUpdate?: (run: AgentRun) => void;
+  removeAbortListener?: () => void;
 }
 
 export class AgentRunNotFoundError extends Error {}
@@ -61,6 +70,7 @@ export class AgentRunSupervisor {
   private maxConcurrencyValue: number;
   private readonly executionService: AgentExecutionService;
   private readonly active = new Map<string, ActiveRun>();
+  private readonly waiters = new Map<string, RunWaiter>();
   private started = false;
   private draining = false;
 
@@ -97,7 +107,7 @@ export class AgentRunSupervisor {
     this.drain();
   }
 
-  enqueue(input: AgentRunInput, options: {
+  private createQueuedRun(input: AgentRunInput, options: {
     trigger?: AgentRun["trigger"];
     parentRunId?: string;
   } = {}): AgentRun {
@@ -125,8 +135,39 @@ export class AgentRunSupervisor {
       store.runs.unshift(run);
     });
     getAgentEventBus().publish(run.id, { type: "status", message: "Run queued", state: "running" });
-    this.drain();
     return cloneRun(run);
+  }
+
+  enqueue(input: AgentRunInput, options: {
+    trigger?: AgentRun["trigger"];
+    parentRunId?: string;
+  } = {}): AgentRun {
+    const run = this.createQueuedRun(input, options);
+    this.drain();
+    return run;
+  }
+
+  enqueueAndWait(input: AgentRunInput, options: {
+    trigger?: AgentRun["trigger"];
+    parentRunId?: string;
+    signal?: AbortSignal;
+    onUpdate?: (run: AgentRun) => void;
+  } = {}): Promise<AgentRunCompletion> {
+    if (options.signal?.aborted) {
+      return Promise.reject(new Error("Agent run was cancelled before it started"));
+    }
+    const run = this.createQueuedRun(input, options);
+    return new Promise<AgentRunCompletion>((resolve) => {
+      const waiter: RunWaiter = { resolve, onUpdate: options.onUpdate };
+      if (options.signal) {
+        const abort = () => { void this.cancel(run.id); };
+        options.signal.addEventListener("abort", abort, { once: true });
+        waiter.removeAbortListener = () => options.signal?.removeEventListener("abort", abort);
+      }
+      this.waiters.set(run.id, waiter);
+      options.onUpdate?.(run);
+      this.drain();
+    });
   }
 
   retry(runId: string): AgentRun {
@@ -145,6 +186,7 @@ export class AgentRunSupervisor {
       toolNames: [...original.toolNames],
       workspace: original.workspace ? { ...original.workspace } : undefined,
       agentMetadata: original.agentMetadata ? { ...original.agentMetadata, runId: undefined } : undefined,
+      limits: original.limits ? { ...original.limits } : undefined,
     }, {
       trigger: "retry",
       parentRunId: original.id,
@@ -182,16 +224,20 @@ export class AgentRunSupervisor {
       metadata: { agentId: result.agentMetadata?.agentId ?? "coding-agent" },
     });
     getAgentEventBus().publish(runId, { type: "failed", error: result.error || "Run cancelled" });
+    this.resolveWaiter(result);
     this.drain();
     return result;
   }
 
-  private updateRun(runId: string, status: AgentRunStatus, patch: Partial<AgentRun> = {}): void {
-    mutateAgentRunStore((store) => {
+  private updateRun(runId: string, status: AgentRunStatus, patch: Partial<AgentRun> = {}): AgentRun | null {
+    const updated = mutateAgentRunStore((store) => {
       const run = store.runs.find((item) => item.id === runId);
-      if (!run || TERMINAL_AGENT_RUN_STATUSES.has(run.status)) return;
+      if (!run || TERMINAL_AGENT_RUN_STATUSES.has(run.status)) return null;
       Object.assign(run, patch, { status });
+      return cloneRun(run);
     });
+    if (updated) this.waiters.get(runId)?.onUpdate?.(updated);
+    return updated;
   }
 
   private drain(): void {
@@ -215,6 +261,8 @@ export class AgentRunSupervisor {
           keepAlive: null,
           timeout: null,
           waitingForInput: false,
+          turns: 0,
+          costUsd: 0,
         });
         void this.execute(reserved);
       }
@@ -258,7 +306,7 @@ export class AgentRunSupervisor {
     const artifacts = meeting?.artifacts ?? pm?.artifacts ?? department?.artifacts ?? existing?.artifacts;
     const actions = meeting?.actions ?? pm?.actions ?? department?.actions ?? existing?.actions;
     const report = messages ? buildAgentRunReport(messages, existing?.startedAt, finishedAt) : undefined;
-    this.updateRun(runId, effectiveStatus, {
+    const completed = this.updateRun(runId, effectiveStatus, {
       finishedAt,
       ...(effectiveError ? { error: effectiveError } : {}),
       ...(report ? { report } : {}),
@@ -309,7 +357,16 @@ export class AgentRunSupervisor {
       }).catch(() => {});
     }
     this.cleanup(runId);
+    if (completed) this.resolveWaiter(completed, messages);
     this.drain();
+  }
+
+  private resolveWaiter(run: AgentRun, messages?: AgentMessage[]): void {
+    const waiter = this.waiters.get(run.id);
+    if (!waiter) return;
+    this.waiters.delete(run.id);
+    waiter.removeAbortListener?.();
+    waiter.resolve({ run: cloneRun(run), ...(messages ? { messages } : {}) });
   }
 
   private cleanup(runId: string): void {
@@ -360,6 +417,19 @@ export class AgentRunSupervisor {
           getAgentEventBus().publish(run.id, event);
           return;
         }
+        if (event.type === "turn_completed") {
+          active.turns += 1;
+          active.costUsd += event.costUsd;
+          const turnsExceeded = run.limits?.maxTurns !== undefined && active.turns > run.limits.maxTurns;
+          const costExceeded = run.limits?.maxCostUsd !== undefined && active.costUsd > run.limits.maxCostUsd;
+          if (!turnsExceeded && !costExceeded) return;
+          const reason = turnsExceeded
+            ? `Subagent exceeded the ${run.limits?.maxTurns}-turn limit`
+            : `Subagent exceeded the $${run.limits?.maxCostUsd?.toFixed(2)} cost limit`;
+          void started.abort().catch(() => {});
+          this.finish(run.id, "failed", reason);
+          return;
+        }
         if (event.type === "failed") {
           void import("./web-push")
             .then(({ sendWebPush }) => sendWebPush(run.agentMetadata?.userId, `/?session=${encodeURIComponent(started.sessionId)}`))
@@ -398,12 +468,16 @@ export class AgentRunSupervisor {
       active.keepAlive.unref?.();
 
       const definition = run.agentMetadata ? getAgentRegistry().get(run.agentMetadata.agentId) : null;
-      const timeoutMs = definition?.modelPolicy?.timeoutSeconds
+      const policyTimeoutMs = definition?.modelPolicy?.timeoutSeconds
         ? definition.modelPolicy.timeoutSeconds * 1_000
-        : MAX_RUN_MS;
+        : undefined;
+      const timeoutMs = Math.min(run.limits?.timeoutMs ?? MAX_RUN_MS, policyTimeoutMs ?? MAX_RUN_MS);
       active.timeout = setTimeout(() => {
         void started.abort().catch(() => {});
-        this.finish(run.id, "failed", `Agent run exceeded the ${Math.round(timeoutMs / 1_000)}-second limit`);
+        const label = run.limits?.timeoutMs && timeoutMs === run.limits.timeoutMs
+          ? "Subagent exceeded its time limit"
+          : `Agent run exceeded the ${Math.round(timeoutMs / 1_000)}-second limit`;
+        this.finish(run.id, "failed", label);
       }, timeoutMs);
       active.timeout.unref?.();
 

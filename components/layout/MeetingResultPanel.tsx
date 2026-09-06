@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { MessageSquare } from "lucide-react";
 import type { AgentMetadata } from "@/lib/agents/agent-types";
 import type { MeetingReviewDecision, MeetingTraceability, StoredMeetingResult } from "@/lib/agents/meeting/meeting-types";
 import { useI18n } from "@/lib/i18n";
@@ -120,7 +121,7 @@ export function MeetingResultPanel({ sessionId }: Props) {
     return <div className={s.state}>
       <div className={s.stateCard}>
         <span className={s.conversationIcon} aria-hidden>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a3 3 0 0 1-3 3H8l-5 3V6a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3z" /><path d="M8 8h8M8 12h5" /></svg>
+          <MessageSquare size={20} strokeWidth={1.8} />
         </span>
         <strong>{t("meetingResult.conversationActive")}</strong>
         <p>{t("meetingResult.conversationHint")}</p>
@@ -135,7 +136,7 @@ export function MeetingResultPanel({ sessionId }: Props) {
       <div className={`${s.stateCard} ${s.failed}`}>
         <span className={s.warningIcon} aria-hidden>!</span>
         <strong>{t("meetingResult.incomplete")}</strong>
-        <p>{friendlyError || (locale === "zh" ? "請回到會議對話確認內容。" : "Return to the meeting conversation to review it.")}</p>
+        <p>{friendlyError || t("meetingResult.incompleteHint")}</p>
       </div>
     </div>;
   }
@@ -143,7 +144,7 @@ export function MeetingResultPanel({ sessionId }: Props) {
   return (
     <div className={s.panel} data-testid="meeting-result-panel">
       <header className={s.hero}>
-        <span>DTA · MEETING RESULT</span>
+        <span>{t("dta.brand.meetingResult")}</span>
         <h2>{result.title || t("meetingResult.title")}</h2>
         <p>{result.summary}</p>
       </header>
@@ -192,7 +193,7 @@ export function MeetingResultPanel({ sessionId }: Props) {
         <ul>{handoffs.map((handoff, index) => <li key={`${handoff.target ?? "agent"}-${index}`}>
           <div>
             <small>{t("meetingResult.nextAgent")}</small>
-            <strong>{handoff.target === "pm-agent" ? "PM Agent" : handoff.target || t("meetingResult.agentUnspecified")}</strong>
+            <strong>{handoff.target === "pm-agent" ? t("dta.brand.pmAgentName") : handoff.target || t("meetingResult.agentUnspecified")}</strong>
           </div>
           <span data-released={run.reviewStatus === "approved"}>{run.reviewStatus === "approved" ? t("meetingResult.readyForOrchestrator") : t("meetingResult.awaitingApproval")}</span>
           {handoff.reason && <p>{handoff.reason}</p>}

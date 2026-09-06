@@ -58,6 +58,8 @@ export interface AssistantMessage {
   provider: string;
   stopReason?: string;
   errorMessage?: string;
+  /** Some providers mark a response as the terminal turn without a separate stop reason. */
+  endTurn?: boolean;
   timestamp?: number;
   usage?: {
     input: number;
@@ -190,6 +192,8 @@ export interface SessionInfo {
   modified: string;
   messageCount: number;
   firstMessage: string;
+  /** Most recent readable user/assistant text, used as a conversation preview. */
+  lastMessage?: string;
   parentSessionId?: string; // set if this session was forked from another
   ephemeral?: boolean; // live only; intentionally disappears after reload/server restart
 }

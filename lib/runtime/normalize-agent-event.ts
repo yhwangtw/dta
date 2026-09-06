@@ -64,6 +64,16 @@ export function normalizePiAgentEvent(event: RuntimeEvent, runId: string): Gener
     // durable domain output is exposed separately as artifacts/results.
     return tool ? { type: "tool_completed", tool } : null;
   }
+  if (event.type === "message_end") {
+    const message = record.message;
+    if (!message || typeof message !== "object" || (message as Record<string, unknown>).role !== "assistant") {
+      return null;
+    }
+    const usage = (message as Record<string, unknown>).usage;
+    const cost = usage && typeof usage === "object" ? (usage as Record<string, unknown>).cost : undefined;
+    const total = cost && typeof cost === "object" ? (cost as Record<string, unknown>).total : undefined;
+    return { type: "turn_completed", costUsd: typeof total === "number" ? total : 0 };
+  }
   if (event.type === "agent_end") {
     const error = agentEndError(record);
     return error

@@ -1,11 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { ArrowUpRight, Bell, BellRing, Check, CheckCheck, CircleCheckBig, RefreshCw, Trash2 } from "lucide-react";
+import { IconButton } from "@/components/ui/IconButton";
 import type { AttentionItem } from "@/lib/attention-center";
 import { useI18n } from "@/lib/i18n";
 import s from "./AttentionPanel.module.css";
 
-type Filter = "all" | "unread" | "waiting" | "failed";
+type Filter = "all" | "unread" | "waiting" | "failed" | "completed";
+type GroupKey = "needsInput" | "failed" | "completed";
 
 interface Props {
   items: AttentionItem[];
@@ -15,11 +18,12 @@ interface Props {
   onRefresh: () => void;
   onMarkRead: (id: string) => void;
   onMarkAllRead: () => void;
+  onClearCompleted: (ids: string[]) => void;
   onOpenSession: (sessionId: string) => void | Promise<void>;
   onOpenSource: (source: "agent" | "schedule") => void;
 }
 
-const FILTERS: Filter[] = ["all", "unread", "waiting", "failed"];
+const FILTERS: Filter[] = ["all", "unread", "waiting", "failed", "completed"];
 
 function friendlySummary(summary: string, locale: "en" | "zh"): string {
   const normalized = summary.toLowerCase();
@@ -64,6 +68,7 @@ export function AttentionPanel({
   onRefresh,
   onMarkRead,
   onMarkAllRead,
+  onClearCompleted,
   onOpenSession,
   onOpenSource,
 }: Props) {
@@ -110,15 +115,18 @@ export function AttentionPanel({
   const visibleItems = useMemo(() => items.filter((item) => {
     if (filter === "unread") return !readIds.has(item.id);
     if (filter === "waiting") return item.status === "waiting_for_input";
-    if (filter === "failed") return item.status !== "waiting_for_input";
+    if (filter === "failed") return item.status === "failed" || item.status === "interrupted";
+    if (filter === "completed") return item.status === "completed";
     return true;
   }), [filter, items, readIds]);
-  const filterCounts = useMemo<Record<Filter, number>>(() => ({
-    all: items.length,
-    unread: items.filter((item) => !readIds.has(item.id)).length,
-    waiting: items.filter((item) => item.status === "waiting_for_input").length,
-    failed: items.filter((item) => item.status !== "waiting_for_input").length,
-  }), [items, readIds]);
+  const groups = useMemo(() => {
+    const groupItems: Array<{ key: GroupKey; items: AttentionItem[] }> = [
+      { key: "needsInput", items: visibleItems.filter((item) => item.status === "waiting_for_input") },
+      { key: "failed", items: visibleItems.filter((item) => item.status === "failed" || item.status === "interrupted") },
+      { key: "completed", items: visibleItems.filter((item) => item.status === "completed") },
+    ];
+    return groupItems.filter((group) => group.items.length > 0);
+  }, [visibleItems]);
 
   const open = async (item: AttentionItem) => {
     onMarkRead(item.id);
@@ -129,48 +137,85 @@ export function AttentionPanel({
     if (item.source === "agent" || item.source === "schedule") onOpenSource(item.source);
   };
 
+  const renderItem = (item: AttentionItem) => {
+    const read = readIds.has(item.id);
+    const sourceLabel = item.source === "meeting"
+      ? t("attention.meeting")
+      : item.source === "agent"
+        ? t("attention.agentRun")
+      : item.source === "schedule"
+        ? t("attention.automation")
+        : t("attention.meetingConversation");
+    const time = new Intl.DateTimeFormat(locale === "zh" ? "zh-TW" : "en", {
+      month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
+    }).format(new Date(item.occurredAt));
+    return (
+      <article key={item.id} className={`${s.card} ${read ? s.cardRead : ""}`} data-severity={item.severity} data-status={item.status}>
+        <div className={s.cardTop}>
+          <span className={s.source}>{sourceLabel}</span>
+          <time dateTime={item.occurredAt}>{time}</time>
+          {!read && <i className={s.unreadDot} aria-label={t("attention.unreadItem")} />}
+        </div>
+        <strong className={s.title}>{friendlyTitle(item, locale)}</strong>
+        <p className={s.summary}>{friendlySummary(item.summary, locale)}</p>
+        <div className={s.actions}>
+          <button type="button" className={s.primaryAction} onClick={() => void open(item)}>
+            <ArrowUpRight size={15} aria-hidden />
+            {item.sessionId ? t("attention.openSession") : t("attention.openSource")}
+          </button>
+          {!read && (
+            <button type="button" className={s.secondary} onClick={() => onMarkRead(item.id)}>
+              <Check size={15} aria-hidden />
+              {t("attention.markRead")}
+            </button>
+          )}
+        </div>
+      </article>
+    );
+  };
+
   return (
     <section className={s.root} aria-label={t("attention.title")}>
       <header className={s.header}>
         <div className={s.heading}>
-          <span className={s.headingIcon} aria-hidden>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
-            </svg>
-          </span>
-          <div>
-            <strong>{t("attention.title")}</strong>
-            <span>{unreadCount > 0 ? t("attention.subtitleUnread").replace("{count}", String(unreadCount)) : t("attention.caughtUp")}</span>
+          <span className={s.headingIcon} aria-hidden><Bell size={17} strokeWidth={1.8} /></span>
+          <div className={s.headingCopy}>
+            <h2>{t("attention.title")}</h2>
+            <p>{unreadCount > 0 ? `${unreadCount} ${t("attention.unread")}` : t("attention.caughtUp")}</p>
           </div>
+          {unreadCount > 0 && <span className={s.unreadCount} aria-hidden>{Math.min(unreadCount, 99)}</span>}
         </div>
-        <div className={s.headerActions}>
+        <div className={s.toolbar} role="group" aria-label={t("attention.actions")}>
           <button
             type="button"
-            className={s.pushButton}
+            className={`${s.toolbarButton} ${s.pushButton}`}
             onClick={() => void togglePush()}
             disabled={pushBusy || pushState === "loading" || pushState === "unavailable"}
             aria-pressed={pushState === "enabled"}
             aria-label={pushState === "enabled" ? t("attention.pushDisable") : t("attention.pushEnable")}
             title={pushState === "enabled" ? t("attention.pushDisable") : t("attention.pushEnable")}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" /><path d="M10 21h4" />
-            </svg>
+            {pushState === "enabled" ? <BellRing size={15} aria-hidden /> : <Bell size={15} aria-hidden />}
+            <span>{t("attention.push")}</span>
           </button>
-          <button type="button" className={s.iconButton} onClick={onRefresh} disabled={loading} aria-label={t("attention.refresh")} title={t("attention.refresh")}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M20 11a8.1 8.1 0 1 0 2.2 5.5" /><path d="M20 4v7h-7" /></svg>
-          </button>
-          <button type="button" className={s.readAllButton} onClick={onMarkAllRead} disabled={unreadCount === 0}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="m3 12 4 4L17 6" /><path d="m11 16 2 2 8-8" /></svg>
-            {t("attention.markAllRead")}
+          <IconButton
+            size="compact"
+            className={loading ? s.refreshing : undefined}
+            label={t("attention.refresh")}
+            icon={<RefreshCw />}
+            onClick={onRefresh}
+            disabled={loading}
+          />
+          <button type="button" className={`${s.toolbarButton} ${s.markAllButton}`} onClick={onMarkAllRead} disabled={unreadCount === 0}>
+            <CheckCheck size={16} aria-hidden />
+            <span>{t("attention.markAllRead")}</span>
           </button>
         </div>
       </header>
       <div className={s.filters} aria-label={t("attention.filters")}>
         {FILTERS.map((item) => (
           <button key={item} type="button" aria-pressed={filter === item} onClick={() => setFilter(item)}>
-            <span>{t(`attention.filter.${item}`)}</span>
-            <small>{filterCounts[item]}</small>
+            {t(`attention.filter.${item}`)}
           </button>
         ))}
       </div>
@@ -180,54 +225,25 @@ export function AttentionPanel({
           <div className={s.empty}>{t("common.loading")}</div>
         ) : visibleItems.length === 0 ? (
           <div className={s.empty}>
-            <span aria-hidden>✓</span>
+            <span aria-hidden><CircleCheckBig size={20} strokeWidth={1.8} /></span>
             <strong>{t("attention.empty")}</strong>
             <p>{t("attention.emptyHint")}</p>
           </div>
-        ) : visibleItems.map((item) => {
-          const read = readIds.has(item.id);
-          const sourceLabel = item.source === "meeting"
-            ? t("attention.meeting")
-            : item.source === "agent"
-              ? t("attention.agentRun")
-            : item.source === "schedule"
-              ? t("attention.automation")
-              : t("attention.meetingConversation");
-          const statusLabel = item.status === "waiting_for_input"
-            ? t("attention.status.waiting")
-            : item.status === "interrupted"
-              ? t("attention.status.interrupted")
-              : t("attention.status.failed");
-          const time = new Intl.DateTimeFormat(locale === "zh" ? "zh-TW" : "en", {
-            month: "short", day: "numeric",
-          }).format(new Date(item.occurredAt));
-          return (
-            <article key={item.id} className={`${s.card} ${read ? s.cardRead : ""}`} data-severity={item.severity}>
-              <div className={s.cardIcon} data-status={item.status} aria-hidden>
-                {item.status === "waiting_for_input" ? "?" : "!"}
-              </div>
-              <div className={s.cardBody}>
-                <div className={s.cardTop}>
-                  <span className={s.statusBadge} data-status={item.status}>{statusLabel}</span>
-                  <time dateTime={item.occurredAt}>{time}</time>
-                  {!read && <i className={s.unreadDot} aria-label={t("attention.unreadItem")} />}
-                </div>
-                <strong className={s.title} title={item.title}>{friendlyTitle(item, locale)}</strong>
-                <p className={s.summary}>{friendlySummary(item.summary, locale)}</p>
-                <div className={s.cardMeta}>
-                  <span>{sourceLabel}</span>
-                </div>
-                <div className={s.actions}>
-                  <button type="button" className={s.primaryAction} onClick={() => void open(item)}>
-                    {item.sessionId ? t("attention.review") : t("attention.openSource")}
-                    <span aria-hidden>→</span>
-                  </button>
-                  {!read && <button type="button" className={s.secondary} onClick={() => onMarkRead(item.id)}>{t("attention.markRead")}</button>}
-                </div>
-              </div>
-            </article>
-          );
-        })}
+        ) : groups.map((group) => (
+          <section key={group.key} className={s.group}>
+            <header className={s.groupHeader}>
+              <h3>{t(`attention.group.${group.key}`)}</h3>
+              <span>{group.items.length}</span>
+              {group.key === "completed" && (
+                <button type="button" className={s.clearGroup} onClick={() => onClearCompleted(group.items.map((item) => item.id))}>
+                  <Trash2 size={14} aria-hidden />
+                  {t("attention.clearCompleted")}
+                </button>
+              )}
+            </header>
+            <div className={s.groupItems}>{group.items.map(renderItem)}</div>
+          </section>
+        ))}
       </div>
     </section>
   );

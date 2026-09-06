@@ -50,6 +50,7 @@ async function auditControls(page: Page, root: Locator, context: string, mobile:
   ].join(",");
   const results = await root.locator(selector).evaluateAll((elements, isMobile) => elements.flatMap((element) => {
       const node = element as HTMLElement;
+      if (node.closest("[inert], [aria-hidden='true']")) return [];
       const rect = node.getBoundingClientRect();
       const styles = getComputedStyle(node);
       if (styles.display === "none" || styles.visibility === "hidden" || Number(styles.opacity) === 0 || rect.width <= 0 || rect.height <= 0) return [];
@@ -237,6 +238,12 @@ async function auditTypography(root: Locator, context: string) {
 }
 
 async function openPrimaryView(page: Page, name: string, mobile: boolean) {
+  const accessibleName = name === "Review" || name === "Review queue"
+    ? new RegExp(`^${name}(?: · \\d+)?$`)
+    : name;
+  const buttonOptions = typeof accessibleName === "string"
+    ? { name: accessibleName, exact: true }
+    : { name: accessibleName };
   if (mobile) {
     const backdrop = page.locator("button[class*='mobileSheetBackdrop']");
     if (await backdrop.isVisible()) {
@@ -245,26 +252,24 @@ async function openPrimaryView(page: Page, name: string, mobile: boolean) {
     }
   }
   if (!mobile) {
-    const trigger = page.getByRole("button", { name, exact: true }).last();
+    const trigger = page.getByRole("button", buttonOptions).last();
     if (await trigger.getAttribute("aria-pressed") === "true") return;
   }
-  if (mobile && ["Sessions", "Files", "Search"].includes(name)) {
-    const trigger = page.locator("nav[class*='mobileNav']").getByRole("button", { name, exact: true });
-    if (await trigger.getAttribute("aria-current") === "page") return;
-  }
-  if (mobile && !["Sessions", "Files", "Search"].includes(name)) {
+  if (mobile) {
+    const trigger = page.locator("nav[class*='mobileNav']").getByRole("button", buttonOptions);
+    if (await trigger.count() > 0) {
+      if (await trigger.getAttribute("aria-current") === "page") return;
+      await trigger.click();
+      return;
+    }
     await page.getByRole("button", { name: "More", exact: true }).click();
     const sheet = page.locator("section[class*='mobileMoreSheet']");
     await expect(sheet).toBeVisible();
-    await sheet.getByRole("button", { name, exact: true }).click();
+    await sheet.getByRole("button", buttonOptions).click();
     await expect(sheet).toHaveCount(0);
     return;
   }
-  if (mobile) {
-    await page.locator("nav[class*='mobileNav']").getByRole("button", { name, exact: true }).click();
-  } else {
-    await page.getByRole("button", { name, exact: true }).last().click();
-  }
+  await page.getByRole("button", buttonOptions).last().click();
 }
 
 test("bundled typefaces and every readability preference render consistently", async ({ page }) => {
@@ -447,15 +452,24 @@ async function auditMainSurfaces(page: Page, style: InterfaceStyle, mobile: bool
   await auditControls(page, chat, `${style}/${viewport}/chat`, mobile);
   await auditControls(page, page.getByRole("navigation", { name: "Primary" }), `${style}/${viewport}/navigation`, mobile);
 
-  const panels = [
-    { button: "Sessions", testId: undefined },
-    { button: "Agents", testId: "agent-dashboard" },
-    { button: "Schedules", testId: "schedule-panel" },
-    { button: mobile ? "Files" : "Explorer", testId: undefined },
-    { button: "Search", testId: "unified-search" },
-    { button: "Changes", testId: undefined },
-    { button: mobile ? "tGD" : "tGD artifacts", testId: undefined },
-  ];
+  const dtaMode = await page.getByRole("button", { name: /^Review(?: · \d+)?$/ }).count() > 0;
+  const panels = dtaMode
+    ? [
+        { button: "Meetings", testId: "meeting-library" },
+        { button: "Review", testId: undefined },
+        { button: "Processing", testId: "agent-dashboard" },
+        { button: mobile ? "Knowledge" : "Meeting knowledge", testId: "meeting-knowledge" },
+      ]
+    : [
+        { button: "Sessions", testId: undefined },
+        { button: "Review queue", testId: undefined },
+        { button: "Agents", testId: "agent-dashboard" },
+        { button: "Schedules", testId: "schedule-panel" },
+        { button: mobile ? "Files" : "Explorer", testId: undefined },
+        { button: "Search", testId: "unified-search" },
+        { button: "Changes", testId: undefined },
+        { button: "tGD artifacts", testId: undefined },
+      ];
 
   for (const panel of panels) {
     await openPrimaryView(page, panel.button, mobile);
@@ -467,9 +481,9 @@ async function auditMainSurfaces(page: Page, style: InterfaceStyle, mobile: bool
     await expect(openPanel, `${panel.button} panel`).toBeVisible();
     await expect.poll(async () => (await openPanel.boundingBox())?.x ?? -999).toBeGreaterThanOrEqual(-1);
     if (!mobile) {
-      const settledWidth = panel.button === "Agents" || panel.button === "Schedules"
+      const settledWidth = panel.button === "Agents" || panel.button === "Processing" || panel.button === "Schedules"
         ? 340
-        : panel.button === "Explorer" || panel.button === "Search"
+        : panel.button === "Explorer" || panel.button === "Search" || panel.button === "Meeting knowledge"
           ? 300
           : 260;
       // Desktop panels animate between their compact and operational widths.
@@ -477,6 +491,9 @@ async function auditMainSurfaces(page: Page, style: InterfaceStyle, mobile: bool
       // valid controls can be filtered as transiently outside overflow: clip.
       await expect.poll(async () => (await openPanel.boundingBox())?.width ?? 0)
         .toBeGreaterThanOrEqual(settledWidth - 1);
+    }
+    if (panel.button === "Changes") {
+      await expect(openPanel.getByRole("button", { name: "Refresh" })).toBeEnabled();
     }
     await auditControls(page, openPanel, `${style}/${viewport}/${panel.button}`, mobile);
   }
@@ -487,14 +504,14 @@ async function auditMainSurfaces(page: Page, style: InterfaceStyle, mobile: bool
   const agentEditor = page.getByTestId("agent-run-editor");
   await expect(agentEditor).toBeVisible();
   await auditControls(page, agentEditor, `${style}/${viewport}/new-agent`, mobile);
-  await agentEditor.getByRole("button", { name: "Back to agents", exact: true }).click();
+  await page.getByRole("button", { name: "Cancel", exact: true }).last().click();
 
   await openPrimaryView(page, "Schedules", mobile);
   await page.getByRole("button", { name: "New schedule", exact: true }).first().click();
   const scheduleEditor = page.getByTestId("schedule-editor");
   await expect(scheduleEditor).toBeVisible();
   await auditControls(page, scheduleEditor, `${style}/${viewport}/new-schedule`, mobile);
-  await scheduleEditor.getByRole("button", { name: "Cancel", exact: true }).click();
+  await page.getByRole("button", { name: "Cancel", exact: true }).last().click();
 
   // Settings and analysis surfaces are modal/sheet states over the main shell.
   const modals = [

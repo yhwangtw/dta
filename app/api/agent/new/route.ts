@@ -11,6 +11,7 @@ import {
   authenticationErrorResponse,
   resolveActingUserId,
 } from "@/lib/auth/request-auth";
+import type { ToolSelectionMode } from "@/lib/tool-selection";
 
 // POST /api/agent/new  body: { cwd: string; type: string; message: string; ... }
 // Spawns a brand-new pi session and immediately sends the first command.
@@ -30,7 +31,7 @@ export async function POST(req: Request) {
     }
 
     // Use a one-time key so startRpcSession's lock doesn't conflict with real session ids
-    const { provider, modelId, toolNames, thinkingLevel, ephemeral, agentMetadata, deferPrompt, ...promptCommand } = command as { provider?: string; modelId?: string; toolNames?: string[]; thinkingLevel?: string; ephemeral?: boolean; agentMetadata?: unknown; deferPrompt?: boolean; [key: string]: unknown };
+    const { provider, modelId, toolNames, toolMode, thinkingLevel, ephemeral, agentMetadata, deferPrompt, ...promptCommand } = command as { provider?: string; modelId?: string; toolNames?: string[]; toolMode?: ToolSelectionMode; thinkingLevel?: string; ephemeral?: boolean; agentMetadata?: unknown; deferPrompt?: boolean; [key: string]: unknown };
     if (agentMetadata !== undefined && !isAgentMetadata(agentMetadata)) {
       return NextResponse.json({ error: "Invalid agentMetadata" }, { status: 400 });
     }
@@ -44,6 +45,7 @@ export async function POST(req: Request) {
       cwd,
       sessionId: tempKey,
       toolNames,
+      toolMode,
       ephemeral: ephemeral === true,
       ...(authenticatedMetadata ? { metadata: authenticatedMetadata } : { userId: principal.id }),
     };

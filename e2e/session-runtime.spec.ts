@@ -44,6 +44,24 @@ async function sessionId(page: Page): Promise<string | null> {
   return new URL(page.url()).searchParams.get("session");
 }
 
+async function getJsonEventually<T>(page: Page, url: string): Promise<T> {
+  let payload: T | undefined;
+  await expect.poll(async () => {
+    try {
+      const response = await page.request.get(url);
+      if (!response.ok()) return false;
+      payload = await response.json() as T;
+      return true;
+    } catch {
+      // Session replacement can briefly reset an in-flight HTTP connection.
+      // The browser client reconnects too, so retry the read instead of making
+      // a single transport reset fail the lifecycle assertion.
+      return false;
+    }
+  }, { timeout: 10_000 }).toBe(true);
+  return payload as T;
+}
+
 test("AgentSessionRuntime replaces every connected tab, prevents conflicts, and imports safely", async ({ browser }) => {
   const context = await browser.newContext();
   const tabA = await context.newPage();
@@ -58,10 +76,8 @@ test("AgentSessionRuntime replaces every connected tab, prevents conflicts, and 
   const newId = await sessionId(tabA);
   expect(newId).toBeTruthy();
   await expect.poll(() => sessionId(tabB)).toBe(newId);
-  const liveStateResponse = await tabA.request.get(`/api/agent/${newId}`);
-  expect(liveStateResponse.ok(), await liveStateResponse.text()).toBe(true);
-  const liveState = await liveStateResponse.json() as { running?: boolean };
-  const previousLiveState = await (await tabA.request.get(`/api/agent/${MAIN_ID}`)).json() as { running?: boolean };
+  const liveState = await getJsonEventually<{ running?: boolean }>(tabA, `/api/agent/${newId}`);
+  const previousLiveState = await getJsonEventually<{ running?: boolean }>(tabA, `/api/agent/${MAIN_ID}`);
   expect(liveState.running, JSON.stringify({ replacement: liveState, previous: previousLiveState })).toBe(true);
   expect(previousLiveState.running).toBe(false);
   await expect.poll(async () => (await tabA.request.get(`/api/sessions/${newId}`)).status()).toBe(200);

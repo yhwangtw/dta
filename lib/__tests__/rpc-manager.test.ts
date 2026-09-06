@@ -138,6 +138,7 @@ describe("AgentSessionWrapper model catalog refresh", () => {
       undefined,
       { find: vi.fn() } as never,
       undefined,
+      undefined,
       { allowedProviders: ["company"], allowedModels: ["approved-model"] },
     );
     try {
@@ -248,6 +249,10 @@ describe("AgentSessionWrapper extension lifecycle", () => {
 
     await wrapper.send({ type: "set_tools", toolNames: ["read", "edit"] });
     expect(setActiveToolsByName).toHaveBeenCalledWith(["read", "edit", "ask_user"]);
+
+    setActiveToolsByName.mockClear();
+    await wrapper.send({ type: "set_tools", mode: "custom", toolNames: ["read"] });
+    expect(setActiveToolsByName).toHaveBeenCalledWith(["read"]);
 
     const answerPromise = bridge.input("Release note");
     wrapper.destroy();

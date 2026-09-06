@@ -112,7 +112,7 @@ export function WorkflowActionsPanel({ agentId, sourceRunId, sourceVersion }: Pr
   return <section className={s.workflows} data-testid="workflow-actions-panel">
     <div className={s.workflowHeader}>
       <div>
-        <span>DTA · N8N</span>
+        <span>{t("dta.brand.n8n")}</span>
         <h3>{t("workflow.title")} <span>{catalog.workflows.length}</span></h3>
       </div>
       {catalog.editorUrl && <a href={catalog.editorUrl} target="_blank" rel="noreferrer">{t("workflow.openBuilder")}</a>}

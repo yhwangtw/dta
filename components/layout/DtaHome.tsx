@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent, type KeyboardEvent } from "react";
+import { BookOpen, Bot, Check, GitBranch, ListChecks, MessageSquare, Mic, Paperclip, Plus, Send } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import type { DepartmentAgentSummary } from "./DepartmentAgentDialog";
 import s from "./DtaHome.module.css";
@@ -18,16 +19,10 @@ interface DtaHomeProps {
 }
 
 const iconProps = {
-  width: 22,
-  height: 22,
-  viewBox: "0 0 24 24",
-  fill: "none",
-  stroke: "currentColor",
+  size: 22,
   strokeWidth: 1.7,
-  strokeLinecap: "round" as const,
-  strokeLinejoin: "round" as const,
-  "aria-hidden": true,
-};
+  "aria-hidden": true as const,
+} as const;
 
 export function DtaHome({
   attentionCount,
@@ -91,27 +86,27 @@ export function DtaHome({
               <div className={s.composerFooter}>
                 <div className={s.composerTools}>
                   <button type="button" onClick={onOpenMeetingAgent} aria-label={t("dta.chat.attach")} title={t("dta.chat.attach")}>
-                    <svg {...iconProps}><path d="m21.4 11.6-8.9 8.9a6 6 0 0 1-8.5-8.5l9.4-9.4a4 4 0 0 1 5.7 5.7l-9.4 9.4a2 2 0 1 1-2.8-2.8l8.7-8.7" /></svg>
+                    <Paperclip {...iconProps} />
                   </button>
                   <button type="button" onClick={onOpenMeetingAgent} aria-label={t("dta.chat.dictate")} title={t("dta.chat.dictate")}>
-                    <svg {...iconProps}><rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 10a7 7 0 0 0 14 0M12 17v5M8 22h8" /></svg>
+                    <Mic {...iconProps} />
                   </button>
                   <span>{t("dta.chat.hint")}</span>
                 </div>
                 <button type="submit" className={s.sendButton} disabled={!message.trim() || sending} aria-label={t("dta.chat.send")}>
                   <span>{sending ? t("dta.chat.starting") : t("dta.chat.send")}</span>
-                  <svg {...iconProps}><path d="m5 12 14-7-4 14-3-6-7-1Z" /><path d="m12 13 7-8" /></svg>
+                  <Send {...iconProps} />
                 </button>
               </div>
               {sendError && <p className={s.composerError} role="alert">{sendError}</p>}
             </form>
             <div className={s.heroActions}>
               <button type="button" className={s.primaryAction} onClick={onOpenMeetingAgent}>
-                <svg {...iconProps}><path d="M12 3v18M3 12h18" /></svg>
+                <Plus {...iconProps} />
                 {t("dta.home.start")}
               </button>
               <button type="button" className={s.secondaryAction} onClick={onOpenReviews}>
-                <svg {...iconProps}><path d="M20 6 9 17l-5-5" /></svg>
+                <Check {...iconProps} />
                 {t("dta.home.review")}
                 {attentionCount > 0 && <span className={s.count}>{Math.min(attentionCount, 99)}</span>}
               </button>
@@ -144,7 +139,7 @@ export function DtaHome({
           <div className={s.agentGrid}>
             <button type="button" className={s.agentCard} onClick={onOpenMeetingAgent}>
               <span className={`${s.agentIcon} ${s.agentIconPrimary}`}>
-                <svg {...iconProps}><path d="M21 15a3 3 0 0 1-3 3H8l-5 3V6a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3z" /><path d="M8 8h8M8 12h5" /></svg>
+                <MessageSquare {...iconProps} />
               </span>
               <span className={s.status}>{t("dta.status.beta")}</span>
               <strong>{t("dta.agent.meeting")}</strong>
@@ -154,7 +149,7 @@ export function DtaHome({
 
             <button type="button" className={s.agentCard} onClick={onOpenPMAgent}>
               <span className={`${s.agentIcon} ${s.agentIconCyan}`}>
-                <svg {...iconProps}><path d="M6 3v12M18 9v12" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="6" r="3" /><path d="M9 18h3a6 6 0 0 0 6-6V9" /></svg>
+                <GitBranch {...iconProps} />
               </span>
               <span className={s.status}>{t("dta.status.foundation")}</span>
               <strong>{t("dta.agent.pdlc")}</strong>
@@ -165,7 +160,7 @@ export function DtaHome({
             {departmentAgents.map((agent) => (
               <button type="button" className={s.agentCard} onClick={() => onOpenDepartmentAgent(agent)} key={agent.id}>
                 <span className={`${s.agentIcon} ${s.agentIconCyan}`}>
-                  <svg {...iconProps}><rect x="4" y="4" width="16" height="16" rx="3" /><path d="M9 9h6M9 13h4" /><path d="M8 2v2M16 2v2" /></svg>
+                  <Bot {...iconProps} />
                 </span>
                 <span className={s.status}>{t("dta.status.foundation")}</span>
                 <strong>{agent.displayName}</strong>
@@ -176,7 +171,7 @@ export function DtaHome({
 
             <button type="button" className={s.agentCard} onClick={onOpenReviews}>
               <span className={s.agentIcon}>
-                <svg {...iconProps}><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg>
+                <ListChecks {...iconProps} />
               </span>
               <span className={s.status}>{t("dta.status.foundation")}</span>
               <strong>{t("dta.agent.actions")}</strong>
@@ -186,7 +181,7 @@ export function DtaHome({
 
             <button type="button" className={s.agentCard} onClick={onOpenKnowledge}>
               <span className={s.agentIcon}>
-                <svg {...iconProps}><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></svg>
+                <BookOpen {...iconProps} />
               </span>
               <span className={s.status}>{t("dta.status.planned")}</span>
               <strong>{t("dta.agent.knowledge")}</strong>

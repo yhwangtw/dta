@@ -2,6 +2,19 @@
 
 import { useState, useCallback, useRef, useEffect, useLayoutEffect, lazy, Suspense } from "react";
 import { createPortal } from "react-dom";
+import {
+  ArrowLeft,
+  BarChart3,
+  ChevronDown,
+  Download,
+  Ellipsis,
+  FileText,
+  Gauge,
+  Menu,
+  PanelRightClose,
+  PanelRightOpen,
+  X,
+} from "lucide-react";
 import { SessionSidebar } from "../sidebar/SessionSidebar";
 import { ChatWindow } from "../chat/ChatWindow";
 import { ContextInspector } from "../chat/ContextInspector";
@@ -41,6 +54,7 @@ import { useToast, showToast } from "@/hooks/useToast";
 import { useAttentionCenter } from "@/hooks/useAttentionCenter";
 import { encodeFilePathForApi } from "@/lib/file-paths";
 import { onOpenFileRequest } from "@/lib/file-links";
+import type { FileOpenOrigin } from "@/lib/file-open";
 import { useI18n, translate } from "@/lib/i18n";
 import { setScrollFollowMode } from "@/lib/prefs";
 import { useTabTitle } from "@/lib/attention";
@@ -50,6 +64,7 @@ import { resolveAppShellCenterView } from "./app-shell-view";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { resolveWorkspaceIdentity, type WorkspaceIdentity } from "@/lib/workspace-identity";
 import { requestOpenProjectSwitcher } from "@/lib/project-switcher-events";
+import { publishSessionReplacement } from "@/lib/session-replacement-channel";
 import type { Worktree } from "@/lib/worktrees";
 import type { SessionInfo, SessionTreeNode } from "@/lib/types";
 import { isDomainAgentType, type AgentMetadata } from "@/lib/agents/agent-types";
@@ -86,9 +101,10 @@ export function AppShell() {
   const { locale, t } = useI18n();
   const { state, actions, refs, topBarRef } = useAppShellState();
   const attention = useAttentionCenter();
-  const { fileTabs, activeFileTabId, splitFileTabId, rightPanelOpen, setRightPanelOpen, setActiveFileTabId, handleOpenFile: openFileTab, handleCloseFileTab, handleCloseOthers, handleCloseAll, handleReorderTabs, handleTogglePin, handleOpenSplit } = useFileTabs();
+  const { fileTabs, activeFileTabId, splitFileTabId, rightPanelOpen, setRightPanelOpen, setActiveFileTabId, handleOpenFile: openFileTab, handleUpdateViewState, handleConsumeNavigation, handleCloseFileTab, handleCloseOthers, handleCloseAll, handleReorderTabs, handleTogglePin, handleOpenSplit } = useFileTabs();
 
   const [modelsConfigOpen, setModelsConfigOpen] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
   const [modelsRefreshKey, setModelsRefreshKey] = useState(0);
   const [skillsConfigOpen, setSkillsConfigOpen] = useState(false);
   const [extensionsConfigOpen, setExtensionsConfigOpen] = useState(false);
@@ -127,6 +143,8 @@ export function AppShell() {
     if (typeof window === "undefined") return false;
     try { return localStorage.getItem("pi-chat-width") === "wide"; } catch { return false; }
   });
+
+  useEffect(() => setHydrated(true), []);
   const toggleChatWidth = useCallback(() => {
     setWideChat((v) => {
       try { localStorage.setItem("pi-chat-width", v ? "normal" : "wide"); } catch { /* ignore */ }
@@ -192,10 +210,11 @@ export function AppShell() {
     return () => controller.abort();
   }, []);
 
-  // On narrow screens the sidebar is a full-width overlay — starting open
-  // would cover the whole app with the toggle button underneath it.
+  // Phones use a full-width overlay, so starting open would cover the chat.
+  // Tablets keep the contextual panel beside the transcript as a real second
+  // pane and can safely retain the desktop default.
   useLayoutEffect(() => {
-    if (window.matchMedia("(max-width: 1024px)").matches) setSidebarOpen(false);
+    if (window.matchMedia("(max-width: 700px)").matches) setSidebarOpen(false);
   }, []);
 
   useEffect(() => {
@@ -256,15 +275,21 @@ export function AppShell() {
     setRightPanelOpen(true);
   }, [setRightPanelOpen]);
 
-  // On overlay-mode screens, picking or starting a session should reveal the
-  // chat it just opened instead of leaving the sidebar covering it.
+  // Only phones use an overlay. Tablet selection keeps both context and chat
+  // visible, so choosing an item must not collapse the second pane.
   const closeSidebarIfOverlay = useCallback(() => {
-    if (window.matchMedia("(max-width: 1024px)").matches) setSidebarOpen(false);
+    if (window.matchMedia("(max-width: 700px)").matches) setSidebarOpen(false);
   }, []);
 
-  const handleOpenFile = useCallback((filePath: string, fileName: string, gotoLine?: number) => {
+  const handleOpenFile = useCallback((filePath: string, fileName: string, gotoLine?: number, origin?: FileOpenOrigin) => {
     setRightPanelMode("files");
-    openFileTab(filePath, fileName, gotoLine);
+    openFileTab({
+      path: filePath,
+      label: fileName,
+      line: gotoLine,
+      mode: gotoLine ? "source" : "auto",
+      origin: origin ?? { kind: "explorer" },
+    });
     closeSidebarIfOverlay();
   }, [closeSidebarIfOverlay, openFileTab]);
 
@@ -332,23 +357,30 @@ export function AppShell() {
         // Expand against the real home dir — stripping the "~" would alias
         // ~/x to /x, which may exist and silently open the wrong file.
         const home = await fetchHomeDir();
-        if (!home) { showToast(`Cannot resolve ${link.path}`, { type: "warning" }); return; }
+        if (!home) { showToast(t("files.resolveFailed").replace("{path}", link.path), { type: "warning" }); return; }
         abs = `${home.replace(/\/$/, "")}${abs.slice(1)}`;
       }
       if (!abs.startsWith("/")) {
-        if (!cwdBase) { showToast(`No project selected to resolve ${link.path}`, { type: "warning" }); return; }
+        if (!cwdBase) { showToast(t("files.noProjectForPath").replace("{path}", link.path), { type: "warning" }); return; }
         abs = `${cwdBase.replace(/\/$/, "")}/${abs.replace(/^\.\//, "")}`;
       }
       try {
         const res = await fetch(`/api/files/${encodeFilePathForApi(abs)}?type=meta`);
-        if (!res.ok) { showToast(`File not found: ${link.path}`, { type: "warning" }); return; }
+        if (!res.ok) { showToast(t("files.notFound").replace("{path}", link.path), { type: "warning" }); return; }
       } catch {
-        showToast(`File not found: ${link.path}`, { type: "warning" });
+        showToast(t("files.notFound").replace("{path}", link.path), { type: "warning" });
         return;
       }
-      handleOpenFile(abs, abs.split("/").pop() ?? link.path);
+      handleOpenFile(
+        abs,
+        abs.split("/").pop() ?? link.path,
+        link.line,
+        link.origin?.kind === "message"
+          ? { ...link.origin, sessionId: state.selectedSession?.id }
+          : link.origin,
+      );
     });
-  }, [effectiveCwdForPalette, handleOpenFile]);
+  }, [effectiveCwdForPalette, handleOpenFile, state.selectedSession?.id, t]);
 
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
@@ -526,7 +558,7 @@ export function AppShell() {
       return;
     }
     chatInputRef.current?.insertText(prompt);
-    showToast("Added file context to the composer", { type: "success" });
+    showToast(t("files.contextAdded"), { type: "success" });
   }, [state.selectedSession, t]);
 
   const handleAgentEndWithReview = useCallback(() => {
@@ -543,11 +575,11 @@ export function AppShell() {
         if (paths.length === 0) return;
         const first = paths[0];
         const absolute = `${cwd.replace(/[\\/]$/, "")}/${first}`;
-        openFileTab(absolute, first.split(/[\\/]/).pop() ?? first);
-        showToast(`${paths.length} changed file${paths.length === 1 ? "" : "s"} ready to review`, { type: "success" });
+        openFileTab({ path: absolute, label: first.split(/[\\/]/).pop() ?? first, mode: "source", origin: { kind: "review" } });
+        showToast(t("files.reviewReady").replace("{count}", paths.length.toLocaleString()), { type: "success" });
       } catch { /* changes are optional outside git workspaces */ }
     }, 450);
-  }, [actions, openFileTab, state.activeCwd, state.selectedSession?.cwd]);
+  }, [actions, openFileTab, state.activeCwd, state.selectedSession?.cwd, t]);
 
   const handleExportSession = useCallback(() => {
     if (!state.selectedSession) return;
@@ -661,6 +693,36 @@ export function AppShell() {
 
   const activeFileTab = fileTabs.find((t) => t.id === activeFileTabId) ?? null;
   const splitFileTab = fileTabs.find((t) => t.id === splitFileTabId && t.id !== activeFileTabId) ?? null;
+  const activeFileOrigin = activeFileTab?.intent?.origin;
+
+  const handleReturnToFileOrigin = useCallback(async () => {
+    const origin = activeFileTab?.intent?.origin;
+    if (!origin) return;
+    const compact = window.matchMedia("(max-width: 1024px)").matches;
+
+    if (origin.kind === "search") {
+      setPanelView("search");
+      setSidebarOpen(true);
+      setSearchFocusSignal((signal) => signal + 1);
+      if (compact) setRightPanelOpen(false);
+      return;
+    }
+
+    if (origin.kind === "message") {
+      const switchedSession = Boolean(origin.sessionId && origin.sessionId !== state.selectedSession?.id);
+      if (switchedSession && origin.sessionId) await handleOpenScheduledSession(origin.sessionId);
+      setPanelView("sessions");
+      if (compact) {
+        setRightPanelOpen(false);
+        setSidebarOpen(false);
+      }
+      window.setTimeout(() => {
+        const target = document.querySelector<HTMLElement>(`[data-entry-id="${CSS.escape(origin.entryId)}"]`);
+        target?.scrollIntoView({ block: "center" });
+        target?.focus({ preventScroll: true });
+      }, switchedSession ? 500 : 0);
+    }
+  }, [activeFileTab?.intent?.origin, handleOpenScheduledSession, setRightPanelOpen, state.selectedSession?.id]);
 
   useEffect(() => {
     if (!activeFileTab?.filePath || pendingReviewFiles.length === 0) return;
@@ -674,7 +736,7 @@ export function AppShell() {
     const cwd = state.selectedSession?.cwd ?? state.activeCwd;
     const next = pendingReviewFiles[0];
     if (!cwd || !next) return;
-    openFileTab(`${cwd.replace(/[\\/]$/, "")}/${next}`, next.split(/[\\/]/).pop() ?? next);
+    openFileTab({ path: `${cwd.replace(/[\\/]$/, "")}/${next}`, label: next.split(/[\\/]/).pop() ?? next, mode: "source", origin: { kind: "review" } });
   }, [openFileTab, pendingReviewFiles, state.activeCwd, state.selectedSession?.cwd]);
 
   const panelCwd = state.selectedSession?.cwd ?? state.newSessionCwd ?? state.activeCwd ?? null;
@@ -772,6 +834,7 @@ export function AppShell() {
           onRefresh={() => void attention.refresh()}
           onMarkRead={attention.markItemRead}
           onMarkAllRead={attention.markAllRead}
+          onClearCompleted={attention.clearCompleted}
           onOpenSession={handleOpenScheduledSession}
           onOpenSource={(source) => {
             setPanelView(source === "agent" ? "agents" : "schedule");
@@ -851,25 +914,13 @@ export function AppShell() {
         };
       })()
     : null;
-  const blockingDialogOpen = modelsConfigOpen
-    || skillsConfigOpen
-    || extensionsConfigOpen
-    || promptsConfigOpen
-    || analyticsOpen
-    || sessionImportOpen
-    || appearanceOpen
-    || shortcutsOpen
-    || meetingAgentOpen
-    || pmAgentOpen;
-
   return (
     <>
     <title>{tabTitle}</title>
     <div
       className={s.container}
       data-testid="app-shell"
-      inert={blockingDialogOpen}
-      aria-hidden={blockingDialogOpen || undefined}
+      data-hydrated={hydrated ? "true" : "false"}
     >
       {/* Icon rail — global navigation, always visible */}
       <IconRail
@@ -935,25 +986,24 @@ export function AppShell() {
             onClick={() => handleRailView("sessions")}
             aria-label={t("mobile.openSessions")}
           >
-            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <path d="m15 18-6-6 6-6" />
-            </svg>
+            <ArrowLeft size={21} strokeWidth={2} aria-hidden="true" />
           </button>
           <div className={s.sessionIdentity} data-testid="session-identity">
             {!showDtaHome && activeDomainAgent && activeAgentMetadata && (
               <div className={s.managedMeetingContext}>
                 <span aria-hidden>●</span>
                 <strong>{activeAgentMetadata.agentType === "meeting"
-                  ? "DTA Meeting Space"
+                  ? t("dta.brand.meetingSpace")
                   : activeAgentMetadata.agentType === "pm"
-                    ? "DTA PM Space"
-                    : `DTA ${activeAgentMetadata.displayName} Space`}</strong>
+                    ? t("dta.brand.pmSpace")
+                    : t("dta.brand.departmentSpace").replace("{name}", activeAgentMetadata.displayName)}</strong>
               </div>
             )}
             {!showDtaHome && !activeDomainAgent && visibleWorkspaceIdentity && (
               <button
                 type="button"
                 className={s.workspaceIdentity}
+                data-testid="project-switcher-trigger"
                 aria-label={`${t("cwd.select")} · ${t("topbar.repository")}: ${visibleWorkspaceIdentity.repository}${visibleWorkspaceIdentity.branch ? `, ${t("topbar.branch")}: ${visibleWorkspaceIdentity.branch}` : ""}`}
                 title={visibleWorkspaceIdentity.root}
                 onClick={handleOpenProjectSwitcher}
@@ -971,16 +1021,21 @@ export function AppShell() {
                   {visibleWorkspaceIdentity.detached && visibleWorkspaceIdentity.branch
                     ? <>{visibleWorkspaceIdentity.branch}<span className={s.detachedLabel}> · {t("topbar.detached")}</span></>
                     : visibleWorkspaceIdentity.branch
-                    ?? (workspaceIdentity?.sourceCwd === workspaceCwd ? t("topbar.notGitRepository") : "…")}
+                    ?? (workspaceIdentity?.sourceCwd === workspaceCwd
+                      ? <>
+                          <span className={s.workspaceBranchLong}>{t("topbar.notGitRepository")}</span>
+                          <span className={s.workspaceBranchShort}>{t("topbar.notGitShort")}</span>
+                        </>
+                      : "…")}
                 </span>
               </button>
             )}
             <div className={s.chatTitle} title={state.selectedSession ? getSessionDisplayTitle(state.selectedSession, 240) : undefined}>
-              {activeAgentMetadata?.agentType === "meeting" && <span className={s.agentIdentityBadge}>MEETING AGENT</span>}
-              {activeAgentMetadata?.agentType === "pm" && <span className={s.agentIdentityBadge}>PM AGENT</span>}
+              {activeAgentMetadata?.agentType === "meeting" && <span className={s.agentIdentityBadge}>{t("dta.brand.meetingAgent")}</span>}
+              {activeAgentMetadata?.agentType === "pm" && <span className={s.agentIdentityBadge}>{t("dta.brand.pmAgent")}</span>}
               {activeAgentMetadata?.agentType === "department" && <span className={s.agentIdentityBadge}>{activeAgentMetadata.displayName.toUpperCase()}</span>}
               {showDtaHome
-                ? "Digital Transformation Agent"
+                ? t("dta.brand.fullName")
                 : state.selectedSession
                   ? getSessionDisplayTitle(state.selectedSession)
                   : effectiveNewSessionCwd
@@ -996,9 +1051,7 @@ export function AppShell() {
               aria-label={t("mobile.sessionActions")}
               aria-expanded={mobileActionsOpen}
             >
-              <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                <circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" />
-              </svg>
+              <Ellipsis size={19} strokeWidth={2} aria-hidden="true" />
             </button>
           )}
           {mobileActionsOpen && <button type="button" className={s.mobileActionsBackdrop} onClick={() => setMobileActionsOpen(false)} aria-label={t("mobile.closeActions")} />}
@@ -1012,11 +1065,9 @@ export function AppShell() {
                 aria-haspopup="menu"
                 aria-expanded={sessionMenuOpen}
               >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <path d="M4 5h16M4 12h16M4 19h16" />
-                </svg>
+                <Menu size={13} strokeWidth={1.9} aria-hidden="true" />
                 <span>{t("topbar.sessionMenu")}</span>
-                <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden><polyline points="2 4 5 7 8 4" /></svg>
+                <ChevronDown size={9} strokeWidth={1.8} aria-hidden="true" />
               </button>
               {sessionMenuOpen && sessionMenuPos && typeof document !== "undefined" && createPortal(
                 <div ref={sessionMenuPanelRef} className={s.sessionMenu} style={{ top: sessionMenuPos.top, right: sessionMenuPos.right }} role="menu">
@@ -1092,16 +1143,10 @@ export function AppShell() {
                     className={s.exportIcon}
                     style={{ color: state.selectedSession ? "var(--text-muted)" : "var(--text-dim)" }}
                   >
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                      <polyline points="7 10 12 15 17 10" />
-                      <line x1="12" y1="15" x2="12" y2="3" />
-                    </svg>
+                    <Download size={12} strokeWidth={2.2} aria-hidden="true" />
                   </span>
                   <span>{t("topbar.export")}</span>
-                  <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                    <polyline points="2 4 5 7 8 4" />
-                  </svg>
+                  <ChevronDown size={9} strokeWidth={1.8} aria-hidden="true" />
                 </button>
                 {exportMenuOpen && state.selectedSession && exportMenuPos && typeof document !== "undefined" && createPortal(
                   <div
@@ -1140,11 +1185,7 @@ export function AppShell() {
                 title={t("topbar.analyticsTitle")}
                 aria-label={t("topbar.analyticsTitle")}
               >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--text-dim)", flexShrink: 0 }}>
-                  <line x1="18" y1="20" x2="18" y2="10" />
-                  <line x1="12" y1="20" x2="12" y2="4" />
-                  <line x1="6" y1="20" x2="6" y2="14" />
-                </svg>
+                <BarChart3 size={12} strokeWidth={2} style={{ color: "var(--text-dim)", flexShrink: 0 }} aria-hidden="true" />
                 <span>{t("topbar.analytics")}</span>
               </button>
               <BranchNavigator
@@ -1159,17 +1200,28 @@ export function AppShell() {
                 hideTrigger
               />
               <button
+                type="button"
+                onClick={() => {
+                  setRightPanelOpen((open) => !open);
+                  setMobileActionsOpen(false);
+                }}
+                className={`${s.systemButton} ${s.systemButtonDefault} ${s.mobileFileAction} hover-text`}
+                title={rightPanelOpen ? t("topbar.hideFilePanel") : t("topbar.showFilePanel")}
+                aria-label={rightPanelOpen ? t("topbar.hideFilePanel") : t("topbar.showFilePanel")}
+              >
+                {rightPanelOpen
+                  ? <PanelRightClose size={16} strokeWidth={1.9} aria-hidden />
+                  : <PanelRightOpen size={16} strokeWidth={1.9} aria-hidden />}
+                <span>{t("mobile.files")}</span>
+              </button>
+              <button
+                type="button"
                 onClick={() => { actions.toggleTopPanel("system"); setMobileActionsOpen(false); }}
                 className={`${s.systemButton} ${state.activeTopPanel === "system" ? s.systemButtonActive : s.systemButtonDefault} hover-text`}
                 disabled={systemPromptUnavailable}
                 title={systemPromptUnavailable ? t("topbar.sessionMenuSystemUnavailable") : t("topbar.system")}
               >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: state.systemPrompt ? "var(--accent)" : "var(--text-dim)", flexShrink: 0 }}>
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                  <polyline points="14 2 14 8 20 8" />
-                  <line x1="8" y1="13" x2="16" y2="13" />
-                  <line x1="8" y1="17" x2="13" y2="17" />
-                </svg>
+                <FileText size={14} strokeWidth={1.8} aria-hidden style={{ color: state.systemPrompt ? "var(--accent)" : "var(--text-dim)", flexShrink: 0 }} />
                 <span>{t("topbar.system")}</span>
               </button>
             </div>
@@ -1196,15 +1248,19 @@ export function AppShell() {
 
             const tooltipParts: string[] = [];
             if (tokens) {
-              tooltipParts.push(`in: ${tokens.input.toLocaleString()}`);
-              tooltipParts.push(`out: ${tokens.output.toLocaleString()}`);
-              tooltipParts.push(`cache read: ${tokens.cacheRead.toLocaleString()}`);
-              tooltipParts.push(`cache write: ${tokens.cacheWrite.toLocaleString()}`);
-              if (cost > 0) tooltipParts.push(`cost: $${cost.toFixed(4)}`);
+              tooltipParts.push(t("analytics.inputTokens").replace("{value}", tokens.input.toLocaleString()));
+              tooltipParts.push(t("analytics.outputTokens").replace("{value}", tokens.output.toLocaleString()));
+              tooltipParts.push(t("analytics.cacheReadTokens").replace("{value}", tokens.cacheRead.toLocaleString()));
+              tooltipParts.push(t("analytics.cacheWriteTokens").replace("{value}", tokens.cacheWrite.toLocaleString()));
+              if (cost > 0) tooltipParts.push(t("analytics.costValue").replace("{value}", `$${cost.toFixed(4)}`));
             }
             if (state.contextUsage?.contextWindow) {
               const pct = state.contextUsage.percent;
-              tooltipParts.push(`context: ${pct !== null ? pct.toFixed(1) + "%" : "unknown"} of ${state.contextUsage.contextWindow.toLocaleString()} tokens`);
+              tooltipParts.push(
+                t("analytics.contextUsage")
+                  .replace("{percent}", pct !== null ? `${pct.toFixed(1)}%` : t("common.unknown"))
+                  .replace("{window}", state.contextUsage.contextWindow.toLocaleString()),
+              );
             }
             const tooltip = tooltipParts.join("  |  ");
 
@@ -1219,16 +1275,14 @@ export function AppShell() {
               >
                 {ctxPercentStr && (
                   <span className={s.contextStat} style={{ color: ctxColor }}>
-                    <svg width="12" height="12" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M1 9 L1 5 Q1 1 5 1 Q9 1 9 5 L9 9" /><line x1="1" y1="9" x2="9" y2="9" />
-                    </svg>
+                    <Gauge size={13} strokeWidth={1.7} aria-hidden />
                     <span>{ctxPercentStr}</span>
                     <span className={s.contextWindow}>{ctxWindowStr}</span>
                   </span>
                 )}
                 {costStr && <span className={s.costStat}>{costStr}</span>}
                 {!ctxPercentStr && !costStr && totalTokens > 0 && (
-                  <span className={s.tokenTotal}>{fmt(totalTokens)} tokens</span>
+                  <span className={s.tokenTotal}>{fmt(totalTokens)} {t("analytics.tokens")}</span>
                 )}
               </button>
             );
@@ -1250,9 +1304,9 @@ export function AppShell() {
               className={`${s.topBarButton} ${s.filePanelToggle} ${rightPanelOpen ? s.filePanelToggleOpen : ""} hover-text`}
               style={{ color: rightPanelOpen ? "var(--text)" : "var(--text-muted)" }}
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <rect x="3" y="3" width="18" height="18" rx="2" /><line x1="15" y1="3" x2="15" y2="21" />
-              </svg>
+              {rightPanelOpen
+                ? <PanelRightClose size={16} strokeWidth={1.9} aria-hidden />
+                : <PanelRightOpen size={16} strokeWidth={1.9} aria-hidden />}
             </button>
           )}
         </div>
@@ -1278,10 +1332,7 @@ export function AppShell() {
                   aria-label={t("common.close")}
                   title={t("common.close")}
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
-                    <line x1="18" y1="6" x2="6" y2="18" />
-                    <line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
+                  <X size={16} strokeWidth={2} aria-hidden="true" />
                 </button>
               </header>
               <div className={s.systemPromptContent}>
@@ -1395,8 +1446,8 @@ export function AppShell() {
             className={`right-panel-resizer${draggingRight ? " right-panel-resizer-active" : ""}`}
             onMouseDown={startRightResize}
             onDoubleClick={resetRightWidth}
-            title="Drag to resize · double-click to reset"
-            aria-label="Resize file panel"
+            title={t("topbar.resizeFilePanelHint")}
+            aria-label={t("topbar.resizeFilePanel")}
             role="separator"
             aria-orientation="vertical"
           />
@@ -1405,17 +1456,17 @@ export function AppShell() {
         <div className={s.rightPanelTabBar} data-testid="right-panel-tab-bar">
           <div className={s.rightPanelTabBarInner}>
             {activeAgentMetadata?.agentType === "meeting" && state.selectedSession && (
-              <div className={s.agentResultTabs} role="tablist" aria-label="Meeting workspace">
-                <button type="button" role="tab" aria-selected={rightPanelMode === "meeting"} onClick={() => setRightPanelMode("meeting")}>Meeting result</button>
+              <div className={s.agentResultTabs} role="tablist" aria-label={t("dta.workspace.meeting")}>
+                <button type="button" role="tab" aria-selected={rightPanelMode === "meeting"} onClick={() => setRightPanelMode("meeting")}>{t("meetingResult.title")}</button>
               </div>
             )}
             {activeAgentMetadata?.agentType === "pm" && state.selectedSession && (
-              <div className={s.agentResultTabs} role="tablist" aria-label="PM workspace">
+              <div className={s.agentResultTabs} role="tablist" aria-label={t("dta.workspace.pm")}>
                 <button type="button" role="tab" aria-selected={rightPanelMode === "pm"} onClick={() => setRightPanelMode("pm")}>{t("pmResult.title")}</button>
               </div>
             )}
             {activeAgentMetadata?.agentType === "department" && state.selectedSession && (
-              <div className={s.agentResultTabs} role="tablist" aria-label="Department Agent workspace">
+              <div className={s.agentResultTabs} role="tablist" aria-label={t("dta.workspace.department")}>
                 <button type="button" role="tab" aria-selected={rightPanelMode === "department"} onClick={() => setRightPanelMode("department")}>{t("departmentResult.title")}</button>
               </div>
             )}
@@ -1433,9 +1484,20 @@ export function AppShell() {
               splitTabId={splitFileTabId}
             />}
           </div>
+          {(activeFileOrigin?.kind === "message" || activeFileOrigin?.kind === "search") && (
+            <button
+              type="button"
+              className={s.fileOriginButton}
+              onClick={() => void handleReturnToFileOrigin()}
+              title={t(activeFileOrigin.kind === "message" ? "files.backToMessage" : "files.backToSearch")}
+            >
+              <ArrowLeft size={14} strokeWidth={1.8} aria-hidden />
+              <span>{t(activeFileOrigin.kind === "message" ? "files.message" : "files.search")}</span>
+            </button>
+          )}
           {pendingReviewFiles.length > 0 && (
-            <button type="button" className={s.reviewQueueButton} onClick={openNextReviewFile} title="Open next changed file">
-              {pendingReviewFiles.length} to review
+            <button type="button" className={s.reviewQueueButton} onClick={openNextReviewFile} title={t("files.reviewNext")}>
+              {t("files.reviewCount").replace("{count}", pendingReviewFiles.length.toLocaleString())}
             </button>
           )}
           <button
@@ -1445,9 +1507,7 @@ export function AppShell() {
             aria-label={t("topbar.hideFilePanel")}
             className={`${s.mobileFilePanelClose} hover-text`}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <rect x="3" y="3" width="18" height="18" rx="2" /><line x1="15" y1="3" x2="15" y2="21" />
-            </svg>
+            <PanelRightClose size={16} strokeWidth={1.9} aria-hidden />
           </button>
         </div>
 
@@ -1469,6 +1529,10 @@ export function AppShell() {
                   cwd={state.activeCwd ?? undefined}
                   gotoLine={activeFileTab.gotoLine}
                   gotoNonce={activeFileTab.gotoNonce}
+                  initialMode={activeFileTab.intent?.mode}
+                  initialViewState={activeFileTab.viewState}
+                  onViewStateChange={(viewState) => handleUpdateViewState(activeFileTab.id, viewState)}
+                  onNavigationConsumed={() => handleConsumeNavigation(activeFileTab.id)}
                   onSendToAgent={state.selectedSession ? handleFileAgentPrompt : undefined}
                   sessionId={state.selectedSession?.id ?? null}
                 />
@@ -1480,6 +1544,10 @@ export function AppShell() {
                     cwd={state.activeCwd ?? undefined}
                     gotoLine={splitFileTab.gotoLine}
                     gotoNonce={splitFileTab.gotoNonce}
+                    initialMode={splitFileTab.intent?.mode}
+                    initialViewState={splitFileTab.viewState}
+                    onViewStateChange={(viewState) => handleUpdateViewState(splitFileTab.id, viewState)}
+                    onNavigationConsumed={() => handleConsumeNavigation(splitFileTab.id)}
                     onSendToAgent={state.selectedSession ? handleFileAgentPrompt : undefined}
                     sessionId={state.selectedSession?.id ?? null}
                   />
@@ -1488,10 +1556,7 @@ export function AppShell() {
             </div>
           ) : (
             <div className={s.rightPanelEmpty}>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                <polyline points="14 2 14 8 20 8" />
-              </svg>
+              <FileText size={28} strokeWidth={1.5} aria-hidden="true" />
               <div className={s.rightPanelEmptyTitle}>{t("rightPanel.noFile")}</div>
               <div className={s.rightPanelEmptyHint}>
                 {t("rightPanel.noFileHint")}
@@ -1511,6 +1576,7 @@ export function AppShell() {
     {extensionsConfigOpen && (
       <Suspense fallback={null}><ExtensionsConfig
         sessionId={state.selectedSession?.id ?? null}
+        cwd={panelCwd}
         onClose={() => setExtensionsConfigOpen(false)}
         onReload={() => setModelsRefreshKey((key) => key + 1)}
       /></Suspense>
@@ -1520,8 +1586,9 @@ export function AppShell() {
       <Suspense fallback={null}><SessionImportDialog
         sessionId={state.selectedSession.id}
         onClose={() => setSessionImportOpen(false)}
-        onImported={(sessionId, cwd, sessionFile) => {
+        onImported={(previousSessionId, sessionId, cwd, sessionFile) => {
           setSessionImportOpen(false);
+          publishSessionReplacement({ previousSessionId, newSessionId: sessionId, cwd, sessionFile });
           actions.handleSessionForked(sessionId, cwd, sessionFile);
           showToast(translate("sessionImport.done"), { type: "success" });
         }}

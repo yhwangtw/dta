@@ -67,7 +67,7 @@ export function PMAgentDialog({ onClose, onLaunch }: Props) {
     <section className={s.dialog} role="dialog" aria-modal="true" aria-labelledby="pm-agent-title" data-testid="pm-agent-dialog">
       <header className={s.header}>
         <div className={s.headingGroup}>
-          <span className={s.badge}>DTA · PM AGENT</span>
+          <span className={s.badge}>{t("dta.brand.pmAgent")}</span>
           <h2 id="pm-agent-title">{t("pmAgent.title")}</h2>
           <p>{t("pmAgent.description")}</p>
         </div>
@@ -75,7 +75,7 @@ export function PMAgentDialog({ onClose, onLaunch }: Props) {
       </header>
       <form className={s.form} onSubmit={submit}>
         <div className={s.workspace}>
-          <div><span>{t("pmAgent.workspace")}</span><strong>DTA PM Space</strong><small>{t("pmAgent.managedWorkspace")}</small></div>
+          <div><span>{t("pmAgent.workspace")}</span><strong>{t("dta.brand.pmSpace")}</strong><small>{t("pmAgent.managedWorkspace")}</small></div>
         </div>
         <label className={s.field}>
           {t("pmAgent.requirementTitle")}

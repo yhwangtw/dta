@@ -1,7 +1,7 @@
 .lockup {
   display: inline-flex;
   align-items: center;
-  gap: 9px;
+  gap: var(--space-2);
   min-width: 0;
   user-select: none;
 }
@@ -9,7 +9,7 @@
 .textCol {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: var(--space-optical);
   min-width: 0;
 }
 

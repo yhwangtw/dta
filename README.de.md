@@ -31,7 +31,7 @@ Meeting-Ergebnisse werden nicht nur als Markdown, sondern als strukturierte Runs
 
 ## Aus dem Quellcode starten
 
-Voraussetzungen: Node.js 22+, npm 10+ und Git.
+Voraussetzungen: Node.js 22+, npm und Git. Eine globale Pi CLI ist nicht erforderlich.
 
 ```bash
 git clone https://github.com/yhwangtw/dta.git
@@ -52,7 +52,13 @@ npm run dta -- run pm --task "Erstelle aus dieser Anforderung ein PRD und einen 
 npm run tui -- meeting
 ```
 
-`setup.sh` ist ein Production Installer, der den Checkout mit `origin/main` synchronisiert. Nicht in einem Entwicklungs-Checkout mit uncommitteten Änderungen ausführen.
+`setup.sh` ist ein Production Installer für dedizierte Endanwender-Checkouts. Vor einer Synchronisierung sichert er lokale Änderungen privat und fordert interaktive Bestätigung an. Verwende ihn nicht in einem Entwicklungs-Checkout; für Offline-Betrieb gilt `DTA_SETUP_OFFLINE=1 bash setup.sh`.
+
+## Optionaler Coding Workspace
+
+DTA behält die Funktionen der Pi-Web-Shell bei. Im lokalen Entwicklerbetrieb stehen Pi Sessions, SSE Streaming, Dateien, Git Diffs, Snapshots, Zeitpläne, tGD Artifacts, MCP, Plan Mode, Structured Output, Safety Guard und eingebettete Subagents bereit. Im Unternehmensmodus sind diese Flächen nur für Nutzer mit der konfigurierten Coding-Rolle sichtbar.
+
+Der Safety Guard bestätigt risikoreiche Aktionen, ist aber keine Betriebssystem-Sandbox. Wenn der Coding Agent aktiviert wird, sollte DTA unter einem dedizierten Benutzer oder in einem Container bzw. einer VM mit minimalen Workspace-Mounts laufen.
 
 ## Docker und Helm
 
@@ -70,13 +76,11 @@ docker run --rm -p 30141:30141 \
   -e DTA_ARTIFACT_STORE=local \
   -e DTA_MEMORY_STORE=local \
   -e DTA_WORKFLOW_PROVIDER=none \
-  -e DTA_TRANSCRIPTION_PROVIDER=none \
-  -e DTA_VISION_PROVIDER=none \
   -v dta-data:/data \
   yhwangtn/dta:vYYYY.MM.DD
 ```
 
-Im Unternehmensbetrieb müssen Chart-Version und Image-Digest separat fixiert werden. Die Chart-Version wählt nicht automatisch ein gleichnamiges Image. Details: [Deployment guide](./docs/deployment.md) und [Helm documentation](./deploy/helm/dta-agent-platform/README.md).
+Im Unternehmensbetrieb müssen Chart-Version und Image-Digest separat fixiert und `replicaCount: 1` beibehalten werden. Details: [Deployment guide](./docs/deployment.md) und [Helm documentation](./deploy/helm/dta-agent-platform/README.md).
 
 ## Externe Contracts
 
@@ -91,13 +95,14 @@ POST /a2a/v1/message:send
 POST /a2a/v1/message:stream
 ```
 
-Pi-spezifische Sessions und Events werden nicht über die externen APIs offengelegt.
+Pi-spezifische Sessions und Events werden nicht über externe APIs offengelegt.
 
 ## Wichtige Production-Grenzen
 
-- Der Pi Session Runtime ist process-local; aktuell ist deshalb `replicas: 1` erforderlich.
-- Der Browser-Login erfolgt über einen Keycloak-fähigen Ingress/Proxy. DTA übernimmt validierte Identity Headers.
+- Pi Session Runtime und aktive Run-Supervision sind process-local; aktuell ist deshalb `replicas: 1` erforderlich.
+- Der Browser-Login erfolgt über einen Keycloak-fähigen Ingress/Proxy; DTA validiert Token und Ownership.
 - Audio- und Videoverarbeitung benötigt einen externen Speech-to-Text Provider; visuelle Analyse zusätzlich einen optionalen Vision Provider.
+- n8n-Workflows dürfen erst nach Prüfung von Human Review, Scope und Idempotenz aktiviert werden.
 - Vor dem Rollout sollten Identity, Storage, Workflows und Media mit `dta pilot-check --live` validiert werden.
 
 ## Weitere Dokumentation
@@ -107,3 +112,7 @@ Pi-spezifische Sessions und Events werden nicht über die externen APIs offengel
 - [Company pilot readiness](./docs/company-pilot-readiness.md)
 - [Meeting media pipeline](./docs/meeting-media-pipeline.md)
 - [n8n integration](./docs/n8n.md)
+
+## Lizenz
+
+MIT — siehe [LICENSE](./LICENSE).

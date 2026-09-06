@@ -44,6 +44,18 @@
 
 Meeting 結果是版本化的結構化紀錄，不只是一段 Markdown。每個決策、待辦與需求都有穩定 ID、證據引用、source-grounding confidence 與 `needsConfirmation`。DTA 會保存來源 artifacts、串流標準化事件、記錄 Meeting／PM／部門 Agent 的人工審核，並只在核准後釋出下游 actions 與 workflows。
 
+### 共用 runtime shell
+
+- 同時看到串流內容、執行狀態、經過時間、錯誤、排隊訊息與 context 壓力。
+- 直接瀏覽所有本機 Pi session，不需要先建立 AgentSession。
+- 在對話旁檢查檔案、diff、tool call 與 git 變更。
+- 在同一工作空間追蹤 tGD artifacts 與七個交付階段。
+- 透過搜尋、書籤、minimap 與分支導覽長篇對話。
+- 在手機與桌機上使用 safe-area 導覽、精簡階段列及適合觸控的訊息操作。
+- 保持本機優先：外部流量只會前往你設定的模型／MCP 端點，以及「版本狀態」頁面使用的可選最新版本查詢。
+
+這些 coding workspace 能力會保留在本機／開發者模式；公司模式則依角色開放。
+
 ### 會議影音需要哪些模型
 
 不同輸入需要不同能力：
@@ -91,6 +103,14 @@ Pi 是鎖定版本的內部推理／session runtime。對外的 Agent request、
 - Node.js 22 以上
 - npm 與 Git
 - 可用的本機 Pi 模型／認證設定，或相容模型 Gateway 的 `LLM_*` 設定
+- 可用的本機 Pi 模型／認證設定、支援的 Provider 環境變數，或相容模型 Gateway 的 `LLM_*` 設定；不需要安裝全域 `pi` CLI
+
+本專案只透過 GitHub 原始碼發布，**不發布至 npm**。
+
+> [!IMPORTANT]
+> DTA 的選用 Coding Agent 能在允許的工作區讀寫檔案、檢查 git repository，並執行 shell 指令。原始碼開發預設只在 localhost 使用；公司環境應啟用 Keycloak 並依角色開放 coding workspace。輕量私人部署仍可使用相容的 `PIWEB_ACCESS_PASSWORD` 閘門。詳見[部署指南](./deploy/README.md)。
+
+內嵌 Safety Guard 會在高影響指令、受保護檔案、安裝相依套件及外部變更前要求確認。授權可以只用一次，或只允許同一工作區中的同一操作五分鐘；每次決定都會寫入 Security Activity。這是應用層授權，**不是**作業系統 sandbox：工具與 Extension 仍沿用伺服器帳號權限。需要更強隔離時，請使用專用作業系統帳號、container 或 VM。
 
 ```bash
 git clone https://github.com/yhwangtw/dta.git
@@ -333,6 +353,123 @@ Live suite 會驗證 Keycloak discovery／JWKS、選定 adapters、MinIO 上傳�
 |---|---|
 | ![PM Agent 需求交接](./docs/screenshots/dta-pm-agent.png) | <img src="./docs/screenshots/dta-mobile-home.png" alt="DTA 手機版首頁" width="390"> |
 
+## 選用 Coding Workspace 能力
+
+下列能力保留自底層 Pi Web shell，供本機／開發者使用；公司模式只有具指定 coding role 的使用者能看到。
+
+<details>
+<summary><strong>查看全部五種外觀 skin</strong></summary>
+
+| Editorial | Terminal | Aurora |
+|---|---|---|
+| ![Editorial skin](./docs/screenshots/05-skin-editorial.png) | ![Terminal skin](./docs/screenshots/06-skin-terminal.png) | ![Aurora skin](./docs/screenshots/07-skin-aurora.png) |
+
+| Industrial | Glass |
+|---|---|
+| ![Industrial skin](./docs/screenshots/08-skin-industrial.png) | ![Glass skin](./docs/screenshots/09-skin-glass.png) |
+
+</details>
+
+## 主要功能
+
+<!-- capability-table:start -->
+下表由 `lib/capabilities.json` 自動產生，是 Web 支援程度與執行依賴的產品契約。
+
+| 能力 | 基礎 | Web 提供方式 | 全域 Pi CLI | 常駐 Server | 信任邊界 |
+| --- | --- | --- | --- | --- | --- |
+| **Agent 對話** | 官方 Pi SDK | 原生 Web | 不需要 | 一般 Web runtime | 單一使用者主機 |
+| **Session 與跨專案搜尋** | 官方 Pi SDK | Web 轉接 | 不需要 | 一般 Web runtime | 單一使用者主機 |
+| **Ask User 與 Extension 對話框** | 官方 Extension API | Web 轉接 | 不需要 | 一般 Web runtime | 明確確認 |
+| **規劃模式** | 官方 Extension API | Web 轉接 | 不需要 | 一般 Web runtime | 受信任工作區 |
+| **結構化輸出** | 官方 Extension API | Web 轉接 | 不需要 | 一般 Web runtime | 無 |
+| **內嵌子代理** | 官方 Pi SDK | Web 轉接 | 不需要 | 一般 Web runtime | 受信任工作區 |
+| **權限閘門** | 官方 Extension API | Web 轉接 | 不需要 | 一般 Web runtime | 明確確認 |
+| **受保護路徑** | 官方 Extension API | Web 轉接 | 不需要 | 一般 Web runtime | 明確確認 |
+| **MCP 連線** | 官方 Extension API | Web 轉接 | 不需要 | 一般 Web runtime | 受信任端點／指令 |
+| **Agent 排程** | 官方 Pi SDK | Web 轉接 | 不需要 | 必須常駐 | 管理者設定 |
+| **檔案、Git 與還原點** | Pi Web | 原生 Web | 不需要 | 一般 Web runtime | 受信任工作區 |
+| **Extension 與套件** | 官方套件格式 | Web 轉接 | 不需要 | 一般 Web runtime | 明確確認 |
+| **執行環境與安全診斷** | Pi Web | 原生 Web | 不需要 | 一般 Web runtime | 管理者設定 |
+| **安全更新中心** | Pi Web | 原生 Web | 不需要 | 必須常駐 | 管理者設定 |
+<!-- capability-table:end -->
+
+### Agent 對話
+
+- 透過 SSE 即時串流，並在送出 prompt 前先建立事件連線。
+- 支援 prompt、steer、follow-up queue、retry、bash 與 context compaction。
+- 使用 `!command` 直接執行 shell；使用 `!!command` 讓結果不進入模型 context。
+- 在 session 中途切換模型與 thinking level。
+- Web runtime 內建第一方 `subagent` 工具，可把隔離工作交給 scout、planner、worker 與 reviewer，最多八項任務會沿用現有 Agent 佇列執行；每個子 Session 都能在 Agent 面板檢查或取消，不需要全域 `pi` CLI。
+- 內建 `ask_user` 工具，並支援 Pi extension 的 `select`、`confirm`、`input`、`editor` 對話框、通知、狀態與文字 Widget；等待中的決定可跨斷線重連保留。
+- Pi extension 的 session 指令（`newSession`、`fork`、`switchSession`）改由原生 `AgentSessionRuntime` 執行；Web UI 會跟隨替換後的 session，並將 SSE 重連至新 session。
+- 替換失敗時會恢復原本的 runtime；目標 session 已被其他 runtime 使用時會在切換前拒絕，所有開啟中的分頁也會同步跟隨。Extensions 設定可查看即時 runtime 診斷。
+- 可透過預覽優先的對話框匯入 Pi `.jsonl`；切換前會驗證 header、實際 cwd、允許的根目錄、symlink、檔案大小與目的地衝突。
+- 每次執行都有錯誤卡、停滯警告、通知、完成音效與分頁狀態。
+- 可編輯過去的 turn、從先前分支點 retry、建立獨立 fork，或在 session 內切換分支。
+
+### Agent 排程
+
+- 左側排程中心支援單次、每天、每週與標準五欄 cron，並明確指定 IANA 時區。
+- 可設定專案、Prompt、模型、thinking level、工具權限、漏跑策略與啟用狀態；同一處即可暫停、恢復、立即執行、重試與查看歷史。
+- 每次執行都會建立一般的本機 Pi session；若 `ask_user` 需要決定，狀態會變成**等待你的回答**，可直接開啟該 session 繼續。
+- 排程由本機 Node server 執行，server 必須保持運作。重啟後會依設定補跑一次或略過，且同一排程不會重疊執行。
+
+### Session 與導覽
+
+- 以增量、唯讀方式索引本機 Pi `.jsonl` session 檔。
+- 支援搜尋、標籤、釘選、封存、自動命名、HTML/Markdown 匯出與用量分析。
+- 提供對話搜尋、user turn 導覽、書籤、minimap、長訊息收合與 always-follow 串流模式。
+- Project switcher 支援最近專案、釘選、探索、檔案系統自動完成與 linked git worktrees。
+- 可重複使用的 prompt templates，並與內建 `/tgd-*` 指令整合。
+
+### 檔案與 git
+
+- 專案樹、遞迴檔名搜尋、文字編輯、Markdown/HTML/圖片預覽，以及對話內可點擊的檔案路徑。
+- Git 狀態 badge、working tree 摘要、逐檔統計，以及 `HEAD` 對 worktree diff。
+- 將 `edit`、`write` tool call 顯示為實際 diff 或檔案內容，不顯示難讀的原始 JSON。
+- 檔案與 git API 有 allowed-root、路徑防護、`execFile` 與回應大小限制。
+- Snapshot restore 只套用精確差異，不會改寫使用者的 index 或 `HEAD`。
+
+### 顯示與外觀
+
+- GitHub Flavored Markdown、表格、task list、KaTeX、Mermaid 與延遲載入的語法高亮。
+- Editorial、Terminal、Industrial、Aurora、Glass 五種 skin，各自支援亮色與暗色。
+- 內建 Inter、JetBrains Mono 與 Noto Sans TC，不依賴 CDN。
+- 應用程式介面語言目前為 English 與繁體中文；專案文件另外提供日本語與 Deutsch。
+
+## 鍵盤快捷鍵
+
+| 按鍵 | 動作 |
+|---|---|
+| `⌘/Ctrl + K` | 開啟指令面板 |
+| `⌘/Ctrl + P` | 開啟 project switcher |
+| `⌘/Ctrl + F` | 搜尋目前對話 |
+| `⌥ + ↑` / `⌥ + ↓` | 上一個／下一個 user turn |
+| `⇧⌘M` | 開啟 Models |
+| `⌘/Ctrl + /` | 開啟 Skills |
+| `⌘/Ctrl + B` | 切換 contextual panel |
+| `⌘/Ctrl + \` | 切換右側檔案 panel |
+| 空白輸入框按 `↑` | 叫回上一則訊息 |
+| `Esc` | 關閉目前 dialog |
+
+## 指令
+
+| 指令 | 用途 |
+|---|---|
+| `bash setup.sh` | 以 `origin/main` 取代本地原始碼、驗證、安裝、build，並可選擇啟動 production |
+| `npm run dev` | 視需要在 `30141` port 啟動開發環境 |
+| `node_modules/.bin/tsc --noEmit` | Typecheck |
+| `npx eslint .` | Lint |
+| `npm test` | 執行 Vitest unit tests |
+| `npm run test:e2e` | Build 並在 `30177` port 執行 Playwright E2E |
+| `npm run build` | 建立 production build |
+| `npm run start` | 啟動 production server |
+
+> [!WARNING]
+> 執行 `npm run build` 或 `npm run test:e2e` 前，必須先停止 `npm run dev`。同時執行 Next.js build 會污染開發伺服器使用中的 `.next/`。
+
+Playwright 刻意不儲存在 `package.json`，需要臨時安裝：
+
 ## 開發
 
 ```bash
@@ -342,6 +479,29 @@ npm test                        # Vitest
 npm run build                   # Production build
 npm run test:e2e                # Playwright production-server scenarios
 ```
+
+### Coding workspace 相容設定
+
+本機 container 若已預裝 Chromium：
+
+```bash
+PW_CHROMIUM_PATH=/opt/pw-browsers/chromium npm run test:e2e
+```
+
+| 設定 | 行為 |
+|---|---|
+| `PI_CODING_AGENT_DIR` | 覆寫預設的 `~/.pi/agent` 目錄 |
+| `PIWEB_ACCESS_PASSWORD` | 啟用套用於所有 route 的內建共用密碼閘門 |
+| `PIWEB_SESSION_SECRET` | 獨立簽署存取 Cookie；遠端部署請使用至少 32 bytes 的隨機值 |
+| `PIWEB_RELEASE_REPOSITORY` | 更新中心使用的 GitHub `owner/repo`；預設為 `yhwangtw/tgd-pi-web` |
+| `PIWEB_UPDATE_BACKUP_DIR` | 位於應用程式 checkout 外的私人程式來源備份目錄；預設放在 Pi agent 資料目錄下 |
+| `PIWEB_UPDATE_COMMAND_JSON` | 管理者更新 helper 的絕對路徑 JSON argv 陣列；不經 shell 解析 |
+| `PIWEB_RESTART_COMMAND_JSON` | 管理者重新啟動 helper 的絕對路徑 JSON argv 陣列 |
+| `PIWEB_ROLLBACK_COMMAND_JSON` | 管理者回復 helper 的絕對路徑 JSON argv 陣列 |
+| `TGD_DIR` | 覆寫相鄰的 `<project>-tGD/` artifact 目錄 |
+| `models.json` | 模型與 provider 清單，包含自訂 `baseUrl` |
+| `auth.json` | 由 Pi 管理的各 provider API credential |
+| Project picker | 選擇並驗證目前 working directory |
 
 主要目錄：
 

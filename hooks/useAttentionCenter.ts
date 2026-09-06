@@ -4,11 +4,13 @@ import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
 import type { AttentionItem, AttentionResponse } from "@/lib/attention-center";
 
 const STORAGE_PREFIX = "dta-attention-read-v1";
+const CLEARED_STORAGE_PREFIX = "dta-attention-cleared-v1";
 const POLL_MS = 15_000;
 
 interface AttentionSnapshot {
   items: AttentionItem[];
   readIds: ReadonlySet<string>;
+  clearedIds: ReadonlySet<string>;
   loading: boolean;
   error: string | null;
   updatedAt: string | null;
@@ -17,6 +19,7 @@ interface AttentionSnapshot {
 let snapshot: AttentionSnapshot = {
   items: [],
   readIds: new Set(),
+  clearedIds: new Set(),
   loading: false,
   error: null,
   updatedAt: null,
@@ -35,25 +38,31 @@ function subscribe(listener: () => void): () => void {
   return () => listeners.delete(listener);
 }
 
-function storageKey(scope: string): string {
-  return `${STORAGE_PREFIX}:${scope}`;
+function storageKey(prefix: string, scope: string): string {
+  return `${prefix}:${scope}`;
 }
 
-function hydrateReadIds(scope: string): void {
+function storedIds(key: string): Set<string> {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(key) ?? "[]") as unknown;
+    if (Array.isArray(parsed)) return new Set(parsed.filter((value): value is string => typeof value === "string").slice(-500));
+  } catch { /* keep an empty set */ }
+  return new Set();
+}
+
+function hydrateIds(scope: string): void {
   if (hydratedScope === scope || typeof window === "undefined") return;
   hydratedScope = scope;
-  snapshot = { ...snapshot, readIds: new Set() };
-  try {
-    const parsed = JSON.parse(localStorage.getItem(storageKey(scope)) ?? "[]") as unknown;
-    if (Array.isArray(parsed)) {
-      snapshot = { ...snapshot, readIds: new Set(parsed.filter((value): value is string => typeof value === "string").slice(-500)) };
-    }
-  } catch { /* keep an empty read set */ }
+  snapshot = {
+    ...snapshot,
+    readIds: storedIds(storageKey(STORAGE_PREFIX, scope)),
+    clearedIds: storedIds(storageKey(CLEARED_STORAGE_PREFIX, scope)),
+  };
 }
 
-function persistReadIds(ids: ReadonlySet<string>): void {
+function persistIds(prefix: string, ids: ReadonlySet<string>): void {
   if (!hydratedScope) return;
-  try { localStorage.setItem(storageKey(hydratedScope), JSON.stringify([...ids].slice(-500))); } catch { /* best effort */ }
+  try { localStorage.setItem(storageKey(prefix, hydratedScope), JSON.stringify([...ids].slice(-500))); } catch { /* best effort */ }
 }
 
 async function loadAttention(quiet = false): Promise<void> {
@@ -63,7 +72,7 @@ async function loadAttention(quiet = false): Promise<void> {
     .then(async (response) => {
       const body = await response.json() as Partial<AttentionResponse> & { error?: string };
       if (!response.ok || !Array.isArray(body.items) || typeof body.userScope !== "string") throw new Error(body.error || `HTTP ${response.status}`);
-      hydrateReadIds(body.userScope);
+      hydrateIds(body.userScope);
       emit({ ...snapshot, items: body.items, loading: false, error: null, updatedAt: body.serverTime ?? new Date().toISOString() });
     })
     .catch((reason) => emit({ ...snapshot, loading: false, error: reason instanceof Error ? reason.message : String(reason) }))
@@ -75,8 +84,18 @@ function markRead(ids: string[]): void {
   if (ids.length === 0) return;
   const next = new Set(snapshot.readIds);
   ids.forEach((id) => next.add(id));
-  persistReadIds(next);
+  persistIds(STORAGE_PREFIX, next);
   emit({ ...snapshot, readIds: next });
+}
+
+function clearCompleted(ids: string[]): void {
+  const completed = new Set(snapshot.items.filter((item) => item.status === "completed").map((item) => item.id));
+  const eligible = ids.filter((id) => completed.has(id));
+  if (eligible.length === 0) return;
+  const next = new Set(snapshot.clearedIds);
+  eligible.forEach((id) => next.add(id));
+  persistIds(CLEARED_STORAGE_PREFIX, next);
+  emit({ ...snapshot, clearedIds: next });
 }
 
 export function useAttentionCenter() {
@@ -88,13 +107,27 @@ export function useAttentionCenter() {
     return () => window.clearInterval(timer);
   }, []);
 
+  const visibleItems = useMemo(
+    () => current.items.filter((item) => !current.clearedIds.has(item.id)),
+    [current.clearedIds, current.items],
+  );
   const unreadItems = useMemo(
-    () => current.items.filter((item) => !current.readIds.has(item.id)),
-    [current.items, current.readIds],
+    () => visibleItems.filter((item) => !current.readIds.has(item.id)),
+    [current.readIds, visibleItems],
   );
   const refresh = useCallback(() => loadAttention(), []);
   const markItemRead = useCallback((id: string) => markRead([id]), []);
-  const markAllRead = useCallback(() => markRead(current.items.map((item) => item.id)), [current.items]);
+  const markAllRead = useCallback(() => markRead(visibleItems.map((item) => item.id)), [visibleItems]);
+  const clearCompletedItems = useCallback((ids: string[]) => clearCompleted(ids), []);
 
-  return { ...current, unreadItems, unreadCount: unreadItems.length, refresh, markItemRead, markAllRead };
+  return {
+    ...current,
+    items: visibleItems,
+    unreadItems,
+    unreadCount: unreadItems.length,
+    refresh,
+    markItemRead,
+    markAllRead,
+    clearCompleted: clearCompletedItems,
+  };
 }

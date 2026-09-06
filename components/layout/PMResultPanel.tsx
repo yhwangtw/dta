@@ -72,7 +72,7 @@ export function PMResultPanel({ sessionId }: Props) {
   if (run.status === "failed" || !run.result) return <div className={s.state}><div className={`${s.stateCard} ${s.failed}`}><strong>{t("pmResult.failed")}</strong><p>{run.error || t("pmResult.failedHint")}</p></div></div>;
 
   return <div className={s.panel} data-testid="pm-result-panel">
-    <header className={s.hero}><span>DTA · PM RESULT</span><h2>{t("pmResult.title")}</h2><p>{run.result.requirementSummary}</p></header>
+    <header className={s.hero}><span>{t("dta.brand.pmResult")}</span><h2>{t("pmResult.title")}</h2><p>{run.result.requirementSummary}</p></header>
     <section className={s.review} data-review-status={run.reviewStatus}>
       <div className={s.reviewHeading}><div><span>{t("meetingReview.controlPlane")}</span><h3>{t(`meetingReview.status.${run.reviewStatus}`)}</h3></div><strong>{t("meetingReview.revision").replace("{revision}", String(run.revision))}</strong></div>
       <p>{t(`pmReview.hint.${run.reviewStatus}`)}</p>

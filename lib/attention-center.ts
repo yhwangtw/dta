@@ -9,15 +9,16 @@ import type { SessionInfo } from "./types";
 import type { StoredMeetingResult } from "./agents/meeting/meeting-types";
 import { assertRunAccess, type RequestPrincipal } from "./auth/request-auth";
 import { accessibleSessionIds } from "./auth/session-access";
+import { redactSensitiveText } from "./redaction";
 
 export type AttentionSource = "meeting" | "agent" | "schedule" | "session";
-export type AttentionSeverity = "warning" | "error";
+export type AttentionSeverity = "warning" | "error" | "success";
 
 export interface AttentionItem {
   id: string;
   source: AttentionSource;
   severity: AttentionSeverity;
-  status: "waiting_for_input" | "failed" | "interrupted";
+  status: "waiting_for_input" | "failed" | "interrupted" | "completed";
   title: string;
   summary: string;
   occurredAt: string;
@@ -32,6 +33,7 @@ export interface AttentionResponse {
 }
 
 const SESSION_ERROR_AGE_MS = 14 * 24 * 60 * 60 * 1_000;
+const RECENT_COMPLETION_AGE_MS = 24 * 60 * 60 * 1_000;
 const SESSION_SCAN_LIMIT = 60;
 
 function assistantErrorFromSession(path: string): { message: string; at?: string } | null {
@@ -62,6 +64,7 @@ export function buildAttentionItems(input: {
 }, now = new Date()): AttentionItem[] {
   const items: AttentionItem[] = [];
   const representedSessions = new Set<string>();
+  const recentCompletionCutoff = now.getTime() - RECENT_COMPLETION_AGE_MS;
 
   for (const run of input.meetingRuns ?? []) {
     const awaitsReview = run.status === "completed"
@@ -74,29 +77,41 @@ export function buildAttentionItems(input: {
       severity: "warning",
       status: run.status === "failed" ? "failed" : "waiting_for_input",
       title: run.result?.title || "Meeting result needs review",
-      summary: run.status === "failed"
+      summary: redactSensitiveText(run.status === "failed"
         ? run.error?.trim() || "The meeting conversation ended without a reviewable result"
         : run.reviewStatus === "changes_requested"
           ? run.reviewHistory.at(-1)?.comment || "Changes were requested before this meeting can be approved"
-          : "Review the source evidence and approve or return this meeting result",
+          : "Review the source evidence and approve or return this meeting result"),
       occurredAt: run.updatedAt,
       sessionId: run.sessionId,
     });
   }
 
   for (const run of input.agentRuns) {
-    if (run.status !== "waiting_for_input" && run.status !== "failed" && run.status !== "interrupted") continue;
-    if (run.sessionId) representedSessions.add(run.sessionId);
     const occurredAt = run.finishedAt ?? run.startedAt ?? run.createdAt;
+    const needsAttention = run.status === "waiting_for_input" || run.status === "failed" || run.status === "interrupted";
+    const recentCompletion = run.status === "completed" && Date.parse(occurredAt) >= recentCompletionCutoff;
+    if (!needsAttention && !recentCompletion) continue;
+    if (run.sessionId && representedSessions.has(run.sessionId)) continue;
+    if (run.sessionId) representedSessions.add(run.sessionId);
+    const status: AttentionItem["status"] = run.status === "waiting_for_input"
+      ? "waiting_for_input"
+      : run.status === "failed"
+        ? "failed"
+        : run.status === "completed"
+          ? "completed"
+          : "interrupted";
     items.push({
       id: `agent:${run.id}:${run.status}`,
       source: "agent",
-      severity: run.status === "waiting_for_input" ? "warning" : "error",
-      status: run.status,
+      severity: run.status === "waiting_for_input" ? "warning" : run.status === "completed" ? "success" : "error",
+      status,
       title: run.name,
-      summary: run.status === "waiting_for_input"
+      summary: redactSensitiveText(run.status === "waiting_for_input"
         ? "The agent is waiting for your decision"
-        : run.error?.trim() || "The agent run did not complete",
+        : run.status === "completed"
+          ? run.report?.summary?.trim() || "The agent run completed"
+          : run.error?.trim() || "The agent run did not complete"),
       occurredAt,
       cwd: run.cwd,
       sessionId: run.sessionId,
@@ -104,18 +119,23 @@ export function buildAttentionItems(input: {
   }
 
   for (const run of input.scheduleRuns) {
-    if (run.status !== "waiting_for_input" && run.status !== "failed" && run.status !== "skipped") continue;
+    const occurredAt = run.finishedAt ?? run.startedAt;
+    const needsAttention = run.status === "waiting_for_input" || run.status === "failed" || run.status === "skipped";
+    const recentCompletion = run.status === "completed" && Date.parse(occurredAt) >= recentCompletionCutoff;
+    if (!needsAttention && !recentCompletion) continue;
     if (run.sessionId) representedSessions.add(run.sessionId);
     items.push({
       id: `schedule:${run.id}:${run.status}`,
       source: "schedule",
-      severity: run.status === "waiting_for_input" ? "warning" : "error",
-      status: run.status === "waiting_for_input" ? "waiting_for_input" : "failed",
+      severity: run.status === "waiting_for_input" ? "warning" : run.status === "completed" ? "success" : "error",
+      status: run.status === "waiting_for_input" ? "waiting_for_input" : run.status === "completed" ? "completed" : "failed",
       title: run.scheduleName,
-      summary: run.status === "waiting_for_input"
+      summary: redactSensitiveText(run.status === "waiting_for_input"
         ? "The scheduled agent is waiting for your decision"
-        : run.error?.trim() || (run.status === "skipped" ? "The scheduled run was skipped" : "The scheduled run failed"),
-      occurredAt: run.finishedAt ?? run.startedAt,
+        : run.status === "completed"
+          ? "The scheduled run completed"
+          : run.error?.trim() || (run.status === "skipped" ? "The scheduled run was skipped" : "The scheduled run failed")),
+      occurredAt,
       sessionId: run.sessionId,
     });
   }
@@ -134,7 +154,7 @@ export function buildAttentionItems(input: {
       severity: "error",
       status: "failed",
       title: session.name || session.firstMessage || "Session failed",
-      summary: error.message,
+      summary: redactSensitiveText(error.message),
       occurredAt: error.at ?? session.modified,
       cwd: session.cwd,
       sessionId: session.id,

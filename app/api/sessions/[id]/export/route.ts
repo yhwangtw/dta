@@ -9,6 +9,7 @@ import { NextResponse } from "next/server";
 import { resolveSessionPath } from "@/lib/session-reader";
 import { authorizeSessionRequest } from "@/lib/auth/session-access";
 import { AuthenticationError, authenticationErrorResponse } from "@/lib/auth/request-auth";
+import { redactSensitiveText } from "@/lib/redaction";
 
 const execFileAsync = promisify(execFile);
 
@@ -81,7 +82,7 @@ export async function GET(
         maxBuffer: 1024 * 1024,
       });
 
-      const html = readFileSync(outputPath, "utf8");
+      const html = redactSensitiveText(readFileSync(outputPath, "utf8"));
       return new Response(html, {
         headers: {
           "Content-Type": "text/html; charset=utf-8",

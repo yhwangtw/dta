@@ -1,6 +1,5 @@
 "use client";
 
-import { useI18n } from "@/lib/i18n";
 import {
   Activity,
   BarChart3,
@@ -8,6 +7,7 @@ import {
   Bot,
   CalendarClock,
   CircleCheckBig,
+  Cpu,
   FileText,
   Folder,
   GitBranch,
@@ -18,6 +18,7 @@ import {
   Puzzle,
   Search,
 } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
 import s from "./AppShell.module.css";
 
 export type PanelView = "home" | "sessions" | "attention" | "agents" | "knowledge" | "schedule" | "files" | "search" | "changes" | "tgd";
@@ -38,11 +39,8 @@ interface IconRailProps {
   onToggleAppearance: () => void;
 }
 
-/**
- * Left icon rail — global navigation, always visible. Pure presentation:
- * every click is delegated to the parent. Theme, language, typography, and
- * density intentionally live together in the Appearance panel.
- */
+const iconProps = { size: 17, strokeWidth: 1.8, "aria-hidden": true } as const;
+
 export function IconRail({
   panelView,
   homeActive,
@@ -61,7 +59,7 @@ export function IconRail({
   const { t } = useI18n();
 
   return (
-    <nav className={s.rail} aria-label="Primary">
+    <nav className={s.rail} aria-label={t("navigation.primary")}>
       <button
         type="button"
         onClick={() => onSelectView("home")}
@@ -75,54 +73,67 @@ export function IconRail({
       <div className={s.railDivider} aria-hidden />
       {legacyMode ? (
         <>
-          <RailButton view="sessions" label={t("sidebar.sessions")} panelView={panelView} sidebarOpen={sidebarOpen} onSelectView={onSelectView}><MessageSquare /></RailButton>
-          <RailButton view="attention" label={t("attention.title")} panelView={panelView} sidebarOpen={sidebarOpen} onSelectView={onSelectView} badge={attentionUnreadCount}><Bell /></RailButton>
-          <RailButton view="agents" label={t("agents.title")} panelView={panelView} sidebarOpen={sidebarOpen} onSelectView={onSelectView}><Bot /></RailButton>
-          <RailButton view="schedule" label={t("schedule.title")} panelView={panelView} sidebarOpen={sidebarOpen} onSelectView={onSelectView}><CalendarClock /></RailButton>
+          <RailButton view="sessions" label={t("sidebar.sessions")} panelView={panelView} sidebarOpen={sidebarOpen} onSelectView={onSelectView}><MessageSquare {...iconProps} /></RailButton>
+          <RailButton view="attention" label={t("attention.title")} panelView={panelView} sidebarOpen={sidebarOpen} onSelectView={onSelectView} badge={attentionUnreadCount}><Bell {...iconProps} /></RailButton>
+          <RailButton view="agents" label={t("agents.title")} panelView={panelView} sidebarOpen={sidebarOpen} onSelectView={onSelectView}><Bot {...iconProps} /></RailButton>
+          <RailButton view="schedule" label={t("schedule.title")} panelView={panelView} sidebarOpen={sidebarOpen} onSelectView={onSelectView}><CalendarClock {...iconProps} /></RailButton>
           <div className={s.railDivider} aria-hidden />
-          <RailButton view="files" label={t("sidebar.explorer")} panelView={panelView} sidebarOpen={sidebarOpen} onSelectView={onSelectView}><Folder /></RailButton>
-          <RailButton view="search" label={t("search.title")} panelView={panelView} sidebarOpen={sidebarOpen} onSelectView={onSelectView}><Search /></RailButton>
-          <RailButton view="changes" label={t("mobile.changes")} panelView={panelView} sidebarOpen={sidebarOpen} onSelectView={onSelectView}><GitBranch /></RailButton>
-          <RailButton view="tgd" label={t("tgd.artifacts")} panelView={panelView} sidebarOpen={sidebarOpen} onSelectView={onSelectView}><FileText /></RailButton>
+          <RailButton view="files" label={t("sidebar.explorer")} panelView={panelView} sidebarOpen={sidebarOpen} onSelectView={onSelectView}><Folder {...iconProps} /></RailButton>
+          <RailButton view="search" label={t("search.title")} panelView={panelView} sidebarOpen={sidebarOpen} onSelectView={onSelectView}><Search {...iconProps} /></RailButton>
+          <RailButton view="changes" label={t("mobile.changes")} panelView={panelView} sidebarOpen={sidebarOpen} onSelectView={onSelectView}><GitBranch {...iconProps} /></RailButton>
+          <RailButton view="tgd" label={t("tgd.artifacts")} panelView={panelView} sidebarOpen={sidebarOpen} onSelectView={onSelectView}><FileText {...iconProps} /></RailButton>
           <div className={s.railDivider} aria-hidden />
-          <button type="button" onClick={onOpenAnalytics} title={t("topbar.analyticsTitle")} aria-label={t("topbar.analyticsTitle")} className={s.railButton}><BarChart3 className={s.railIcon} aria-hidden /></button>
+          {onOpenAnalytics && <IconAction label={t("topbar.analyticsTitle")} onClick={onOpenAnalytics}><BarChart3 {...iconProps} /></IconAction>}
           <div className={s.railSpacer} />
-          <button type="button" onClick={onOpenModels} title={`${t("sidebar.models")} (⇧⌘M)`} aria-label={t("sidebar.models")} className={s.railButton}><Bot className={s.railIcon} aria-hidden /></button>
-          <button type="button" onClick={onOpenSkills} disabled={skillsDisabled} title={`${t("sidebar.skills")} (⌘/)`} aria-label={t("sidebar.skills")} className={s.railButton}><Layers3 className={s.railIcon} aria-hidden /></button>
-          <button type="button" onClick={onOpenExtensions} title={t("extensions.title")} aria-label={t("extensions.title")} className={s.railButton}><Puzzle className={s.railIcon} aria-hidden /></button>
+          {onOpenModels && <IconAction label={`${t("sidebar.models")} (⇧⌘M)`} ariaLabel={t("sidebar.models")} onClick={onOpenModels}><Cpu {...iconProps} /></IconAction>}
+          {onOpenSkills && <IconAction label={`${t("sidebar.skills")} (⌘/)`} ariaLabel={t("sidebar.skills")} onClick={onOpenSkills} disabled={skillsDisabled}><Layers3 {...iconProps} /></IconAction>}
+          {onOpenExtensions && <IconAction label={t("extensions.title")} onClick={onOpenExtensions}><Puzzle {...iconProps} /></IconAction>}
         </>
       ) : (
         <>
-          <RailButton view="sessions" label={t("dta.nav.meetings")} panelView={panelView} sidebarOpen={sidebarOpen} onSelectView={onSelectView}><FileText /></RailButton>
-          <RailButton view="attention" label={t("dta.nav.review")} panelView={panelView} sidebarOpen={sidebarOpen} onSelectView={onSelectView} badge={attentionUnreadCount}><CircleCheckBig /></RailButton>
-          <RailButton view="agents" label={t("dta.nav.processing")} panelView={panelView} sidebarOpen={sidebarOpen} onSelectView={onSelectView}><Activity /></RailButton>
+          <RailButton view="sessions" label={t("dta.nav.meetings")} panelView={panelView} sidebarOpen={sidebarOpen} onSelectView={onSelectView}><FileText {...iconProps} /></RailButton>
+          <RailButton view="attention" label={t("dta.nav.review")} panelView={panelView} sidebarOpen={sidebarOpen} onSelectView={onSelectView} badge={attentionUnreadCount}><CircleCheckBig {...iconProps} /></RailButton>
+          <RailButton view="agents" label={t("dta.nav.processing")} panelView={panelView} sidebarOpen={sidebarOpen} onSelectView={onSelectView}><Activity {...iconProps} /></RailButton>
           <div className={s.railDivider} aria-hidden />
-          <RailButton view="knowledge" label={t("dta.nav.search")} panelView={panelView} sidebarOpen={sidebarOpen} onSelectView={onSelectView}><LibraryBig /></RailButton>
+          <RailButton view="knowledge" label={t("dta.nav.search")} panelView={panelView} sidebarOpen={sidebarOpen} onSelectView={onSelectView}><LibraryBig {...iconProps} /></RailButton>
           <div className={s.railSpacer} />
         </>
       )}
-      <button
-        type="button"
+      <IconAction
+        label={t("appearance.title")}
         onClick={onToggleAppearance}
-        title={t("appearance.title")}
-        aria-pressed={appearanceOpen}
-        className={`${s.railButton} ${appearanceOpen ? s.railButtonActive : ""}`}
+        pressed={appearanceOpen}
       >
-        <Palette className={s.railIcon} aria-hidden />
-      </button>
+        <Palette {...iconProps} />
+      </IconAction>
     </nav>
   );
 }
 
-function RailButton({
-  view,
-  label,
-  panelView,
-  sidebarOpen,
-  onSelectView,
-  badge = 0,
-  children,
-}: {
+function IconAction({ label, ariaLabel, onClick, disabled, pressed, children }: {
+  label: string;
+  ariaLabel?: string;
+  onClick: () => void;
+  disabled?: boolean;
+  pressed?: boolean;
+  children: React.ReactElement;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={label}
+      aria-label={ariaLabel ?? label}
+      aria-pressed={pressed}
+      className={`${s.railButton} ${pressed ? s.railButtonActive : ""}`}
+    >
+      <span className={s.railIcon} aria-hidden>{children}</span>
+    </button>
+  );
+}
+
+function RailButton({ view, label, panelView, sidebarOpen, onSelectView, badge = 0, children }: {
   view: PanelView;
   label: string;
   panelView: PanelView;
